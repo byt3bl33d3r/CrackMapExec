@@ -28,6 +28,7 @@ from datetime import datetime
 
 import StringIO
 import ntpath
+import time
 import socket
 import hashlib
 import BaseHTTPServer
@@ -1538,6 +1539,15 @@ def connect(host):
             except SessionError as e:
                 print '[-] {}:{} {}'.format(host, args.port, e)
 
+        if args.list:
+            try:
+                dir_list = smb.listPath(args.share, args.list + '\\*')
+                print "[+] {}:{} Contents of {}:".format(host, args.port, args.list)
+                for f in dir_list:
+                    print "%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(),  time.ctime(float(f.get_mtime_epoch())) ,f.get_longname())
+            except SessionError as e:
+                print '[-] {}:{} {}'.format(host, args.port, e)
+
         if args.sam:
             sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
             sam_dump = sec_dump.dump(smb)
@@ -1579,7 +1589,6 @@ def connect(host):
             print '\t-----\t\t\t-----------'
             for share, perm in share_list.iteritems():
                 print '\t{}\t\t\t{}'.format(share, perm)
-            print '\n'
 
         try:
             smb.logoff()
@@ -1644,6 +1653,7 @@ if __name__ == '__main__':
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
     bgroup = parser.add_argument_group("Filesystem interaction", "Options for interacting with filesystems")
+    bgroup.add_argument("--list", dest='list', metavar='PATH', help='List contents of a directory')
     bgroup.add_argument("--download", dest='download', metavar="PATH", help="Download a file from the remote systems")
     bgroup.add_argument("--upload", nargs=2, dest='upload', metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
     bgroup.add_argument("--delete", dest="delete", metavar="PATH", help="Delete a remote file")
@@ -1652,6 +1662,7 @@ if __name__ == '__main__':
 
     hosts = IPNetwork(args.target[0])
 
+    args.list = normalize_path(args.list)
     args.download  = normalize_path(args.download)
     args.delete    = normalize_path(args.delete)
     if args.upload:
