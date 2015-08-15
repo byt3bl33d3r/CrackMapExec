@@ -1,2 +1,2 @@
 # CrackMapExec
-A swiss army knife for Windows/Active Directory environments
+A swiss army knife for pentesting Windows/Active Directory environments

