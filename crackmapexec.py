@@ -1080,7 +1080,7 @@ class SAMRDump:
             try:
                 return self.__fetchList(rpctransport)
             except Exception, e:
-                logging.critical(str(e))
+                logging.info(str(e))
             else:
                 # Got a response. No need for further iterations.
                 break
@@ -1138,7 +1138,7 @@ class SAMRDump:
                 status = resp['ErrorCode']
 
         except ListUsersException, e:
-            logging.critical("Error listing users: %s" % e)
+            logging.info("Error listing users: %s" % e)
 
         dce.disconnect()
 
@@ -1178,7 +1178,7 @@ class TSCH_EXEC:
         try:
             self.doStuff(rpctransport)
         except Exception as e:
-            logging.error(e)
+            logging.info(e)
             if str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >=0:
                 #If we receive the 'STATUS_OBJECT_NAME_NOT_FOUND' error, it might work if we try again
                 sleep(1)
@@ -1271,7 +1271,7 @@ class TSCH_EXEC:
 
             done = False
             while not done:
-                logging.debug('Calling SchRpcGetLastRunInfo for \\%s' % self.__tmpName)
+                logging.info('Calling SchRpcGetLastRunInfo for \\%s' % self.__tmpName)
                 resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % self.__tmpName)
                 if resp['pLastRuntime']['wYear'] != 0:
                     done = True
@@ -1282,7 +1282,7 @@ class TSCH_EXEC:
             tsch.hSchRpcDelete(dce, '\\%s' % self.__tmpName)
             taskCreated = False
         except tsch.DCERPCSessionError, e:
-            logging.error(e)
+            logging.info(e)
             e.get_packet().dump()
         finally:
             if taskCreated is True:
