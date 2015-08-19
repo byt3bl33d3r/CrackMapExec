@@ -1976,10 +1976,18 @@ if __name__ == '__main__':
     if args.upload: args.upload[1] = normalize_path(args.upload[1])
 
     if args.spider:
-        if not args.pattern:
-            sys.exit("[!] Please specify a pettern using '--pattern'")
+        patterns = []
+        if not args.pattern and not args.patternfile:
+            sys.exit("[!] Please specify a '--pattern' or a '--patternfile'")
 
-        args.pattern = [args.pattern]
+        if args.patternfile is not None:
+            for line in args.patternfile.readlines():
+                line = line.rstrip()
+                patterns.append(line)
+
+        patterns.append(args.pattern)
+
+        args.pattern = patterns
 
     if args.mimikatz:
         print "[*] Press CTRL-C at any time to exit"
