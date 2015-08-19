@@ -22,6 +22,8 @@ The biggest improvements over the above tools are:
 - Uses **ONLY** native WinAPI calls for discovering sessions, users, dumping SAM hashes etc...
 - Opsec safe (no binaries are uploaded to dump clear-text credentials)
 
+Requires the impacket, gevent and netaddr Python libraries
+
 #Usage examples
 
 The most basic usage: scans the subnet using 100 concurrent threads:
@@ -135,3 +137,5 @@ Lets Spider the C$ share starting from the ```Users``` folder for the pattern ``
 //172.16.206.130/Users/drugdealer/Desktop/superpasswords.txt.txt
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Done spidering (Completed in 38.6000130177)
 ```
+
+For all available options, just run: ```python crackmapexec.py --help```
