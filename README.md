@@ -3,8 +3,8 @@ A swiss army knife for pentesting Windows/Active Directory environments
 
 Powered by [Impacket](https://github.com/CoreSecurity/impacket)
 
-This project was inspired by/based off of: 
-- @agosolino's [wmiexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiexec.py), [smbexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/smbexec.py), [samrdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/samrdump.py), [secretsdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/secretsdump.py) and [atexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/atexec.py) scripts (beyond awesome)
+This project was inspired by/based off of:
+- @agsolino's [wmiexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiexec.py), [smbexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/smbexec.py), [samrdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/samrdump.py), [secretsdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/secretsdump.py) and [atexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/atexec.py) scripts (beyond awesome)
 - @ShawnDEvans's [smbmap](https://github.com/ShawnDEvans/smbmap)
 - @gojhonny's [CredCrack](https://github.com/gojhonny/CredCrack)
 - @pentestgeek's [smbexec](https://github.com/pentestgeek/smbexec)
