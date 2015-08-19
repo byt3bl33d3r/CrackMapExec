@@ -1861,22 +1861,22 @@ def connect(host):
                 if args.execm == 'smbexec':
                     executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command, noOutput)
                     result = executer.run(host)
-                    print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, domain)
                     if result:
+                        print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, domain)
                         print result
 
                 elif args.execm == 'wmi':
                     executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
                     result = executer.run(host, smb)
-                    print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, domain)
                     if result:
+                        print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, domain)
                         print result
 
                 elif args.execm == 'atexec':
                     atsvc_exec = TSCH_EXEC(args.user, args.passwd, args.command, domain, args.hash, noOutput)
                     atsvc_exec.play(host)
-                    print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, domain)
                     if atsvc_exec.output:
+                        print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, domain)
                         print atsvc_exec.output
 
                     atsvc_exec.cleanup()
