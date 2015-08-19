@@ -25,7 +25,7 @@ from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
 from datetime import datetime
-from time import ctime
+from time import ctime, time
 
 import StringIO
 import ntpath
@@ -1688,6 +1688,30 @@ class RPCENUM():
         #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
         #resp.dump()
 
+def spider(smb_conn,ip,share,subfolder,patt,depth):
+    try:
+        filelist = smb_conn.listPath(share, subfolder+'\\*')
+        dir_list(filelist,ip,subfolder,patt)
+        if depth == 0:
+            return 0
+    except SessionError:
+        return 1
+
+    for result in filelist:
+        if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..':
+            spider(smb_conn,ip,share,subfolder+'/'+result.get_longname(),patt,depth-1)
+    return 0
+
+def dir_list(files,ip,path,pattern):
+    for result in files:
+        for instance in pattern:
+            if instance in result.get_longname():
+                if result.is_directory():
+                    print ("//%s/%s/%s [dir]" % (ip,path.replace("//",""),result.get_longname()))
+                else:
+                    print ("//%s/%s/%s" % (ip,path.replace("//",""),result.get_longname()))
+    return 0
+
 def normalize_path(path):
     path = r'{}'.format(path)
     path = ntpath.normpath(path)
@@ -1790,6 +1814,12 @@ def connect(host):
                     print "%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname())
             except SessionError as e:
                 print '[-] {}:{} {}'.format(host, args.port, e)
+
+        if args.spider:
+            start_time = time()
+            print "[+] {}:{} {} Started spidering".format(host, args.port, domain)
+            spider(smb, host, args.share, args.spider, args.pattern, args.depth)
+            print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, domain, time() - start_time)
 
         if args.enum_sessions:
             rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
@@ -1918,6 +1948,12 @@ if __name__ == '__main__':
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
 
+    sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
+    sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
+    sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
+    sgroup.add_argument("--patternfile", type=argparse.FileType('r'), help='File containing patters to search for')
+    sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default 1)')
+
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="smbexec", help="Method to execute the command (default: smbexec)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
@@ -1936,8 +1972,14 @@ if __name__ == '__main__':
     args.list = normalize_path(args.list)
     args.download = normalize_path(args.download)
     args.delete   = normalize_path(args.delete)
-    if args.upload:
-        args.upload[1] = normalize_path(args.upload[1])
+    
+    if args.upload: args.upload[1] = normalize_path(args.upload[1])
+
+    if args.spider:
+        if not args.pattern:
+            sys.exit("[!] Please specify a pettern using '--pattern'")
+
+        args.pattern = [args.pattern]
 
     if args.mimikatz:
         print "[*] Press CTRL-C at any time to exit"
