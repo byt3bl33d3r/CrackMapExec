@@ -1516,7 +1516,7 @@ class CMDEXEC:
 class RemoteShellwmi():
     def __init__(self, share, win32Process, smbConnection, mode, noOutput=False):
         self.__share = share
-        self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
+        self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME
         self.__outputBuffer = ''
         self.__shell = 'cmd.exe /Q /c '
         self.__win32Process = win32Process

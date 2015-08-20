@@ -26,6 +26,10 @@ The biggest improvements over the above tools are:
 
 Requires the impacket, gevent and netaddr Python libraries
 
+#Installation on Kali Linux
+
+Run ```pip install --upgrade -r requirements.txt```
+
 #Usage examples
 
 The most basic usage: scans the subnet using 100 concurrent threads:
