@@ -1684,10 +1684,10 @@ class RPCENUM():
         #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
         #resp.dump()
 
-def spider(smb_conn,ip,share,subfolder,patt,depth):
+def spider(smb_conn,ip, share, subfolder, patt, depth):
     try:
         filelist = smb_conn.listPath(share, subfolder+'\\*')
-        dir_list(filelist,ip,subfolder,patt)
+        dir_list(filelist, ip, subfolder, patt)
         if depth == 0:
             return 0
     except SessionError:
@@ -1695,7 +1695,7 @@ def spider(smb_conn,ip,share,subfolder,patt,depth):
 
     for result in filelist:
         if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..':
-            spider(smb_conn,ip,share,subfolder+'/'+result.get_longname(),patt,depth-1)
+            spider(smb_conn, ip, share,subfolder+'/'+result.get_longname().encode('utf8'), patt, depth-1)
     return 0
 
 def dir_list(files,ip,path,pattern):
@@ -1703,9 +1703,9 @@ def dir_list(files,ip,path,pattern):
         for instance in pattern:
             if instance in result.get_longname():
                 if result.is_directory():
-                    print ("//%s/%s/%s [dir]" % (ip,path.replace("//",""),result.get_longname()))
+                    print ("//%s/%s/%s [dir]" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
                 else:
-                    print ("//%s/%s/%s" % (ip,path.replace("//",""),result.get_longname()))
+                    print ("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
     return 0
 
 def normalize_path(path):
@@ -1722,7 +1722,7 @@ def _listShares(smb):
     root = ntpath.normpath("\\{}".format(PERM_DIR))
     
     for share in smb.listShares():
-        share_name = str(share['shi1_netname'][:-1])
+        share_name = share['shi1_netname'][:-1].encode('utf8')
         permissions[share_name] = "NO ACCESS"
 
         try:
