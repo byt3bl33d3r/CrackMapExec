@@ -2499,7 +2499,7 @@ if __name__ == '__main__':
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
     rgroup.add_argument("--mimikatz", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
-    rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help='Dump the NTDS.dit from the specified DCs')
+    rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help='Dump the NTDS.dit from the specified DCs using the specifed method')
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
