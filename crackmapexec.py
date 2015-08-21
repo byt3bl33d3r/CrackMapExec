@@ -2309,10 +2309,10 @@ def connect(host):
         #Workstations sometimes reset the connection, so we handle that here
         try:
             smb.logoff()
+        except NetBIOSError:
+            pass
         except socket.error:
             smb = SMBConnection(host, host, None, args.port)
-	except NetBIOSError:
-            pass
 
         if args.user is not None and (args.passwd is not None or args.hash is not None):
             lmhash = ''
