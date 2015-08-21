@@ -21,6 +21,7 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_LEVEL_PKT_PRIV
 from impacket.ese import ESENT_DB
 from impacket.structure import Structure
 from impacket.nt_errors import STATUS_MORE_ENTRIES
+from impacket.nmb import NetBIOSError
 from impacket.smbconnection import *
 from BaseHTTPServer import BaseHTTPRequestHandler
 from argparse import RawTextHelpFormatter
@@ -2310,6 +2311,8 @@ def connect(host):
             smb.logoff()
         except socket.error:
             smb = SMBConnection(host, host, None, args.port)
+	except NetBIOSError:
+            pass
 
         if args.user is not None and (args.passwd is not None or args.hash is not None):
             lmhash = ''
