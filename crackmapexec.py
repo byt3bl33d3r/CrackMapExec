@@ -2259,7 +2259,7 @@ def bruteforce(host, smb, s_name, domain):
             try:
                 #print "Trying {}:{}".format(user.strip(),passw.strip())
                 smb.login(user.strip(), passw.strip(), domain, '', '')
-                print "[+] {}:{} {} Found valid account! Username: {} Password: {}".format(host, args.port, s_name, user.strip(), passw.strip())
+                print "[+] {}:{} {} Found valid account! Domain: {} Username: {} Password: {}".format(host, args.port, s_name, domain, user.strip(), passw.strip())
                 if args.exhaust is False:
                     return
             except SessionError as e:
