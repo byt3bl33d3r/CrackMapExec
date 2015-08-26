@@ -9,8 +9,9 @@ This project was inspired by/based off of:
 - @gojhonny's [CredCrack](https://github.com/gojhonny/CredCrack)
 - @pentestgeek's [smbexec](https://github.com/pentestgeek/smbexec)
 
-
 Additionally some code was stolen from @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
+
+This repo also includes [Invoke-Mimikatz.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-Mimikatz.ps1) and [Invoke-NinjaCopy.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-NinjaCopy.ps1) scripts from @mattifestation's [PowerSploit](https://github.com/mattifestation/PowerSploit) project 
 
 #Description
 
