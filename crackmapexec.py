@@ -2201,10 +2201,10 @@ class WMIQUERY:
                 record = pEnum.getProperties()
                 if printHeader is True:
                     for col in record:
-                        record_dict[col] = []
+                        record_dict[str(col)] = []
                     printHeader = False
                 for key in record:
-                    record_dict[key].append(record[key]['value'])
+                    record_dict[key].append(str(record[key]['value']))
             except Exception as e:
                 if str(e).find('S_FALSE') < 0:
                     raise
