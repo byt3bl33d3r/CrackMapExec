@@ -2590,13 +2590,26 @@ if __name__ == '__main__':
         print_error("Run me as r00t!")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description=""" CrackMapExec - Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r\n
- Powered by Impacket https://github.com/CoreSecurity/impacket
+    parser = argparse.ArgumentParser(description=""" 
+  ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
+ /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
+|  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
+|  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |     
+|  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
+ \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
- Inspired by: @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
-              @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
-              @pentestgeek's smbexec https://github.com/pentestgeek/smbexec""",
-                                    formatter_class=RawTextHelpFormatter)
+
+                Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
+
+                      Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
+
+                                                  Inspired by:
+                           @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
+                           @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
+                           @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+""",
+                                    formatter_class=RawTextHelpFormatter,
+                                    epilog='There\'s been an awakening... have you felt it?')
 
     parser.add_argument("-t", type=int, dest="threads", required=True, help="Set how many concurrent threads to use")
     parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
