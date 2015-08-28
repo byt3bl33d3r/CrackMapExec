@@ -3,3 +3,4 @@ gevent
 netaddr
 pycrypto
 pyasn1
+termcolor
