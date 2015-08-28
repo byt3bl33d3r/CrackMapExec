@@ -2165,6 +2165,57 @@ class WMIEXEC:
 
         return result
 
+class WMIQUERY:
+    def __init__(self, address, username, password, domain, hashes, namespace):
+        self.address = address
+        self.username = username
+        self.password = password
+        self.domain= domain
+        self.namespace = namespace
+        self.lmhash = ''
+        self.nthash = ''
+        if hashes:
+            self.lmhash, self.nthash = hashes.split(':')
+
+    def run(self, query):
+
+        record_dict = {}
+
+        dcom = DCOMConnection(self.address, self.username, self.password, self.domain, self.lmhash, self.nthash, None, oxidResolver = True, doKerberos=False)
+
+        iInterface = dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login,wmi.IID_IWbemLevel1Login)
+        iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
+        iWbemServices= iWbemLevel1Login.NTLMLogin(self.namespace, NULL, NULL)
+        iWbemLevel1Login.RemRelease()
+
+        query = query.strip('\n')
+        if query[-1:] == ';':
+            query = query[:-1]
+
+        iEnumWbemClassObject = iWbemServices.ExecQuery(query.strip('\n'))
+
+        printHeader = True
+        while True:
+            try:
+                pEnum = iEnumWbemClassObject.Next(0xffffffff,1)[0]
+                record = pEnum.getProperties()
+                if printHeader is True:
+                    for col in record:
+                        record_dict[col] = []
+                    printHeader = False
+                for key in record:
+                    record_dict[key].append(record[key]['value'])
+            except Exception as e:
+                if str(e).find('S_FALSE') < 0:
+                    raise
+                else:
+                    break
+
+        iEnumWbemClassObject.RemRelease()
+        dcom.disconnect()
+
+        return record_dict
+
 class RPCENUM():
     def __init__(self, username, password, domain='', hashes=None):
         self.__username = username
@@ -2392,6 +2443,19 @@ def connect(host):
                 spider(smb, host, args.share, args.spider, args.pattern, args.depth)
                 print "[+] {}:{} {} Done spidering (Completed in {})".format(host, args.port, s_name, time() - start_time)
 
+            if args.wmi_query:
+                query = WMIQUERY(host, args.user, args.passwd, domain, args.hash, args.namespace)
+                res = query.run(args.wmi_query)
+                print "[+] {}:{} {} Executed specified WMI query:".format(host, args.port, s_name)
+                print ','.join(res.keys())
+                if len(res.values()) > 1:
+                    for v in map(None, *res.values()):
+                        print ','.join(v)
+                else:
+                    for k in res:
+                        for v in res[k]:
+                            print v
+
             if args.enum_sessions:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
                 sessions = rpcenum.enum_sessions(host)
@@ -2527,6 +2591,7 @@ if __name__ == '__main__':
     parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
     parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
     parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
+    parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='Namespace name (default //./root/cimv2)')
     parser.add_argument("-d", metavar="DOMAIN", dest='domain', default="WORKGROUP", help="Domain name (default: WORKGROUP)")
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
@@ -2543,6 +2608,7 @@ if __name__ == '__main__':
     egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
+    egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
 
     dgroup = parser.add_argument_group("Account Bruteforcing", "Options for bruteforcing SMB accounts")
     dgroup.add_argument("--bruteforce", nargs=2, metavar=('USER_FILE', 'PASS_FILE'), help="Your wordlists containing Usernames and Passwords")
