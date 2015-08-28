@@ -2655,6 +2655,10 @@ if __name__ == '__main__':
     bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
     bgroup.add_argument("--delete", metavar="PATH", help="Delete a remote file")
 
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
     args = parser.parse_args()
 
     if args.verbose:
