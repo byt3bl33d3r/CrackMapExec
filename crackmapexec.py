@@ -2620,7 +2620,7 @@ if __name__ == '__main__':
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
-    parser.add_argument("target", nargs=1, type=str, help="The target range or CIDR identifier")
+    parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
@@ -2667,7 +2667,13 @@ if __name__ == '__main__':
         log = logging.getLogger()
         log.setLevel(logging.INFO)
 
-    if '-' in args.target[0]:
+    if os.path.exists(args.target[0]):
+        hosts = []
+        with open(args.target[0], 'r') as target_file:
+            for target in target_file:
+                hosts.append(IPAddress(target))
+
+    elif '-' in args.target[0]:
         ip_range = args.target[0].split('-')
         try:
             hosts = IPRange(ip_range[0], ip_range[1])
