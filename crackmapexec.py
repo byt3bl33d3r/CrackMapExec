@@ -7,7 +7,7 @@ monkey.patch_all()
 from gevent import sleep
 from gevent.pool import Pool
 from gevent import joinall
-from netaddr import IPNetwork, IPRange, IPAddress
+from netaddr import IPNetwork, IPRange, IPAddress, AddrFormatError
 from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
@@ -2667,7 +2667,23 @@ if __name__ == '__main__':
         log = logging.getLogger()
         log.setLevel(logging.INFO)
 
-    hosts = IPNetwork(args.target[0])
+    if '-' in args.target[0]:
+        ip_range = args.target[0].split('-')
+        try:
+            hosts = IPRange(ip_range[0], ip_range[1])
+        except AddrFormatError:
+            start_ip = IPAddress(ip_range[0])
+
+            start_ip_words = list(start_ip.words)
+            start_ip_words[-1] = ip_range[1]
+            start_ip_words = [str(v) for v in start_ip_words]
+
+            end_ip = IPAddress('.'.join(start_ip_words))
+
+            hosts = IPRange(start_ip, end_ip)
+
+    else:
+        hosts = IPNetwork(args.target[0])
 
     args.list = normalize_path(args.list)
     args.download = normalize_path(args.download)
