@@ -2384,10 +2384,12 @@ def connect(host):
             if "STATUS_ACCESS_DENIED" in e.message:
                 pass
 
-        domain = smb.getServerDomain()
+        domain = args.domain
         s_name = smb.getServerName()
         if not domain:
-            domain = s_name
+            domain = smb.getServerDomain()
+            if not domain:
+                domain = s_name
 
         print_status("{}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), s_name, domain))
 
@@ -2616,7 +2618,7 @@ if __name__ == '__main__':
     parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
     parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
     parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='Namespace name (default //./root/cimv2)')
-    parser.add_argument("-d", metavar="DOMAIN", dest='domain', default="WORKGROUP", help="Domain name (default: WORKGROUP)")
+    parser.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, help="Domain name")
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
