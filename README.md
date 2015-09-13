@@ -11,7 +11,7 @@ This project was inspired by/based off of:
 
 Additionally some code was stolen from @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
 
-This repo also includes [Invoke-Mimikatz.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-Mimikatz.ps1) and [Invoke-NinjaCopy.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-NinjaCopy.ps1) scripts from @mattifestation's [PowerSploit](https://github.com/mattifestation/PowerSploit) project 
+This repo also includes [Invoke-Mimikatz.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-Mimikatz.ps1), [Invoke-NinjaCopy.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-NinjaCopy.ps1),  scripts from @mattifestation's [PowerSploit](https://github.com/mattifestation/PowerSploit) project 
 
 #Description
 
@@ -31,7 +31,102 @@ Requires the impacket, gevent and netaddr Python libraries
 
 Run ```pip install --upgrade -r requirements.txt```
 
-#Usage examples
+#Usage
+```
+  ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
+ /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
+|  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
+|  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |     
+|  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
+ \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
+
+                Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
+
+                      Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
+
+                                                  Inspired by:
+                           @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
+                           @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
+                           @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+
+positional arguments:
+  target                The target range, CIDR identifier or file containing targets
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t THREADS            Set how many concurrent threads to use
+  -u USERNAME           Username, if omitted null session assumed
+  -p PASSWORD           Password
+  -H HASH               NTLM hash
+  -n NAMESPACE          Namespace name (default //./root/cimv2)
+  -d DOMAIN             Domain name
+  -s SHARE              Specify a share (default: C$)
+  -P {139,445}          SMB port (default: 445)
+  -v                    Enable verbose output
+
+Credential Gathering:
+  Options for gathering credentials
+
+  --sam                 Dump SAM hashes from target systems
+  --mimikatz            Run Invoke-Mimikatz on target systems
+  --ntds {ninja,vss,drsuapi}
+                        Dump the NTDS.dit from target DCs using the specifed method
+                        (drsuapi is the fastest)
+
+Mapping/Enumeration:
+  Options for Mapping/Enumerating
+
+  --shares              List shares
+  --sessions            Enumerate active sessions
+  --users               Enumerate users
+  --lusers              Enumerate logged on users
+  --wmi QUERY           Issues the specified WMI query
+
+Account Bruteforcing:
+  Options for bruteforcing SMB accounts
+
+  --bruteforce USER_FILE PASS_FILE
+                        Your wordlists containing Usernames and Passwords
+  --exhaust             Don't stop on first valid account found
+
+Spidering:
+  Options for spidering shares
+
+  --spider FOLDER       Folder to spider (defaults to share root dir)
+  --pattern PATTERN     Pattern to search for in filenames and folders
+  --patternfile PATTERNFILE
+                        File containing patterns to search for
+  --depth DEPTH         Spider recursion depth (default: 1)
+
+Command Execution:
+  Options for executing commands
+
+  --execm {atexec,wmi,smbexec}
+                        Method to execute the command (default: smbexec)
+  -x COMMAND            Execute the specified command
+  -X PS_COMMAND         Excute the specified powershell command
+
+Shellcode/EXE/DLL injection:
+  Options for injecting Shellcode/EXE/DLL's using PowerShell
+
+  --inject {exe,shellcode,dll}
+                        Inject Shellcode, EXE or a DLL
+  --path PATH           Path to the Shellcode/EXE/DLL you want to inject on the target systems
+  --procid PROCID       Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)
+  --exeargs EXEARGS     Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)
+
+Filesystem interaction:
+  Options for interacting with filesystems
+
+  --list PATH           List contents of a directory
+  --download PATH       Download a file from the remote systems
+  --upload SRC DST      Upload a file to the remote systems
+  --delete PATH         Delete a remote file
+
+There's been an awakening... have you felt it?
+```
+
+#Examples
 
 The most basic usage: scans the subnet using 100 concurrent threads:
 ```
