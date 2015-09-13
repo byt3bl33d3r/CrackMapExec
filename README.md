@@ -23,9 +23,7 @@ The biggest improvements over the above tools are:
 - Pure Python script, no external tools required
 - Fully concurrent threading
 - Uses **ONLY** native WinAPI calls for discovering sessions, users, dumping SAM hashes etc...
-- Opsec safe (no binaries are uploaded to dump clear-text credentials)
-
-Requires the impacket, gevent and netaddr Python libraries
+- Opsec safe (no binaries are uploaded to dump clear-text credentials, inject shellcode etc...)
 
 #Installation on Kali Linux
 
