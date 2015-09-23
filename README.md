@@ -17,7 +17,7 @@ This repo also includes [Invoke-Mimikatz.ps1](https://github.com/mattifestation/
 
 CrackMapExec is your one-stop-shop for pentesting Windows/Active Directory environments!
 
-From enumerating logged on users and spidering SMB shares to executing psexec style attacks and auto-injecting Mimikatz into memory using Powershell!
+From enumerating logged on users and spidering SMB shares to executing psexec style attacks, auto-injecting Mimikatz/Shellcode/DLL's into memory using Powershell, dumping the NTDS.dit and more!
 
 The biggest improvements over the above tools are:
 - Pure Python script, no external tools required
