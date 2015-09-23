@@ -2056,8 +2056,9 @@ class CMDEXEC:
                     result = self.shell.send_data(self.__command)
                     smb_server.stop()
 
-            except  (Exception, KeyboardInterrupt), e:
-                self.shell.finish()
+            except  (Exception, KeyboardInterrupt) as e:
+                if hasattr(self, 'shell'):
+                    self.shell.finish()
                 sys.stdout.flush()
                 sys.exit(1)
 
