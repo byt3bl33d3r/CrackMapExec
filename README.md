@@ -238,4 +238,7 @@ Lets Spider the C$ share starting from the ```Users``` folder for the pattern ``
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Done spidering (Completed in 38.6000130177)
 ```
 
-For all available options, just run: ```python crackmapexec.py --help```
+#To do
+- Kerberos support
+- Execute custom commands with mimikatz
+- Anything that could be useful!
