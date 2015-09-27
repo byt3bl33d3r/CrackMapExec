@@ -2453,6 +2453,8 @@ def connect(host):
             noOutput = False
             smb.login(args.user, args.passwd, domain, lmhash, nthash)
 
+            print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, args.user, args.passwd))
+
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if args.download:
