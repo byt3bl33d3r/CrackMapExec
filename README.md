@@ -240,6 +240,6 @@ Lets Spider the C$ share starting from the ```Users``` folder for the pattern ``
 
 #To do
 - Kerberos support
-- Execute custom commands with mimikatz
+- ~~Execute custom commands with mimikatz~~
 - Modularize the script (??)
 - Anything that could be useful!
