@@ -183,7 +183,6 @@ Let's execute some commands on all systems concurrently:
 [*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
 [*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
 [+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
 [+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
 [+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via SMBEXEC
 nt authority\system
@@ -192,6 +191,7 @@ nt authority\system
 nt authority\system
 
 [*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
+[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
 [+] 172.16.206.133:445 DRUGOUTCOVE-PC Executed specified command via SMBEXEC
 nt authority\system
 ```
