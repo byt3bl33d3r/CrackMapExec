@@ -1739,8 +1739,8 @@ class TSCH_EXEC:
 
         try:
             self.doStuff(rpctransport)
-        except Exception as e:
-            logging.info(e)
+        except SessionError as e:
+            if args.verbose: traceback.print_exc()
             if str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >=0:
                 #If we receive the 'STATUS_OBJECT_NAME_NOT_FOUND' error, it might work if we try again
                 sleep(1)
@@ -2049,7 +2049,7 @@ class CMDEXEC:
                 if 'STATUS_SHARING_VIOLATION' in str(e):
                     return
 
-                if self.__noOutput is False:
+                elif self.__noOutput is False:
                     logging.info('Starting SMB Server')
                     smb_server = SMBServer()
                     smb_server.daemon = True
@@ -2060,11 +2060,11 @@ class CMDEXEC:
                     result = self.shell.send_data(self.__command)
                     smb_server.stop()
 
-            except  (Exception, KeyboardInterrupt) as e:
-                if hasattr(self, 'shell'):
-                    self.shell.finish()
-                sys.stdout.flush()
-                sys.exit(1)
+                else:
+                    if args.verbose: traceback.print_exc()
+                    if hasattr(self, 'shell'):
+                        self.shell.finish()
+                    sys.stdout.flush()
 
         return result
 
@@ -2723,10 +2723,15 @@ if __name__ == '__main__':
         log = logging.getLogger()
         log.setLevel(logging.INFO)
 
-    if args.path:
-        if not os.path.exists(args.path):
-            print_error('Unable to find Shellcode/EXE/DLL at specified path')
+    if args.inject:
+        if not args.path: 
+            print_error("You must specify a '--path' to the Shellcode/EXE/DLL to inject")
             sys.exit(1)
+
+        elif args.path:
+            if not os.path.exists(args.path):
+                print_error('Unable to find Shellcode/EXE/DLL at specified path')
+                sys.exit(1)
 
     if os.path.exists(args.target[0]):
         hosts = []
@@ -2752,10 +2757,10 @@ if __name__ == '__main__':
     else:
         hosts = IPNetwork(args.target[0])
 
-    args.list = normalize_path(args.list)
+    args.list     = normalize_path(args.list)
     args.download = normalize_path(args.download)
     args.delete   = normalize_path(args.delete)
-    
+
     if args.upload: args.upload[1] = normalize_path(args.upload[1])
 
     if args.spider:
