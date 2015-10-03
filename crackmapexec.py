@@ -34,7 +34,6 @@ from termcolor import cprint, colored
 import StringIO
 import ntpath
 import socket
-import re
 import hashlib
 import BaseHTTPServer
 import logging
@@ -2445,11 +2444,11 @@ def connect(host):
             bruteforce(host, smb, s_name, domain)
             print_status("{}:{} {} Finished SMB bruteforce (Completed in: {})".format(host, args.port, s_name, time() - start_time))
 
-        if args.user is not None and (args.passwd is not None or args.hash is not None):
+        if args.user and (args.passwd or args.hash):
             lmhash = ''
             nthash = ''
             if args.hash:
-                args.passwd = ''
+                args.passwd = args.hash
                 lmhash, nthash = args.hash.split(':')
 
             noOutput = False
@@ -2826,7 +2825,6 @@ if __name__ == '__main__':
                     elif len(user_pass.split(':')) == 2:
                         args.user, args.passwd = user_pass.split(':')
 
-                    print args.domain, args.user, args.passwd, args.hash
                     concurrency(hosts)
 
                 except Exception as e:
