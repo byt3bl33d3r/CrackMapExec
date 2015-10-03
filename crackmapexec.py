@@ -34,6 +34,7 @@ from termcolor import cprint, colored
 import StringIO
 import ntpath
 import socket
+import re
 import hashlib
 import BaseHTTPServer
 import logging
@@ -2448,6 +2449,7 @@ def connect(host):
             lmhash = ''
             nthash = ''
             if args.hash:
+                args.passwd = ''
                 lmhash, nthash = args.hash.split(':')
 
             noOutput = False
@@ -2664,6 +2666,7 @@ if __name__ == '__main__':
     parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
     parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
     parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
+    parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, help="Combo file containing a list of domain\\username:password entries" )
     parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='Namespace name (default //./root/cimv2)')
     parser.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, help="Domain name")
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
@@ -2690,7 +2693,7 @@ if __name__ == '__main__':
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
     sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
-    sgroup.add_argument("--patternfile", type=argparse.FileType('r'), help='File containing patterns to search for')
+    sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for')
     sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default: 1)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
@@ -2769,7 +2772,11 @@ if __name__ == '__main__':
             print_error("Please specify a '--pattern' or a '--patternfile'")
             sys.exit(1)
 
-        if args.patternfile is not None:
+        if args.patternfile:
+            if not os.path.exists(args.patternfile):
+                print_error("Unable to find pattern file at specified path")
+                sys.exit(1)
+
             for line in args.patternfile.readlines():
                 line = line.rstrip()
                 patterns.append(line)
@@ -2777,6 +2784,11 @@ if __name__ == '__main__':
         patterns.append(args.pattern)
 
         args.pattern = patterns
+
+    if args.bruteforce:
+        if not os.path.exists(args.bruteforce[0]) or not os.path.exists(args.bruteforce[1]):
+            print_error("Unable to find username or password wordlist at specified path")
+            sys.exit(1)
 
     if args.mimikatz or args.mimi_cmd or args.inject or (args.ntds == 'ninja'):
         print_status("Press CTRL-C at any time to exit")
@@ -2787,7 +2799,42 @@ if __name__ == '__main__':
         t.setDaemon(True)
         t.start()
 
-    concurrency(hosts)
+    if args.combo_file:
+        if not os.path.exists(args.combo_file):
+            print_error('Unable to find combo file at specified path')
+            sys.exit(1)
+
+        with open(args.combo_file, 'r') as combo_file:
+            for line in combo_file:
+                try:
+                    domain, user_pass = line.split('\\')
+                    args.domain = domain
+                    '''
+                    Here we try to manage two cases: if we supplied a hash as the password,
+                    or if the plain-text password contains a ':'
+                    '''
+
+                    if len(user_pass.split(':')) == 3:
+                        hash_or_pass = ':'.join(user_pass.split(':')[1:3]).strip()
+
+                        #defenitly not the best way to determine of it's an NTLM hash :/
+                        if len(hash_or_pass) == 65 and len(hash_or_pass.split(':')[0]) == 32 and len(hash_or_pass.split(':')[1]) == 32:
+                            args.hash = hash_or_pass
+
+                        args.user = user_pass.split(':')[0]
+
+                    elif len(user_pass.split(':')) == 2:
+                        args.user, args.passwd = user_pass.split(':')
+
+                    print args.domain, args.user, args.passwd, args.hash
+                    concurrency(hosts)
+
+                except Exception as e:
+                    print_error("Error parsing line in combo file: {}".format(e))
+                    continue
+
+    else:
+        concurrency(hosts)
 
     if args.mimikatz or args.inject or args.ntds == 'ninja':
         try:
