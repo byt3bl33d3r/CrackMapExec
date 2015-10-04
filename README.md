@@ -53,20 +53,23 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -t THREADS            Set how many concurrent threads to use
-  -u USERNAME           Username, if omitted null session assumed
-  -p PASSWORD           Password
-  -H HASH               NTLM hash
-  -n NAMESPACE          Namespace name (default //./root/cimv2)
+  -u USERNAME           Username(s) or file containing usernames
+  -p PASSWORD           Password(s) or file containing passwords
+  -H HASH               NTLM hash(es) or file containing NTLM hashes
+  -C COMBO_FILE         Combo file containing a list of domain\username:password or username:password entries
   -d DOMAIN             Domain name
+  -n NAMESPACE          WMI Namespace (default //./root/cimv2)
   -s SHARE              Specify a share (default: C$)
-  -P {139,445}          SMB port (default: 445)
+  --port {139,445}      SMB port (default: 445)
   -v                    Enable verbose output
 
 Credential Gathering:
   Options for gathering credentials
 
   --sam                 Dump SAM hashes from target systems
-  --mimikatz            Run Invoke-Mimikatz on target systems
+  --mimikatz            Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems
+  --mimikatz-cmd MIMIKATZ_CMD
+                        Run Invoke-Mimikatz with the specified command
   --ntds {ninja,vss,drsuapi}
                         Dump the NTDS.dit from target DCs using the specifed method
                         (drsuapi is the fastest)
@@ -79,13 +82,6 @@ Mapping/Enumeration:
   --users               Enumerate users
   --lusers              Enumerate logged on users
   --wmi QUERY           Issues the specified WMI query
-
-Account Bruteforcing:
-  Options for bruteforcing SMB accounts
-
-  --bruteforce USER_FILE PASS_FILE
-                        Your wordlists containing Usernames and Passwords
-  --exhaust             Don't stop on first valid account found
 
 Spidering:
   Options for spidering shares
@@ -105,7 +101,7 @@ Command Execution:
   -X PS_COMMAND         Excute the specified powershell command
 
 Shellcode/EXE/DLL injection:
-  Options for injecting Shellcode/EXE/DLL's using PowerShell
+  Options for injecting Shellcode/EXE/DLL's in memory using PowerShell
 
   --inject {exe,shellcode,dll}
                         Inject Shellcode, EXE or a DLL
@@ -122,6 +118,7 @@ Filesystem interaction:
   --delete PATH         Delete a remote file
 
 There's been an awakening... have you felt it?
+
 ```
 
 #Examples

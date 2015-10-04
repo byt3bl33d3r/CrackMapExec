@@ -2756,7 +2756,7 @@ if __name__ == '__main__':
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
-    rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz on target systems')
+    rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems')
     rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
     rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 
