@@ -2397,7 +2397,7 @@ def smart_login(host, smb, domain):
                 for passwd in passwords:
                     passwd = passwd.strip()
                     try:
-                        smb.login(user, passwd, domain, '', '')
+                        smb.login(user, passwd, domain)
 
                         if user == '': user = '(null)'
                         if passwd == '': passwd = '(null)'
@@ -2411,7 +2411,7 @@ def smart_login(host, smb, domain):
 
     raise socket.error
 
-def spider(smb_conn,ip, share, subfolder, patt, depth):
+def spider(smb_conn, ip, share, subfolder, patt, depth):
     try:
         filelist = smb_conn.listPath(share, subfolder+'\\*')
         dir_list(filelist, ip, subfolder, patt)
@@ -2434,15 +2434,6 @@ def dir_list(files,ip,path,pattern):
                 else:
                     print_att("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
     return 0
-
-def normalize_path(path):
-    path = r'{}'.format(path)
-    path = ntpath.normpath(path)
-    share = path.split('\\')[0]
-    if ':' or '$' in share:
-        path = path.replace(share, '')
-
-    return path
 
 def _listShares(smb):
     permissions = {}
@@ -2552,36 +2543,24 @@ def connect(host):
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if args.download:
-                try:
-                    out = open(args.download.split('\\')[-1], 'wb')
-                    smb.getFile(args.share, args.download, out.write)
-                    print_succ("{}:{} {} Downloaded file".format(host, args.port, s_name))
-                except SessionError as e:
-                    print_error('{}:{} {}'.format(host, args.port, e))
+                out = open(args.download.split('\\')[-1], 'wb')
+                smb.getFile(args.share, args.download, out.write)
+                print_succ("{}:{} {} Downloaded file".format(host, args.port, s_name))
 
             if args.delete:
-                try:
-                    smb.deleteFile(args.share, args.delete)
-                    print_succ("{}:{} {} Deleted file".format(host, args.port, s_name))
-                except SessionError as e:
-                    print_error('{}:{} {}'.format(host, args.port, e))
+                smb.deleteFile(args.share, args.delete)
+                print_succ("{}:{} {} Deleted file".format(host, args.port, s_name))
 
             if args.upload:
-                try:
-                    up = open(args.upload[0] , 'rb')
-                    smb.putFile(args.share, args.upload[1], up.read)
-                    print_succ("{}:{} {} Uploaded file".format(host, args.port, s_name))
-                except SessionError as e:
-                    print_error('{}:{} {}'.format(host, args.port, e))
+                up = open(args.upload[0] , 'rb')
+                smb.putFile(args.share, args.upload[1], up.read)
+                print_succ("{}:{} {} Uploaded file".format(host, args.port, s_name))
 
             if args.list:
-                try:
-                    dir_list = smb.listPath(args.share, args.list + '\\*')
-                    print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
-                    for f in dir_list:
-                        print_att("%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname()))
-                except SessionError as e:
-                    print_error('{}:{} {}'.format(host, args.port, e))
+                dir_list = smb.listPath(args.share, args.list + '\\*')
+                print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
+                for f in dir_list:
+                    print_att("%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname()))
 
             if args.spider:
                 start_time = time()
@@ -2719,6 +2698,7 @@ def connect(host):
         if args.verbose: traceback.print_exc()
 
     except socket.error as e:
+        if args.verbose: print str(e)
         return
 
 def concurrency(hosts):
@@ -2851,12 +2831,6 @@ if __name__ == '__main__':
 
     else:
         hosts = IPNetwork(args.target[0])
-
-    args.list     = normalize_path(args.list)
-    args.download = normalize_path(args.download)
-    args.delete   = normalize_path(args.delete)
-
-    if args.upload: args.upload[1] = normalize_path(args.upload[1])
 
     if args.spider:
         patterns = []
