@@ -2324,10 +2324,10 @@ def smart_login(host, smb, domain):
 
                     try:
                         smb.login(user, passwd, domain, lmhash, nthash)
-                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, passwd))
+                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, passwd))
                         return smb
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
+                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, passwd, e))
                         continue
 
                 except Exception as e:
@@ -2338,13 +2338,13 @@ def smart_login(host, smb, domain):
         passwords = []
         hashes    = []
 
-        if args.user:
+        if args.user is not None:
             if os.path.exists(args.user):
                 usernames = open(args.user, 'r')
             else:
                 usernames = args.user.split(',')
 
-        if args.passwd:
+        if args.passwd is not None:
             if os.path.exists(args.passwd):
                 passwords = open(args.passwd, 'r')
             else:
@@ -2353,9 +2353,13 @@ def smart_login(host, smb, domain):
                 This is in case a password contains a comma! we can use '\\' to make sure it's parsed correctly
                 IMHO this is a much better way than writing a custom split() function
                 '''
-                passwords = csv.reader(StringIO.StringIO(args.passwd), delimiter=',', escapechar='\\').next()
+                try:
+                    passwords = csv.reader(StringIO.StringIO(args.passwd), delimiter=',', escapechar='\\').next()
+                except StopIteration:
+                    #in case we supplied only '' as the password (null session)
+                    passwords = ['']
 
-        if args.hash:
+        if args.hash is not None:
             if os.path.exists(args.hash):
                 hashes = open(args.hash, 'r')
             else:
@@ -2376,14 +2380,17 @@ def smart_login(host, smb, domain):
 
             if hashes:
                 for ntlm_hash in hashes:
-                    ntlm_hash = ntlm_hash.strip()
+                    ntlm_hash = ntlm_hash.strip().lower()
                     lmhash, nthash = ntlm_hash.split(':')
                     try:
                         smb.login(user, '', domain, lmhash, nthash)
-                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, ntlm_hash))
+
+                        if user == '': user = '(null)'
+                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, ntlm_hash))
                         return smb
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, ntlm_hash, e))
+                        if user == '': user = '(null)'
+                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, ntlm_hash, e))
                         continue
 
             if passwords:
@@ -2391,10 +2398,15 @@ def smart_login(host, smb, domain):
                     passwd = passwd.strip()
                     try:
                         smb.login(user, passwd, domain, '', '')
-                        print_succ("{}:{} {}\\{}:{} Login successful".format(host, args.port, domain, user, passwd))
+
+                        if user == '': user = '(null)'
+                        if passwd == '': passwd = '(null)'
+                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, passwd))
                         return smb
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
+                        if user == '': user = '(null)'
+                        if passwd == '': passwd = '(null)'
+                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, passwd, e))
                         continue
 
     raise socket.error
@@ -2532,7 +2544,7 @@ def connect(host):
         except socket.error:
             smb = SMBConnection(host, host, None, args.port)
 
-        if (args.user and (args.passwd or args.hash)) or args.combo_file:
+        if (args.user is not None and (args.passwd is not None or args.hash is not None)) or args.combo_file:
 
             smb = smart_login(host, smb, domain)
 
@@ -2696,6 +2708,10 @@ def connect(host):
 
     except SessionError as e:
         print_error("{}:{} {}".format(host, args.port, e))
+        if args.verbose: traceback.print_exc()
+
+    except NetBIOSError as e:
+        print_error("{}:{} NetBIOS Error: {}".format(host, args.port, e))
         if args.verbose: traceback.print_exc()
 
     except DCERPCException as e:
