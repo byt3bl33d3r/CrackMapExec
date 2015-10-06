@@ -4,7 +4,7 @@ A swiss army knife for pentesting Windows/Active Directory environments
 Powered by [Impacket](https://github.com/CoreSecurity/impacket)
 
 This project was inspired by/based off of:
-- @agsolino's [wmiexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiexec.py), [wmiquery.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiquery.py), [smbexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/smbexec.py), [samrdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/samrdump.py), [secretsdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/secretsdump.py) and [atexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/atexec.py) scripts (beyond awesome)
+- @agsolino's [wmiexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiexec.py), [wmiquery.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiquery.py), [smbexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/smbexec.py), [samrdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/samrdump.py), [secretsdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/secretsdump.py), [atexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/atexec.py) and [lookupsid.py](https://github.com/CoreSecurity/impacket/blob/master/examples/lookupsid.py) scripts (beyond awesome)
 - @ShawnDEvans's [smbmap](https://github.com/ShawnDEvans/smbmap)
 - @gojhonny's [CredCrack](https://github.com/gojhonny/CredCrack)
 - @pentestgeek's [smbexec](https://github.com/pentestgeek/smbexec)
@@ -79,7 +79,10 @@ Mapping/Enumeration:
 
   --shares              List shares
   --sessions            Enumerate active sessions
+  --disks               Enumerate disks
   --users               Enumerate users
+  --rid-brute MAX_RID   Enumerate users by bruteforcing RID's
+  --pass-pol            Dump password policy
   --lusers              Enumerate logged on users
   --wmi QUERY           Issues the specified WMI query
 
@@ -100,7 +103,7 @@ Command Execution:
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
 
-Shellcode/EXE/DLL injection:
+Shellcode/EXE/DLL Injection:
   Options for injecting Shellcode/EXE/DLL's in memory using PowerShell
 
   --inject {exe,shellcode,dll}
@@ -109,7 +112,7 @@ Shellcode/EXE/DLL injection:
   --procid PROCID       Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)
   --exeargs EXEARGS     Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)
 
-Filesystem interaction:
+Filesystem Interaction:
   Options for interacting with filesystems
 
   --list PATH           List contents of a directory
