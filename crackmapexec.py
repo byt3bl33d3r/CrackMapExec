@@ -801,7 +801,10 @@ class RemoteOperations:
         if self.__samr is not None:
             self.__samr.disconnect()
         if self.__scmr is not None:
-            self.__scmr.disconnect()
+            try:
+                self.__scmr.disconnect()
+            except SessionError:
+                pass
 
     def getBootKey(self):
         bootKey = ''
@@ -811,7 +814,7 @@ class RemoteOperations:
             logging.debug('Retrieving class info for %s'% key)
             ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SYSTEM\\CurrentControlSet\\Control\\Lsa\\%s' % key)
             keyHandle = ans['phkResult']
-            ans = rrp.hBaseRegQueryInfoKey(self.__rrp,keyHandle)
+            ans = rrp.hBaseRegQueryInfoKey(self.__rrp, keyHandle)
             bootKey = bootKey + ans['lpClassOut'][:-1]
             rrp.hBaseRegCloseKey(self.__rrp, keyHandle)
 
@@ -825,6 +828,16 @@ class RemoteOperations:
         logging.info('Target system bootKey: 0x%s' % hexlify(self.__bootKey))
 
         return self.__bootKey
+
+    def checkUAC(self):
+        ans = rrp.hOpenLocalMachine(self.__rrp)
+        self.__regHandle = ans['phKey']
+        ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System')
+        keyHandle = ans['phkResult']
+        dataType, uac_value = rrp.hBaseRegQueryValue(self.__rrp, keyHandle, 'EnableLUA')
+        rrp.hBaseRegCloseKey(self.__rrp, keyHandle)
+
+        return uac_value
 
     def checkNoLMHashPolicy(self):
         logging.debug('Checking NoLMHash Policy')
@@ -1585,7 +1598,7 @@ class DumpSecrets:
                     if self.__useVSSMethod is False:
                         logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
 
-        except (Exception, KeyboardInterrupt), e:
+        except (Exception, KeyboardInterrupt) as e:
             traceback.print_exc()
             try:
                 self.cleanup()
@@ -2798,6 +2811,17 @@ def connect(host):
                 for user in users:
                     print_att('{}: {}'.format(user[1], user[0]))
 
+            if args.check_uac:
+                remoteOps = RemoteOperations(smb)
+                remoteOps.enableRegistry()
+                uac = remoteOps.checkUAC()
+                print_succ("{}:{} {} UAC status:".format(host, args.port, s_name))
+                if uac == 1:
+                    print_att('1 - UAC Enabled')
+                elif uac == 0:
+                    print_att('0 - UAC Disabled')
+                remoteOps.finish()
+
             if args.sam:
                 sam_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, True)
                 sam_dump.dump(smb)
@@ -2953,6 +2977,7 @@ if __name__ == '__main__':
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
+    egroup.add_argument('--check-uac', action='store_true', dest='check_uac', help='Checks UAC status')
     egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
     egroup.add_argument('--disks', action='store_true', dest='enum_disks', help='Enumerate disks')
     egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
