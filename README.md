@@ -78,6 +78,7 @@ Mapping/Enumeration:
   Options for Mapping/Enumerating
 
   --shares              List shares
+  --check-uac           Checks UAC status
   --sessions            Enumerate active sessions
   --disks               Enumerate disks
   --users               Enumerate users
@@ -103,14 +104,18 @@ Command Execution:
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
 
-Shellcode/EXE/DLL Injection:
-  Options for injecting Shellcode/EXE/DLL's in memory using PowerShell
+Shellcode/EXE/DLL/Meterpreter Injection:
+  Options for injecting Shellcode/EXE/DLL/Meterpreter in memory using PowerShell
 
-  --inject {exe,shellcode,dll}
-                        Inject Shellcode, EXE or a DLL
+  --inject {shellcode,exe,meterpreter,dll}
+                        Inject Shellcode, EXE, DLL or Meterpreter
   --path PATH           Path to the Shellcode/EXE/DLL you want to inject on the target systems
-  --procid PROCID       Process ID to inject the Shellcode/EXE/DLL into (if omitted, will inject within the running PowerShell process)
+  --procid PROCID       Process ID to inject the Shellcode/EXE/DLL/Meterpreter into (if omitted, will inject within the running PowerShell process)
   --exeargs EXEARGS     Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)
+  --met {reverse_https,reverse_http}
+                        Specify the Meterpreter to inject
+  --met-options LHOST LPORT
+                        Meterpreter options
 
 Filesystem Interaction:
   Options for interacting with filesystems
