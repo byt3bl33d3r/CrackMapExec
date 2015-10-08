@@ -107,15 +107,13 @@ Command Execution:
 Shellcode/EXE/DLL/Meterpreter Injection:
   Options for injecting Shellcode/EXE/DLL/Meterpreter in memory using PowerShell
 
-  --inject {shellcode,exe,meterpreter,dll}
+  --inject {met_reverse_http,met_reverse_https,exe,shellcode,dll}
                         Inject Shellcode, EXE, DLL or Meterpreter
   --path PATH           Path to the Shellcode/EXE/DLL you want to inject on the target systems
   --procid PROCID       Process ID to inject the Shellcode/EXE/DLL/Meterpreter into (if omitted, will inject within the running PowerShell process)
   --exeargs EXEARGS     Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)
-  --met {reverse_https,reverse_http}
-                        Specify the Meterpreter to inject
   --met-options LHOST LPORT
-                        Meterpreter options
+                        Meterpreter options (ignored if not injecting Meterpreter)
 
 Filesystem Interaction:
   Options for interacting with filesystems

