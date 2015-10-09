@@ -2621,22 +2621,22 @@ def dir_list(files,ip,path,pattern):
 def _listShares(smb):
     permissions = {}
     root = ntpath.normpath("\\{}".format(PERM_DIR))
-    
+
     for share in smb.listShares():
         share_name = share['shi1_netname'][:-1].encode('utf8')
-        permissions[share_name] = "NO ACCESS"
+        permissions[share_name] = []
 
         try:
-            if smb.listPath(share_name, '', args.passwd):
-                permissions[share_name] = "READ"
-        except:
+            if smb.listPath(share_name, '\\*', args.passwd):
+                permissions[share_name].append('READ')
+        except SessionError:
             pass
 
         try:
             if smb.createDirectory(share_name, root):
                 smb.deleteDirectory(share_name, root)
-                permissions[share_name] = "READ, WRITE"
-        except:
+                permissions[share_name].append('WRITE')
+        except SessionError:
             pass
 
     return permissions
@@ -2837,7 +2837,10 @@ def connect(host):
                 print_att('\tSHARE\t\t\tPermissions')
                 print_att('\t-----\t\t\t-----------')
                 for share, perm in share_list.iteritems():
-                    print_att('\t{}\t\t\t{}'.format(share, perm))
+                    if not perm:
+                        print_att('\t{}\t\t\t{}'.format(share, 'NO ACCESS'))
+                    else:
+                        print_att('\t{}\t\t\t{}'.format(share, ', '.join(perm)))
 
             if args.check_uac:
                 remoteOps = RemoteOperations(smb)
