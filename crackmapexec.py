@@ -24,6 +24,7 @@ from impacket.structure import Structure
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.nmb import NetBIOSError
 from impacket.smbconnection import *
+from impacket.smb3structs import FILE_READ_DATA, FILE_WRITE_DATA
 from BaseHTTPServer import BaseHTTPRequestHandler
 from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
@@ -34,6 +35,7 @@ from termcolor import cprint, colored
 
 import StringIO
 import csv
+import re
 import ntpath
 import socket
 import hashlib
@@ -461,15 +463,17 @@ class CryptoCommon:
         return self.transformKey(key1),self.transformKey(key2)
 
 class RemoteFile:
-    def __init__(self, smbConnection, fileName):
+    def __init__(self, smbConnection, fileName, share='ADMIN$', access = FILE_READ_DATA | FILE_WRITE_DATA ):
         self.__smbConnection = smbConnection
+        self.__share = share
+        self.__access = access
         self.__fileName = fileName
-        self.__tid = self.__smbConnection.connectTree('ADMIN$')
+        self.__tid = self.__smbConnection.connectTree(share)
         self.__fid = None
         self.__currentOffset = 0
 
     def open(self):
-        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName)
+        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName, desiredAccess = self.__access)
 
     def seek(self, offset, whence):
         # Implement whence, for now it's always from the beginning of the file
@@ -486,8 +490,10 @@ class RemoteFile:
     def close(self):
         if self.__fid is not None:
             self.__smbConnection.closeFile(self.__tid, self.__fid)
-            self.__smbConnection.deleteFile('ADMIN$', self.__fileName)
             self.__fid = None
+
+    def delete(self):
+        self.__smbConnection.deleteFile(self.__share, self.__fileName)
 
     def tell(self):
         return self.__currentOffset
@@ -2597,28 +2603,52 @@ def smart_login(host, smb, domain):
 def spider(smb_conn, ip, share, subfolder, patt, depth):
     try:
         filelist = smb_conn.listPath(share, subfolder+'\\*')
-        dir_list(filelist, ip, subfolder, patt)
+        dir_list(filelist, ip, subfolder, patt, share, smb_conn)
         if depth == 0:
-            return 0
+            return
     except SessionError:
-        return 1
+        return
 
     for result in filelist:
         if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..':
             spider(smb_conn, ip, share,subfolder+'/'+result.get_longname().encode('utf8'), patt, depth-1)
-    return 0
+    return
 
-def dir_list(files,ip,path,pattern):
+def dir_list(files, ip, path, pattern, share, smb):
     for result in files:
         for instance in pattern:
             if instance in result.get_longname():
                 if result.is_directory():
-                    print_att("//%s/%s/%s [dir]" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
+                    print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
                 else:
-                    print_att("//%s/%s/%s" % (ip, path.replace("//",""), result.get_longname().encode('utf8')))
-    return 0
+                    print_att("//{}/{}/{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
 
-def _listShares(smb):
+            if args.search_content:
+                if not result.is_directory():
+                    search_content(smb, path, result, share, instance, ip)
+
+    return
+
+def search_content(smb, path, result, share, pattern, ip):
+    rfile = RemoteFile(smb, path + '/' + result.get_longname(), share, access = FILE_READ_DATA)
+    rfile.open()
+
+    while True:
+        try:
+            contents = rfile.read(4096)
+        except SessionError as e:
+            if 'STATUS_END_OF_FILE' in str(e):
+                return
+
+        if contents == '':
+            return
+
+        if re.findall(pattern, contents, re.IGNORECASE):
+            print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern))
+            rfile.close()
+            return
+
+def enum_shares(smb):
     permissions = {}
     root = ntpath.normpath("\\{}".format(PERM_DIR))
 
@@ -2832,7 +2862,7 @@ def connect(host):
                     print_att('{}: {}'.format(user[1], user[0]))
 
             if args.list_shares:
-                share_list = _listShares(smb)
+                share_list = enum_shares(smb)
                 print_succ('{}:{} {} Available shares:'.format(host, args.port, s_name))
                 print_att('\tSHARE\t\t\tPermissions')
                 print_att('\t-----\t\t\t-----------')
@@ -3011,9 +3041,10 @@ if __name__ == '__main__':
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
-    sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in filenames and folders')
-    sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for')
-    sgroup.add_argument("--depth", type=int, default=1, help='Spider recursion depth (default: 1)')
+    sgroup.add_argument("--search-content", dest='search_content', action='store_true', help='Enable file content searching')
+    sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in folders filenames and file content (if enabled)')
+    sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
+    sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
     cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="smbexec", help="Method to execute the command (default: smbexec)")
@@ -3101,7 +3132,7 @@ if __name__ == '__main__':
                 line = line.rstrip()
                 patterns.append(line)
 
-        patterns.append(args.pattern)
+        patterns.extend(args.pattern.split(','))
 
         args.pattern = patterns
 
