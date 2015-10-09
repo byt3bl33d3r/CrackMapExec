@@ -2831,6 +2831,14 @@ def connect(host):
                 for user in users:
                     print_att('{}: {}'.format(user[1], user[0]))
 
+            if args.list_shares:
+                share_list = _listShares(smb)
+                print_succ('{}:{} {} Available shares:'.format(host, args.port, s_name))
+                print_att('\tSHARE\t\t\tPermissions')
+                print_att('\t-----\t\t\t-----------')
+                for share, perm in share_list.iteritems():
+                    print_att('\t{}\t\t\t{}'.format(share, perm))
+
             if args.check_uac:
                 remoteOps = RemoteOperations(smb)
                 remoteOps.enableRegistry()
@@ -2910,14 +2918,6 @@ def connect(host):
                         print_att(atsvc_exec.output)
 
                     atsvc_exec.cleanup()
-
-            if args.list_shares:
-                share_list = _listShares(smb)
-                print_succ('{}:{} {} Available shares:'.format(host, args.port, s_name))
-                print_att('\tSHARE\t\t\tPermissions')
-                print_att('\t-----\t\t\t-----------')
-                for share, perm in share_list.iteritems():
-                    print_att('\t{}\t\t\t{}'.format(share, perm))
 
         try:
             smb.logoff()

