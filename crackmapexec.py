@@ -2610,7 +2610,7 @@ def spider(smb_conn, ip, share, subfolder, patt, depth):
         return
 
     for result in filelist:
-        if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..':
+        if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..' and (subfolder.split('/')[-1] not in args.exclude_dirs):
             spider(smb_conn, ip, share,subfolder+'/'+result.get_longname().encode('utf8'), patt, depth-1)
     return
 
@@ -3045,6 +3045,7 @@ if __name__ == '__main__':
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
     sgroup.add_argument("--search-content", dest='search_content', action='store_true', help='Enable file content searching')
+    sgroup.add_argument("--exclude-dirs", metavar='DIR_LIST', dest='exclude_dirs', type=str, help='Directories to exclude from spidering')
     sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in folders filenames and file content (if enabled)')
     sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
@@ -3138,6 +3139,7 @@ if __name__ == '__main__':
         patterns.extend(args.pattern.split(','))
 
         args.pattern = patterns
+        args.exclude_dirs = args.exclude_dirs.split(',')
 
     if args.combo_file:
         if not os.path.exists(args.combo_file):
