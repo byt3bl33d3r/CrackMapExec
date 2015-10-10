@@ -2630,23 +2630,26 @@ def dir_list(files, ip, path, pattern, share, smb):
     return
 
 def search_content(smb, path, result, share, pattern, ip):
-    rfile = RemoteFile(smb, path + '/' + result.get_longname(), share, access = FILE_READ_DATA)
-    rfile.open()
+    try:
+        rfile = RemoteFile(smb, path + '/' + result.get_longname(), share, access = FILE_READ_DATA)
+        rfile.open()
 
-    while True:
-        try:
-            contents = rfile.read(4096)
-        except SessionError as e:
-            if 'STATUS_END_OF_FILE' in str(e):
+        while True:
+            try:
+                contents = rfile.read(4096)
+            except SessionError as e:
+                if 'STATUS_END_OF_FILE' in str(e):
+                    return
+
+            if contents == '':
                 return
 
-        if contents == '':
-            return
-
-        if re.findall(pattern, contents, re.IGNORECASE):
-            print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern))
-            rfile.close()
-            return
+            if re.findall(pattern, contents, re.IGNORECASE):
+                print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern))
+                rfile.close()
+                return
+    except Exception:
+        pass
 
 def enum_shares(smb):
     permissions = {}
