@@ -2645,7 +2645,7 @@ def search_content(smb, path, result, share, pattern, ip):
                 return
 
             if re.findall(pattern, contents):
-                print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern.pattern))
+                print_att("//{}/{}/{} [offset:{} pattern:{}]".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern.pattern))
                 rfile.close()
                 return
     except Exception:
@@ -3043,10 +3043,10 @@ if __name__ == '__main__':
     egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
-    sgroup.add_argument("--spider", metavar='FOLDER', type=str, default='', help='Folder to spider (defaults to share root dir)')
+    sgroup.add_argument("--spider", metavar='FOLDER', type=str, help='Folder to spider')
     sgroup.add_argument("--search-content", dest='search_content', action='store_true', help='Enable file content searching')
     sgroup.add_argument("--exclude-dirs", metavar='DIR_LIST', dest='exclude_dirs', type=str, help='Directories to exclude from spidering')
-    sgroup.add_argument("--pattern", type=str, default= '', help='Pattern to search for in folders filenames and file content (if enabled)')
+    sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
