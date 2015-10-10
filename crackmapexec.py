@@ -2641,15 +2641,17 @@ def search_content(smb, path, result, share, pattern, ip):
                 if 'STATUS_END_OF_FILE' in str(e):
                     return
 
-            if contents == '':
-                return
-
             if re.findall(pattern, contents):
                 print_att("//{}/{}/{} [offset:{} pattern:{}]".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern.pattern))
                 rfile.close()
                 return
-    except Exception:
-        pass
+
+    except SessionError as e:
+        if 'STATUS_SHARING_VIOLATION' in str(e):
+            pass
+
+    except Exception as e:
+        print_error(str(e))
 
 def enum_shares(smb):
     permissions = {}
@@ -2808,14 +2810,8 @@ def connect(host):
                 query = WMIQUERY(host, args.user, args.passwd, domain, args.hash, args.namespace)
                 res = query.run(args.wmi_query)
                 print_succ("{}:{} {} Executed specified WMI query:".format(host, args.port, s_name))
-                print yellow(' | '.join(res.keys()))
-                if len(res.values()) > 1:
-                    for v in map(None, *res.values()):
-                        print yellow(' | '.join(v))
-                else:
-                    for k in res:
-                        for v in res[k]:
-                            print yellow(v)
+                for k,v in res.iteritems():
+                    print_att('{}: {}'.format(k, ','.join(v)))
 
             if args.enum_sessions:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
@@ -2824,7 +2820,6 @@ def connect(host):
                 for session in sessions:
                     for fname in session.fields.keys():
                         print "{} {}".format(fname, yellow(session[fname]))
-                    print "\n"
 
             if args.enum_lusers:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
@@ -2833,7 +2828,6 @@ def connect(host):
                 for luser in lusers:
                     for fname in luser.fields.keys():
                         print "{} {}".format(fname, yellow(luser[fname]))
-                    print "\n"
 
             if args.enum_disks:
                 rpcenum = RPCENUM(args.user, args.passwd, domain, args.hash)
@@ -3044,7 +3038,7 @@ if __name__ == '__main__':
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, help='Folder to spider')
-    sgroup.add_argument("--search-content", dest='search_content', action='store_true', help='Enable file content searching')
+    sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
     sgroup.add_argument("--exclude-dirs", metavar='DIR_LIST', default='', dest='exclude_dirs', type=str, help='Directories to exclude from spidering')
     sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
