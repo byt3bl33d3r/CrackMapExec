@@ -27,6 +27,8 @@ The biggest improvements over the above tools are:
 
 #Installation on Kali Linux
 
+**Note: it's reccomended to install CrackMapExec in a [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs), to avoid confilicts with the older Impacket version that currently is in the Kali repos**
+
 Run ```pip install --upgrade -r requirements.txt```
 
 #Usage
@@ -91,7 +93,7 @@ Spidering:
   Options for spidering shares
 
   --spider FOLDER       Folder to spider
-  --search-content      Enable file content searching
+  --content             Enable file content searching
   --exclude-dirs DIR_LIST
                         Directories to exclude from spidering
   --pattern PATTERN     Pattern to search for in folders, filenames and file content (if enabled)
