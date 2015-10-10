@@ -30,7 +30,7 @@ from argparse import RawTextHelpFormatter
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import DES, ARC4
 from datetime import datetime
-from time import ctime, time, strftime, gmtime
+from time import localtime, time, strftime, gmtime
 from termcolor import cprint, colored
 
 import StringIO
@@ -499,7 +499,7 @@ class RemoteFile:
         return self.__currentOffset
 
     def __str__(self):
-        return "\\\\%s\\ADMIN$\\%s" % (self.__smbConnection.getRemoteHost(), self.__fileName)
+        return "\\\\{}\\{}\\{}".format(self.__smbConnection.getRemoteHost(), self.__share, self.__fileName)
 
 class RemoteOperations:
     def __init__(self, smbConnection):
@@ -2621,7 +2621,11 @@ def dir_list(files, ip, path, pattern, share, smb):
                 if result.is_directory():
                     print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
                 else:
-                    print_att("//{}/{}/{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
+                    print_att("//{}/{}/{} [lastm:'{}' size:{}]".format(ip, 
+                                                                       path.replace("//",""), 
+                                                                       result.get_longname().encode('utf8'),
+                                                                       strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
+                                                                       result.get_filesize()))
 
             if args.search_content:
                 if not result.is_directory():
@@ -2642,7 +2646,13 @@ def search_content(smb, path, result, share, pattern, ip):
                     return
 
             if re.findall(pattern, contents):
-                print_att("//{}/{}/{} [offset:{} pattern:{}]".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern.pattern))
+                print_att("//{}/{}/{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(ip, 
+                                                                                        path.replace("//",""), 
+                                                                                        result.get_longname().encode('utf8'), 
+                                                                                        strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
+                                                                                        result.get_filesize(), 
+                                                                                        rfile.tell(), 
+                                                                                        pattern.pattern))
                 rfile.close()
                 return
 
@@ -2798,7 +2808,10 @@ def connect(host):
                 dir_list = smb.listPath(args.share, args.list + '\\*')
                 print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
                 for f in dir_list:
-                    print_att("%crw-rw-rw- %10d  %s %s" % ('d' if f.is_directory() > 0 else '-', f.get_filesize(), ctime(float(f.get_mtime_epoch())) ,f.get_longname()))
+                    print_att("{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
+                                                             f.get_filesize(),
+                                                             strftime('%Y-%m-%d %H:%M', localtime(f.get_mtime_epoch())), 
+                                                             f.get_longname()))
 
             if args.spider:
                 start_time = time()
@@ -2861,13 +2874,13 @@ def connect(host):
             if args.list_shares:
                 share_list = enum_shares(smb)
                 print_succ('{}:{} {} Available shares:'.format(host, args.port, s_name))
-                print_att('\tSHARE\t\t\tPermissions')
-                print_att('\t-----\t\t\t-----------')
+                print_att('{:>15} {:>15}'.format('SHARE', 'Permissions'))
+                print_att('{:>15} {:>15}'.format('-----', '-----------'))
                 for share, perm in share_list.iteritems():
                     if not perm:
-                        print_att('\t{}\t\t\t{}'.format(share, 'NO ACCESS'))
+                        print_att('{:>15} {:>15}'.format(share, 'NO ACCESS'))
                     else:
-                        print_att('\t{}\t\t\t{}'.format(share, ', '.join(perm)))
+                        print_att('{:>15} {:>15}'.format(share, ', '.join(perm)))
 
             if args.check_uac:
                 remoteOps = RemoteOperations(smb)
