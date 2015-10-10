@@ -27,7 +27,7 @@ The biggest improvements over the above tools are:
 
 #Installation on Kali Linux
 
-**Note: it's reccomended to install CrackMapExec in a [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs), to avoid confilicts with the older Impacket version that currently is in the Kali repos**
+**Note: it's recomended to install CrackMapExec in a [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs), to avoid conflicts with the older Impacket version that currently is in the Kali repos**
 
 Run ```pip install --upgrade -r requirements.txt```
 
