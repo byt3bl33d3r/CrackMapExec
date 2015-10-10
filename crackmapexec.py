@@ -2617,7 +2617,7 @@ def spider(smb_conn, ip, share, subfolder, patt, depth):
 def dir_list(files, ip, path, pattern, share, smb):
     for result in files:
         for instance in pattern:
-            if instance in result.get_longname():
+            if re.findall(instance, result.get_longname()):
                 if result.is_directory():
                     print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
                 else:
@@ -2644,8 +2644,8 @@ def search_content(smb, path, result, share, pattern, ip):
             if contents == '':
                 return
 
-            if re.findall(pattern, contents, re.IGNORECASE):
-                print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern))
+            if re.findall(pattern, contents):
+                print_att("//{}/{}/{} offset:{} pattern:{}".format(ip, path.replace("//",""), result.get_longname().encode('utf8'), rfile.tell(), pattern.pattern))
                 rfile.close()
                 return
     except Exception:
@@ -3134,9 +3134,9 @@ if __name__ == '__main__':
 
             for line in args.patternfile.readlines():
                 line = line.rstrip()
-                patterns.append(line)
+                patterns.append(re.compile(line, re.IGNORECASE))
 
-        patterns.extend(args.pattern.split(','))
+        patterns.extend(re.compile(patt, re.IGNORECASE) for patt in args.pattern.split(','))
 
         args.pattern = patterns
         args.exclude_dirs = args.exclude_dirs.split(',')
