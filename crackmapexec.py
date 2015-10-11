@@ -56,13 +56,13 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
 
-print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=x+'\n')
-print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=x+'\n')
-print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=x+'\n')
-print_att    = lambda x: cprint(x, 'yellow', attrs=['bold'])
-yellow = lambda x: colored(x, 'yellow', attrs=['bold'])
-green  = lambda x: colored(x, 'green', attrs=['bold'])
-red    = lambda x: colored(x, 'red', attrs=['bold'])
+print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=x.decode('utf8')+'\n')
+print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=x.decode('utf8')+'\n')
+print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=x.decode('utf8')+'\n')
+print_att    = lambda x: cprint(x.decode('utf8'), 'yellow', attrs=['bold'])
+yellow = lambda x: colored(x.decode('utf8'), 'yellow', attrs=['bold'])
+green  = lambda x: colored(x.decode('utf8'), 'green', attrs=['bold'])
+red    = lambda x: colored(x.decode('utf8'), 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -3052,7 +3052,7 @@ if __name__ == '__main__':
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', type=str, help='Folder to spider')
     sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
-    sgroup.add_argument("--exclude-dirs", metavar='DIR_LIST', default='', dest='exclude_dirs', type=str, help='Directories to exclude from spidering')
+    sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', dest='exclude_dirs', help='Directories to exclude from spidering')
     sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
     sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
