@@ -63,6 +63,7 @@ optional arguments:
   -n NAMESPACE          WMI Namespace (default //./root/cimv2)
   -s SHARE              Specify a share (default: C$)
   --port {139,445}      SMB port (default: 445)
+  --https               Serve everything over https instead of http
   -v                    Enable verbose output
 
 Credential Gathering:
