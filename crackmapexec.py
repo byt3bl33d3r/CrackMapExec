@@ -57,13 +57,13 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
 
-print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=x.decode('utf8')+'\n')
-print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=x.decode('utf8')+'\n')
-print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=x.decode('utf8')+'\n')
-print_att    = lambda x: cprint(x.decode('utf8'), 'yellow', attrs=['bold'])
-yellow = lambda x: colored(x.decode('utf8'), 'yellow', attrs=['bold'])
-green  = lambda x: colored(x.decode('utf8'), 'green', attrs=['bold'])
-red    = lambda x: colored(x.decode('utf8'), 'red', attrs=['bold'])
+print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
+print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
+print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
+print_att    = lambda x: cprint(unicode(x, errors='ignore'), 'yellow', attrs=['bold'])
+yellow = lambda x: colored(unicode(x, errors='ignore'), 'yellow', attrs=['bold'])
+green  = lambda x: colored(unicode(x, errors='ignore'), 'green', attrs=['bold'])
+red    = lambda x: colored(unicode(x, errors='ignore'), 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
