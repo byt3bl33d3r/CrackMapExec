@@ -32,6 +32,7 @@ from Crypto.Cipher import DES, ARC4
 from datetime import datetime
 from time import localtime, time, strftime, gmtime
 from termcolor import cprint, colored
+from IPython import embed
 
 import StringIO
 import csv
@@ -2517,10 +2518,10 @@ def smart_login(host, smb, domain):
 
                     try:
                         smb.login(user, passwd, domain, lmhash, nthash)
-                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, passwd))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, args.port, domain, user, passwd))
                         return smb
                     except SessionError as e:
-                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, passwd, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
                         continue
 
                 except Exception as e:
@@ -2575,38 +2576,40 @@ def smart_login(host, smb, domain):
                 for ntlm_hash in hashes:
                     ntlm_hash = ntlm_hash.strip().lower()
                     lmhash, nthash = ntlm_hash.split(':')
+                    if user == '': user = "''"
+
                     try:
                         smb.login(user, '', domain, lmhash, nthash)
-
-                        if user == '': user = '(null)'
-                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, ntlm_hash))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, args.port, domain, user, ntlm_hash))
                         return smb
                     except SessionError as e:
-                        if user == '': user = '(null)'
-                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, ntlm_hash, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, ntlm_hash, e))
                         continue
 
             if passwords:
                 for passwd in passwords:
                     passwd = passwd.strip()
+                    if user == '': user = "''"
+                    if passwd == '': passwd = "''"
+
                     try:
                         smb.login(user, passwd, domain)
-
-                        if user == '': user = '(null)'
-                        if passwd == '': passwd = '(null)'
-                        print_succ("{}:{} Login successful '{}\\{}:{}'".format(host, args.port, domain, user, passwd))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, args.port, domain, user, passwd))
                         return smb
                     except SessionError as e:
-                        if user == '': user = '(null)'
-                        if passwd == '': passwd = '(null)'
-                        print_error("{}:{} '{}\\{}:{}' {}".format(host, args.port, domain, user, passwd, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, args.port, domain, user, passwd, e))
                         continue
 
     raise socket.error
 
 def spider(smb_conn, ip, share, subfolder, patt, depth):
+    if subfolder == '' or subfolder == '.' : 
+        subfolder = '*'
+    else:
+        subfolder = subfolder + '\\*'
+
     try:
-        filelist = smb_conn.listPath(share, subfolder+'\\*')
+        filelist = smb_conn.listPath(share, subfolder)
         dir_list(filelist, ip, subfolder, patt, share, smb_conn)
         if depth == 0:
             return
@@ -2676,7 +2679,7 @@ def enum_shares(smb):
         permissions[share_name] = []
 
         try:
-            if smb.listPath(share_name, '\\*', args.passwd):
+            if smb.listPath(share_name, '*', args.passwd):
                 permissions[share_name].append('READ')
         except SessionError:
             pass
@@ -2825,7 +2828,12 @@ def connect(host):
                 print_succ("{}:{} {} Uploaded file".format(host, args.port, s_name))
 
             if args.list:
-                dir_list = smb.listPath(args.share, args.list + '\\*')
+                if args.list == '' or args.list == '.' : 
+                    args.list = '*'
+                else:
+                    args.list = args.list + '\\*'
+
+                dir_list = smb.listPath(args.share, args.list)
                 print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
                 for f in dir_list:
                     print_att("{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
