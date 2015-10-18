@@ -32,7 +32,6 @@ from Crypto.Cipher import DES, ARC4
 from datetime import datetime
 from time import localtime, time, strftime, gmtime
 from termcolor import cprint, colored
-from IPython import embed
 
 import StringIO
 import csv
