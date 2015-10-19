@@ -3081,7 +3081,7 @@ if __name__ == '__main__':
                                     formatter_class=RawTextHelpFormatter,
                                     epilog='There\'s been an awakening... have you felt it?')
 
-    parser.add_argument("-t", type=int, dest="threads", required=True, help="Set how many concurrent threads to use")
+    parser.add_argument("-t", type=int, dest="threads", default=10, help="Set how many concurrent threads to use (defaults to 10)")
     parser.add_argument("-u", metavar="USERNAME", dest='user', type=str, default=None, help="Username(s) or file containing usernames")
     parser.add_argument("-p", metavar="PASSWORD", dest='passwd', type=str, default=None, help="Password(s) or file containing passwords")
     parser.add_argument("-H", metavar="HASH", dest='hash', type=str, default=None, help='NTLM hash(es) or file containing NTLM hashes')
@@ -3112,7 +3112,7 @@ if __name__ == '__main__':
     egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
-    sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str, help='Folder to spider')
+    sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str, help='Folder to spider (defaults to top level directory)')
     sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
     sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', dest='exclude_dirs', help='Directories to exclude from spidering')
     sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content (if enabled)')
@@ -3133,7 +3133,7 @@ if __name__ == '__main__':
     xgroup.add_argument("--met-options", nargs=2, metavar=('LHOST', 'LPORT'), dest='met_options', help='Meterpreter options (ignored if not injecting Meterpreter)')
 
     bgroup = parser.add_argument_group("Filesystem Interaction", "Options for interacting with filesystems")
-    bgroup.add_argument("--list", metavar='PATH', nargs='?', const='.', type=str, help='List contents of a directory')
+    bgroup.add_argument("--list", metavar='PATH', nargs='?', const='.', type=str, help='List contents of a directory (defaults to top level directory)')
     bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
     bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
     bgroup.add_argument("--delete", metavar="PATH", help="Delete a remote file")
