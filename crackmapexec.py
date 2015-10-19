@@ -57,13 +57,47 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 SMBSERVER_DIR   = 'served_over_smb'
 DUMMY_SHARE     = 'TMP'
 
-print_error  = lambda x: cprint("[-] ", 'red', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
-print_status = lambda x: cprint("[*] ", 'blue', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
-print_succ   = lambda x: cprint("[+] ", 'green', attrs=['bold'], end=unicode(x, errors='ignore')+'\n')
-print_att    = lambda x: cprint(unicode(x, errors='ignore'), 'yellow', attrs=['bold'])
-yellow = lambda x: colored(unicode(x, errors='ignore'), 'yellow', attrs=['bold'])
-green  = lambda x: colored(unicode(x, errors='ignore'), 'green', attrs=['bold'])
-red    = lambda x: colored(unicode(x, errors='ignore'), 'red', attrs=['bold'])
+def print_error(message):
+    try:
+        cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf8')+'\n')
+    except UnicodeDecodeError:
+        cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+
+def print_status(message):
+    try:
+        cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf8')+'\n')
+    except UnicodeDecodeError:
+        cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+
+def print_succ(message):
+    try:
+        cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf8')+'\n')
+    except UnicodeDecodeError:
+        cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+
+def print_att(message):
+    try:
+        cprint(message.decode('utf8'), 'yellow', attrs=['bold'])
+    except UnicodeDecodeError:
+        cprint(unicode(message, errors='ignore'), 'yellow', attrs=['bold'])
+
+def yellow(text):
+    try:
+        colored(text.decode('utf8'), 'yellow', attrs=['bold'])
+    except UnicodeDecodeError:
+        colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
+
+def green(text):
+    try:
+        colored(text.decode('utf8'), 'green', attrs=['bold'])
+    except UnicodeDecodeError:
+        colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
+
+def red(text):
+    try:
+        colored(text.decode('utf8'), 'red', attrs=['bold'])
+    except UnicodeDecodeError:
+        colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
