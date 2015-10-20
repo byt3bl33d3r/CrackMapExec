@@ -54,7 +54,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -t THREADS            Set how many concurrent threads to use
+  -t THREADS            Set how many concurrent threads to use (defaults to 10)
   -u USERNAME           Username(s) or file containing usernames
   -p PASSWORD           Password(s) or file containing passwords
   -H HASH               NTLM hash(es) or file containing NTLM hashes
@@ -76,6 +76,8 @@ Credential Gathering:
   --ntds {ninja,vss,drsuapi}
                         Dump the NTDS.dit from target DCs using the specifed method
                         (drsuapi is the fastest)
+  --enable-wdigest      Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows 8.1
+  --disable-wdigest     Deletes the 'UseLogonCredential' registry key
 
 Mapping/Enumeration:
   Options for Mapping/Enumerating
@@ -93,7 +95,7 @@ Mapping/Enumeration:
 Spidering:
   Options for spidering shares
 
-  --spider FOLDER       Folder to spider
+  --spider [FOLDER]     Folder to spider (defaults to top level directory)
   --content             Enable file content searching
   --exclude-dirs DIR_LIST
                         Directories to exclude from spidering
@@ -125,7 +127,7 @@ Shellcode/EXE/DLL/Meterpreter Injection:
 Filesystem Interaction:
   Options for interacting with filesystems
 
-  --list PATH           List contents of a directory
+  --list [PATH]         List contents of a directory (defaults to top level directory)
   --download PATH       Download a file from the remote systems
   --upload SRC DST      Upload a file to the remote systems
   --delete PATH         Delete a remote file
