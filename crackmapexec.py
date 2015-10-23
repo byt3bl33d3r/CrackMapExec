@@ -83,21 +83,21 @@ def print_att(message):
 
 def yellow(text):
     try:
-        colored(text.decode('utf8'), 'yellow', attrs=['bold'])
+        return colored(text.decode('utf8'), 'yellow', attrs=['bold'])
     except UnicodeDecodeError:
-        colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
+        return colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
 
 def green(text):
     try:
-        colored(text.decode('utf8'), 'green', attrs=['bold'])
+        return colored(text.decode('utf8'), 'green', attrs=['bold'])
     except UnicodeDecodeError:
-        colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
+        return colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
 
 def red(text):
     try:
-        colored(text.decode('utf8'), 'red', attrs=['bold'])
+        return colored(text.decode('utf8'), 'red', attrs=['bold'])
     except UnicodeDecodeError:
-        colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
+        return colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
