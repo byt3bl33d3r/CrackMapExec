@@ -60,43 +60,43 @@ DUMMY_SHARE     = 'TMP'
 def print_error(message):
     try:
         cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_status(message):
     try:
         cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_succ(message):
     try:
         cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_att(message):
     try:
         cprint(message.decode('utf8'), 'yellow', attrs=['bold'])
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         cprint(unicode(message, errors='ignore'), 'yellow', attrs=['bold'])
 
 def yellow(text):
     try:
         colored(text.decode('utf8'), 'yellow', attrs=['bold'])
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
 
 def green(text):
     try:
         colored(text.decode('utf8'), 'green', attrs=['bold'])
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
 
 def red(text):
     try:
         colored(text.decode('utf8'), 'red', attrs=['bold'])
-    except UnicodeDecodeError:
+    except UnicodeDecodeError and UnicodeEncodeError:
         colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
 
 # Structures
