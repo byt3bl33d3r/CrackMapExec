@@ -58,43 +58,43 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 def print_error(message):
     try:
         cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_status(message):
     try:
         cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_succ(message):
     try:
         cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf8')+'\n')
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
 
 def print_att(message):
     try:
         cprint(message.decode('utf8'), 'yellow', attrs=['bold'])
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         cprint(unicode(message, errors='ignore'), 'yellow', attrs=['bold'])
 
 def yellow(text):
     try:
         return colored(text.decode('utf8'), 'yellow', attrs=['bold'])
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         return colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
 
 def green(text):
     try:
         return colored(text.decode('utf8'), 'green', attrs=['bold'])
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         return colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
 
 def red(text):
     try:
         return colored(text.decode('utf8'), 'red', attrs=['bold'])
-    except UnicodeDecodeError and UnicodeEncodeError:
+    except UnicodeDecodeError:
         return colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
 
 # Structures
