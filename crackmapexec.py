@@ -9,10 +9,12 @@ from gevent.pool import Pool
 from gevent import joinall
 from netaddr import IPNetwork, IPRange, IPAddress, AddrFormatError
 from threading import Thread
+from multiprocessing import Process
 from base64 import b64encode
 from struct import unpack, pack
 from collections import OrderedDict
-from impacket import smbserver, ntlm, winregistry, uuid, ImpactPacket
+from impacket import ntlm, winregistry, uuid, ImpactPacket
+from impacket.smbserver import SMBSERVER, SRVSServer, WKSTServer
 from impacket.dcerpc.v5 import transport, scmr, samr, drsuapi, rrp, tsch, srvs, wkst, epm, lsat, lsad, dtypes
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
@@ -217,6 +219,60 @@ class SAMR_RPC_SID(Structure):
        for i in range(self['SubAuthorityCount']):
            ans += '-%d' % ( unpack('>L',self['SubAuthority'][i*4:i*4+4])[0])
        return ans
+
+class SMBserver:
+
+    def __init__(self, listenAddress='0.0.0.0', listenPort=445):
+
+        self.smbConfig = ConfigParser.ConfigParser()
+        self.smbConfig.add_section('global')
+        self.smbConfig.set('global','server_name',''.join([random.choice(string.letters) for _ in range(8)]))
+        self.smbConfig.set('global','server_os',''.join([random.choice(string.letters) for _ in range(8)]))
+        self.smbConfig.set('global','server_domain',''.join([random.choice(string.letters) for _ in range(8)]))
+        self.smbConfig.set('global','log_file','')
+        self.smbConfig.set('global','rpc_apis','yes')
+        self.smbConfig.set('global','credentials_file','')
+        self.smbConfig.set('global', 'challenge', '')
+        self.smbConfig.set("global", 'SMB2Support', 'False')
+
+        # IPC always needed
+        self.smbConfig.add_section('IPC$')
+        self.smbConfig.set('IPC$','comment','')
+        self.smbConfig.set('IPC$','read only','yes')
+        self.smbConfig.set('IPC$','share type','3')
+        self.smbConfig.set('IPC$','path','')
+
+        self.smbConfig.add_section('TMP')
+        self.smbConfig.set('TMP','comment','')
+        self.smbConfig.set('TMP','read only','no')
+        self.smbConfig.set('TMP','share type','0')
+        self.smbConfig.set('TMP','path', './hosted')
+
+        if args.path:
+            self.smbConfig.add_section('TMP2')
+            self.smbConfig.set('TMP2','comment','')
+            self.smbConfig.set('TMP2','read only','yes')
+            self.smbConfig.set('TMP2','share type','0')
+            self.smbConfig.set('TMP2','path', args.path)
+
+        self.server = SMBSERVER((listenAddress,listenPort), config_parser=self.smbConfig)
+        self.server.processConfigFile()
+
+        # Now we have to register the MS-SRVS server. This specially important for 
+        # Windows 7+ and Mavericks clients since they WONT (specially OSX) 
+        # ask for shares using MS-RAP.
+
+        self.srvsServer = SRVSServer()
+        self.srvsServer.daemon = True
+        self.wkstServer = WKSTServer()
+        self.wkstServer.daemon = True
+        self.server.registerNamedPipe('srvsvc',('127.0.0.1',self.srvsServer.getListenPort()))
+        self.server.registerNamedPipe('wkssvc',('127.0.0.1',self.wkstServer.getListenPort()))
+
+    def serve_forever(self):
+        self.srvsServer.start()
+        self.wkstServer.start()
+        self.server.serve_forever()
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -3041,11 +3097,11 @@ def connect(host):
         if args.verbose: print str(e)
         return
 
-def concurrency(hosts):
+def concurrency(targets):
     ''' Open all the greenlet threads '''
     try:
         pool = Pool(args.threads)
-        jobs = [pool.spawn(connect, str(host)) for host in hosts]
+        jobs = [pool.spawn(connect, str(host)) for net in targets for host in net]
         joinall(jobs)
     except KeyboardInterrupt:
         print_status("Got CTRL-C! Exiting..")
@@ -3076,6 +3132,7 @@ if __name__ == '__main__':
                            @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
 """,
                                     formatter_class=RawTextHelpFormatter,
+                                    version='1.0.9-dev',
                                     epilog='There\'s been an awakening... have you felt it?')
 
     parser.add_argument("-t", type=int, dest="threads", default=10, help="Set how many concurrent threads to use (defaults to 10)")
@@ -3088,7 +3145,8 @@ if __name__ == '__main__':
     parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("--server", choices={'http', 'https', 'smb'}, default='http', help='Use the selected server (defaults to http)')
-    parser.add_argument("-v", action='store_true', dest='verbose', help="Enable verbose output")
+    #parser.add_argument("--server-port", type=int, help='Start the server on the specified port')
+    parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
     parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
@@ -3114,8 +3172,8 @@ if __name__ == '__main__':
     sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str, help='Folder to spider (defaults to top level directory)')
     sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
     sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', dest='exclude_dirs', help='Directories to exclude from spidering')
-    sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content (if enabled)')
-    sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content (if enabled)')
+    sgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content')
+    sgroup.add_argument("--patternfile", type=str, help='File containing patterns to search for in folders, filenames and file content')
     sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
@@ -3147,7 +3205,24 @@ if __name__ == '__main__':
         print_status("Verbose output enabled")
         logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         log = logging.getLogger()
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
+
+    """
+    if args.server == 'http':
+        server_port = 80
+        if args.server_port:
+            server_port = args.server_port
+
+    if args.server == 'https':
+        server_port = 443
+        if args.server_port:
+            server_port = args.server_port
+
+    if args.server == 'smb':
+        server_port = 445
+        if args.server_port:
+            server_port = args.server_port
+    """
 
     if args.inject:
         if not args.inject.startswith('met_'):
@@ -3165,29 +3240,31 @@ if __name__ == '__main__':
                 print_error("You must specify Meterpreter's options using '--met-options'" )
                 sys.exit(1)
 
+    def get_targets(target):
+        if '-' in target:
+            ip_range = target.split('-')
+            try:
+                hosts = IPRange(ip_range[0], ip_range[1])
+            except AddrFormatError:
+                start_ip = IPAddress(ip_range[0])
+
+                start_ip_words = list(start_ip.words)
+                start_ip_words[-1] = ip_range[1]
+                start_ip_words = [str(v) for v in start_ip_words]
+
+                end_ip = IPAddress('.'.join(start_ip_words))
+
+                return IPRange(start_ip, end_ip)
+        else:
+            return IPNetwork(target)
+
+    targets = []
     if os.path.exists(args.target[0]):
-        hosts = []
         with open(args.target[0], 'r') as target_file:
             for target in target_file:
-                hosts.append(IPAddress(target))
-
-    elif '-' in args.target[0]:
-        ip_range = args.target[0].split('-')
-        try:
-            hosts = IPRange(ip_range[0], ip_range[1])
-        except AddrFormatError:
-            start_ip = IPAddress(ip_range[0])
-
-            start_ip_words = list(start_ip.words)
-            start_ip_words[-1] = ip_range[1]
-            start_ip_words = [str(v) for v in start_ip_words]
-
-            end_ip = IPAddress('.'.join(start_ip_words))
-
-            hosts = IPRange(start_ip, end_ip)
-
+                targets.append(get_targets(target))
     else:
-        hosts = IPNetwork(args.target[0])
+        targets.append(get_targets(args.target[0]))
 
     if args.spider:
         patterns = []
@@ -3223,21 +3300,16 @@ if __name__ == '__main__':
 
         elif args.server == 'https':
             server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
-            server.socket = ssl.wrap_socket(httpd.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+            server.socket = ssl.wrap_socket(server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
 
         elif args.server == 'smb':
-            server = smbserver.SimpleSMBServer()
-            server.addShare('TMP', 'hosted')
-            if args.path:
-                server.addShare('TMP2', args.path, readonly='yes')
-            server.setSMB2Support(False)
-            server.serve_forever = server.start
+            server = SMBserver()
 
-        t = Thread(name='server', target=server.serve_forever)
-        t.setDaemon(True)
+        t = Process(name='server', target=server.serve_forever)
+        t.daemon = True
         t.start()
 
-    concurrency(hosts)
+    concurrency(targets)
 
     if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
         try:
