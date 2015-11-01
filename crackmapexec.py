@@ -1,5 +1,8 @@
 #!/usr/bin/env python2
 
+#Cause I got sick of dealing with Unicode decode/encode errors.. Makes all strings Unicode by default
+from __future__ import unicode_literals
+
 #This must be one of the first imports or else we get threading error on completion
 from gevent import monkey
 monkey.patch_all()
@@ -59,45 +62,59 @@ BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 
 def print_error(message):
     try:
-        cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf8')+'\n')
+        cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf-8')+'\n')
+    except UnicodeEncodeError:
+        cprint("[-] ", 'red', attrs=['bold'], end=message.encode('utf-8')+'\n')
     except UnicodeDecodeError:
-        cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+        cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
 
 def print_status(message):
     try:
-        cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf8')+'\n')
+        cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf-8')+'\n')
+    except UnicodeEncodeError:
+        cprint("[*] ", 'blue', attrs=['bold'], end=message.encode('utf-8')+'\n')
     except UnicodeDecodeError:
-        cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+        cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
 
 def print_succ(message):
     try:
-        cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf8')+'\n')
+        cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf-8')+'\n')
+    except UnicodeEncodeError:
+        cprint("[+] ", 'green', attrs=['bold'], end=message.encode('utf-8')+'\n')
     except UnicodeDecodeError:
-        cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='ignore')+'\n')
+        cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
 
 def print_att(message):
     try:
-        cprint(message.decode('utf8'), 'yellow', attrs=['bold'])
+        cprint(message.decode('utf-8'), 'yellow', attrs=['bold'])
+    except UnicodeEncodeError:
+        cprint(message.encode('utf-8'), 'yellow', attrs=['bold'])
     except UnicodeDecodeError:
-        cprint(unicode(message, errors='ignore'), 'yellow', attrs=['bold'])
+        cprint(unicode(message, errors='replace'), 'yellow', attrs=['bold'])
 
 def yellow(text):
     try:
-        return colored(text.decode('utf8'), 'yellow', attrs=['bold'])
+        return colored(str(text).decode('utf-8'), 'yellow', attrs=['bold'])
+    except UnicodeEncodeError:
+        return colored(str(text).encode('utf-8'), 'yellow', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(text, errors='ignore'), 'yellow', attrs=['bold'])
+        return colored(unicode(str(text), errors='replace'), 'yellow', attrs=['bold'])
 
 def green(text):
     try:
-        return colored(text.decode('utf8'), 'green', attrs=['bold'])
+        return colored(str(text).decode('utf-8'), 'green', attrs=['bold'])
+    except UnicodeEncodeError:
+        return colored(str(text).encode('utf-8'), 'green', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(text, errors='ignore'), 'green', attrs=['bold'])
+        return colored(unicode(str(text), errors='replace'), 'green', attrs=['bold'])
 
 def red(text):
     try:
-        return colored(text.decode('utf8'), 'red', attrs=['bold'])
+        return colored(str(text).decode('utf-8'), 'red', attrs=['bold'])
+    except UnicodeEncodeError:
+        return colored(str(text).encode('utf-8'), 'red', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(text, errors='ignore'), 'red', attrs=['bold'])
+        return colored(unicode(str(text), errors='replace'), 'red', attrs=['bold'])
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -2622,7 +2639,7 @@ def smart_login(host, smb, domain):
                 IMHO this is a much better way than writing a custom split() function
                 '''
                 try:
-                    passwords = csv.reader(StringIO.StringIO(args.passwd), delimiter=',', escapechar='\\').next()
+                    passwords = csv.reader(StringIO.StringIO(args.passwd), delimiter=str(','), escapechar=str('\\')).next()
                 except StopIteration:
                     #in case we supplied only '' as the password (null session)
                     passwords = ['']
@@ -2749,7 +2766,7 @@ def enum_shares(smb):
     root = ntpath.normpath("\\{}".format(PERM_DIR))
 
     for share in smb.listShares():
-        share_name = share['shi1_netname'][:-1].encode('utf8')
+        share_name = share['shi1_netname'][:-1]
         permissions[share_name] = []
 
         try:
@@ -3028,7 +3045,7 @@ def connect(host):
                 ntds_dump = DumpSecrets(host, args.user, args.passwd, domain, args.hash, False, True, vss, ninja)
                 ntds_dump.dump(smb)
                 if ntds_dump.dumped_ntds_hashes:
-                    print_succ("{}:{} {} Dumping NTDS.dit secrets using the {} method (domain\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper()))
+                    print_succ("{}:{} {} Dumping NTDS.dit secrets using the {} method (domain\\uid:rid:lmhash:nthash):".format(host, args.port, s_name, args.ntds.upper()))
                     for h in ntds_dump.dumped_ntds_hashes['hashes']:
                         print_att(h)
                     print_succ("{}:{} {} Kerberos keys grabbed:".format(host, args.port, s_name))
