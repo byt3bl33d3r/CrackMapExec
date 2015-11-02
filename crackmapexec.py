@@ -282,8 +282,8 @@ class SMBserver:
         self.smbConfig.set('global','log_file',str(''))
         self.smbConfig.set('global','rpc_apis','yes')
         self.smbConfig.set('global','credentials_file',str(''))
-        self.smbConfig.set('global', 'challenge', str(''))
-        self.smbConfig.set("global", 'SMB2Support', 'True')
+        self.smbConfig.set('global', 'challenge', str('A'*8))
+        self.smbConfig.set("global", 'SMB2Support', 'False')
 
         # IPC always needed
         self.smbConfig.add_section('IPC$')
@@ -318,6 +318,8 @@ class SMBserver:
         self.wkstServer.daemon = True
         self.server.registerNamedPipe('srvsvc',('127.0.0.1',self.srvsServer.getListenPort()))
         self.server.registerNamedPipe('wkssvc',('127.0.0.1',self.wkstServer.getListenPort()))
+        self.srvsServer.setServerConfig(self.smbConfig)
+        self.srvsServer.processConfigFile()
 
     def serve_forever(self):
         self.srvsServer.start()
