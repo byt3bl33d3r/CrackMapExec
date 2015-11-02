@@ -11,7 +11,6 @@ from gevent import sleep
 from gevent.pool import Pool
 from gevent import joinall
 from netaddr import IPNetwork, IPRange, IPAddress, AddrFormatError
-from threading import Thread
 from multiprocessing import Process
 from base64 import b64encode
 from struct import unpack, pack
@@ -60,61 +59,94 @@ PERM_DIR = ''.join(random.sample(string.ascii_letters, 10))
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 
+##################################################################################################
+
+"""
+The following is ugly ... real ugly... Unicode I hate you.
+
+The point of this is to try in every way possible to decode/encode and print, if that fails we replace the offending chars
+
+There has to be a better way of doing this. Halp.
+"""
+
 def print_error(message):
     try:
         cprint("[-] ", 'red', attrs=['bold'], end=message.decode('utf-8')+'\n')
     except UnicodeEncodeError:
-        cprint("[-] ", 'red', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        try:
+            cprint("[-] ", 'red', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        except UnicodeDecodeError:
+            cprint("[-] ", 'red', attrs=['bold'], end=message+'\n')
     except UnicodeDecodeError:
-        cprint("[-] ", 'red', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
+        cprint("[-] ", 'red', attrs=['bold'], end=message+'\n')
 
 def print_status(message):
     try:
         cprint("[*] ", 'blue', attrs=['bold'], end=message.decode('utf-8')+'\n')
     except UnicodeEncodeError:
-        cprint("[*] ", 'blue', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        try:
+            cprint("[*] ", 'blue', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        except Exception:
+            cprint("[*] ", 'blue', attrs=['bold'], end=message+'\n')
     except UnicodeDecodeError:
-        cprint("[*] ", 'blue', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
+        cprint("[*] ", 'blue', attrs=['bold'], end=message+'\n')
 
 def print_succ(message):
     try:
         cprint("[+] ", 'green', attrs=['bold'], end=message.decode('utf-8')+'\n')
     except UnicodeEncodeError:
-        cprint("[+] ", 'green', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        try:
+            cprint("[+] ", 'green', attrs=['bold'], end=message.encode('utf-8')+'\n')
+        except UnicodeDecodeError:
+            cprint("[+] ", 'green', attrs=['bold'], end=message+'\n')
     except UnicodeDecodeError:
-        cprint("[+] ", 'green', attrs=['bold'], end=unicode(message, errors='replace')+'\n')
+        cprint("[+] ", 'green', attrs=['bold'], end=message+'\n')
 
 def print_att(message):
     try:
         cprint(message.decode('utf-8'), 'yellow', attrs=['bold'])
     except UnicodeEncodeError:
-        cprint(message.encode('utf-8'), 'yellow', attrs=['bold'])
+        try:
+            cprint(message.encode('utf-8'), 'yellow', attrs=['bold'])
+        except UnicodeDecodeError:
+            cprint(message, 'yellow', attrs=['bold'])
     except UnicodeDecodeError:
-        cprint(unicode(message, errors='replace'), 'yellow', attrs=['bold'])
+        cprint(message, 'yellow', attrs=['bold'])
 
 def yellow(text):
     try:
         return colored(str(text).decode('utf-8'), 'yellow', attrs=['bold'])
     except UnicodeEncodeError:
-        return colored(str(text).encode('utf-8'), 'yellow', attrs=['bold'])
+        try:
+            return colored(str(text).encode('utf-8'), 'yellow', attrs=['bold'])
+        except UnicodeDecodeError:
+            return colored(str(text), 'yellow', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(str(text), errors='replace'), 'yellow', attrs=['bold'])
+        return colored(str(text), 'yellow', attrs=['bold'])
 
 def green(text):
     try:
         return colored(str(text).decode('utf-8'), 'green', attrs=['bold'])
     except UnicodeEncodeError:
-        return colored(str(text).encode('utf-8'), 'green', attrs=['bold'])
+        try:
+            return colored(str(text).encode('utf-8'), 'green', attrs=['bold'])
+        except UnicodeDecodeError:
+            return colored(str(text), 'green', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(str(text), errors='replace'), 'green', attrs=['bold'])
+        return colored(str(text), 'green', attrs=['bold'])
 
 def red(text):
     try:
         return colored(str(text).decode('utf-8'), 'red', attrs=['bold'])
     except UnicodeEncodeError:
-        return colored(str(text).encode('utf-8'), 'red', attrs=['bold'])
+        try:
+            return colored(str(text).encode('utf-8'), 'red', attrs=['bold'])
+        except UnicodeDecodeError:
+            return colored(str(text), 'red', attrs=['bold'])
     except UnicodeDecodeError:
-        return colored(unicode(str(text), errors='replace'), 'red', attrs=['bold'])
+        return colored(str(text), 'red', attrs=['bold'])
+
+#################################################################################################
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -2694,10 +2726,14 @@ def smart_login(host, smb, domain):
     raise socket.error
 
 def spider(smb_conn, ip, share, subfolder, patt, depth):
-    if subfolder == '' or subfolder == '.' : 
+    if subfolder == '' or subfolder == '.':
         subfolder = '*'
+
+    elif subfolder.startswith('*/'):
+        subfolder = subfolder[2:] + '/*'
+
     else:
-        subfolder = subfolder + '\\*'
+        subfolder = subfolder.replace('/*/', '/') + '/*'
 
     try:
         filelist = smb_conn.listPath(share, subfolder)
@@ -2705,11 +2741,15 @@ def spider(smb_conn, ip, share, subfolder, patt, depth):
         if depth == 0:
             return
     except SessionError:
+        if args.verbose: traceback.print_exc()
         return
 
     for result in filelist:
-        if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..' and (subfolder.split('/')[-1] not in args.exclude_dirs):
-            spider(smb_conn, ip, share,subfolder+'/'+result.get_longname(), patt, depth-1)
+        if result.is_directory() and result.get_longname() != '.' and result.get_longname() != '..':
+            if subfolder == '*':
+                spider(smb_conn, ip, share, subfolder.replace('*', '') + result.get_longname(), patt, depth-1)
+            elif subfolder != '*' and (subfolder[:-2].split('/')[-1] not in args.exclude_dirs):
+                spider(smb_conn, ip, share, subfolder.replace('*', '') + result.get_longname(), patt, depth-1)
     return
 
 def dir_list(files, ip, path, pattern, share, smb):
@@ -2717,13 +2757,13 @@ def dir_list(files, ip, path, pattern, share, smb):
         for instance in pattern:
             if re.findall(instance, result.get_longname()):
                 if result.is_directory():
-                    print_att("//{}/{}/{} [dir]".format(ip, path.replace("//",""), result.get_longname()))
+                    print_att("//{}/{}{} [dir]".format(ip, path.replace('*', ''), result.get_longname()))
                 else:
-                    print_att("//{}/{}/{} [lastm:'{}' size:{}]".format(ip, 
-                                                                       path.replace("//",""), 
-                                                                       result.get_longname(),
-                                                                       strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
-                                                                       result.get_filesize()))
+                    print_att("//{}/{}{} [lastm:'{}' size:{}]".format(ip,
+                                                                     path.replace('*', ''),
+                                                                     result.get_longname(),
+                                                                     strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
+                                                                     result.get_filesize()))
 
             if args.search_content:
                 if not result.is_directory():
@@ -2733,7 +2773,7 @@ def dir_list(files, ip, path, pattern, share, smb):
 
 def search_content(smb, path, result, share, pattern, ip):
     try:
-        rfile = RemoteFile(smb, path + '/' + result.get_longname(), share, access = FILE_READ_DATA)
+        rfile = RemoteFile(smb, path.replace('*', '') + result.get_longname(), share, access = FILE_READ_DATA)
         rfile.open()
 
         while True:
@@ -2744,21 +2784,23 @@ def search_content(smb, path, result, share, pattern, ip):
                     return
 
             if re.findall(pattern, contents):
-                print_att("//{}/{}/{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(ip, 
-                                                                                        path.replace("//",""), 
-                                                                                        result.get_longname(), 
-                                                                                        strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
-                                                                                        result.get_filesize(), 
-                                                                                        rfile.tell(), 
-                                                                                        pattern.pattern))
+                print_att("//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(ip, 
+                                                                                      path.replace('*', ''),
+                                                                                      result.get_longname(), 
+                                                                                      strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
+                                                                                      result.get_filesize(), 
+                                                                                      rfile.tell(), 
+                                                                                      pattern.pattern))
                 rfile.close()
                 return
 
     except SessionError as e:
+        if args.verbose: traceback.print_exc()
         if 'STATUS_SHARING_VIOLATION' in str(e):
             pass
 
     except Exception as e:
+        if args.verbose: traceback.print_exc()
         print_error(str(e))
 
 def enum_shares(smb):
@@ -2919,9 +2961,14 @@ def connect(host):
                 if args.list == '' or args.list == '.' : 
                     args.list = '*'
                 else:
-                    args.list = args.list + '\\*'
+                    args.list = args.list + '/*'
 
                 dir_list = smb.listPath(args.share, args.list)
+                if args.list == '*':
+                    args.list = args.share
+                else:
+                    args.list = args.share + '/' + args.list[:-2]
+
                 print_succ("{}:{} Contents of {}:".format(host, args.port, args.list))
                 for f in dir_list:
                     print_att("{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
