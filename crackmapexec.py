@@ -3173,9 +3173,13 @@ def concurrency(targets):
 
 if __name__ == '__main__':
 
-    if os.geteuid() is not 0:
-        print_error("Run me as r00t!")
-        sys.exit(1)
+    if sys.platform == 'win32':
+        import colorama
+        colorama.init() #Makes termcolor work on windows
+    else:
+        if os.geteuid() is not 0:
+            print_error("Run me as r00t!")
+            sys.exit(1)
 
     parser = argparse.ArgumentParser(description=""" 
   ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
