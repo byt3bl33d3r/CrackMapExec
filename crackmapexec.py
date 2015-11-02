@@ -12,6 +12,7 @@ from gevent.pool import Pool
 from gevent import joinall
 from netaddr import IPNetwork, IPRange, IPAddress, AddrFormatError
 from multiprocessing import Process
+from threading import Thread
 from base64 import b64encode
 from struct import unpack, pack
 from collections import OrderedDict
@@ -278,28 +279,28 @@ class SMBserver:
         self.smbConfig.set('global','server_name',''.join([random.choice(string.letters) for _ in range(8)]))
         self.smbConfig.set('global','server_os',''.join([random.choice(string.letters) for _ in range(8)]))
         self.smbConfig.set('global','server_domain',''.join([random.choice(string.letters) for _ in range(8)]))
-        self.smbConfig.set('global','log_file','')
+        self.smbConfig.set('global','log_file',str(''))
         self.smbConfig.set('global','rpc_apis','yes')
-        self.smbConfig.set('global','credentials_file','')
-        self.smbConfig.set('global', 'challenge', '')
-        self.smbConfig.set("global", 'SMB2Support', 'False')
+        self.smbConfig.set('global','credentials_file',str(''))
+        self.smbConfig.set('global', 'challenge', str(''))
+        self.smbConfig.set("global", 'SMB2Support', 'True')
 
         # IPC always needed
         self.smbConfig.add_section('IPC$')
-        self.smbConfig.set('IPC$','comment','')
+        self.smbConfig.set('IPC$','comment',str(''))
         self.smbConfig.set('IPC$','read only','yes')
         self.smbConfig.set('IPC$','share type','3')
-        self.smbConfig.set('IPC$','path','')
+        self.smbConfig.set('IPC$','path',str(''))
 
         self.smbConfig.add_section('TMP')
-        self.smbConfig.set('TMP','comment','')
+        self.smbConfig.set('TMP','comment',str(''))
         self.smbConfig.set('TMP','read only','no')
         self.smbConfig.set('TMP','share type','0')
-        self.smbConfig.set('TMP','path', './hosted')
+        self.smbConfig.set('TMP','path', 'hosted')
 
         if args.path:
             self.smbConfig.add_section('TMP2')
-            self.smbConfig.set('TMP2','comment','')
+            self.smbConfig.set('TMP2','comment',str(''))
             self.smbConfig.set('TMP2','read only','yes')
             self.smbConfig.set('TMP2','share type','0')
             self.smbConfig.set('TMP2','path', args.path)
@@ -3366,7 +3367,8 @@ if __name__ == '__main__':
         elif args.server == 'smb':
             server = SMBserver()
 
-        t = Process(name='server', target=server.serve_forever)
+        t = Thread(name='server', target=server.serve_forever)
+        #t = Process(name='server', target=server.serve_forever)
         t.daemon = True
         t.start()
 
