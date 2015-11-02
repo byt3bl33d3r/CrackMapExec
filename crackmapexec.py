@@ -355,9 +355,10 @@ class MimikatzServer(BaseHTTPRequestHandler):
             while i < len(buf):
                 if ('Password' in buf[i]) and ('(null)' not in buf[i]):
                     passw  = buf[i].split(':')[1].strip()
-                    domain = buf[i-1].split(':')[1].strip()
-                    user   = buf[i-2].split(':')[1].strip()
-                    print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
+                    if len(passw) != 719:
+                        domain = buf[i-1].split(':')[1].strip()
+                        user   = buf[i-2].split(':')[1].strip()
+                        print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
                 i += 1
 
         elif args.mimi_cmd:
