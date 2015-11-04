@@ -1,8 +1,5 @@
 #!/usr/bin/env python2
 
-#Cause I got sick of dealing with Unicode decode/encode errors.. Makes all strings Unicode by default
-from __future__ import unicode_literals
-
 #This must be one of the first imports or else we get threading error on completion
 from gevent import monkey
 monkey.patch_all()
@@ -11,7 +8,6 @@ from gevent import sleep
 from gevent.pool import Pool
 from gevent import joinall
 
-from core.utils import shutdown
 from core.logger import *
 from core.maingreenlet import connect
 from core.settings import init_args
@@ -28,6 +24,10 @@ import sys
 import os
 import ssl
 import BaseHTTPServer
+
+if sys.platform == 'linux2':
+    if os.geteuid() is not 0:
+        root_error()
 
 parser = argparse.ArgumentParser(description=""" 
   ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 

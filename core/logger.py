@@ -4,6 +4,10 @@ import re
 from termcolor import colored
 from datetime import datetime
 
+if sys.platform == 'win32':
+    import colorama
+    colorama.init()
+
 ansi_escape = re.compile(r'\x1b[^m]*m')
 
 def antiansi_emit(self, record):
@@ -52,3 +56,11 @@ def green(text):
 
 def red(text):
     return colored(text, 'red', attrs=['bold'])
+
+def shutdown(exit_code):
+    print colored("[*] ", 'blue', attrs=['bold']) + "KTHXBYE"
+    sys.exit(int(exit_code))
+
+def root_error():
+    print colored("[-] ", 'red', attrs=['bold']) + "I needz r00t!"
+    sys.exit(1)
