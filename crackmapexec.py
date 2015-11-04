@@ -423,7 +423,7 @@ class SAMHashes(OfflineRegistry):
     def __init__(self, samFile, bootKey, isRemote = True):
         OfflineRegistry.__init__(self, samFile, isRemote)
         self.__samFile = samFile
-        self.__hashedBootKey = ''
+        self.__hashedBootKey = str('')
         self.__bootKey = bootKey
         self.__cryptoCommon = CryptoCommon()
         self.__itemsFound = {}
@@ -914,7 +914,7 @@ class RemoteOperations:
                 pass
 
     def getBootKey(self):
-        bootKey = ''
+        bootKey = str('')
         ans = rrp.hOpenLocalMachine(self.__rrp)
         self.__regHandle = ans['phKey']
         for key in ['JD','Skew1','GBG','Data']:
