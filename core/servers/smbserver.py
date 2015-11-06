@@ -1,59 +1,62 @@
-from impacket.smbserver import SMBSERVER, SRVSServer, WKSTServer
+from impacket import smbserver
+from threading import Thread
 import ConfigParser
 import random
 
-class SMBserver:
+class SMBServer(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.smb = None
 
-    def __init__(self, listenAddress='0.0.0.0', listenPort=445):
+    def cleanup_server(self):
+        logging.info('Cleaning up..')
+        try:
+            os.unlink(SMBSERVER_DIR + '/smb.log')
+        except:
+            pass
+        os.rmdir(SMBSERVER_DIR)
 
-        self.smbConfig = ConfigParser.ConfigParser()
-        self.smbConfig.add_section('global')
-        self.smbConfig.set('global','server_name',''.join([random.choice(string.letters) for _ in range(8)]))
-        self.smbConfig.set('global','server_os',''.join([random.choice(string.letters) for _ in range(8)]))
-        self.smbConfig.set('global','server_domain',''.join([random.choice(string.letters) for _ in range(8)]))
-        self.smbConfig.set('global','log_file',str(''))
-        self.smbConfig.set('global','rpc_apis','yes')
-        self.smbConfig.set('global','credentials_file',str(''))
-        self.smbConfig.set('global', 'challenge', str('A'*8))
-        self.smbConfig.set("global", 'SMB2Support', 'False')
+    def run(self):
+        # Here we write a mini config for the server
+        smbConfig = ConfigParser.ConfigParser()
+        smbConfig.add_section('global')
+        smbConfig.set('global','server_name','server_name')
+        smbConfig.set('global','server_os','UNIX')
+        smbConfig.set('global','server_domain','WORKGROUP')
+        smbConfig.set('global','log_file',SMBSERVER_DIR + '/smb.log')
+        smbConfig.set('global','credentials_file','')
+
+        # Let's add a dummy share
+        smbConfig.add_section(DUMMY_SHARE)
+        smbConfig.set(DUMMY_SHARE,'comment','')
+        smbConfig.set(DUMMY_SHARE,'read only','no')
+        smbConfig.set(DUMMY_SHARE,'share type','0')
+        smbConfig.set(DUMMY_SHARE,'path',SMBSERVER_DIR)
 
         # IPC always needed
-        self.smbConfig.add_section('IPC$')
-        self.smbConfig.set('IPC$','comment',str(''))
-        self.smbConfig.set('IPC$','read only','yes')
-        self.smbConfig.set('IPC$','share type','3')
-        self.smbConfig.set('IPC$','path',str(''))
+        smbConfig.add_section('IPC$')
+        smbConfig.set('IPC$','comment','')
+        smbConfig.set('IPC$','read only','yes')
+        smbConfig.set('IPC$','share type','3')
+        smbConfig.set('IPC$','path')
 
-        self.smbConfig.add_section('TMP')
-        self.smbConfig.set('TMP','comment',str(''))
-        self.smbConfig.set('TMP','read only','no')
-        self.smbConfig.set('TMP','share type','0')
-        self.smbConfig.set('TMP','path', 'hosted')
+        self.smb = smbserver.SMBSERVER(('0.0.0.0',445), config_parser = smbConfig)
+        logging.info('Creating tmp directory')
+        try:
+            os.mkdir(SMBSERVER_DIR)
+        except Exception, e:
+            logging.critical(str(e))
+            pass
+        logging.info('Setting up SMB Server')
+        self.smb.processConfigFile()
+        logging.info('Ready to listen...')
+        try:
+            self.smb.serve_forever()
+        except:
+            pass
 
-        if args.path:
-            self.smbConfig.add_section('TMP2')
-            self.smbConfig.set('TMP2','comment',str(''))
-            self.smbConfig.set('TMP2','read only','yes')
-            self.smbConfig.set('TMP2','share type','0')
-            self.smbConfig.set('TMP2','path', args.path)
-
-        self.server = SMBSERVER((listenAddress,listenPort), config_parser=self.smbConfig)
-        self.server.processConfigFile()
-
-        # Now we have to register the MS-SRVS server. This specially important for 
-        # Windows 7+ and Mavericks clients since they WONT (specially OSX) 
-        # ask for shares using MS-RAP.
-
-        self.srvsServer = SRVSServer()
-        self.srvsServer.daemon = True
-        self.wkstServer = WKSTServer()
-        self.wkstServer.daemon = True
-        self.server.registerNamedPipe('srvsvc',('127.0.0.1',self.srvsServer.getListenPort()))
-        self.server.registerNamedPipe('wkssvc',('127.0.0.1',self.wkstServer.getListenPort()))
-        self.srvsServer.setServerConfig(self.smbConfig)
-        self.srvsServer.processConfigFile()
-
-    def serve_forever(self):
-        self.srvsServer.start()
-        self.wkstServer.start()
-        self.server.serve_forever()
+    def stop(self):
+        self.cleanup_server()
+        self.smb.socket.close()
+        self.smb.server_close()
+        self._Thread__stop()

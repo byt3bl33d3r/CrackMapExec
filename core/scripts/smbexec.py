@@ -34,75 +34,14 @@ import cmd
 import argparse
 import ConfigParser
 import logging
-from threading import Thread
 
-from impacket.examples import logger
+from core.logger import *
 from impacket import version, smbserver
 from impacket.smbconnection import *
 from impacket.dcerpc.v5 import transport, scmr
 
-OUTPUT_FILENAME = '__output'
-BATCH_FILENAME  = 'execute.bat'
-SMBSERVER_DIR   = '__tmp'
-DUMMY_SHARE     = 'TMP'
-
-class SMBServer(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-        self.smb = None
-
-    def cleanup_server(self):
-        logging.info('Cleaning up..')
-        try:
-            os.unlink(SMBSERVER_DIR + '/smb.log')
-        except:
-            pass
-        os.rmdir(SMBSERVER_DIR)
-
-    def run(self):
-        # Here we write a mini config for the server
-        smbConfig = ConfigParser.ConfigParser()
-        smbConfig.add_section('global')
-        smbConfig.set('global','server_name','server_name')
-        smbConfig.set('global','server_os','UNIX')
-        smbConfig.set('global','server_domain','WORKGROUP')
-        smbConfig.set('global','log_file',SMBSERVER_DIR + '/smb.log')
-        smbConfig.set('global','credentials_file','')
-
-        # Let's add a dummy share
-        smbConfig.add_section(DUMMY_SHARE)
-        smbConfig.set(DUMMY_SHARE,'comment','')
-        smbConfig.set(DUMMY_SHARE,'read only','no')
-        smbConfig.set(DUMMY_SHARE,'share type','0')
-        smbConfig.set(DUMMY_SHARE,'path',SMBSERVER_DIR)
-
-        # IPC always needed
-        smbConfig.add_section('IPC$')
-        smbConfig.set('IPC$','comment','')
-        smbConfig.set('IPC$','read only','yes')
-        smbConfig.set('IPC$','share type','3')
-        smbConfig.set('IPC$','path')
-
-        self.smb = smbserver.SMBSERVER(('0.0.0.0',445), config_parser = smbConfig)
-        logging.info('Creating tmp directory')
-        try:
-            os.mkdir(SMBSERVER_DIR)
-        except Exception, e:
-            logging.critical(str(e))
-            pass
-        logging.info('Setting up SMB Server')
-        self.smb.processConfigFile()
-        logging.info('Ready to listen...')
-        try:
-            self.smb.serve_forever()
-        except:
-            pass
-
-    def stop(self):
-        self.cleanup_server()
-        self.smb.socket.close()
-        self.smb.server_close()
-        self._Thread__stop()
+OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
+BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10))
 
 class CMDEXEC:
     KNOWN_PROTOCOLS = {
@@ -111,15 +50,15 @@ class CMDEXEC:
         }
 
 
-    def __init__(self, protocols = None, 
-                 username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None):
+    def __init__(self, command, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None):
         if not protocols:
             protocols = CMDEXEC.KNOWN_PROTOCOLS.keys()
 
         self.__username = username
         self.__password = password
+        self.__command  = command
         self.__protocols = [protocols]
-        self.__serviceName = 'BTOBTO'
+        self.__serviceName = ''.join(random.sample(string.ascii_letters, 10))
         self.__domain = domain
         self.__lmhash = ''
         self.__nthash = ''
@@ -158,7 +97,7 @@ class CMDEXEC:
                     serverThread.daemon = True
                     serverThread.start()
                 self.shell = RemoteShell(self.__share, rpctransport, self.__mode, self.__serviceName)
-                self.shell.cmdloop()
+                self.shell.onecmd(self.__command)
                 if self.__mode == 'SERVER':
                     serverThread.stop()
             except  (Exception, KeyboardInterrupt), e:
@@ -282,58 +221,3 @@ class RemoteShell(cmd.Cmd):
         self.execute_remote(data)
         print self.__outputBuffer
         self.__outputBuffer = ''
-
-
-# Process command-line arguments.
-if __name__ == '__main__':
-    # Init the example's logger theme
-    logger.init()
-    print version.BANNER
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address>')
-    parser.add_argument('-share', action='store', default = 'C$', help='share where the output will be grabbed from (default C$)')
-    parser.add_argument('-mode', action='store', choices = {'SERVER','SHARE'}, default='SHARE', help='mode to use (default SHARE, SERVER needs root!)')
-    parser.add_argument('-debug', action='store_true', help='Turn DEBUG output ON')
-
-    parser.add_argument('protocol', choices=CMDEXEC.KNOWN_PROTOCOLS.keys(), nargs='?', default='445/SMB', help='transport protocol (default 445/SMB)')
-
-    group = parser.add_argument_group('authentication')
-
-    group.add_argument('-hashes', action="store", metavar = "LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
-    group.add_argument('-no-pass', action="store_true", help='don\'t ask for password (useful for -k)')
-    group.add_argument('-k', action="store_true", help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters. If valid credentials cannot be found, it will use the ones specified in the command line')
-    group.add_argument('-aesKey', action="store", metavar = "hex key", help='AES key to use for Kerberos Authentication (128 or 256 bits)')
-
- 
-    if len(sys.argv)==1:
-        parser.print_help()
-        sys.exit(1)
-
-    options = parser.parse_args()
-
-    if options.debug is True:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-
-    import re
-    domain, username, password, address = re.compile('(?:(?:([^/@:]*)/)?([^@:]*)(?::([^@]*))?@)?(.*)').match(options.target).groups('')
-
-    if domain is None:
-        domain = ''
-
-    if password == '' and username != '' and options.hashes is None and options.no_pass is False and options.aesKey is None:
-        from getpass import getpass
-        password = getpass("Password:")
-
-    if options.aesKey is not None:
-        options.k = True
-
-    try:
-        executer = CMDEXEC(options.protocol, username, password, domain, options.hashes, options.aesKey, options.k, options.mode, options.share)
-        executer.run(address)
-    except Exception, e:
-        logging.critical(str(e))
-    sys.exit(0)
