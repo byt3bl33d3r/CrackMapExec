@@ -4,26 +4,25 @@
 from gevent import monkey
 monkey.patch_all()
 
-from gevent import sleep
 from gevent.pool import Pool
-from gevent import joinall
+from gevent import joinall, sleep
 
 from core.logger import *
 from core.maingreenlet import connect
 from core.settings import init_args
-from core.servers.mimikatz import MimikatzServer
-from core.servers.smbserver import SMBserver
+from core.servers.mimikatz import http_server, https_server
+from core.servers.smbserver import SMBServer
 from argparse import RawTextHelpFormatter
 from netaddr import IPAddress, IPRange, IPNetwork, AddrFormatError
-from multiprocessing import Process
 from logging import DEBUG
 
 import re
 import argparse
 import sys
 import os
-import ssl
-import BaseHTTPServer
+
+VERSION  = '2.0'
+CODENAME = '\'I have to change the name of this thing\''
 
 if sys.platform == 'linux2':
     if os.geteuid() is not 0:
@@ -46,9 +45,15 @@ parser = argparse.ArgumentParser(description="""
                            @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
                            @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                            @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
-""",
+{}: {}
+{}: {}
+""".format(red('Version'),
+           yellow(VERSION),
+           red('Codename'), 
+           yellow(CODENAME)),
+
                                 formatter_class=RawTextHelpFormatter,
-                                version='1.0.9-dev',
+                                version='2.0 - \'{}\''.format(CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
 parser.add_argument("-t", type=int, dest="threads", default=10, help="Set how many concurrent threads to use (defaults to 10)")
@@ -69,19 +74,20 @@ parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR id
 
 rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
 rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
+rgroup.add_argument("--lsa", action='store_true', help='Dump LSA secrets from target systems')
+rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems')
 rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
-rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows 8.1")
 rgroup.add_argument("--disable-wdigest", action='store_true', help="Deletes the 'UseLogonCredential' registry key")
 
 egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
-egroup.add_argument("--shares", action="store_true", dest="list_shares", help="List shares")
+egroup.add_argument("--shares", action="store_true", dest="enum_shares", help="List shares")
 egroup.add_argument('--check-uac', action='store_true', dest='check_uac', help='Checks UAC status')
 egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
 egroup.add_argument('--disks', action='store_true', dest='enum_disks', help='Enumerate disks')
 egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
-egroup.add_argument("--rid-brute", metavar='MAX_RID', dest='rid_brute', help='Enumerate users by bruteforcing RID\'s')
+egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', dest='rid_brute', help='Enumerate users by bruteforcing RID\'s (defaults to 4000)')
 egroup.add_argument("--pass-pol", action='store_true', dest='pass_pol', help='Dump password policy')
 egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
 egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
@@ -97,6 +103,7 @@ sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion dept
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
 cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec", "psexec"}, default="wmi", help="Method to execute the command (default: wmi)")
 cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
+cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
 cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
 
@@ -202,21 +209,19 @@ else:
 
 if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
-        server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+        http_server()
 
     elif args.server == 'https':
-        server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
-        server.socket = ssl.wrap_socket(server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+        https_server()
 
     elif args.server == 'smb':
-        server = SMBserver()
-
-    t = Process(name='server', target=server.serve_forever)
-    t.daemon = True
-    t.start()
+        SMBServer()
 
 def concurrency(targets):
-    ''' Open all the greenlet threads '''
+    '''
+        Open all the greenlet (as supposed to redlet??) threads 
+        Whoever came up with that name has a fetish for traffic lights
+    '''
     try:
         pool = Pool(args.threads)
         jobs = [pool.spawn(connect, str(host)) for net in targets for host in net]

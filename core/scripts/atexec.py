@@ -18,18 +18,18 @@
 import string
 import sys
 import argparse
-import time
 import random
 import logging
 
-from impacket.examples import logger
+from core.logger import *
+from gevent import sleep
 from impacket import version
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
 
 
 class TSCH_EXEC:
-    def __init__(self, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False, command=None):
+    def __init__(self, command=None, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False):
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -61,7 +61,8 @@ class TSCH_EXEC:
 
     def doStuff(self, rpctransport):
         def output_callback(data):
-            print data
+            print_succ('Executed specified command via ATEXEC')
+            print_att(data)
 
         dce = rpctransport.get_dce_rpc()
 
@@ -131,7 +132,7 @@ class TSCH_EXEC:
                 if resp['pLastRuntime']['wYear'] != 0:
                     done = True
                 else:
-                    time.sleep(2)
+                    sleep(2)
 
             logging.info('Deleting task \\%s' % tmpName)
             tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
@@ -152,11 +153,11 @@ class TSCH_EXEC:
                 break
             except Exception, e:
                 if str(e).find('SHARING') > 0:
-                    time.sleep(3)
+                    sleep(3)
                 elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
                     if waitOnce is True:
                         # We're giving it the chance to flush the file before giving up
-                        time.sleep(3)
+                        sleep(3)
                         waitOnce = False
                     else:
                         raise

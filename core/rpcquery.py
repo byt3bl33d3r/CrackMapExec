@@ -1,4 +1,8 @@
-class RPCENUM():
+from logger import *
+from impacket.dcerpc.v5 import transport, srvs, wkst
+from impacket.dcerpc.v5.dtypes import NULL
+
+class RPCQUERY():
     def __init__(self, username, password, domain='', hashes=None):
         self.__username = username
         self.__password = password
@@ -29,40 +33,44 @@ class RPCENUM():
 
         return dce, rpctransport
 
-    def enum_logged_on_users(self, host):
+    def enum_lusers(self, host):
         dce, rpctransport = self.connect(host, 'wkssvc')
         users_info = {}
         try:
             resp = wkst.hNetrWkstaUserEnum(dce, 1)
-            return resp['UserInfo']['WkstaUserInfo']['Level1']['Buffer']
+            lusers =  resp['UserInfo']['WkstaUserInfo']['Level1']['Buffer']
         except Exception:
             resp = wkst.hNetrWkstaUserEnum(dce, 0)
-            return resp['UserInfo']['WkstaUserInfo']['Level0']['Buffer']
+            lusers = resp['UserInfo']['WkstaUserInfo']['Level0']['Buffer']
+
+        print_succ("Logged on users:")
+        for luser in lusers:
+            for fname in luser.fields.keys():
+                print_message("{} {}".format(fname, yellow(luser[fname])))
 
     def enum_sessions(self, host):
         dce, rpctransport = self.connect(host, 'srvsvc')
         session_info = {}
         try:
             resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 502)
-            return resp['InfoStruct']['SessionInfo']['Level502']['Buffer']
+            sessions  = resp['InfoStruct']['SessionInfo']['Level502']['Buffer']
         except Exception:
             resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 0)
-            return resp['InfoStruct']['SessionInfo']['Level0']['Buffer']
+            sessions  = resp['InfoStruct']['SessionInfo']['Level0']['Buffer']
 
-        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 1)
-        #resp.dump()
-
-        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 2)
-        #resp.dump()
-
-        #resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 10)
-        #resp.dump()
+        print_succ("Current active sessions:")
+        for session in sessions:
+            for fname in session.fields.keys():
+                print_message("{} {}".format(fname, yellow(session[fname])))
 
     def enum_disks(self, host):
         dce, rpctransport = self.connect(host, 'srvsvc')
         try:
             resp = srvs.hNetrServerDiskEnum(dce, 1)
-            return resp
         except Exception:
             resp = srvs.hNetrServerDiskEnum(dce, 0)
-            return resp
+
+        print_succ("Available disks:")
+        for disk in resp['DiskInfoStruct']['Buffer']:
+            for dname in disk.fields.keys():
+                print_att(disk[dname])

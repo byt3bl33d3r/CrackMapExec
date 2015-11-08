@@ -1,4 +1,15 @@
+from logger import *
+from impacket.smbconnection import SessionError
+import socket
+import settings
+import os
+import csv
+import StringIO
+
 def smart_login(host, smb, domain):
+    '''
+        This function should probably be called ugly_login
+    ''' 
     if settings.args.combo_file:
         with open(settings.args.combo_file, 'r') as combo_file:
             for line in combo_file:
@@ -14,8 +25,8 @@ def smart_login(host, smb, domain):
                         user_pass = line
 
                     '''
-                    Here we try to manage two cases: if an entry has a hash as the password,
-                    or if the plain-text password contains a ':'
+                        Here we try to manage two cases: if an entry has a hash as the password,
+                        or, in the unlikely event, the plain-text password contains a ':' (pfft who am I kidding)
                     '''
                     if len(user_pass.split(':')) == 3:
                         hash_or_pass = ':'.join(user_pass.split(':')[1:3]).strip()
@@ -32,6 +43,9 @@ def smart_login(host, smb, domain):
                     try:
                         smb.login(user, passwd, domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                        settings.args.user = user
+                        settings.args.passwd = passwd
+                        settings.args.hash = ':'.join(lmhash, nthash)
                         return smb
                     except SessionError as e:
                         print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
@@ -56,12 +70,12 @@ def smart_login(host, smb, domain):
                 passwords = open(settings.args.passwd, 'r')
             else:
                 '''
-                You might be wondering: wtf is this? why not use split()?
-                This is in case a password contains a comma! we can use '\\' to make sure it's parsed correctly
-                IMHO this is a much better way than writing a custom split() function
+                    You might be wondering: wtf is this? why not use split()?
+                    This is in case a password contains a comma (lol!), we can use '\\' to make sure it's parsed correctly
+                    IMHO this is a much better (much lazier) way than writing a custom split() function
                 '''
                 try:
-                    passwords = csv.reader(StringIO.StringIO(settings.args.passwd), delimiter=str(','), escapechar=str('\\')).next()
+                    passwords = csv.reader(StringIO.StringIO(settings.args.passwd), delimiter=',', escapechar='\\').next()
                 except StopIteration:
                     #in case we supplied only '' as the password (null session)
                     passwords = ['']
@@ -94,6 +108,8 @@ def smart_login(host, smb, domain):
                     try:
                         smb.login(user, '', domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
+                        settings.args.user = user
+                        settings.args.hash = ntlm_hash
                         return smb
                     except SessionError as e:
                         print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, ntlm_hash, e))
@@ -108,9 +124,11 @@ def smart_login(host, smb, domain):
                     try:
                         smb.login(user, passwd, domain)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                        settings.args.user = user
+                        settings.args.passwd = passwd
                         return smb
                     except SessionError as e:
                         print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
                         continue
 
-    raise socket.error
+    raise socket.error #So we fail without a peep

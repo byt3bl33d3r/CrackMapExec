@@ -15,10 +15,9 @@
 
 import sys
 import logging
-import argparse
 import codecs
 
-from impacket.examples import logger
+from core.logger import *
 from impacket import version
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.samr import SID_NAME_USE
@@ -67,6 +66,7 @@ class LSALookupSid:
                 rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
 
             try:
+                print_succ("{}:{} Dumping users (rid:domain:user):".format(addr, protocol[:-4]))
                 self.__bruteForce(rpctransport, self.__maxRid)
             except Exception, e:
                 #import traceback
@@ -124,52 +124,9 @@ class LSALookupSid:
 
             for n, item in enumerate(resp['TranslatedNames']['Names']):
                 if item['Use'] != SID_NAME_USE.SidTypeUnknown:
-                    print "%d: %s\\%s (%s)" % (soFar+n, resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name'], item['Name'], SID_NAME_USE.enumItems(item['Use']).name)
+                    print_att("%d: %s\\%s (%s)" % (soFar+n, resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name'], item['Name'], SID_NAME_USE.enumItems(item['Use']).name))
             soFar += SIMULTANEOUS
 
         dce.disconnect()
 
         return entries
-
-
-# Process command-line arguments.
-if __name__ == '__main__':
-    # Init the example's logger theme
-    logger.init()
-    # Explicitly changing the stdout encoding format
-    if sys.stdout.encoding is None:
-        # Output is redirected to a file
-        sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-    print version.BANNER
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address>')
-    parser.add_argument('maxRid', action='store', default = '4000', nargs='?', help='max Rid to check (default 4000)')
-    parser.add_argument('protocol', choices=LSALookupSid.KNOWN_PROTOCOLS.keys(), nargs='?', default='445/SMB', help='transport protocol (default 445/SMB)')
-
-    group = parser.add_argument_group('authentication')
-
-    group.add_argument('-hashes', action="store", metavar = "LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
-
-    if len(sys.argv)==1:
-        parser.print_help()
-        sys.exit(1)
-
-    options = parser.parse_args()
-
-    import re
-    domain, username, password, address = re.compile('(?:(?:([^/@:]*)/)?([^@:]*)(?::([^@]*))?@)?(.*)').match(options.target).groups('')
-
-    if domain is None:
-        domain = ''
-
-    if password == '' and username != '' and options.hashes is None:
-        from getpass import getpass
-        password = getpass("Password:")
-
-    lookup = LSALookupSid(username, password, domain, options.protocol, options.hashes, options.maxRid)
-    try:
-        lookup.dump(address)
-    except:
-        pass

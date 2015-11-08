@@ -16,10 +16,9 @@
 
 import sys
 import logging
-import argparse
 import codecs
 
-from impacket.examples import logger
+from core.logger import *
 from impacket import version
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.dcerpc.v5 import transport, samr
@@ -80,14 +79,15 @@ class SAMRDump:
 
         # Display results.
 
+        print_succ('{}:{} Dumping users:'.format(addr, protocol[:-4]))
         for entry in entries:
             (username, uid, user) = entry
             base = "%s (%d)" % (username, uid)
-            print base + '/FullName:', user['FullName']
-            print base + '/UserComment:', user['UserComment']
-            print base + '/PrimaryGroupId:', user['PrimaryGroupId']
-            print base + '/BadPasswordCount:', user['BadPasswordCount']
-            print base + '/LogonCount:', user['LogonCount']
+            print_att(u'{}/FullName: {}'.format(base, user['FullName']))
+            print_att(u'{}/UserComment: {}' .format(base, user['UserComment']))
+            print_att(u'{}/PrimaryGroupId: {}'.format(base, user['PrimaryGroupId']))
+            print_att(u'{}/BadPasswordCount: {}'.format(base, user['BadPasswordCount']))
+            print_att(u'{}/LogonCount: {}'.format(base, user['LogonCount']))
 
         if entries:
             num = len(entries)
@@ -114,9 +114,9 @@ class SAMRDump:
             resp = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle)
             domains = resp['Buffer']['Buffer']
 
-            print 'Found domain(s):'
+            logging.info('Found domain(s):')
             for domain in domains:
-                print " . %s" % domain['Name']
+                logging.info(" . %s" % domain['Name'])
 
             logging.info("Looking up users in domain %s" % domains[0]['Name'])
 
@@ -137,7 +137,7 @@ class SAMRDump:
 
                 for user in resp['Buffer']['Buffer']:
                     r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user['RelativeId'])
-                    print "Found user: %s, uid = %d" % (user['Name'], user['RelativeId'] )
+                    logging.info(u"Found user: %s, uid = %d" % (user['Name'], user['RelativeId']))
                     info = samr.hSamrQueryInformationUser2(dce, r['UserHandle'],samr.USER_INFORMATION_CLASS.UserAllInformation)
                     entry = (user['Name'], user['RelativeId'], info['Buffer']['All'])
                     entries.append(entry)
@@ -152,55 +152,3 @@ class SAMRDump:
         dce.disconnect()
 
         return entries
-
-
-# Process command-line arguments.
-if __name__ == '__main__':
-    # Init the example's logger theme
-    logger.init()
-    # Explicitly changing the stdout encoding format
-    if sys.stdout.encoding is None:
-        # Output is redirected to a file
-        sys.stdout = codecs.getwriter('utf8')(sys.stdout)
-    print version.BANNER
-
-    parser = argparse.ArgumentParser(add_help = True, description = "This script downloads the list of users for the target system.")
-
-    parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address>')
-    parser.add_argument('protocol', choices=SAMRDump.KNOWN_PROTOCOLS.keys(), nargs='?', default='445/SMB', help='transport protocol (default 445/SMB)')
-    parser.add_argument('-debug', action='store_true', help='Turn DEBUG output ON')
-
-    group = parser.add_argument_group('authentication')
-
-    group.add_argument('-hashes', action="store", metavar = "LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
-    group.add_argument('-no-pass', action="store_true", help='don\'t ask for password (useful for -k)')
-    group.add_argument('-k', action="store_true", help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters. If valid credentials cannot be found, it will use the ones specified in the command line')
-    group.add_argument('-aesKey', action="store", metavar = "hex key", help='AES key to use for Kerberos Authentication (128 or 256 bits)')
-
-    if len(sys.argv)==1:
-        parser.print_help()
-        sys.exit(1)
-
-    options = parser.parse_args()
-
-    if options.debug is True:
-        logging.getLogger().setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.INFO)
-
-    import re
-
-    domain, username, password, address = re.compile('(?:(?:([^/@:]*)/)?([^@:]*)(?::([^@]*))?@)?(.*)').match(options.target).groups('')
-
-    if domain is None:
-        domain = ''
-
-    if options.aesKey is not None:
-        options.k = True
-
-    if password == '' and username != '' and options.hashes is None and options.no_pass is False and options.aesKey is None:
-        from getpass import getpass
-        password = getpass("Password:")
-
-    dumper = SAMRDump(options.protocol, username, password, domain, options.hashes, options.aesKey, options.k)
-    dumper.dump(address)

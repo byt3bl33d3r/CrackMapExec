@@ -53,23 +53,9 @@ class WMIEXEC:
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
 
-    def run(self, addr):
+    def run(self, addr, smb):
         if self.__noOutput is False:
-            smbConnection = SMBConnection(addr, addr)
-            if self.__doKerberos is False:
-                smbConnection.login(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-            else:
-                smbConnection.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey)
-
-            dialect = smbConnection.getDialect()
-            if dialect == SMB_DIALECT:
-                logging.info("SMBv1 dialect used")
-            elif dialect == SMB2_DIALECT_002:
-                logging.info("SMBv2.0 dialect used")
-            elif dialect == SMB2_DIALECT_21:
-                logging.info("SMBv2.1 dialect used")
-            else:
-                logging.info("SMBv3.0 dialect used")
+            smbConnection = smb
         else:
             smbConnection = None
 
@@ -221,8 +207,6 @@ class RemoteShell(cmd.Cmd):
     def get_output(self):
         def output_callback(data):
             self.__outputBuffer += data
-            print_succ('Executed specified command via WMI')
-            print_att(self.__outputBuffer)
 
         if self.__noOutput is True:
             self.__outputBuffer = ''
@@ -251,4 +235,7 @@ class RemoteShell(cmd.Cmd):
 
     def send_data(self, data):
         self.execute_remote(data)
+        print_succ('Executed specified command via WMI')
+        if self.__noOutput is False:
+            print_att(self.__outputBuffer.strip())
         self.__outputBuffer = ''

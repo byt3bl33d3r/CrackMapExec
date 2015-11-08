@@ -30,29 +30,48 @@ def setup_logger(target, level=logging.INFO):
     streamHandler = logging.StreamHandler(sys.stdout)
     streamHandler.setFormatter(formatter)
 
-    root_logger = logging.getLogger()
-    root_logger.propagate = False
-    root_logger.addHandler(streamHandler)
-    root_logger.addHandler(fileHandler)
-    root_logger.setLevel(level)
+    if level == logging.DEBUG:
+        root_logger = logging.getLogger()
+        root_logger.propagate = False
+        root_logger.addHandler(streamHandler)
+        root_logger.addHandler(fileHandler)
+        root_logger.setLevel(level)
+
+    #A logger on crack? keeps getting better
+    crack_logger = logging.getLogger('crack')
+    crack_logger.propagate = False
+    crack_logger.addHandler(streamHandler)
+    crack_logger.addHandler(fileHandler)
+    crack_logger.setLevel(level)
 
 def print_error(message):
-    logging.info(colored("[-] ", 'red', attrs=['bold']) + message)
+    clog = logging.getLogger('crack')
+    clog.info(colored("[-] ", 'red', attrs=['bold']) + message)
 
 def print_status(message):
-    logging.info(colored("[*] ", 'blue', attrs=['bold']) + message)
+    clog = logging.getLogger('crack')
+    clog.info(colored("[*] ", 'blue', attrs=['bold']) + message)
 
 def print_succ(message):
-    logging.info(colored("[+] ", 'green', attrs=['bold']) + message)
+    clog = logging.getLogger('crack')
+    clog.info(colored("[+] ", 'green', attrs=['bold']) + message)
 
 def print_att(message):
-    logging.info(colored(message, 'yellow', attrs=['bold']))
+    clog = logging.getLogger('crack')
+    clog.info(colored(message, 'yellow', attrs=['bold']))
+
+def print_message(message):
+    clog = logging.getLogger('crack')
+    clog.info(message)
 
 def yellow(text):
     return colored(text, 'yellow', attrs=['bold'])
 
 def green(text):
     return colored(text, 'green', attrs=['bold'])
+
+def blue(text):
+    return colored(text, 'blue', attrs=['bold'])
 
 def red(text):
     return colored(text, 'red', attrs=['bold'])

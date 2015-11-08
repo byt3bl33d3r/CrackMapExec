@@ -1,20 +1,31 @@
-from core.utils import shutdown
-from core.logger import *
+from logger import *
+from powershell import *
 from impacket.nmb import NetBIOSError
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from core.scripts.wmiexec import WMIEXEC
+from executor import EXECUTOR
+from sharedump import SHAREDUMP
+from scripts.wmiquery import WMIQUERY
+from scripts.samrdump import SAMRDump
+from scripts.lookupsid import LSALookupSid
+from scripts.secretsdump import DumpSecrets
+from passpoldump import PassPolDump
+from rpcquery import RPCQUERY
+from smbspider import SMBSPIDER
 from smartlogin import smart_login
-from time import time
+from remotefilesystem import RemoteFileSystem
+from datetime import datetime
 import os
 import socket
-import StringIO
 import settings
 import traceback
 import socket
-import csv
 
 def connect(host):
+    '''
+        My imagination flowed free when coming up with this name
+    '''
+
     try:
 
         smb = SMBConnection(host, host, None, settings.args.port)
@@ -31,13 +42,14 @@ def connect(host):
             if not domain:
                 domain = s_name
 
-        print_status("{}:{} is running {} (name:{}) (domain:{})".format(host, settings.args.port, smb.getServerOS(), s_name, domain))
+        print_status(u"{}:{} is running {} (name:{}) (domain:{})".format(host, settings.args.port, smb.getServerOS(), s_name, domain))
 
-        '''
-        DC's seem to want us to logoff first
-        Workstations sometimes reset the connection, so we handle both cases here
-        '''
         try:
+            '''
+                DC's seem to want us to logoff first
+                Windows workstations sometimes reset the connection, so we handle both cases here
+                (go home Windows, you're drunk)
+            '''
             smb.logoff()
         except NetBIOSError:
             pass
@@ -47,65 +59,101 @@ def connect(host):
         if (settings.args.user is not None and (settings.args.passwd is not None or settings.args.hash is not None)) or settings.args.combo_file:
 
             smb = smart_login(host, smb, domain)
+            #Get our IP from the socket
+            settings.args.local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
-            noOutput = False
-            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
+            if settings.args.delete or settings.args.download or settings.args.list or settings.args.upload:
+                rfs = RemoteFileSystem(host, smb)
+                if settings.args.delete:
+                    rfs.delete()
+                if settings.args.download:
+                    rfs.download()
+                if settings.args.upload:
+                    rfs.upload()
+                if settings.args.list:
+                    rfs.list()
 
-            if settings.args.download:
-                out = open(settings.args.download.split('\\')[-1], 'wb')
-                smb.getFile(settings.args.share, settings.args.download, out.write)
-                print_succ("{}:{} {} Downloaded file".format(host, settings.args.port, s_name))
+            if settings.args.enum_shares:
+                shares = SHAREDUMP(smb)
+                shares.dump(host)
 
-            if settings.args.delete:
-                smb.deleteFile(settings.args.share, settings.args.delete)
-                print_succ("{}:{} {} Deleted file".format(host, settings.args.port, s_name))
+            if settings.args.enum_users:
+                users = SAMRDump('{}/SMB'.format(settings.args.port),
+                                 settings.args.user, 
+                                 settings.args.passwd, 
+                                 domain, 
+                                 settings.args.hash, 
+                                 settings.args.aesKey,
+                                 settings.args.kerb)
+                users.dump(host)
 
-            if settings.args.upload:
-                up = open(settings.args.upload[0] , 'rb')
-                smb.putFile(settings.args.share, settings.args.upload[1], up.read)
-                print_succ("{}:{} {} Uploaded file".format(host, settings.args.port, s_name))
+            if settings.args.sam or settings.args.lsa or settings.args.ntds:
+                dumper = DumpSecrets(host,
+                                     settings.args.port,
+                                     './logs/{}'.format(host),
+                                     smb,
+                                     settings.args.kerb)
+                
+                dumper.do_remote_ops()
+                if settings.args.sam:
+                    dumper.dump_SAM()
+                if settings.args.lsa:
+                    dumper.dump_LSA()
+                if settings.args.ntds:
+                    dumper.dump_NTDS(settings.args.ntds)
+                dumper.cleanup()
 
-            if settings.args.list:
-                if settings.args.list == '' or settings.args.list == '.' : 
-                    settings.args.list = '*'
-                else:
-                    settings.args.list = settings.args.list + '/*'
+            if settings.args.pass_pol:
+                pass_pol = PassPolDump('{}/SMB'.format(settings.args.port),
+                                 settings.args.user, 
+                                 settings.args.passwd, 
+                                 domain, 
+                                 settings.args.hash, 
+                                 settings.args.aesKey,
+                                 settings.args.kerb)
+                pass_pol.dump(host)
 
-                dir_list = smb.listPath(settings.args.share, settings.args.list)
-                if settings.args.list == '*':
-                    settings.args.list = settings.args.share
-                else:
-                    settings.args.list = settings.args.share + '/' + settings.args.list[:-2]
+            if settings.args.rid_brute:
+                lookup = LSALookupSid(settings.args.user,
+                                      settings.args.passwd,
+                                      domain,
+                                      '{}/SMB'.format(settings.args.port), 
+                                      settings.args.hash, 
+                                      settings.args.rid_brute)
+                lookup.dump(host)
 
-                print_succ("{}:{} Contents of {}:".format(host, settings.args.port, settings.args.list))
-                for f in dir_list:
-                    print_att("{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
-                                                             f.get_filesize(),
-                                                             strftime('%Y-%m-%d %H:%M', localtime(f.get_mtime_epoch())), 
-                                                             f.get_longname()))
+            if settings.args.enum_sessions or settings.args.enum_disks or settings.args.enum_lusers:
+                rpc_query = RPCQUERY(settings.args.user, 
+                                     settings.args.passwd, 
+                                     domain, 
+                                     settings.args.hash)
+
+                if settings.args.enum_sessions:
+                    rpc_query.enum_sessions(host)
+                if settings.args.enum_disks:
+                    rpc_query.enum_disks(host)
+                if settings.args.enum_lusers:
+                    rpc_query.enum_lusers(host)
 
             if settings.args.spider:
-                start_time = time()
-                print_status("{}:{} {} Started spidering".format(host, settings.args.port, s_name))
-                spider(smb, host, settings.args.share, settings.args.spider, settings.args.pattern, settings.args.depth)
-                print_status("{}:{} {} Done spidering (Completed in {})".format(host, settings.args.port, s_name, time() - start_time))
+                smb_spider = smbspider(host, smb)
+                smb_spider.spider(settings.args.spider, settings.args.depth)
+
+            if settings.args.wmi_query:
+                wmi_query = WMIQUERY(settings.args.user, 
+                                     settings.args.passwd, 
+                                     domain, 
+                                     settings.args.hash,
+                                     settings.args.kerb,
+                                     settings.args.aesKey)
+
+                wmi_query.run(settings.args.wmi_query, host, settings.args.namespace)
 
             if settings.args.command:
-                if settings.args.execm == 'wmi':
-                    wmi_exec = WMIEXEC(settings.args.command, settings.args.user, settings.args.passwd, domain, settings.args.hash, settings.args.aesKey, settings.args.share, noOutput, settings.args.kerb)
-                    wmi_exec.run(host)
+                EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb)
 
-                elif settings.args.execm == 'smbexec':
-                    smb_exec = CMDEXEC(settings.args.command , settings.args.port, username, password, domain, options.hashes, options.aesKey, options.k, options.mode, options.share)
-                    smb_exec.run(host)
-
-                elif setting.args.execm == 'atexec':
-                    atsvc_exec = TSCH_EXEC(username, password, domain, options.hashes, options.aesKey, options.k, settings.args.command)
-                    atsvc_exec.play(address)
-
-                elif settings.args.execm == 'psexec':
-                    executer = PSEXEC(command, options.path, options.file, options.c, None, username, password, domain, options.hashes, options.aesKey, options.k)
-                    executer.run(address)
+            if settings.args.pscommand:
+                EXECUTOR(ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb)
 
         try:
             smb.logoff()

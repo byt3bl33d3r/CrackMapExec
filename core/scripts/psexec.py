@@ -17,18 +17,18 @@ import sys
 import os
 import cmd
 import logging
-from threading import Thread, Lock
-import argparse
 import random
 import string
-import time
+import serviceinstall
 
-from impacket.examples import logger
+from core.logger import *
+from threading import Thread, Lock
+from gevent import sleep
 from impacket import version, smb
 from impacket.smbconnection import SMBConnection
 from impacket.dcerpc.v5 import transport
 from impacket.structure import Structure
-from impacket.examples import remcomsvc, serviceinstall
+from impacket.examples import remcomsvc
 
 
 class RemComMessage(Structure):
@@ -59,8 +59,7 @@ class PSEXEC:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, command, path, exeFile, copyFile, protocols = None, 
-                 username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = False):
+    def __init__(self, command, path, exeFile, copyFile, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = False):
         self.__username = username
         self.__password = password
         if protocols is None:
@@ -107,7 +106,7 @@ class PSEXEC:
                 pipeReady = True
             except:
                 tries -= 1
-                time.sleep(2)
+                sleep(2)
                 pass
 
         if tries == 0:
