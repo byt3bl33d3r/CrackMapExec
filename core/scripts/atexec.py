@@ -61,8 +61,9 @@ class TSCH_EXEC:
 
     def doStuff(self, rpctransport):
         def output_callback(data):
-            print_succ('Executed specified command via ATEXEC')
-            print_att(data)
+            peer = ':'.join(map(str, rpctransport.get_socket().getpeername()))
+            print_succ('{} Executed command via ATEXEC'.format(peer))
+            print_att(data.strip())
 
         dce = rpctransport.get_dce_rpc()
 

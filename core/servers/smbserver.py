@@ -1,5 +1,6 @@
 from impacket import smbserver
 from threading import Thread
+import core.settings as settings
 import ConfigParser
 import random
 

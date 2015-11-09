@@ -77,8 +77,8 @@ rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from tar
 rgroup.add_argument("--lsa", action='store_true', help='Dump LSA secrets from target systems')
 rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems')
-rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', dest='mimi_cmd', help='Run Invoke-Mimikatz with the specified command')
-rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows 8.1")
+rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', help='Run Invoke-Mimikatz with the specified command')
+rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1")
 rgroup.add_argument("--disable-wdigest", action='store_true', help="Deletes the 'UseLogonCredential' registry key")
 
 egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
@@ -101,7 +101,7 @@ sgroup.add_argument("--patternfile", type=str, help='File containing patterns to
 sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
-cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec", "psexec"}, default="wmi", help="Method to execute the command (default: wmi)")
+cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="wmi", help="Method to execute the command (default: wmi)")
 cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
@@ -207,7 +207,7 @@ else:
     for target in args.target.split(','):
         targets.append(get_targets(target))
 
-if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
         http_server()
 
@@ -231,7 +231,7 @@ def concurrency(targets):
 
 concurrency(targets)
 
-if args.mimikatz or args.mimi_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     try:
         while True:
             sleep(1)

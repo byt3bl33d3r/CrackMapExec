@@ -34,6 +34,7 @@ from impacket.smbconnection import SMBConnection, SMB_DIALECT, SMB2_DIALECT_002,
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
+import core.settings as settings
 
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 
@@ -57,6 +58,7 @@ class WMIEXEC:
         if self.__noOutput is False:
             smbConnection = smb
         else:
+            logging.info('Output retrieval disabled')
             smbConnection = None
 
         dcom = DCOMConnection(addr, self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, oxidResolver = True, doKerberos=self.__doKerberos)
@@ -69,22 +71,11 @@ class WMIEXEC:
 
         try:
             self.shell = RemoteShell(self.__share, win32Process, smbConnection)
-            if self.__command != ' ':
-                self.shell.onecmd(self.__command)
-            else:
-                self.shell.cmdloop()
+            self.shell.onecmd(self.__command)
         except  (Exception, KeyboardInterrupt), e:
-            #import traceback
-            #traceback.print_exc()
             logging.error(str(e))
-            if smbConnection is not None:
-                smbConnection.logoff()
             dcom.disconnect()
-            sys.stdout.flush()
-            sys.exit(1)
 
-        if smbConnection is not None:
-            smbConnection.logoff()
         dcom.disconnect()
 
 class RemoteShell(cmd.Cmd):
@@ -235,7 +226,8 @@ class RemoteShell(cmd.Cmd):
 
     def send_data(self, data):
         self.execute_remote(data)
-        print_succ('Executed specified command via WMI')
+        print_succ('{}:{} Executed command via WMIEXEC'.format(self.__win32Process.get_target(), 
+                                                               settings.args.port))
         if self.__noOutput is False:
             print_att(self.__outputBuffer.strip())
         self.__outputBuffer = ''

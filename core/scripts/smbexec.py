@@ -32,18 +32,17 @@ import sys
 import os
 import cmd
 import logging
-import argparse
 import random
 import string
 
 from core.logger import *
-from gevent import sleep
+from core.servers.smbserver import SMBServer
 from impacket import version
 from impacket.smbconnection import *
 from impacket.dcerpc.v5 import transport, scmr
 
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
-BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10))
+BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
 
 class SMBEXEC:
     KNOWN_PROTOCOLS = {
@@ -51,15 +50,16 @@ class SMBEXEC:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, command, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None):
+    def __init__(self, command, protocols = None, 
+                 username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None):
         if not protocols:
             protocols = SMBEXEC.KNOWN_PROTOCOLS.keys()
 
         self.__username = username
         self.__password = password
-        self.__command  = command
+        self.__command = command
         self.__protocols = [protocols]
-        self.__serviceName = ''.join(random.sample(string.ascii_letters, 10))
+        self.__serviceName = ''.join(random.sample(string.ascii_letters, 6))
         self.__domain = domain
         self.__lmhash = ''
         self.__nthash = ''
@@ -95,15 +95,13 @@ class SMBEXEC:
             try:
                 if self.__mode == 'SERVER':
                     serverThread = SMBServer()
-                    serverThread.daemon = True
                     serverThread.start()
                 self.shell = RemoteShell(self.__share, rpctransport, self.__mode, self.__serviceName)
                 self.shell.onecmd(self.__command)
+                self.shell.finish()
                 if self.__mode == 'SERVER':
                     serverThread.stop()
             except  (Exception, KeyboardInterrupt), e:
-                import traceback
-                traceback.print_exc()
                 logging.critical(str(e))
                 if self.shell is not None:
                     self.shell.finish()
@@ -191,17 +189,7 @@ class RemoteShell(cmd.Cmd):
             self.__outputBuffer += data
 
         if self.__mode == 'SHARE':
-            while True:
-                try:
-                    self.transferClient.getFile(self.__share, self.__output, output_callback)
-                    break
-                except Exception, e:
-                    if "STATUS_OBJECT_NAME_NOT_FOUND" in str(e):
-                        sleep(1)
-                        pass
-                    else:
-                        logging.info('Error while reading command output: {}'.format(e))
-
+            self.transferClient.getFile(self.__share, self.__output, output_callback)
             self.transferClient.deleteFile(self.__share, self.__output)
         else:
             fd = open(SMBSERVER_DIR + '/' + OUTPUT_FILENAME,'r')
@@ -228,6 +216,7 @@ class RemoteShell(cmd.Cmd):
 
     def send_data(self, data):
         self.execute_remote(data)
-        print_succ('Executed specified command via SMBEXEC')
-        print_att(data)
+        peer = ':'.join(map(str, self.__rpc.get_socket().getpeername()))
+        print_succ("{} Executed command via SMBEXEC".format(peer))
+        print_att(self.__outputBuffer.strip())
         self.__outputBuffer = ''

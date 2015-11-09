@@ -5,7 +5,8 @@ import traceback
 from logger import *
 from time import time, strftime, localtime
 from impacket.smbconnection import SessionError
-from impacket.smb3structs import FILE_READ_DATA, FILE_WRITE_DATA
+from remotefilesystem import RemoteFile
+from impacket.smb3structs import FILE_READ_DATA
 
 class SMBSPIDER:
 
@@ -34,7 +35,6 @@ class SMBSPIDER:
             filelist = self.__smbconnection.listPath(settings.args.share, subfolder)
             self.dir_list(filelist, subfolder)
             if depth == 0:
-                self.finish()
                 return
         except SessionError:
             if settings.args.verbose: traceback.print_exc()
@@ -46,11 +46,9 @@ class SMBSPIDER:
                     self.spider(subfolder.replace('*', '') + result.get_longname(), depth-1)
                 elif subfolder != '*' and (subfolder[:-2].split('/')[-1] not in settings.args.exclude_dirs):
                     self.spider(subfolder.replace('*', '') + result.get_longname(), depth-1)
-
-        self.finish()
         return
 
-    def dir_list(files, path):
+    def dir_list(self, files, path):
         path = path.replace('*', '')
         for result in files:
             for pattern in settings.args.pattern:
@@ -70,7 +68,7 @@ class SMBSPIDER:
 
         return
 
-    def search_content(path, result, pattern):
+    def search_content(self, path, result, pattern):
         path = path.replace('*', '') 
         try:
             rfile = RemoteFile(self.__smbconnection, 
@@ -110,42 +108,3 @@ class SMBSPIDER:
         print_status("{}:{} Done spidering (Completed in {})".format(self.__host, 
                                                                      settings.args.port, 
                                                                      time() - self.__start_time))
-
-class RemoteFile:
-    def __init__(self, smbConnection, fileName, share='ADMIN$', access = FILE_READ_DATA | FILE_WRITE_DATA ):
-        self.__smbConnection = smbConnection
-        self.__share = share
-        self.__access = access
-        self.__fileName = fileName
-        self.__tid = self.__smbConnection.connectTree(share)
-        self.__fid = None
-        self.__currentOffset = 0
-
-    def open(self):
-        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName, desiredAccess = self.__access)
-
-    def seek(self, offset, whence):
-        # Implement whence, for now it's always from the beginning of the file
-        if whence == 0:
-            self.__currentOffset = offset
-
-    def read(self, bytesToRead):
-        if bytesToRead > 0:
-            data =  self.__smbConnection.readFile(self.__tid, self.__fid, self.__currentOffset, bytesToRead)
-            self.__currentOffset += len(data)
-            return data
-        return ''
-
-    def close(self):
-        if self.__fid is not None:
-            self.__smbConnection.closeFile(self.__tid, self.__fid)
-            self.__fid = None
-
-    def delete(self):
-        self.__smbConnection.deleteFile(self.__share, self.__fileName)
-
-    def tell(self):
-        return self.__currentOffset
-
-    def __str__(self):
-        return "\\\\{}\\{}\\{}".format(self.__smbConnection.getRemoteHost(), self.__share, self.__fileName)

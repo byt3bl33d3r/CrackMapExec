@@ -1,7 +1,6 @@
 from scripts.wmiexec import WMIEXEC
 from scripts.smbexec import SMBEXEC
 from scripts.atexec import TSCH_EXEC
-from scripts.psexec import PSEXEC
 
 import settings
 
@@ -45,17 +44,3 @@ class EXECUTOR:
                                    settings.args.aesKey, 
                                    settings.args.kerb)
             atsvc_exec.play(host)
-
-        elif settings.args.execm == 'psexec':
-            ps_exec = PSEXEC(command, 
-                              None,
-                              None,
-                              None,
-                              '{}/SMB'.format(settings.args.port),
-                              settings.args.user,
-                              settings.args.passwd, 
-                              domain,
-                              settings.args.hash, 
-                              settings.args.aesKey, 
-                              settings.args.kerb)
-            ps_exec.run(host)

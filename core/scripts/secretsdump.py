@@ -1997,7 +1997,6 @@ class DumpSecrets:
 
     def do_remote_ops(self):
         bootKey = None
-        #self.connect()
         self.__remoteOps  = RemoteOperations(self.__smbConnection, self.__doKerberos)
         if self.__justDC is False and self.__justDCNTLM is False or self.__useVSSMethod is True:
             self.__remoteOps.enableRegistry()
