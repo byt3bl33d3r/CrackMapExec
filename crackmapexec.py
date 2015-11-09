@@ -69,7 +69,7 @@ parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./ro
 parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
 parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
-parser.add_argument("--server", choices={'http', 'https', 'smb'}, default='http', help='Use the selected server (defaults to http)')
+parser.add_argument("--server", choices={'http', 'https'}, default='http', help='Use the selected server (defaults to http)')
 #parser.add_argument("--server-port", type=int, help='Start the server on the specified port')
 parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
 parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
@@ -215,9 +215,6 @@ if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
 
     elif args.server == 'https':
         https_server()
-
-    elif args.server == 'smb':
-        SMBServer().start()
 
 def concurrency(targets):
     '''
