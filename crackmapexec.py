@@ -15,6 +15,8 @@ from core.servers.smbserver import SMBServer
 from argparse import RawTextHelpFormatter
 from netaddr import IPAddress, IPRange, IPNetwork, AddrFormatError
 from logging import DEBUG
+from random import sample
+from string import ascii_lowercase
 
 import re
 import argparse
@@ -125,7 +127,7 @@ if len(sys.argv) == 1:
     sys.exit(1)
 
 args = parser.parse_args()
-
+args.obfs_func_name = ''.join(sample(ascii_lowercase, 10))
 args.target = args.target[0]
 patterns    = []
 targets     = []
@@ -215,7 +217,7 @@ if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
         https_server()
 
     elif args.server == 'smb':
-        SMBServer()
+        SMBServer().start()
 
 def concurrency(targets):
     '''

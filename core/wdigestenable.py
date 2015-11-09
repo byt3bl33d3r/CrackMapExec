@@ -30,7 +30,10 @@ class WdisgestEnable:
             if int(data) == 1:
                 print_succ('{} UseLogonCredential registry key created successfully'.format(self.peer))
 
+        try:
             remoteOps.finish()
+        except:
+            pass
 
     def disable(self):
         remoteOps = RemoteOperations(self.smbconnection, self.doKerb)
@@ -52,4 +55,7 @@ class WdisgestEnable:
             except DCERPCException:
                 print_succ('{} UseLogonCredential registry key deleted successfully'.format(self.peer))
 
-        remoteOps.finish()
+        try:
+            remoteOps.finish()
+        except:
+            pass

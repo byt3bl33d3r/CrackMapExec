@@ -3,6 +3,7 @@ from threading import Thread
 import core.settings as settings
 import ConfigParser
 import random
+import logging
 
 class SMBServer(Thread):
     def __init__(self):
