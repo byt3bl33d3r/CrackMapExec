@@ -29,7 +29,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class TSCH_EXEC:
-    def __init__(self, command=None, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False):
+    def __init__(self, command=None, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False, noOutput=False):
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -38,6 +38,7 @@ class TSCH_EXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__command = command
+        self.__noOutput = noOutput
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
 
@@ -61,8 +62,6 @@ class TSCH_EXEC:
 
     def doStuff(self, rpctransport):
         def output_callback(data):
-            peer = ':'.join(map(str, rpctransport.get_socket().getpeername()))
-            print_succ('{} Executed command via ATEXEC'.format(peer))
             print_att(data.strip())
 
         dce = rpctransport.get_dce_rpc()
@@ -112,11 +111,22 @@ class TSCH_EXEC:
   <Actions Context="LocalSystem">
     <Exec>
       <Command>cmd.exe</Command>
-      <Arguments>/C %s &gt; %%windir%%\\Temp\\%s 2&gt;&amp;1</Arguments>
+"""
+        if self.__noOutput is False:
+            xml+= """      <Arguments>/C %s &gt; %%windir%%\\Temp\\%s 2&gt;&amp;1</Arguments>
     </Exec>
   </Actions>
 </Task>
         """ % (self.__command, tmpFileName)
+        
+        else:
+            xml+= """      <Arguments>/C %s</Arguments>
+    </Exec>
+  </Actions>
+</Task>
+        """ % (self.__command)
+
+        logging.info("Task XML: {}".format(xml))
         taskCreated = False
         try:
             logging.info('Creating task \\%s' % tmpName)
@@ -145,26 +155,32 @@ class TSCH_EXEC:
             if taskCreated is True:
                 tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
 
-        smbConnection = rpctransport.get_smb_connection()
-        waitOnce = True
-        while True:
-            try:
-                logging.info('Attempting to read ADMIN$\\Temp\\%s' % tmpFileName)
-                smbConnection.getFile('ADMIN$', 'Temp\\%s' % tmpFileName, output_callback)
-                break
-            except Exception, e:
-                if str(e).find('SHARING') > 0:
-                    sleep(3)
-                elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
-                    if waitOnce is True:
-                        # We're giving it the chance to flush the file before giving up
+        peer = ':'.join(map(str, rpctransport.get_socket().getpeername()))
+        print_succ('{} Executed command via ATEXEC'.format(peer))
+
+        if self.__noOutput is False:
+            smbConnection = rpctransport.get_smb_connection()
+            waitOnce = True
+            while True:
+                try:
+                    logging.info('Attempting to read ADMIN$\\Temp\\%s' % tmpFileName)
+                    smbConnection.getFile('ADMIN$', 'Temp\\%s' % tmpFileName, output_callback)
+                    break
+                except Exception, e:
+                    if str(e).find('SHARING') > 0:
                         sleep(3)
-                        waitOnce = False
+                    elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
+                        if waitOnce is True:
+                            # We're giving it the chance to flush the file before giving up
+                            sleep(3)
+                            waitOnce = False
+                        else:
+                            raise
                     else:
                         raise
-                else:
-                    raise
-        logging.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
-        smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % tmpFileName)
- 
+            logging.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
+            smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % tmpFileName)
+        else:
+            logging.info('Output retrieval disabled')
+
         dce.disconnect()

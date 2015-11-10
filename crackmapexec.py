@@ -24,7 +24,7 @@ import sys
 import os
 
 VERSION  = '2.0'
-CODENAME = '\'I have to change the name of this thing\''
+CODENAME = '\'I gotta change the name of this thing\''
 
 if sys.platform == 'linux2':
     if os.geteuid() is not 0:
@@ -39,23 +39,24 @@ parser = argparse.ArgumentParser(description="""
  \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
 
-                Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
+                 Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
 
-                      Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
+                       Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
 
-                                                  Inspired by:
-                           @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
-                           @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
-                           @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
-{}: {}
-{}: {}
+                                                   Inspired by:
+                            @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
+                            @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
+                            @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+                                                     
+                                                  {}: {}
+                               {}: {}
 """.format(red('Version'),
            yellow(VERSION),
            red('Codename'), 
            yellow(CODENAME)),
 
                                 formatter_class=RawTextHelpFormatter,
-                                version='2.0 - \'{}\''.format(CODENAME),
+                                version='2.0 - {}'.format(CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
 parser.add_argument("-t", type=int, dest="threads", default=10, help="Set how many concurrent threads to use (defaults to 10)")
@@ -65,7 +66,7 @@ parser.add_argument("-H", metavar="HASH", dest='hash', type=str, default=None, h
 parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, default=None, help="Combo file containing a list of domain\\username:password or username:password entries")
 parser.add_argument('-k', action="store", dest='aesKey', metavar="HEX_KEY", help='AES key to use for Kerberos Authentication (128 or 256 bits)')
 parser.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, help="Domain name")
-parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default //./root/cimv2)')
+parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default: //./root/cimv2)')
 parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
 parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
@@ -78,6 +79,8 @@ rgroup = parser.add_argument_group("Credential Gathering", "Options for gatherin
 rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
 rgroup.add_argument("--lsa", action='store_true', help='Dump LSA secrets from target systems')
 rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
+rgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
+rgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 rgroup.add_argument("--mimikatz", action='store_true', help='Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems')
 rgroup.add_argument("--mimikatz-cmd", metavar='MIMIKATZ_CMD', help='Run Invoke-Mimikatz with the specified command')
 rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1")
@@ -180,6 +183,11 @@ if args.spider:
 if args.combo_file and not os.path.exists(args.combo_file):
     print_error('Unable to find combo file at specified path')
     shutdown(1)
+
+if args.ntds_history or args.ntds_pwdLastSet:
+    if not args.ntds:
+        print_error('--ntds-history and --ntds-pwdLastSet require --ntds')
+        shutdown(1)
 
 ################################################################################################################
 

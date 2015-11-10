@@ -41,7 +41,10 @@ def smart_login(host, smb, domain):
                         user, passwd = user_pass.split(':')
 
                     try:
-                        smb.login(user, passwd, domain, lmhash, nthash)
+                        if settings.args.kerb:
+                            smbConnection.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
+                        else:
+                            smb.login(user, passwd, domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd
@@ -106,7 +109,10 @@ def smart_login(host, smb, domain):
                     if user == '': user = "''"
 
                     try:
-                        smb.login(user, '', domain, lmhash, nthash)
+                        if settings.args.kerb:
+                            smbConnection.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
+                        else:
+                            smb.login(user, '', domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
                         settings.args.user = user
                         settings.args.hash = ntlm_hash
@@ -122,7 +128,10 @@ def smart_login(host, smb, domain):
                     if passwd == '': passwd = "''"
 
                     try:
-                        smb.login(user, passwd, domain)
+                        if settings.args.kerb:
+                            smbConnection.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
+                        else:
+                            smb.login(user, passwd, domain)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd

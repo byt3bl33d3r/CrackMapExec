@@ -7,7 +7,7 @@ from impacket import version
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.dcerpc.v5 import transport, samr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from time import strftime
+from time import strftime, gmtime
 
 class PassPolDump:
     KNOWN_PROTOCOLS = {
@@ -18,7 +18,7 @@ class PassPolDump:
     def __init__(self, protocols = None,
                  username = '', password = '', domain = '', hashes = None, aesKey=None, doKerberos = False):
         if not protocols:
-            self.__protocols = SAMRDump.KNOWN_PROTOCOLS.keys()
+            self.__protocols = PassPolDump.KNOWN_PROTOCOLS.keys()
         else:
             self.__protocols = [protocols]
 
@@ -40,13 +40,29 @@ class PassPolDump:
         # Try all requested protocols until one works.
         entries = []
         for protocol in self.__protocols:
-            protodef = SAMRDump.KNOWN_PROTOCOLS[protocol]
+            protodef = PassPolDump.KNOWN_PROTOCOLS[protocol]
             port = protodef[1]
 
             logging.info("Trying protocol %s..." % protocol)
             rpctransport = transport.SMBTransport(addr, port, r'\samr', self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, doKerberos = self.__doKerberos)
 
-            self.get_pass_pol(host)
+            dce = rpctransport.get_dce_rpc()
+            dce.connect()
+
+            dce.bind(samr.MSRPC_UUID_SAMR)
+
+            resp = samr.hSamrConnect(dce)
+            serverHandle = resp['ServerHandle'] 
+
+            resp = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle)
+            domains = resp['Buffer']['Buffer']
+
+            resp = samr.hSamrLookupDomainInSamServer(dce, serverHandle, domains[0]['Name'])
+
+            resp = samr.hSamrOpenDomain(dce, serverHandle = serverHandle, domainId = resp['DomainId'])
+            domainHandle = resp['DomainHandle']
+
+            self.get_pass_pol(addr, rpctransport, dce, domainHandle)
 
     def convert(self, low, high, no_zero):
 
@@ -83,8 +99,7 @@ class PassPolDump:
             time = str(days) + " minute "
         return time
 
-    def get_pass_pol(self, host):
-        rpctransport, dce, domainHandle = self.connect(host)
+    def get_pass_pol(self, host, rpctransport, dce, domainHandle):
 
         resp = samr.hSamrQueryInformationDomain(dce, domainHandle, samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation)
 

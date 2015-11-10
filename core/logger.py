@@ -77,7 +77,7 @@ def red(text):
     return colored(text, 'red', attrs=['bold'])
 
 def shutdown(exit_code):
-    print colored("[*] ", 'blue', attrs=['bold']) + "KTHXBYE"
+    print_status("KTHXBYE")
     sys.exit(int(exit_code))
 
 def root_error():

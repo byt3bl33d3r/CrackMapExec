@@ -25,14 +25,15 @@ class EXECUTOR:
         elif settings.args.execm == 'smbexec':
             smb_exec = SMBEXEC(command,
                                '{}/SMB'.format(settings.args.port), 
-                               settings.args.user, 
+                               settings.args.user,
                                settings.args.passwd, 
                                domain, 
                                settings.args.hash, 
                                settings.args.aesKey,
                                settings.args.kerb, 
                                'SHARE',
-                               settings.args.share)
+                               settings.args.share,
+                               noOutput)
             smb_exec.run(host)
 
         elif settings.args.execm == 'atexec':
@@ -42,5 +43,6 @@ class EXECUTOR:
                                    domain,
                                    settings.args.hash, 
                                    settings.args.aesKey, 
-                                   settings.args.kerb)
+                                   settings.args.kerb,
+                                   noOutput)
             atsvc_exec.play(host)
