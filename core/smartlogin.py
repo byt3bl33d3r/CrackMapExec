@@ -42,7 +42,7 @@ def smart_login(host, smb, domain):
 
                     try:
                         if settings.args.kerb:
-                            smbConnection.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
+                            smb.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
                         else:
                             smb.login(user, passwd, domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
@@ -110,7 +110,7 @@ def smart_login(host, smb, domain):
 
                     try:
                         if settings.args.kerb:
-                            smbConnection.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
+                            smb.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
                         else:
                             smb.login(user, '', domain, lmhash, nthash)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
@@ -129,7 +129,7 @@ def smart_login(host, smb, domain):
 
                     try:
                         if settings.args.kerb:
-                            smbConnection.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
+                            smb.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
                         else:
                             smb.login(user, passwd, domain)
                         print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
