@@ -1572,7 +1572,7 @@ class NTDSHashes:
 
             if self.__pwdLastSet is True:
                 answer = "%s (pwdLastSet=%s)" % (answer, pwdLastSet)
-            print answer
+            print_att(answer)
 
             if self.__history:
                 LMHistory = []
@@ -1601,7 +1601,7 @@ class NTDSHashes:
                     answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHash))
                     if outputFile is not None:
                         self.__writeOutput(outputFile, answer + '\n')
-                    print answer
+                    print_att(answer)
         else:
             logging.debug('Decrypting hash for user: %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
             domain = None
@@ -2058,7 +2058,11 @@ class DumpSecrets:
     def cleanup(self):
         logging.info('Cleaning up... ')
         if self.__remoteOps:
-            self.__remoteOps.finish()
+            try:
+                self.__remoteOps.finish()
+            except DCERPCException:
+                sleep(2)
+                self.__remoteOps.finish()
         if self.__SAMHashes:
             self.__SAMHashes.finish()
         if self.__LSASecrets:

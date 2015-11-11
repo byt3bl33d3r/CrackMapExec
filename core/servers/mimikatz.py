@@ -60,7 +60,7 @@ class MimikatzServer(BaseHTTPRequestHandler):
                 print_error("Error while parsing Mimikatz output: {}".format(e))
 
         elif settings.args.mimi_cmd:
-            print data
+            print_att(data)
 
         log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
         with open('logs/' + log_name, 'w') as creds:

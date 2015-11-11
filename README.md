@@ -154,5 +154,5 @@ Yo put some screenshots here
 #To do
 - ~~Kerberos support~~
 - ~~Execute custom commands with mimikatz~~
-- Modularize the script (??)
-- Anything that could be useful!
+- Add a plugin system (??)
+- ~~0wn everything~~ 
