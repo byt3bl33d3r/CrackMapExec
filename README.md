@@ -34,7 +34,8 @@ Run ```pip install --upgrade -r requirements.txt```
 #Quick Demo
 
 Just a little demo showing off the basics
-[![asciicast](https://asciinema.org/a/29787.png)](https://asciinema.org/a/29787)
+
+[![demo](https://asciinema.org/a/29787.png)](https://asciinema.org/a/29787)
 
 #Usage
 ```
