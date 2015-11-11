@@ -31,6 +31,11 @@ The biggest improvements over the above tools are:
 
 Run ```pip install --upgrade -r requirements.txt```
 
+#Quick Demo
+
+Just a little demo showing off the basics
+[![asciicast](https://asciinema.org/a/29787.png)](https://asciinema.org/a/29787)
+
 #Usage
 ```
   ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
@@ -147,9 +152,6 @@ Filesystem Interaction:
 There's been an awakening... have you felt it?
 
 ```
-
-#Examples
-Yo put some screenshots here
 
 #To do
 - ~~Kerberos support~~
