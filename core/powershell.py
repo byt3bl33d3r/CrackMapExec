@@ -96,8 +96,8 @@ class PowerSploit:
         if settings.args.procid:
             command += " -ProcID {}"
 
-        if settings.args.inject == 'exe' and settings.args.exesettings.args:
-            command += " -Exesettings.args \"{}\"".format(settings.args.exesettings.args)
+        if settings.args.inject == 'exe' and settings.args.exeargs:
+            command += " -Exesettings.args \"{}\"".format(settings.args.exeargs)
 
         command += ';'
 
