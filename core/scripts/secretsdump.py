@@ -2058,11 +2058,7 @@ class DumpSecrets:
     def cleanup(self):
         logging.info('Cleaning up... ')
         if self.__remoteOps:
-            try:
-                self.__remoteOps.finish()
-            except DCERPCException:
-                sleep(2)
-                self.__remoteOps.finish()
+            self.__remoteOps.finish()
         if self.__SAMHashes:
             self.__SAMHashes.finish()
         if self.__LSASecrets:

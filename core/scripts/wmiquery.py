@@ -27,6 +27,7 @@ from impacket import version
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
+import core.settings as settings
 
 class WMIQUERY:
 
@@ -52,15 +53,16 @@ class WMIQUERY:
         iWbemServices= iWbemLevel1Login.NTLMLogin(namespace, NULL, NULL)
         iWbemLevel1Login.RemRelease()
 
-        shell = WMIShell(iWbemServices)
+        shell = WMIShell(iWbemServices, address)
         shell.onecmd(command)
 
         iWbemServices.RemRelease()
         dcom.disconnect()
 
 class WMIShell(cmd.Cmd):
-    def __init__(self, iWbemServices):
+    def __init__(self, iWbemServices, address):
         cmd.Cmd.__init__(self)
+        self.address = address
         self.iWbemServices = iWbemServices
 
     def do_help(self, line):
@@ -99,16 +101,10 @@ class WMIShell(cmd.Cmd):
             try:
                 pEnum = iEnum.Next(0xffffffff,1)[0]
                 record = pEnum.getProperties()
-                if printHeader is True:
-                    print '|', 
-                    for col in record:
-                        print '%s |' % col,
-                    print
-                    printHeader = False
-                print '|', 
-                for key in record:
-                    print '%s |' % record[key]['value'],
-                print 
+                line = []
+                for rec in record:
+                    line.append('{}: {}'.format(rec, record[rec]['value']))
+                print_att(' | '.join(line))
             except Exception, e:
                 #import traceback
                 #print traceback.print_exc()
@@ -124,6 +120,7 @@ class WMIShell(cmd.Cmd):
             line = line[:-1]
         try:
             iEnumWbemClassObject = self.iWbemServices.ExecQuery(line.strip('\n'))
+            print_succ('{}:{} Executed specified WMI query:'.format(self.address, settings.args.port))
             self.printReply(iEnumWbemClassObject)
             iEnumWbemClassObject.RemRelease()
         except Exception, e:
