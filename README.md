@@ -61,7 +61,7 @@ Just a little demo showing off the basics
                             @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
-                                                  Version: 2.0
+                                                  Version: 2.1
                                Codename: 'I gotta change the name of this thing'
 
 positional arguments:
@@ -70,7 +70,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  -t THREADS            Set how many concurrent threads to use (defaults to 10)
+  -t THREADS            Set how many concurrent threads to use (defaults to 100)
   -u USERNAME           Username(s) or file containing usernames
   -p PASSWORD           Password(s) or file containing passwords
   -H HASH               NTLM hash(es) or file containing NTLM hashes
@@ -113,6 +113,8 @@ Mapping/Enumeration:
                         Enumerate users by bruteforcing RID's (defaults to 4000)
   --pass-pol            Dump password policy
   --lusers              Enumerate logged on users
+  --powerview POWERVIEW_CMD
+                        Run the specified PowerView command
   --wmi QUERY           Issues the specified WMI query
 
 Spidering:
@@ -132,7 +134,7 @@ Command Execution:
 
   --execm {atexec,wmi,smbexec}
                         Method to execute the command (default: wmi)
-  --force-ps32          Force all PowerShell code/commands to run in a 32bit process
+  --force-ps32          Forces all PowerShell code/commands to run in a 32bit process
   --no-output           Do not retrieve command output
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
