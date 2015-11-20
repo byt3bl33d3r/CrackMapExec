@@ -8,10 +8,10 @@ class EXECUTOR:
 
     """Yes, I know this sounds like the pokemon... deal with it"""
 
-    def __init__(self, command, host, domain, noOutput, smbconnection):
+    def __init__(self, command, host, domain, noOutput, smbconnection, method):
 
-        if settings.args.execm == 'wmi':
-            wmi_exec = WMIEXEC(command, 
+        if method == 'wmi':
+            wmi_exec = WMIEXEC(command,
                                settings.args.user,
                                settings.args.passwd, 
                                domain, 
@@ -22,7 +22,7 @@ class EXECUTOR:
                                settings.args.kerb)
             wmi_exec.run(host, smbconnection)
 
-        elif settings.args.execm == 'smbexec':
+        elif method == 'smbexec':
             smb_exec = SMBEXEC(command,
                                '{}/SMB'.format(settings.args.port), 
                                settings.args.user,
@@ -36,7 +36,7 @@ class EXECUTOR:
                                noOutput)
             smb_exec.run(host)
 
-        elif settings.args.execm == 'atexec':
+        elif method == 'atexec':
             atsvc_exec = TSCH_EXEC(command,
                                    settings.args.user, 
                                    settings.args.passwd, 

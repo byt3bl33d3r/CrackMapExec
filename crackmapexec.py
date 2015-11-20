@@ -59,7 +59,7 @@ parser = argparse.ArgumentParser(description="""
                                 version='2.0 - {}'.format(CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
-parser.add_argument("-t", type=int, dest="threads", default=10, help="Set how many concurrent threads to use (defaults to 10)")
+parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")
 parser.add_argument("-u", metavar="USERNAME", dest='user', type=str, default=None, help="Username(s) or file containing usernames")
 parser.add_argument("-p", metavar="PASSWORD", dest='passwd', type=str, default=None, help="Password(s) or file containing passwords")
 parser.add_argument("-H", metavar="HASH", dest='hash', type=str, default=None, help='NTLM hash(es) or file containing NTLM hashes')
@@ -95,6 +95,7 @@ egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enu
 egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', dest='rid_brute', help='Enumerate users by bruteforcing RID\'s (defaults to 4000)')
 egroup.add_argument("--pass-pol", action='store_true', dest='pass_pol', help='Dump password policy')
 egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
+egroup.add_argument("--powerview", metavar='POWERVIEW_CMD', dest='powerview', help='Run the specified PowerView command')
 egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
 
 sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
@@ -107,7 +108,7 @@ sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion dept
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
 cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="wmi", help="Method to execute the command (default: wmi)")
-cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
+cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Forces all PowerShell code/commands to run in a 32bit process')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
 cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
@@ -217,7 +218,7 @@ else:
     for target in args.target.split(','):
         targets.append(get_targets(target))
 
-if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
         http_server()
 
@@ -238,7 +239,7 @@ def concurrency(targets):
 
 concurrency(targets)
 
-if args.mimikatz or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     try:
         while True:
             sleep(1)

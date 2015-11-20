@@ -26,6 +26,7 @@ import logging
 import string
 import random
 import ntpath
+import core.settings as settings
 
 from gevent import sleep
 from core.logger import *
@@ -34,7 +35,7 @@ from impacket.smbconnection import SMBConnection, SMB_DIALECT, SMB2_DIALECT_002,
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
-import core.settings as settings
+from StringIO import StringIO
 
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 
@@ -218,7 +219,7 @@ class RemoteShell(cmd.Cmd):
         self.__transferClient.deleteFile(self.__share, self.__output)
 
     def execute_remote(self, data):
-        command = self.__shell + data 
+        command = self.__shell + data
         if self.__noOutput is False:
             command += ' 1> ' + '\\\\127.0.0.1\\%s' % self.__share + self.__output  + ' 2>&1'
         self.__win32Process.Create(command, self.__pwd, None)
@@ -229,5 +230,7 @@ class RemoteShell(cmd.Cmd):
         print_succ('{}:{} Executed command via WMIEXEC'.format(self.__win32Process.get_target(), 
                                                                settings.args.port))
         if self.__noOutput is False:
-            print_att(self.__outputBuffer.strip())
+            buf = StringIO(self.__outputBuffer.strip()).readlines()
+            for line in buf:
+                print_att(line.strip())
         self.__outputBuffer = ''

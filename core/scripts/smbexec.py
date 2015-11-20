@@ -40,6 +40,7 @@ from core.servers.smbserver import SMBServer
 from impacket import version
 from impacket.smbconnection import *
 from impacket.dcerpc.v5 import transport, scmr
+from StringIO import StringIO
 
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 BATCH_FILENAME  = ''.join(random.sample(string.ascii_letters, 10)) + '.bat'
@@ -234,5 +235,7 @@ class RemoteShell(cmd.Cmd):
         peer = ':'.join(map(str, self.__rpc.get_socket().getpeername()))
         print_succ("{} Executed command via SMBEXEC".format(peer))
         if self.__noOutput is False:
-            print_att(self.__outputBuffer.strip())
+            buf = StringIO(self.__outputBuffer.strip()).readlines()
+            for line in buf:
+                print_att(line.strip())
         self.__outputBuffer = ''

