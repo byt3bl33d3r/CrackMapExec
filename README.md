@@ -158,6 +158,18 @@ Filesystem Interaction:
   --upload SRC DST      Upload a file to the remote systems
   --delete PATH         Delete a remote file
 
+Service Interaction:
+  Options for interacting with Windows services
+
+  --service {status,list,create,stop,start,config,change,delete}
+  --name NAME           Service name
+  --display NAME        Service display name
+  --bin-path PATH       Binary path
+  --service-type TYPE   Service type
+  --start-type TYPE     Service start type
+  --start-name NAME     Name of the account under which the service should run
+  --start-pass PASS     Password of the account whose name was specified with the --start-name parameter
+
 There's been an awakening... have you felt it?
 
 ```
