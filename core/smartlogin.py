@@ -10,10 +10,22 @@ def smart_login(host, smb, domain):
     '''
         This function should probably be called ugly_login
     ''' 
+    fails = 0
+
     if settings.args.combo_file:
         with open(settings.args.combo_file, 'r') as combo_file:
             for line in combo_file:
                 try:
+
+                    if settings.args.fail_limit:
+                        if settings.args.fail_limit == fails:
+                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+                    if settings.args.gfail_limit:
+                        if settings.gfails >= settings.args.gfail_limit:
+                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+
                     line = line.strip()
 
                     lmhash = ''
@@ -52,6 +64,9 @@ def smart_login(host, smb, domain):
                         return smb
                     except SessionError as e:
                         print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        if 'STATUS_LOGON_FAILURE' in e:
+                            fails += 1
+                            settings.gfails += 1
                         continue
 
                 except Exception as e:
@@ -104,6 +119,16 @@ def smart_login(host, smb, domain):
 
             if hashes:
                 for ntlm_hash in hashes:
+
+                    if settings.args.fail_limit:
+                        if settings.args.fail_limit == fails:
+                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+                    if settings.args.gfail_limit:
+                        if settings.gfails >= settings.args.gfail_limit:
+                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+
                     ntlm_hash = ntlm_hash.strip().lower()
                     lmhash, nthash = ntlm_hash.split(':')
                     if user == '': user = "''"
@@ -119,10 +144,23 @@ def smart_login(host, smb, domain):
                         return smb
                     except SessionError as e:
                         print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, ntlm_hash, e))
+                        if 'STATUS_LOGON_FAILURE' in str(e):
+                            fails += 1
+                            settings.gfails += 1
                         continue
 
             if passwords:
                 for passwd in passwords:
+
+                    if settings.args.fail_limit:
+                        if settings.args.fail_limit == fails:
+                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+                    if settings.args.gfail_limit:
+                        if settings.gfails >= settings.args.gfail_limit:
+                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            raise socket.error
+
                     passwd = passwd.strip()
                     if user == '': user = "''"
                     if passwd == '': passwd = "''"
@@ -138,6 +176,9 @@ def smart_login(host, smb, domain):
                         return smb
                     except SessionError as e:
                         print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        if 'STATUS_LOGON_FAILURE' in str(e):
+                            fails += 1
+                            settings.gfails += 1
                         continue
 
     raise socket.error #So we fail without a peep

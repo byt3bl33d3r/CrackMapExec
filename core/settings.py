@@ -1,10 +1,10 @@
 def init_args(arg_namespace):
     """
-    args will contain a namespace that we can modify whenever we want
-    orig_args will contain the original namespace (duh!) and should never be modified
-    """ 
-    global orig_args
-    orig_args = arg_namespace
-    
+    This is just so we can easily share argparse's namespace
+    """
+
     global args
     args = arg_namespace
+
+    global gfails
+    gfails = 0

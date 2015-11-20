@@ -83,6 +83,8 @@ optional arguments:
   --port {139,445}      SMB port (default: 445)
   --server {http,https}
                         Use the selected server (defaults to http)
+  --fail-limit LIMIT    The max number of failed login attempts allowed per host (default: None)
+  --gfail-limit LIMIT   The max number of failed login attempts allowed globally (default: None)
   --verbose             Enable verbose output
 
 Credential Gathering:
