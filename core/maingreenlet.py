@@ -9,6 +9,7 @@ from scripts.wmiquery import WMIQUERY
 from scripts.samrdump import SAMRDump
 from scripts.lookupsid import LSALookupSid
 from scripts.secretsdump import DumpSecrets
+from scripts.services import SVCCTL
 from passpoldump import PassPolDump
 from rpcquery import RPCQUERY
 from smbspider import SMBSPIDER
@@ -166,6 +167,15 @@ def connect(host):
             if settings.args.disable_wdigest:
                 wdigest = WdisgestEnable(smb, settings.args.kerb)
                 wdigest.disable()
+
+            if settings.args.service:
+                service_control = SVCCTL(settings.args.user, 
+                                         settings.args.passwd, 
+                                         domain,
+                                         '{}/SMB'.format(settings.args.port),
+                                         settings.args.service, 
+                                         settings.args)
+                service_control.run(host)
 
             if settings.args.command:
                 EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb, settings.args.execm)

@@ -134,7 +134,7 @@ Command Execution:
 
   --execm {atexec,wmi,smbexec}
                         Method to execute the command (default: wmi)
-  --force-ps32          Forces all PowerShell code/commands to run in a 32bit process
+  --force-ps32          Force all PowerShell code/commands to run in a 32bit process
   --no-output           Do not retrieve command output
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command

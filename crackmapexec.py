@@ -108,7 +108,7 @@ sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion dept
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
 cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="wmi", help="Method to execute the command (default: wmi)")
-cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Forces all PowerShell code/commands to run in a 32bit process')
+cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
 cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
@@ -125,6 +125,16 @@ bgroup.add_argument("--list", metavar='PATH', nargs='?', const='.', type=str, he
 bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
 bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
 bgroup.add_argument("--delete", metavar="PATH", help="Delete a remote file")
+
+wgroup = parser.add_argument_group("Service Interaction", "Options for interacting with Windows services")
+wgroup.add_argument("--service", choices={'list', 'start', 'stop', 'delete', 'status', 'config', 'create', 'change'})
+wgroup.add_argument("--name", dest='service_name', metavar='NAME', help='Service name')
+wgroup.add_argument("--display", dest='service_display_name', metavar='NAME', help='Service display name')
+wgroup.add_argument("--bin-path", dest='service_bin_path', metavar='PATH', help='Binary path')
+wgroup.add_argument("--service-type", metavar='TYPE', help='Service type')
+wgroup.add_argument("--start-type", metavar='TYPE', help='Service start type')
+wgroup.add_argument("--start-name", metavar='NAME', help='Name of the account under which the service should run')
+wgroup.add_argument("--start-pass", metavar='PASS', help='Password of the account whose name was specified with the --start-name parameter')
 
 if len(sys.argv) == 1:
     parser.print_help()
@@ -184,6 +194,17 @@ if args.spider:
 if args.combo_file and not os.path.exists(args.combo_file):
     print_error('Unable to find combo file at specified path')
     shutdown(1)
+
+if args.service:
+    if args.service in ['start', 'stop', 'delete', 'status', 'config', 'change']:
+        if not args.name:
+            print_error('You must specify a --name')
+            shutdown(1)
+
+    elif args.service == 'create':
+        if not args.service_name or not args.service_display_name or not args.service_bin_path:
+            print_error('You must specify --name, --display and --bin-path')
+            shutdown(1)
 
 if args.ntds_history or args.ntds_pwdLastSet:
     if not args.ntds:
