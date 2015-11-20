@@ -26,6 +26,7 @@ from gevent import sleep
 from impacket import version
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
+from StringIO import StringIO
 
 
 class TSCH_EXEC:
@@ -57,12 +58,12 @@ class TSCH_EXEC:
             #import traceback
             #traceback.print_exc()
             logging.error(e)
-            if str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >=0:
-                logging.info('When STATUS_OBJECT_NAME_NOT_FOUND is received, try running again. It might work')
 
     def doStuff(self, rpctransport):
         def output_callback(data):
-            print_att(data.strip())
+            buf = StringIO(data.strip()).readlines()
+            for line in buf:
+                print_att(line.strip())
 
         dce = rpctransport.get_dce_rpc()
 
@@ -113,18 +114,18 @@ class TSCH_EXEC:
       <Command>cmd.exe</Command>
 """
         if self.__noOutput is False:
-            xml+= """      <Arguments>/C %s &gt; %%windir%%\\Temp\\%s 2&gt;&amp;1</Arguments>
+            xml+= """      <Arguments>/C {} &gt; %windir%\\Temp\\{} 2&gt;&amp;1</Arguments>
     </Exec>
   </Actions>
 </Task>
-        """ % (self.__command, tmpFileName)
+        """.format(self.__command, tmpFileName)
         
         else:
-            xml+= """      <Arguments>/C %s</Arguments>
+            xml+= """      <Arguments>/C {}</Arguments>
     </Exec>
   </Actions>
 </Task>
-        """ % (self.__command)
+        """.format(self.__command)
 
         logging.info("Task XML: {}".format(xml))
         taskCreated = False
@@ -160,7 +161,6 @@ class TSCH_EXEC:
 
         if self.__noOutput is False:
             smbConnection = rpctransport.get_smb_connection()
-            waitOnce = True
             while True:
                 try:
                     logging.info('Attempting to read ADMIN$\\Temp\\%s' % tmpFileName)
@@ -170,12 +170,7 @@ class TSCH_EXEC:
                     if str(e).find('SHARING') > 0:
                         sleep(3)
                     elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
-                        if waitOnce is True:
-                            # We're giving it the chance to flush the file before giving up
-                            sleep(3)
-                            waitOnce = False
-                        else:
-                            raise
+                        sleep(3)
                     else:
                         raise
             logging.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
