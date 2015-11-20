@@ -23,7 +23,7 @@ import argparse
 import sys
 import os
 
-VERSION  = '2.0'
+VERSION  = '2.1'
 CODENAME = '\'I gotta change the name of this thing\''
 
 if sys.platform == 'linux2':
