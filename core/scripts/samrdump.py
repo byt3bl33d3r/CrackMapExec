@@ -51,7 +51,8 @@ class SAMRDump:
         self.__doKerberos = doKerberos
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
-
+        if password is None:
+            self.__password = ''
 
     def dump(self, addr):
         """Dumps the list of users and shares registered present at

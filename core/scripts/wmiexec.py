@@ -54,6 +54,8 @@ class WMIEXEC:
         self.shell = None
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
+        if password is None:
+            self.__password = ''
 
     def run(self, addr, smb):
         if self.__noOutput is False:

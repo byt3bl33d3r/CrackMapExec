@@ -72,6 +72,8 @@ class SMBEXEC:
         self.shell = None
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
+        if password is None:
+            self.__password = ''
 
     def run(self, addr):
         for protocol in self.__protocols:

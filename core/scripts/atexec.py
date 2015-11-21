@@ -42,6 +42,8 @@ class TSCH_EXEC:
         self.__noOutput = noOutput
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
+        if password is None:
+            self.__password = ''
 
     def play(self, addr):
         stringbinding = r'ncacn_np:%s[\pipe\atsvc]' % addr
