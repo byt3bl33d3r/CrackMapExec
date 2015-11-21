@@ -72,7 +72,7 @@ parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Spe
 parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
 parser.add_argument("--server", choices={'http', 'https'}, default='http', help='Use the selected server (defaults to http)')
-#parser.add_argument("--server-port", type=int, help='Start the server on the specified port')
+parser.add_argument("--server-port", type=int, help='Start the server on the specified port')
 
 #How much fail can we limit? can we fail at failing to limit? da da da dum
 parser.add_argument("--fail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed per host (default: None)')
@@ -149,6 +149,18 @@ args.obfs_func_name = ''.join(sample(ascii_lowercase, 10))
 args.target = args.target[0]
 patterns    = []
 targets     = []
+
+if args.server == 'http':
+    if args.server_port:
+        args.http_port = args.server_port
+    else:
+        args.server_port = 80
+
+if args.server == 'https':
+    if args.server_port:
+        args.https_port = args.server_port
+    else:
+        args.server_port = 443
 
 init_args(args)
 
@@ -245,10 +257,10 @@ else:
 
 if args.mimikatz or args.powerview or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
-        http_server()
+        http_server(args.server_port)
 
     elif args.server == 'https':
-        https_server()
+        https_server(args.server_port)
 
 def concurrency(targets):
     '''

@@ -89,14 +89,14 @@ class MimikatzServer(BaseHTTPRequestHandler):
             for line in buf:
                 print_att(line.strip())
 
-def http_server():
-    http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 80), MimikatzServer)
+def http_server(port):
+    http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', port), MimikatzServer)
     t = Thread(name='http_server', target=http_server.serve_forever)
     t.setDaemon(True)
     t.start()
 
-def https_server():
-    https_server = BaseHTTPServer.HTTPServer(('0.0.0.0', 443), MimikatzServer)
+def https_server(port):
+    https_server = BaseHTTPServer.HTTPServer(('0.0.0.0', port), MimikatzServer)
     https_server.socket = ssl.wrap_socket(https_server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
     t = Thread(name='https_server', target=https_server.serve_forever)
     t.setDaemon(True)

