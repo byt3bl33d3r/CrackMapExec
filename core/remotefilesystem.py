@@ -49,8 +49,8 @@ class RemoteFileSystem:
         self.__smbconnection = smbconnection
 
     def download(self):
-        out = open(settings.args.download.split('\\')[-1], 'wb')
-        self.__smbconnection.getFile(settings.args.share,  settings.args.download, out.write)
+        out = open(settings.args.download[1], 'wb')
+        self.__smbconnection.getFile(settings.args.share,  settings.args.download[0], out.write)
         print_succ("{}:{} Downloaded file".format(self.__host, settings.args.port))
 
     def upload(self):

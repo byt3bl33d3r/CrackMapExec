@@ -125,7 +125,7 @@ xgroup.add_argument("--met-options", nargs=2, metavar=('LHOST', 'LPORT'), dest='
 
 bgroup = parser.add_argument_group("Filesystem Interaction", "Options for interacting with filesystems")
 bgroup.add_argument("--list", metavar='PATH', nargs='?', const='.', type=str, help='List contents of a directory (defaults to top level directory)')
-bgroup.add_argument("--download", metavar="PATH", help="Download a file from the remote systems")
+bgroup.add_argument("--download", nargs=2, metavar=('SRC', 'DST'), help="Download a file from the remote systems")
 bgroup.add_argument("--upload", nargs=2, metavar=('SRC', 'DST'), help="Upload a file to the remote systems")
 bgroup.add_argument("--delete", metavar="PATH", help="Delete a remote file")
 
