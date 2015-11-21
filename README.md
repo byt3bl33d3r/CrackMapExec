@@ -83,6 +83,7 @@ optional arguments:
   --port {139,445}      SMB port (default: 445)
   --server {http,https}
                         Use the selected server (defaults to http)
+  --server-port PORT    Start the server on the specified port
   --fail-limit LIMIT    The max number of failed login attempts allowed per host (default: None)
   --gfail-limit LIMIT   The max number of failed login attempts allowed globally (default: None)
   --verbose             Enable verbose output
@@ -156,7 +157,7 @@ Filesystem Interaction:
   Options for interacting with filesystems
 
   --list [PATH]         List contents of a directory (defaults to top level directory)
-  --download PATH       Download a file from the remote systems
+  --download SRC DST    Download a file from the remote systems
   --upload SRC DST      Upload a file to the remote systems
   --delete PATH         Delete a remote file
 
@@ -173,7 +174,6 @@ Service Interaction:
   --start-pass PASS     Password of the account whose name was specified with the --start-name parameter
 
 There's been an awakening... have you felt it?
-
 ```
 
 #To do
