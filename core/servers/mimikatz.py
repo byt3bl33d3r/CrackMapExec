@@ -83,7 +83,7 @@ class MimikatzServer(BaseHTTPRequestHandler):
             print_att(data)
             self.save_mimikatz_output(data)
 
-        elif settings.args.powerview:
+        elif settings.args.powerview and data:
             print_succ('{} PowerView command output:'.format(self.client_address[0]))
             buf = StringIO(data.strip()).readlines()
             for line in buf:

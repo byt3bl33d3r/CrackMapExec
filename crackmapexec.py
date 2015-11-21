@@ -72,8 +72,7 @@ parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Spe
 parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
 parser.add_argument("--server", choices={'http', 'https'}, default='http', help='Use the selected server (defaults to http)')
-parser.add_argument("--server-port", type=int, help='Start the server on the specified port')
-
+parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
 #How much fail can we limit? can we fail at failing to limit? da da da dum
 parser.add_argument("--fail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed per host (default: None)')
 parser.add_argument("--gfail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed globally (default: None)')

