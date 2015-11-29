@@ -150,7 +150,6 @@ class RemoteShell(cmd.Cmd):
             src_file = os.path.basename(src_path)
             fh = open(src_path, 'rb')
             dst_path = string.replace(dst_path, '/','\\')
-            import ntpath
             pathname = ntpath.join(ntpath.join(self.__pwd,dst_path), src_file)
             drive, tail = ntpath.splitdrive(pathname)
             logging.info("Uploading %s to %s" % (src_file, pathname))

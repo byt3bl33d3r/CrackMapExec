@@ -11,7 +11,6 @@ from core.logger import *
 from core.maingreenlet import connect
 from core.settings import init_args
 from core.servers.mimikatz import http_server, https_server
-from core.servers.smbserver import SMBServer
 from argparse import RawTextHelpFormatter
 from netaddr import IPAddress, IPRange, IPNetwork, AddrFormatError
 from logging import DEBUG
