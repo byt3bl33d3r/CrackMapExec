@@ -92,19 +92,19 @@ class SVCCTL:
             serviceHandle = ans['lpServiceHandle']
 
         if self.__action == 'START':
-            print_status("{}:{} Starting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Starting service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRStartServiceW(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'STOP':
-            print_status("{}:{} Stopping service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Stopping service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRControlService(rpc, serviceHandle, scmr.SERVICE_CONTROL_STOP)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'DELETE':
-            print_status("{}:{} Deleting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Deleting service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRDeleteService(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'CONFIG':
-            print_succ("{}:{} Service config for {}:".format(self.__addr, self.__port, self.__options.service_name))
+            print_succ(u"{}:{} Service config for {}:".format(self.__addr, self.__port, self.__options.service_name))
             resp = scmr.hRQueryServiceConfigW(rpc, serviceHandle)
             output = "TYPE              : %2d - " % resp['lpServiceConfig']['dwServiceType']
             if resp['lpServiceConfig']['dwServiceType'] & 0x1:
@@ -154,7 +154,7 @@ class SVCCTL:
             print_att("DEPENDENCIES      : %s" % resp['lpServiceConfig']['lpDependencies'][:-1])
             print_att("SERVICE_START_NAME: %s" % resp['lpServiceConfig']['lpServiceStartName'][:-1])
         elif self.__action == 'STATUS':
-            print_succ("{}:{} Service status for {}:".format(self.__addr, self.__port, self.__options.service_name))
+            print_succ(u"{}:{} Service status for {}:".format(self.__addr, self.__port, self.__options.service_name))
             resp = scmr.hRQueryServiceStatus(rpc, serviceHandle)
             output = "%s - " % self.__options.service_name
             state = resp['lpServiceStatus']['dwCurrentState']
@@ -176,7 +176,7 @@ class SVCCTL:
                output += "UNKOWN"
             print_att(output)
         elif self.__action == 'LIST':
-            print_succ("{}:{} Available services:".format(self.__addr, self.__port))
+            print_succ(u"{}:{} Available services:".format(self.__addr, self.__port))
             #resp = rpc.EnumServicesStatusW(scManagerHandle, svcctl.SERVICE_WIN32_SHARE_PROCESS )
             #resp = rpc.EnumServicesStatusW(scManagerHandle, svcctl.SERVICE_WIN32_OWN_PROCESS )
             #resp = rpc.EnumServicesStatusW(scManagerHandle, serviceType = svcctl.SERVICE_FILE_SYSTEM_DRIVER, serviceState = svcctl.SERVICE_STATE_ALL )
@@ -203,10 +203,10 @@ class SVCCTL:
                 print_att(output)
             print_att("Total Services: %d" % len(resp))
         elif self.__action == 'CREATE':
-            print_status("{}:{} Creating service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Creating service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRCreateServiceW(rpc, scManagerHandle,self.__options.service_name + '\x00', self.__options.service_display_name + '\x00', lpBinaryPathName=self.__options.service_bin_path + '\x00')
         elif self.__action == 'CHANGE':
-            print_status("{}:{} Changing service config for {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Changing service config for {}".format(self.__addr, self.__port, self.__options.service_name))
             if self.__options.start_type is not None:
                 start_type = int(self.__options.start_type)
             else:

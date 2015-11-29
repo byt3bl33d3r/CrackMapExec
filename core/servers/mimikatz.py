@@ -19,7 +19,7 @@ class MimikatzServer(BaseHTTPRequestHandler):
         print_message("%s - - %s" % (self.client_address[0], format%args))
 
     def save_mimikatz_output(self, data):
-        log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+        log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         with open('logs/' + log_name, 'w') as creds:
             creds.write(data)
         print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
