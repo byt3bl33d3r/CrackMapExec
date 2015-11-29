@@ -44,7 +44,7 @@ class RPCQUERY():
 
         print_succ("{}:{} Logged on users:".format(host, settings.args.port))
         for user in lusers:
-            print_att('{}\\{} {} {}'.format(user['wkui1_logon_domain'],
+            print_att(u'{}\\{} {} {}'.format(user['wkui1_logon_domain'],
                                             user['wkui1_username'],
                                             user['wkui1_logon_server'],
                                             user['wkui1_oth_domains']))

@@ -92,15 +92,15 @@ class SVCCTL:
             serviceHandle = ans['lpServiceHandle']
 
         if self.__action == 'START':
-            print_status("{}:{} Starting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Starting service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRStartServiceW(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'STOP':
-            print_status("{}:{} Stopping service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Stopping service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRControlService(rpc, serviceHandle, scmr.SERVICE_CONTROL_STOP)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'DELETE':
-            print_status("{}:{} Deleting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            print_status(u"{}:{} Deleting service {}".format(self.__addr, self.__port, self.__options.service_name))
             scmr.hRDeleteService(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'CONFIG':

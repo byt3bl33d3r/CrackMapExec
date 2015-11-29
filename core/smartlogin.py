@@ -164,7 +164,6 @@ def smart_login(host, smb, domain):
                     passwd = passwd.strip()
                     if user == '': user = "''"
                     if passwd == '': passwd = "''"
-
                     try:
                         if settings.args.kerb:
                             smb.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)

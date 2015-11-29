@@ -1,6 +1,7 @@
 import logging
 import sys
 import re
+import os
 from termcolor import colored
 from datetime import datetime
 
@@ -23,7 +24,8 @@ logging.FileHandler.emit = antiansi_emit
 def setup_logger(target, level=logging.INFO):
 
     formatter = logging.Formatter("%(asctime)s %(message)s", datefmt="%m-%d-%Y %H:%M:%S")
-
+    if not os.path.exists('./logs/'):
+        os.makedirs('./logs/')
     fileHandler = logging.FileHandler('./logs/{}_{}.log'.format(target.replace('/', '_'), datetime.now().strftime('%Y-%m-%d')))
     fileHandler.setFormatter(formatter)
 
