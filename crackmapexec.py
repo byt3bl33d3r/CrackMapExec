@@ -80,6 +80,7 @@ parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enab
 rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
 rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
 rgroup.add_argument("--lsa", action='store_true', help='Dump LSA secrets from target systems')
+rgroup.add_argument("--gpp-passwords", action='store_true', help='Retrieve plaintext passwords and other information for accounts pushed through Group Policy Preferences')
 rgroup.add_argument("--ntds", choices={'vss', 'drsuapi', 'ninja'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 rgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
 rgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
@@ -253,7 +254,7 @@ else:
     for target in args.target.split(','):
         targets.append(get_targets(target))
 
-if args.mimikatz or args.powerview or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
         http_server(args.server_port)
 
@@ -274,7 +275,7 @@ def concurrency(targets):
 
 concurrency(targets)
 
-if args.mimikatz or args.powerview or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     try:
         while True:
             sleep(1)

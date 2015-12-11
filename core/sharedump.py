@@ -20,7 +20,7 @@ class SHAREDUMP:
 		    permissions[share_name] = []
 
 		    try:
-		        if self.__smbconnection.listPath(share_name, '*', settings.args.passwd):
+		        if self.__smbconnection.listPath(share_name, '*'):
 		            permissions[share_name].append('READ')
 		    except SessionError:
 		        pass

