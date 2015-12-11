@@ -89,6 +89,12 @@ class MimikatzServer(BaseHTTPRequestHandler):
             for line in buf:
                 print_att(line.strip())
 
+        elif settings.args.gpp_passwords and data:
+            print_succ('{} Get-GPPPasswords output:'.format(self.client_address[0]))
+            buf = StringIO(data.strip()).readlines()
+            for line in buf:
+                print_att(line.strip())
+
 def http_server(port):
     http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', port), MimikatzServer)
     t = Thread(name='http_server', target=http_server.serve_forever)
