@@ -16,6 +16,7 @@ This repo also includes the following scripts from the [PowerSploit](https://git
 - [Invoke-NinjaCopy.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-NinjaCopy.ps1)
 - [Invoke-ReflectivePEInjection.ps1](https://github.com/mattifestation/PowerSploit/blob/master/CodeExecution/Invoke-ReflectivePEInjection.ps1)
 - [Invoke-Shellcode.ps1](https://github.com/mattifestation/PowerSploit/blob/master/CodeExecution/Invoke--Shellcode.ps1)
+- [Get-GPPPassword.ps1](https://github.com/PowerShellMafia/PowerSploit/blob/master/Exfiltration/Get-GPPPassword.ps1)
 
 and the [PowerView](https://github.com/PowerShellEmpire/PowerTools/blob/master/PowerView/powerview.ps1) script from the [PowerTools](https://github.com/PowerShellEmpire/PowerTools) repository
 
@@ -93,6 +94,7 @@ Credential Gathering:
 
   --sam                 Dump SAM hashes from target systems
   --lsa                 Dump LSA secrets from target systems
+  --gpp-passwords       Retrieve plaintext passwords and other information for accounts pushed through Group Policy Preferences
   --ntds {ninja,vss,drsuapi}
                         Dump the NTDS.dit from target DCs using the specifed method
                         (drsuapi is the fastest)
