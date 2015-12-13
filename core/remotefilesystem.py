@@ -68,7 +68,7 @@ class RemoteFileSystem:
         else:
             path = settings.args.list + '/*'
 
-        dir_list = self.__smbconnection.listPath(settings.args.share, path)
+        dir_list = self.__smbconnection.listPath(settings.args.share.decode('utf-8'), path.decode('utf-8'))
         #normalize output
         if path == '*':
             path = settings.args.share

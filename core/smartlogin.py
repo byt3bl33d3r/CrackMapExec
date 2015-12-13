@@ -57,13 +57,13 @@ def smart_login(host, smb, domain):
                             smb.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
                         else:
                             smb.login(user, passwd, domain, lmhash, nthash)
-                        print_succ(u"{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd
                         settings.args.hash = ':'.join(lmhash, nthash)
                         return smb
                     except SessionError as e:
-                        print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in e:
                             fails += 1
                             settings.gfails += 1
@@ -138,12 +138,12 @@ def smart_login(host, smb, domain):
                             smb.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
                         else:
                             smb.login(user, '', domain, lmhash, nthash)
-                        print_succ(u"{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
                         settings.args.user = user
                         settings.args.hash = ntlm_hash
                         return smb
                     except SessionError as e:
-                        print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, ntlm_hash, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, ntlm_hash, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
@@ -169,12 +169,12 @@ def smart_login(host, smb, domain):
                             smb.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
                         else:
                             smb.login(user, passwd, domain)
-                        print_succ(u"{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd
                         return smb
                     except SessionError as e:
-                        print_error(u"{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
