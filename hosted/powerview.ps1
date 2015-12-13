@@ -2,12 +2,11 @@
 
 <#
 
-    PowerView v2.0.3
-
-    See README.md for more information.
-
+    PowerSploit File: PowerView.ps1
+    Author: Will Schroeder (@harmj0y)
     License: BSD 3-Clause
-    Author: @harmj0y
+    Required Dependencies: None
+    Optional Dependencies: None
 
 #>
 
@@ -1229,6 +1228,118 @@ function Convert-CanonicaltoNT4 {
 }
 
 
+function ConvertFrom-UACValue {
+<#
+    .SYNOPSIS
+
+        Converts a UAC int value to human readable form.
+
+    .PARAMETER Value
+
+        The int UAC value to convert.
+
+    .PARAMETER ShowAll
+
+        Show all UAC values, with a + indicating the value is currently set.
+
+    .EXAMPLE
+
+        PS C:\> ConvertFrom-UACValue -Value 66176
+
+        Convert the UAC value 66176 to human readable format.
+
+    .EXAMPLE
+
+        PS C:\> Get-NetUser jason | select useraccountcontrol | ConvertFrom-UACValue
+
+        Convert the UAC value for 'jason' to human readable format.
+
+    .EXAMPLE
+
+        PS C:\> Get-NetUser jason | select useraccountcontrol | ConvertFrom-UACValue -ShowAll
+
+        Convert the UAC value for 'jason' to human readable format, showing all
+        possible UAC values.
+#>
+    
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline=$True)]
+        $Value,
+
+        [Switch]
+        $ShowAll
+    )
+
+    begin {
+
+        # values from https://support.microsoft.com/en-us/kb/305144
+        $UACValues = New-Object System.Collections.Specialized.OrderedDictionary
+        $UACValues.Add("SCRIPT", 1)
+        $UACValues.Add("ACCOUNTDISABLE", 2)
+        $UACValues.Add("HOMEDIR_REQUIRED", 8)
+        $UACValues.Add("LOCKOUT", 16)
+        $UACValues.Add("PASSWD_NOTREQD", 32)
+        $UACValues.Add("PASSWD_CANT_CHANGE", 64)
+        $UACValues.Add("ENCRYPTED_TEXT_PWD_ALLOWED", 128)
+        $UACValues.Add("TEMP_DUPLICATE_ACCOUNT", 256)
+        $UACValues.Add("NORMAL_ACCOUNT", 512)
+        $UACValues.Add("INTERDOMAIN_TRUST_ACCOUNT", 2048)
+        $UACValues.Add("WORKSTATION_TRUST_ACCOUNT", 4096)
+        $UACValues.Add("SERVER_TRUST_ACCOUNT", 8192)
+        $UACValues.Add("DONT_EXPIRE_PASSWORD", 65536)
+        $UACValues.Add("MNS_LOGON_ACCOUNT", 131072)
+        $UACValues.Add("SMARTCARD_REQUIRED", 262144)
+        $UACValues.Add("TRUSTED_FOR_DELEGATION", 524288)
+        $UACValues.Add("NOT_DELEGATED", 1048576)
+        $UACValues.Add("USE_DES_KEY_ONLY", 2097152)
+        $UACValues.Add("DONT_REQ_PREAUTH", 4194304)
+        $UACValues.Add("PASSWORD_EXPIRED", 8388608)
+        $UACValues.Add("TRUSTED_TO_AUTH_FOR_DELEGATION", 16777216)
+        $UACValues.Add("PARTIAL_SECRETS_ACCOUNT", 67108864)
+
+    }
+
+    process {
+
+        $ResultUACValues = New-Object System.Collections.Specialized.OrderedDictionary
+
+        if($Value -is [Int]) {
+            $IntValue = $Value
+        }
+
+        if ($Value -is [PSCustomObject]) {
+            if($Value.useraccountcontrol) {
+                $IntValue = $Value.useraccountcontrol
+            }
+        }
+
+        if($IntValue) {
+
+            if($ShowAll) {
+                foreach ($UACValue in $UACValues.GetEnumerator()) {
+                    if( ($IntValue -band $UACValue.Value) -eq $UACValue.Value) {
+                        $ResultUACValues.Add($UACValue.Name, "$($UACValue.Value)+")
+                    }
+                    else {
+                        $ResultUACValues.Add($UACValue.Name, "$($UACValue.Value)")
+                    }
+                }
+            }
+            else {
+                foreach ($UACValue in $UACValues.GetEnumerator()) {
+                    if( ($IntValue -band $UACValue.Value) -eq $UACValue.Value) {
+                        $ResultUACValues.Add($UACValue.Name, "$($UACValue.Value)")
+                    }
+                }                
+            }
+        }
+
+        $ResultUACValues
+    }
+}
+
+
 function Get-Proxy {
 <#
     .SYNOPSIS
@@ -1380,7 +1491,7 @@ function Get-PathAcl {
                     $Names = @()
                     $SIDs = @($Object.objectsid)
 
-                    if ($Recurse -and ($Object.samAccountType -eq "268435456")) {
+                    if ($Recurse -and ($Object.samAccountType -ne "805306368")) {
                         $SIDs += Get-NetGroupMember -SID $Object.objectsid | Select-Object -ExpandProperty MemberSid
                     }
 
@@ -1686,7 +1797,7 @@ function Get-NetForest {
                 $ForestObject = [System.DirectoryServices.ActiveDirectory.Forest]::GetForest($ForestContext)
             }
             catch {
-                Write-Warning "The specified forest $Forest does not exist, could not be contacted, or there isn't an existing trust."
+                Write-Debug "The specified forest $Forest does not exist, could not be contacted, or there isn't an existing trust."
                 $Null
             }
         }
@@ -3507,6 +3618,10 @@ function Set-ADObject {
 
         Domain controller to reflect LDAP queries through.
 
+    .PARAMETER Filter
+
+        Additional LDAP filter string for the query.
+
     .PARAMETER PropertyName
 
         The property name to set.
@@ -3514,6 +3629,10 @@ function Set-ADObject {
     .PARAMETER PropertyValue
 
         The value to set for PropertyName
+
+    .PARAMETER PropertyXorValue
+
+        Integer value to binary xor (-bxor) with the current int value.
 
     .PARAMETER ClearValue
 
@@ -3528,6 +3647,12 @@ function Set-ADObject {
         PS C:\> Set-ADObject -SamAccountName matt.admin -PropertyName countrycode -PropertyValue 0
         
         Set the countrycode for matt.admin to 0
+
+    .EXAMPLE
+
+        PS C:\> Set-ADObject -SamAccountName matt.admin -PropertyName useraccountcontrol -PropertyXorValue 65536
+        
+        Set the password not to expire on matt.admin
 #>
 
     [CmdletBinding()]
@@ -3547,11 +3672,17 @@ function Set-ADObject {
         [String]
         $DomainController,
 
+        [String]
+        $Filter,
+
         [Parameter(Mandatory = $True)]
         [String]
         $PropertyName,
 
         $PropertyValue,
+
+        [Int]
+        $PropertyXorValue,
 
         [Switch]
         $ClearValue,
@@ -3567,6 +3698,7 @@ function Set-ADObject {
         'SamAccountName' = $SamAccountName
         'Domain' = $Domain
         'DomainController' = $DomainController
+        'Filter' = $Filter
         'PageSize' = $PageSize
     }
     # splat the appropriate arguments to Get-ADObject
@@ -3576,29 +3708,136 @@ function Set-ADObject {
         # get the modifiable object for this search result
         $Entry = $RawObject.GetDirectoryEntry()
         
-        # if the property name doesn't already exist
-        if(!$Entry.$PropertyName) {
-            $Entry.put($PropertyName, $PropertyValue)
-            $Entry.setinfo()
+        if($ClearValue) {
+            Write-Verbose "Clearing value"
+            $Entry.$PropertyName.clear()
+            $Entry.commitchanges()
+        }
+
+        elseif($PropertyXorValue) {
+            $TypeName = $Entry.$PropertyName[0].GetType().name
+
+            # UAC value references- https://support.microsoft.com/en-us/kb/305144
+            $PropertyValue = $($Entry.$PropertyName) -bxor $PropertyXorValue 
+            $Entry.$PropertyName = $PropertyValue -as $TypeName       
+            $Entry.commitchanges()     
         }
 
         else {
-            if($ClearValue) {
-                # remove the value fromt the entry
-                Write-Verbose "Clearing value"
-                $Entry.$PropertyName.clear()
-            }
-            else {
-                # resolve this property's type name so as can properly set it
-                $TypeName = $Entry.$PropertyName[0].GetType().name
-                $Entry.$PropertyName = $PropertyValue -as $TypeName
-            }
-
-            $Entry.commitchanges()
+            $Entry.put($PropertyName, $PropertyValue)
+            $Entry.setinfo()
         }
     }
     catch {
         Write-Warning "Error setting property $PropertyName to value '$PropertyValue' for object $($RawObject.Properties.samaccountname) : $_"
+    }
+}
+
+
+function Invoke-DowngradeAccount {
+<#
+    .SYNOPSIS
+
+        Set reversible encryption on a given account and then force the password
+        to be set on next user login. To repair use "-Repair".
+
+    .PARAMETER SamAccountName
+
+        The SamAccountName of the domain object you're querying for. 
+
+    .PARAMETER Name
+
+        The Name of the domain object you're querying for.
+
+    .PARAMETER Domain
+
+        The domain to query for objects, defaults to the current domain.
+
+    .PARAMETER DomainController
+
+        Domain controller to reflect LDAP queries through.
+
+    .PARAMETER Filter
+
+        Additional LDAP filter string for the query.
+
+    .PARAMETER Repair
+
+        Switch. Unset the reversible encryption flag and force password reset flag.
+
+    .EXAMPLE
+
+        PS> Invoke-DowngradeAccount -SamAccountName jason
+
+        Set reversible encryption on the 'jason' account and force the password to be changed.
+
+    .EXAMPLE
+
+        PS> Invoke-DowngradeAccount -SamAccountName jason -Repair
+
+        Unset reversible encryption on the 'jason' account and remove the forced password change.
+#>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Position=0,ValueFromPipeline=$True)]
+        [String]
+        $SamAccountName,
+
+        [String]
+        $Name,
+
+        [String]
+        $Domain,
+
+        [String]
+        $DomainController,
+
+        [String]
+        $Filter,
+
+        [Switch]
+        $Repair
+    )
+
+    process {
+        $Arguments = @{
+            'SamAccountName' = $SamAccountName
+            'Name' = $Name
+            'Domain' = $Domain
+            'DomainController' = $DomainController
+            'Filter' = $Filter
+        }
+
+        # splat the appropriate arguments to Get-ADObject
+        $UACValues = Get-ADObject @Arguments | select useraccountcontrol | ConvertFrom-UACValue
+
+        if($Repair) {
+
+            if($UACValues.Keys -contains "ENCRYPTED_TEXT_PWD_ALLOWED") {
+                # if reversible encryption is set, unset it
+                Set-ADObject @Arguments -PropertyName useraccountcontrol -PropertyXorValue 128
+            }
+
+            # unset the forced password change
+            Set-ADObject @Arguments -PropertyName pwdlastset -PropertyValue -1
+        }
+
+        else {
+
+            if($UACValues.Keys -contains "DONT_EXPIRE_PASSWORD") {
+                # if the password is set to never expire, unset
+                Set-ADObject @Arguments -PropertyName useraccountcontrol -PropertyXorValue 65536
+            }
+
+            if($UACValues.Keys -notcontains "ENCRYPTED_TEXT_PWD_ALLOWED") {
+                # if reversible encryption is not set, set it
+                Set-ADObject @Arguments -PropertyName useraccountcontrol -PropertyXorValue 128
+            }
+
+            # force the password to be changed on next login
+            Set-ADObject @Arguments -PropertyName pwdlastset -PropertyValue 0
+        }
     }
 }
 
@@ -4252,10 +4491,10 @@ function Get-NetGroup {
             }
             else {
                 if ($SID) {
-                    $GroupSearcher.filter = "(&(samAccountType=268435456)(objectSID=$SID)$Filter)"
+                    $GroupSearcher.filter = "(&(objectCategory=group)(objectSID=$SID)$Filter)"
                 }
                 else {
-                    $GroupSearcher.filter = "(&(samAccountType=268435456)(name=$GroupName)$Filter)"
+                    $GroupSearcher.filter = "(&(objectCategory=group)(name=$GroupName)$Filter)"
                 }
             
                 $GroupSearcher.FindAll() | Where-Object {$_} | ForEach-Object {
@@ -4378,6 +4617,10 @@ function Get-NetGroupMember {
     begin {
         # so this isn't repeated if users are passed on the pipeline
         $GroupSearcher = Get-DomainSearcher -Domain $Domain -DomainController $DomainController -ADSpath $ADSpath -PageSize $PageSize
+
+        if(!$DomainController) {
+            $DomainController = ((Get-NetDomain).PdcRoleOwner).Name
+        }
     }
 
     process {
@@ -4413,15 +4656,15 @@ function Get-NetGroupMember {
             }
             else {
                 if ($GroupName) {
-                    $GroupSearcher.filter = "(&(samAccountType=268435456)(name=$GroupName)$Filter)"
+                    $GroupSearcher.filter = "(&(objectCategory=group)(name=$GroupName)$Filter)"
                 }
                 elseif ($SID) {
-                    $GroupSearcher.filter = "(&(samAccountType=268435456)(objectSID=$SID)$Filter)"
+                    $GroupSearcher.filter = "(&(objectCategory=group)(objectSID=$SID)$Filter)"
                 }
                 else {
                     # default to domain admins
                     $SID = (Get-DomainSID -Domain $Domain) + "-512"
-                    $GroupSearcher.filter = "(&(samAccountType=268435456)(objectSID=$SID)$Filter)"
+                    $GroupSearcher.filter = "(&(objectCategory=group)(objectSID=$SID)$Filter)"
                 }
 
                 $GroupSearcher.FindAll() | ForEach-Object {
@@ -4480,76 +4723,82 @@ function Get-NetGroupMember {
                     $Properties = $_.Properties
                 } 
                 else {
-                    if ($DomainController) {
-                        $Properties = ([adsi]"LDAP://$DomainController/$_").Properties
+                    if($DomainController) {
+                        $Result = [adsi]"LDAP://$DomainController/$_"
                     }
                     else {
-                        $Properties = ([adsi]"LDAP://$_").Properties
+                        $Result = [adsi]"LDAP://$_"
+                    }
+                    if($Result){
+                        $Properties = $Result.Properties
                     }
                 }
 
-                if($Properties.samaccounttype -match '268435456') {
-                    $IsGroup = $True
-                }
-                else {
-                    $IsGroup = $False
-                }
+                if($Properties) {
 
-                if ($FullData) {
-                    $GroupMember = Convert-LDAPProperty -Properties $Properties
-                }
-                else {
-                    $GroupMember = New-Object PSObject
-                }
+                    if($Properties.samaccounttype -notmatch '805306368') {
+                        $IsGroup = $True
+                    }
+                    else {
+                        $IsGroup = $False
+                    }
 
-                $GroupMember | Add-Member Noteproperty 'GroupDomain' $Domain
-                $GroupMember | Add-Member Noteproperty 'GroupName' $GroupFoundName
+                    if ($FullData) {
+                        $GroupMember = Convert-LDAPProperty -Properties $Properties
+                    }
+                    else {
+                        $GroupMember = New-Object PSObject
+                    }
 
-                try {
-                    $MemberDN = $Properties.distinguishedname[0]
-                    
-                    # extract the FQDN from the Distinguished Name
-                    $MemberDomain = $MemberDN.subString($MemberDN.IndexOf("DC=")) -replace 'DC=','' -replace ',','.'
-                }
-                catch {
-                    $MemberDN = $Null
-                    $MemberDomain = $Null
-                }
+                    $GroupMember | Add-Member Noteproperty 'GroupDomain' $Domain
+                    $GroupMember | Add-Member Noteproperty 'GroupName' $GroupFoundName
 
-                if ($Properties.samaccountname) {
-                    # forest users have the samAccountName set
-                    $MemberName = $Properties.samaccountname[0]
-                } 
-                else {
-                    # external trust users have a SID, so convert it
                     try {
-                        $MemberName = Convert-SidToName $Properties.cn[0]
+                        $MemberDN = $Properties.distinguishedname[0]
+                        
+                        # extract the FQDN from the Distinguished Name
+                        $MemberDomain = $MemberDN.subString($MemberDN.IndexOf("DC=")) -replace 'DC=','' -replace ',','.'
                     }
                     catch {
-                        # if there's a problem contacting the domain to resolve the SID
-                        $MemberName = $Properties.cn
+                        $MemberDN = $Null
+                        $MemberDomain = $Null
+                    }
+
+                    if ($Properties.samaccountname) {
+                        # forest users have the samAccountName set
+                        $MemberName = $Properties.samaccountname[0]
+                    } 
+                    else {
+                        # external trust users have a SID, so convert it
+                        try {
+                            $MemberName = Convert-SidToName $Properties.cn[0]
+                        }
+                        catch {
+                            # if there's a problem contacting the domain to resolve the SID
+                            $MemberName = $Properties.cn
+                        }
+                    }
+                    
+                    if($Properties.objectSid) {
+                        $MemberSid = ((New-Object System.Security.Principal.SecurityIdentifier $Properties.objectSid[0],0).Value)
+                    }
+                    else {
+                        $MemberSid = $Null
+                    }
+
+                    $GroupMember | Add-Member Noteproperty 'MemberDomain' $MemberDomain
+                    $GroupMember | Add-Member Noteproperty 'MemberName' $MemberName
+                    $GroupMember | Add-Member Noteproperty 'MemberSid' $MemberSid
+                    $GroupMember | Add-Member Noteproperty 'IsGroup' $IsGroup
+                    $GroupMember | Add-Member Noteproperty 'MemberDN' $MemberDN
+                    $GroupMember
+
+                    # if we're doing manual recursion
+                    if ($Recurse -and !$UseMatchingRule -and $IsGroup -and $MemberName) {
+                        Get-NetGroupMember -FullData -Domain $MemberDomain -DomainController $DomainController -GroupName $MemberName -Recurse -PageSize $PageSize
                     }
                 }
-                
-                if($Properties.objectSid) {
-                    $MemberSid = ((New-Object System.Security.Principal.SecurityIdentifier $Properties.objectSid[0],0).Value)
-                }
-                else {
-                    $MemberSid = $Null
-                }
 
-                $GroupMember | Add-Member Noteproperty 'MemberDomain' $MemberDomain
-                $GroupMember | Add-Member Noteproperty 'MemberName' $MemberName
-                $GroupMember | Add-Member Noteproperty 'MemberSid' $MemberSid
-                $GroupMember | Add-Member Noteproperty 'IsGroup' $IsGroup
-                $GroupMember | Add-Member Noteproperty 'MemberDN' $MemberDN
-
-                $GroupMember
-
-                # if we're doing manual recursion
-                if ($Recurse -and !$UseMatchingRule -and $IsGroup -and $MemberName) {
-                    Get-NetGroupMember -Domain $MemberDomain -DomainController $DomainController -GroupName $MemberName -Recurse -PageSize $PageSize
-                }
             }
         }
     }
@@ -5713,7 +5962,7 @@ function Find-GPOComputerAdmin {
                     $GPOComputerAdmin | Add-Member Noteproperty 'ObjectName' $Object.name
                     $GPOComputerAdmin | Add-Member Noteproperty 'ObjectDN' $Object.distinguishedname
                     $GPOComputerAdmin | Add-Member Noteproperty 'ObjectSID' $_
-                    $GPOComputerAdmin | Add-Member Noteproperty 'IsGroup' $($Object.samaccounttype -match '268435456')
+                    $GPOComputerAdmin | Add-Member Noteproperty 'IsGroup' $($Object.samaccounttype -notmatch '805306368')
                     $GPOComputerAdmin 
 
                     # if we're recursing and the current result object is a group
@@ -6086,7 +6335,7 @@ function Get-NetLocalGroup {
                             Get-NetGroupMember -GroupName $GroupName -Domain $FQDN -FullData -Recurse | ForEach-Object {
 
                                 $Member = New-Object PSObject
-                                $Member | Add-Member Noteproperty 'Server' $Name
+                                $Member | Add-Member Noteproperty 'Server' "$FQDN/$($_.GroupName)"
 
                                 $MemberDN = $_.distinguishedName
                                 # extract the FQDN from the Distinguished Name
@@ -6701,12 +6950,8 @@ function Get-LastLoggedOn {
 
     .PARAMETER ComputerName
 
-        The hostname to query for open files. Defaults to the
-        local host name.
-
-    .OUTPUTS
-
-        The last loggedon user name, or $Null if the enumeration fails.
+        The hostname to query for the last logged on user.
+        Defaults to the localhost.
 
     .EXAMPLE
 
@@ -6745,6 +6990,143 @@ function Get-LastLoggedOn {
         catch {
             Write-Warning "[!] Error opening remote registry on $ComputerName. Remote registry likely not enabled."
             $Null
+        }
+    }
+}
+
+
+function Get-CachedRDPConnection {
+<#
+    .SYNOPSIS
+
+        Uses remote registry functionality to query all entries for the
+        "Windows Remote Desktop Connection Client" on a machine, separated by
+        user and target server.
+
+        Note: This function requires administrative rights on the
+        machine you're enumerating.
+
+    .PARAMETER ComputerName
+
+        The hostname to query for RDP client information.
+        Defaults to localhost.
+
+    .PARAMETER RemoteUserName
+
+        The "domain\username" to use for the WMI call on the remote system.
+        If supplied, 'RemotePassword' must be supplied as well.
+
+    .PARAMETER RemotePassword
+
+        The password to use for the WMI call on a remote system.
+
+    .EXAMPLE
+
+        PS C:\> Get-CachedRDPConnection
+
+        Returns the RDP connection client information for the local machine.
+
+    .EXAMPLE
+
+        PS C:\> Get-CachedRDPConnection -ComputerName WINDOWS2.testlab.local
+
+        Returns the RDP connection client information for the WINDOWS2.testlab.local machine
+
+    .EXAMPLE
+
+        PS C:\> Get-CachedRDPConnection -ComputerName WINDOWS2.testlab.local -RemoteUserName DOMAIN\user -RemotePassword Password123!
+
+        Returns the RDP connection client information for the WINDOWS2.testlab.local machine using alternate credentials.
+#>
+
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline=$True)]
+        [String]
+        $ComputerName = "localhost",
+
+        [String]
+        $RemoteUserName,
+
+        [String]
+        $RemotePassword
+    )
+
+    begin {
+        if ($RemoteUserName -and $RemotePassword) {
+            $Password = $RemotePassword | ConvertTo-SecureString -AsPlainText -Force
+            $Credential = New-Object System.Management.Automation.PSCredential($RemoteUserName,$Password)
+        }
+
+        # HKEY_USERS
+        $HKU = 2147483651
+    }
+
+    process {
+
+        try {
+            if($Credential) {
+                $Reg = Get-Wmiobject -List 'StdRegProv' -Namespace root\default -Computername $ComputerName -Credential $Credential -ErrorAction SilentlyContinue
+            }
+            else {
+                $Reg = Get-Wmiobject -List 'StdRegProv' -Namespace root\default -Computername $ComputerName -ErrorAction SilentlyContinue
+            }
+        }
+        catch {
+            Write-Warning "Error accessing $ComputerName, likely insufficient permissions or firewall rules on host"
+        }
+
+        if(!$Reg) {
+            Write-Warning "Error accessing $ComputerName, likely insufficient permissions or firewall rules on host"
+        }
+        else {
+            # extract out the SIDs of domain users in this hive
+            $UserSIDs = ($Reg.EnumKey($HKU, "")).sNames | ? { $_ -match 'S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]+$' }
+
+            foreach ($UserSID in $UserSIDs) {
+
+                try {
+                    $UserName = Convert-SidToName $UserSID
+
+                    # pull out all the cached RDP connections
+                    $ConnectionKeys = $Reg.EnumValues($HKU,"$UserSID\Software\Microsoft\Terminal Server Client\Default").sNames
+
+                    foreach ($Connection in $ConnectionKeys) {
+                        # make sure this key is a cached connection
+                        if($Connection -match 'MRU.*') {
+                            $TargetServer = $Reg.GetStringValue($HKU, "$UserSID\Software\Microsoft\Terminal Server Client\Default", $Connection).sValue
+                            
+                            $FoundConnection = New-Object PSObject
+                            $FoundConnection | Add-Member Noteproperty 'ComputerName' $ComputerName
+                            $FoundConnection | Add-Member Noteproperty 'UserName' $UserName
+                            $FoundConnection | Add-Member Noteproperty 'UserSID' $UserSID
+                            $FoundConnection | Add-Member Noteproperty 'TargetServer' $TargetServer
+                            $FoundConnection | Add-Member Noteproperty 'UsernameHint' $Null
+                            $FoundConnection
+                        }
+                    }
+
+                    # pull out all the cached server info with username hints
+                    $ServerKeys = $Reg.EnumKey($HKU,"$UserSID\Software\Microsoft\Terminal Server Client\Servers").sNames
+
+                    foreach ($Server in $ServerKeys) {
+
+                        $UsernameHint = $Reg.GetStringValue($HKU, "$UserSID\Software\Microsoft\Terminal Server Client\Servers\$Server", 'UsernameHint').sValue
+                        
+                        $FoundConnection = New-Object PSObject
+                        $FoundConnection | Add-Member Noteproperty 'ComputerName' $ComputerName
+                        $FoundConnection | Add-Member Noteproperty 'UserName' $UserName
+                        $FoundConnection | Add-Member Noteproperty 'UserSID' $UserSID
+                        $FoundConnection | Add-Member Noteproperty 'TargetServer' $Server
+                        $FoundConnection | Add-Member Noteproperty 'UsernameHint' $UsernameHint
+                        $FoundConnection   
+                    }
+
+                }
+                catch {
+                    Write-Debug "Error: $_"
+                }
+            }
         }
     }
 }
@@ -10780,6 +11162,13 @@ function Invoke-MapDomainTrust {
                     $Trusts = Get-NetDomainTrust -Domain $Domain -PageSize $PageSize
                 }
 
+                if($Trusts -isnot [system.array]) {
+                    $Trusts = @($Trusts)
+                }
+
+                # get any forest trusts, if they exist
+                $Trusts += Get-NetForestTrust -Forest $Domain
+
                 if ($Trusts) {
 
                     # enumerate each trust found
@@ -10899,6 +11288,7 @@ $Netapi32 = $Types['netapi32']
 $Advapi32 = $Types['advapi32']
 $Kernel32 = $Types['kernel32']
 $Wtsapi32 = $Types['wtsapi32']
+
 
 # aliases to help the PowerView 2.0 transition
 Set-Alias Get-NetForestDomains Get-NetForestDomain
