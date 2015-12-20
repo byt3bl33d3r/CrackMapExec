@@ -1,5 +1,4 @@
-function Get-CHANGE_ME_HERE
-{
+function Get-CHANGE_ME_HERE {
 <#
 .SYNOPSIS
 
@@ -10,7 +9,6 @@ function Get-CHANGE_ME_HERE
     License: BSD 3-Clause
     Required Dependencies: None
     Optional Dependencies: None
-    Version: 2.4.2
  
 .DESCRIPTION
 
