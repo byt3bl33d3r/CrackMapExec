@@ -62,8 +62,8 @@ Just a little demo showing off the basics
                             @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
-                                                  Version: 2.1
-                               Codename: 'I gotta change the name of this thing'
+                                                  Version: 2.2
+                            Codename: 'All I want for Christmas is a better name for this'
 
 positional arguments:
   target                The target range, CIDR identifier or file containing targets

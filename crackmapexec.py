@@ -22,8 +22,8 @@ import argparse
 import sys
 import os
 
-VERSION  = '2.1'
-CODENAME = '\'I gotta change the name of this thing\''
+VERSION  = '2.2'
+CODENAME = '\'All I want for Christmas is a better name for this\''
 
 if sys.platform == 'linux2':
     if os.geteuid() is not 0:
@@ -48,7 +48,7 @@ parser = argparse.ArgumentParser(description="""
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
                                                   {}: {}
-                               {}: {}
+                            {}: {}
 """.format(red('Version'),
            yellow(VERSION),
            red('Codename'), 
