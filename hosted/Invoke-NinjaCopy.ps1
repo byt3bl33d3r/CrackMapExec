@@ -1,4 +1,4 @@
-function Invoke-NinjaCopy
+function Invoke-CHANGE_ME_HERE
 {
 <#
 .SYNOPSIS
