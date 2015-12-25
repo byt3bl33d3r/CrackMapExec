@@ -75,7 +75,7 @@ class WMIEXEC:
         try:
             self.shell = RemoteShell(self.__share, win32Process, smbConnection)
             self.shell.onecmd(self.__command)
-        except  (Exception, KeyboardInterrupt), e:
+        except (Exception, KeyboardInterrupt) as e:
             logging.error(str(e))
             dcom.disconnect()
 
