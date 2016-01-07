@@ -234,25 +234,39 @@ def get_targets(target):
         try:
             hosts = IPRange(ip_range[0], ip_range[1])
         except AddrFormatError:
-            start_ip = IPAddress(ip_range[0])
+            try:
+                start_ip = IPAddress(ip_range[0])
 
-            start_ip_words = list(start_ip.words)
-            start_ip_words[-1] = ip_range[1]
-            start_ip_words = [str(v) for v in start_ip_words]
+                start_ip_words = list(start_ip.words)
+                start_ip_words[-1] = ip_range[1]
+                start_ip_words = [str(v) for v in start_ip_words]
 
-            end_ip = IPAddress('.'.join(start_ip_words))
+                end_ip = IPAddress('.'.join(start_ip_words))
 
-            return IPRange(start_ip, end_ip)
+                return IPRange(start_ip, end_ip)
+            except AddrFormatError:
+                return target
     else:
-        return IPNetwork(target)
+        try:
+            return IPNetwork(target)
+        except AddrFormatError:
+            return target
 
 if os.path.exists(args.target):
     with open(args.target, 'r') as target_file:
         for target in target_file:
-            targets.append(get_targets(target))
+            t = get_targets(target)
+            if type(t) is IPNetwork or IPRange:  
+                targets.extend(list(t))
+            else:
+                targets.append(t)
 else:
     for target in args.target.split(','):
-        targets.append(get_targets(target))
+        t = get_targets(target)
+        if type(t) == IPNetwork or type(t) == IPRange:
+            targets.extend(list(t))
+        else:
+            targets.append(t)
 
 if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
@@ -268,7 +282,7 @@ def concurrency(targets):
     '''
     try:
         pool = Pool(args.threads)
-        jobs = [pool.spawn(connect, str(host)) for net in targets for host in net]
+        jobs = [pool.spawn(connect, str(target)) for target in targets]
         joinall(jobs)
     except KeyboardInterrupt:
         shutdown(0)
