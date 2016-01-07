@@ -212,7 +212,7 @@ if args.combo_file and not os.path.exists(args.combo_file):
 
 if args.service:
     if args.service in ['start', 'stop', 'delete', 'status', 'config', 'change']:
-        if not args.name:
+        if not args.service_name:
             print_error('You must specify a --name')
             shutdown(1)
 
