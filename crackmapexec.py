@@ -51,14 +51,14 @@ parser = argparse.ArgumentParser(description="""
                             {}: {}
 """.format(red('Version'),
            yellow(VERSION),
-           red('Codename'), 
+           red('Codename'),
            yellow(CODENAME)),
 
                                 formatter_class=RawTextHelpFormatter,
                                 version='2.0 - {}'.format(CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
-parser.add_argument("target", nargs=1, type=str, help="The target range, CIDR identifier or file containing targets")
+parser.add_argument("target", nargs=1, type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
 parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")
 parser.add_argument("-u", metavar="USERNAME", dest='user', type=str, default=None, help="Username(s) or file containing usernames")
 parser.add_argument("-p", metavar="PASSWORD", dest='passwd', type=str, default=None, help="Password(s) or file containing passwords")
