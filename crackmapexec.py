@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser(description="""
            yellow(CODENAME)),
 
                                 formatter_class=RawTextHelpFormatter,
-                                version='2.0 - {}'.format(CODENAME),
+                                version='{} - {}'.format(VERSION, CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
 parser.add_argument("target", nargs=1, type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
