@@ -231,39 +231,93 @@ def main_greenlet(host):
                 service_control.run(host)
 
             if settings.args.command:
-                EXECUTOR(cme_logger, settings.args.command, host, domain, settings.args.no_output, smb, settings.args.execm)
+                EXECUTOR(cme_logger, 
+                         settings.args.command, 
+                         host, 
+                         domain, 
+                         settings.args.no_output, 
+                         smb, 
+                         settings.args.execm)
 
             if settings.args.pscommand:
-                EXECUTOR(cme_logger, ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb, settings.args.execm)
+                EXECUTOR(cme_logger, 
+                         ps_command(settings.args.pscommand, settings.args.ps_arch), 
+                         host, 
+                         domain, 
+                         settings.args.no_output, 
+                         smb, 
+                         settings.args.execm)
 
             if settings.args.mimikatz:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(cme_logger, powah_command.mimikatz(), host, domain, True, smb, settings.args.execm)
+                EXECUTOR(cme_logger, 
+                         powah_command.mimikatz(), 
+                         host, 
+                         domain, 
+                         True, 
+                         smb, 
+                         settings.args.execm)
 
             if settings.args.gpp_passwords:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(cme_logger, powah_command.gpp_passwords(), host, domain, True, smb, settings.args.execm)      
+                EXECUTOR(cme_logger, 
+                         powah_command.gpp_passwords(), 
+                         host, 
+                         domain, 
+                         True, 
+                         smb, 
+                         settings.args.execm)      
 
             if settings.args.mimikatz_cmd:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(cme_logger, powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb, settings.args.execm)
+                EXECUTOR(cme_logger, 
+                         powah_command.mimikatz(settings.args.mimikatz_cmd), 
+                         host, 
+                         domain, 
+                         True, 
+                         smb, 
+                         settings.args.execm)
 
             if settings.args.powerview:
                 #For some reason powerview functions only seem to work when using smbexec...
                 #I think we might have a mistery on our hands boys and girls!
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(cme_logger, powah_command.powerview(settings.args.powerview), host, domain, True, smb, 'smbexec')
+                EXECUTOR(cme_logger, 
+                         powah_command.powerview(settings.args.powerview), 
+                         host, 
+                         domain, 
+                         True, 
+                         smb, 
+                         'smbexec')
 
             if settings.args.inject:
                 powah_command = PowerShell(settings.args.server, local_ip)
                 if settings.args.inject.startswith('met_'):
-                    EXECUTOR(cme_logger, powah_command.inject_meterpreter(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, 
+                             powah_command.inject_meterpreter(), 
+                             host, 
+                             domain, 
+                             True, 
+                             smb, 
+                             settings.args.execm)
 
                 if settings.args.inject == 'shellcode':
-                    EXECUTOR(cme_logger, powah_command.inject_shellcode(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, 
+                             powah_command.inject_shellcode(), 
+                             host, 
+                             domain, 
+                             True,
+                             smb, 
+                             settings.args.execm)
 
                 if settings.args.inject == 'dll' or settings.args.inject == 'exe':
-                    EXECUTOR(cme_logger, powah_command.inject_exe_dll(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, 
+                             powah_command.inject_exe_dll(), 
+                             host, 
+                             domain, 
+                             True, 
+                             smb, 
+                             settings.args.execm)
         try:
             smb.logoff()
         except:

@@ -13,7 +13,7 @@ def ps_command(command, arch):
         logging.info('Forcing the following command to execute in a 32bit PS process: ' + command)
         command = '%SystemRoot%\\SysWOW64\\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
     
-    elif arch == 64:
+    elif arch == 64 or arch == 'auto':
         command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
     
     logging.info('Full PS command: ' + command)

