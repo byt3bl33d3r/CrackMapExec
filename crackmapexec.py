@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser(description="""
 
                                 formatter_class=RawTextHelpFormatter,
                                 version='{} - {}'.format(VERSION, CODENAME),
-                                epilog='There\'s been an awakening... have you felt it?')
+                                epilog='Hut Hut! Wat Wat!')
 
 parser.add_argument("target", nargs='*', type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
 parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")

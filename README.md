@@ -62,11 +62,11 @@ Just a little demo showing off the basics
                             @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
-                                                  Version: 2.2
-                            Codename: 'All I want for Christmas is a better name for this'
+                                                  Version: 2.3
+                                            Codename: 'Pink Bubbles'
 
 positional arguments:
-  target                The target range, CIDR identifier or file containing targets
+  target                The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -139,7 +139,8 @@ Command Execution:
 
   --execm {atexec,wmi,smbexec}
                         Method to execute the command (default: wmi)
-  --force-ps32          Force all PowerShell code/commands to run in a 32bit process
+  --ps-arch {auto,64,32}
+                        Process architecture all PowerShell code/commands should run in (default: auto)
   --no-output           Do not retrieve command output
   -x COMMAND            Execute the specified command
   -X PS_COMMAND         Excute the specified powershell command
@@ -175,7 +176,17 @@ Service Interaction:
   --start-name NAME     Name of the account under which the service should run
   --start-pass PASS     Password of the account whose name was specified with the --start-name parameter
 
-There's been an awakening... have you felt it?
+MSSQL Interaction:
+  Options for interacting with MSSQL DB's
+
+  --mssql [QUERY]       Authenticate with the provided credentials against the MSSQL service, optionally execute the specified query
+  --mssql-port PORT     MSSQL service port (default: 1433)
+  --mssql-instance      Enumerate the MSSQL intances on the target hosts
+  --enable-xpcmdshell   Enable xp_cmdshell on target DB's
+  --disable-xpcmdshell  Disable xp_cmdshell on target DB's
+  --xp-cmd COMMAND      Execute the specified command using xp_cmdshell
+
+Hut Hut! Wat Wat!
 ```
 
 #To do
