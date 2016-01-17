@@ -29,7 +29,6 @@ import ntpath
 import core.settings as settings
 
 from gevent import sleep
-from core.logger import *
 from impacket import version
 from impacket.smbconnection import SMBConnection, SMB_DIALECT, SMB2_DIALECT_002, SMB2_DIALECT_21
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
@@ -40,7 +39,8 @@ from StringIO import StringIO
 OUTPUT_FILENAME = ''.join(random.sample(string.ascii_letters, 10))
 
 class WMIEXEC:
-    def __init__(self, command = '', username = '', password = '', domain = '', hashes = None, aesKey = None, share = None, noOutput=False, doKerberos=False):
+    def __init__(self, logger, command = '', username = '', password = '', domain = '', hashes = None, aesKey = None, share = None, noOutput=False, doKerberos=False):
+        self.__logger = logger
         self.__command = command
         self.__username = username
         self.__password = password
@@ -73,7 +73,7 @@ class WMIEXEC:
         win32Process,_ = iWbemServices.GetObject('Win32_Process')
 
         try:
-            self.shell = RemoteShell(self.__share, win32Process, smbConnection)
+            self.shell = RemoteShell(self.__logger, self.__share, win32Process, smbConnection)
             self.shell.onecmd(self.__command)
         except (Exception, KeyboardInterrupt) as e:
             logging.error(str(e))
@@ -82,8 +82,9 @@ class WMIEXEC:
         dcom.disconnect()
 
 class RemoteShell(cmd.Cmd):
-    def __init__(self, share, win32Process, smbConnection):
+    def __init__(self, logger, share, win32Process, smbConnection):
         cmd.Cmd.__init__(self)
+        self.__logger = logger
         self.__share = share
         self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
         self.__outputBuffer = ''
@@ -228,10 +229,10 @@ class RemoteShell(cmd.Cmd):
 
     def send_data(self, data):
         self.execute_remote(data)
-        print_succ('{}:{} Executed command via WMIEXEC'.format(self.__win32Process.get_target(), 
-                                                               settings.args.port))
+        self.__logger.success('Executed command via WMIEXEC')
+
         if self.__noOutput is False:
             buf = StringIO(self.__outputBuffer.strip()).readlines()
             for line in buf:
-                print_att(line.strip())
+                self.__logger.results(line.strip())
         self.__outputBuffer = ''

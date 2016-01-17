@@ -17,7 +17,6 @@ import sys
 import logging
 import codecs
 
-from core.logger import *
 from impacket import version
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.samr import SID_NAME_USE
@@ -32,11 +31,12 @@ class LSALookupSid:
         '135/TCP': (r'ncacn_ip_tcp:%s', 135),
         }
 
-    def __init__(self, username, password, domain, protocols = None,
+    def __init__(self, logger, username, password, domain, protocols = None,
                  hashes = None, maxRid=4000):
         if not protocols:
             protocols = LSALookupSid.KNOWN_PROTOCOLS.keys()
 
+        self.__logger = logger
         self.__username = username
         self.__password = password
         self.__protocols = [protocols]
@@ -66,7 +66,7 @@ class LSALookupSid:
                 rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
 
             try:
-                print_succ("{}:{} Dumping users (rid:domain:user):".format(addr, protocol[:-4]))
+                self.__logger.success("Brute forcing SIDs (rid:domain:user)")
                 self.__bruteForce(rpctransport, self.__maxRid)
             except Exception, e:
                 #import traceback
@@ -124,7 +124,7 @@ class LSALookupSid:
 
             for n, item in enumerate(resp['TranslatedNames']['Names']):
                 if item['Use'] != SID_NAME_USE.SidTypeUnknown:
-                    print_att("%d: %s\\%s (%s)" % (soFar+n, resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name'], item['Name'], SID_NAME_USE.enumItems(item['Use']).name))
+                    self.__logger.results("%d: %s\\%s (%s)" % (soFar+n, resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name'], item['Name'], SID_NAME_USE.enumItems(item['Use']).name))
             soFar += SIMULTANEOUS
 
         dce.disconnect()

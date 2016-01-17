@@ -1,4 +1,3 @@
-from logger import *
 from impacket.smbconnection import SessionError
 import random
 import string
@@ -7,9 +6,10 @@ import settings
 
 class SHAREDUMP:
 
-	def __init__(self, smbconnection):
+	def __init__(self, smbconnection, logger):
 		self.__smbconnection = smbconnection
 		self.__permdir = ''.join(random.sample(string.ascii_letters, 10))
+		self.__logger = logger
 
 	def dump(self, host):
 		permissions = {}
@@ -32,11 +32,11 @@ class SHAREDUMP:
 		    except SessionError:
 		        pass
 
-		print_succ('{}:{} Available shares:'.format(host, settings.args.port))
-		print_att('{:>15} {:>15}'.format('SHARE', 'Permissions'))
-		print_att('{:>15} {:>15}'.format('-----', '-----------'))
+		self.__logger.success('Enumerating shares')
+		self.__logger.results('{:>15} {:>15}'.format('SHARE', 'Permissions'))
+		self.__logger.results('{:>15} {:>15}'.format('-----', '-----------'))
 		for share, perm in permissions.iteritems():
 		    if not perm:
-		        print_att(u'{:>15} {:>15}'.format(share, 'NO ACCESS'))
+		        self.__logger.results(u'{:>15} {:>15}'.format(share, 'NO ACCESS'))
 		    else:
-		        print_att(u'{:>15} {:>15}'.format(share, ', '.join(perm)))
+		        self.__logger.results(u'{:>15} {:>15}'.format(share, ', '.join(perm)))

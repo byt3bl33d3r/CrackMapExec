@@ -20,6 +20,39 @@ def antiansi_emit(self, record):
 
 logging.FileHandler.emit = antiansi_emit
 
+class CMEAdapter(logging.LoggerAdapter):
+
+    def __init__(self, logger, extra, action=None):
+        self.logger = logger
+        self.extra = extra
+        self.action = action
+
+    def process(self, msg, kwargs):
+        return '{} {}:{} {} {}'.format(colored(self.extra['service'], 'blue', attrs=['bold']), 
+                                       self.extra['host'],
+                                       self.extra['port'],
+                                       self.extra['hostname'],
+                                       msg), kwargs
+
+    def info(self, msg, *args, **kwargs):
+        msg, kwargs = self.process(colored("[*] ", 'blue', attrs=['bold']) + msg, kwargs)
+        self.logger.info(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        msg, kwargs = self.process(colored("[-] ", 'red', attrs=['bold']) + msg, kwargs)
+        self.logger.info(msg, *args, **kwargs)
+
+    def success(self, msg, *args, **kwargs):
+        msg, kwargs = self.process(colored("[+] ", 'green', attrs=['bold']) + msg, kwargs)
+        self.logger.info(msg, *args, **kwargs)
+
+    def results(self, msg, *args, **kwargs):
+        msg, kwargs = self.process(colored(msg, 'yellow', attrs=['bold']), kwargs)
+        self.logger.info(msg, *args, **kwargs)
+
+    def logMessage(self, message):
+        self.results(message)
+
 def setup_logger(target, level=logging.INFO):
 
     formatter = logging.Formatter("%(asctime)s %(message)s", datefmt="%m-%d-%Y %H:%M:%S")
@@ -36,32 +69,26 @@ def setup_logger(target, level=logging.INFO):
         root_logger.addHandler(fileHandler)
         root_logger.setLevel(level)
 
-    #A logger on crack? keeps getting better
-    crack_logger = logging.getLogger('crack')
-    crack_logger.propagate = False
-    crack_logger.addHandler(streamHandler)
-    crack_logger.addHandler(fileHandler)
-    crack_logger.setLevel(level)
+    cme_logger = logging.getLogger('CME')
+    cme_logger.propagate = False
+    cme_logger.addHandler(streamHandler)
+    cme_logger.addHandler(fileHandler)
+    cme_logger.setLevel(level)
 
 def print_error(message):
-    clog = logging.getLogger('crack')
-    clog.info(colored("[-] ", 'red', attrs=['bold']) + message)
+    print colored("[-] ", 'red', attrs=['bold']) + message
 
-def print_status(message):
-    clog = logging.getLogger('crack')
-    clog.info(colored("[*] ", 'blue', attrs=['bold']) + message)
+def print_info(message):
+    print colored("[*] ", 'blue', attrs=['bold']) + message
 
-def print_succ(message):
-    clog = logging.getLogger('crack')
-    clog.info(colored("[+] ", 'green', attrs=['bold']) + message)
+def print_success(message):
+    print colored("[+] ", 'green', attrs=['bold']) + message
 
-def print_att(message):
-    clog = logging.getLogger('crack')
-    clog.info(colored(message, 'yellow', attrs=['bold']))
+def print_results(message):
+    print colored(message, 'yellow', attrs=['bold'])
 
 def print_message(message):
-    clog = logging.getLogger('crack')
-    clog.info(message)
+    print message
 
 def yellow(text):
     return colored(text, 'yellow', attrs=['bold'])
@@ -76,9 +103,5 @@ def red(text):
     return colored(text, 'red', attrs=['bold'])
 
 def shutdown(exit_code):
-    print_status("KTHXBYE")
+    print_info('KTHXBYE!')
     sys.exit(int(exit_code))
-
-def root_error():
-    print colored("[-] ", 'red', attrs=['bold']) + "I needz r00t!"
-    sys.exit(1)

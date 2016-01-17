@@ -1,4 +1,3 @@
-from logger import *
 from time import strftime, localtime
 from impacket.smb3structs import FILE_READ_DATA, FILE_WRITE_DATA
 import settings
@@ -44,23 +43,24 @@ class RemoteFile:
 
 class RemoteFileSystem:
 
-    def __init__(self, host, smbconnection):
+    def __init__(self, host, smbconnection, logger):
         self.__host = host
         self.__smbconnection = smbconnection
+        self.__logger = logger
 
     def download(self):
         out = open(settings.args.download[1], 'wb')
         self.__smbconnection.getFile(settings.args.share,  settings.args.download[0], out.write)
-        print_succ("{}:{} Downloaded file".format(self.__host, settings.args.port))
+        self.__logger.success("Downloaded file")
 
     def upload(self):
         up = open(settings.args.upload[0] , 'rb')
         self.__smbconnection.putFile(settings.args.share, settings.args.upload[1], up.read)
-        print_succ("{}:{} Uploaded file".format(self.__host, settings.args.port))
+        self.__logger.success("Uploaded file")
 
     def delete(self):
         self.__smbconnection.deleteFile(settings.args.share, settings.args.delete)
-        print_succ("{}:{} Deleted file".format(self.__host, settings.args.port))
+        self.__logger.success("Deleted file")
 
     def list(self):
         if settings.args.list == '.':
@@ -75,9 +75,9 @@ class RemoteFileSystem:
         elif path != '*':
             path = settings.args.share + '/' + path[:-2]
 
-        print_succ("{}:{} Contents of {}:".format(self.__host, settings.args.port, path))
+        self.__logger.success("Contents of {}:".format(path))
         for f in dir_list:
-            print_att(u"{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
-                                                        f.get_filesize(),
-                                                        strftime('%Y-%m-%d %H:%M', localtime(f.get_mtime_epoch())), 
-                                                        f.get_longname()))
+            self.__logger.results(u"{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
+                                                            f.get_filesize(),
+                                                            strftime('%Y-%m-%d %H:%M', localtime(f.get_mtime_epoch())), 
+                                                            f.get_longname()))

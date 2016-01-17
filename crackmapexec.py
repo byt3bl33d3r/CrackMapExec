@@ -8,26 +8,25 @@ from gevent.pool import Pool
 from gevent import joinall, sleep
 
 from core.logger import *
-from core.maingreenlet import connect
+from core.greenlets import main_greenlet
 from core.settings import init_args
 from core.servers.mimikatz import http_server, https_server
 from argparse import RawTextHelpFormatter
 from netaddr import IPAddress, IPRange, IPNetwork, AddrFormatError
 from logging import DEBUG
-from random import sample
-from string import ascii_lowercase
 
 import re
 import argparse
 import sys
 import os
 
-VERSION  = '2.2'
-CODENAME = '\'All I want for Christmas is a better name for this\''
+VERSION  = '2.3'
+CODENAME = '\'Pink Bubbles\''
 
 if sys.platform == 'linux2':
     if os.geteuid() is not 0:
-        root_error()
+        print_error('I needz r00tz!')
+        sys.exit(1)
 
 parser = argparse.ArgumentParser(description=""" 
   ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
@@ -48,7 +47,7 @@ parser = argparse.ArgumentParser(description="""
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
                                                   {}: {}
-                            {}: {}
+                                            {}: {}
 """.format(red('Version'),
            yellow(VERSION),
            red('Codename'),
@@ -58,7 +57,7 @@ parser = argparse.ArgumentParser(description="""
                                 version='{} - {}'.format(VERSION, CODENAME),
                                 epilog='There\'s been an awakening... have you felt it?')
 
-parser.add_argument("target", nargs=1, type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
+parser.add_argument("target", nargs='*', type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
 parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")
 parser.add_argument("-u", metavar="USERNAME", dest='user', type=str, default=None, help="Username(s) or file containing usernames")
 parser.add_argument("-p", metavar="PASSWORD", dest='passwd', type=str, default=None, help="Password(s) or file containing passwords")
@@ -139,13 +138,19 @@ wgroup.add_argument("--start-type", metavar='TYPE', help='Service start type')
 wgroup.add_argument("--start-name", metavar='NAME', help='Name of the account under which the service should run')
 wgroup.add_argument("--start-pass", metavar='PASS', help='Password of the account whose name was specified with the --start-name parameter')
 
+mgroup = parser.add_argument_group("MSSQL Interaction", "Options for interacting with MSSQL DB's")
+mgroup.add_argument("--mssql", nargs='?', const='', metavar='QUERY', help='Authenticate with the provided credentials against the MSSQL service, optionally execute the specified query')
+mgroup.add_argument("--mssql-port", default=1433, metavar='PORT', help='MSSQL service port (default: 1433)')
+mgroup.add_argument("--mssql-instance", action='store_true', help='Enumerate the MSSQL intances on the target hosts')
+mgroup.add_argument("--enable-xpcmdshell", action='store_true', help='Enable xp_cmdshell on target DB\'s')
+mgroup.add_argument("--disable-xpcmdshell", action='store_true', help='Disable xp_cmdshell on target DB\'s')
+mgroup.add_argument("--xp-cmd", metavar='COMMAND', help='Execute the specified command using xp_cmdshell')
+
 if len(sys.argv) == 1:
     parser.print_help()
     sys.exit(1)
 
 args = parser.parse_args()
-args.obfs_func_name = ''.join(sample(ascii_lowercase, 10))
-args.target = args.target[0]
 patterns    = []
 targets     = []
 
@@ -164,9 +169,9 @@ if args.server == 'https':
 init_args(args)
 
 if args.verbose:
-    setup_logger(args.target, DEBUG)
+    setup_logger('_'.join(args.target), DEBUG)
 else:
-    setup_logger(args.target)
+    setup_logger('_'.join(args.target))
 
 ###################### Just a bunch of error checking to make sure everythings good to go ######################
 
@@ -228,7 +233,7 @@ if args.ntds_history or args.ntds_pwdLastSet:
 
 ################################################################################################################
 
-def get_targets(target):
+def populate_targets(target):
     if '-' in target:
         ip_range = target.split('-')
         try:
@@ -243,30 +248,27 @@ def get_targets(target):
 
                 end_ip = IPAddress('.'.join(start_ip_words))
 
-                return IPRange(start_ip, end_ip)
+                t = IPRange(start_ip, end_ip)
             except AddrFormatError:
-                return target
+                t = target
     else:
         try:
-            return IPNetwork(target)
+            t = IPNetwork(target)
         except AddrFormatError:
-            return target
+            t = target
 
-if os.path.exists(args.target):
-    with open(args.target, 'r') as target_file:
-        for target in target_file:
-            t = get_targets(target)
-            if type(t) is IPNetwork or IPRange:  
-                targets.extend(list(t))
-            else:
-                targets.append(t)
-else:
-    for target in args.target.split(','):
-        t = get_targets(target)
-        if type(t) == IPNetwork or type(t) == IPRange:
-            targets.extend(list(t))
-        else:
-            targets.append(t)
+    if type(t) == IPNetwork or type(t) == IPRange:
+        targets.extend(list(t))
+    else:
+        targets.append(t)
+
+for target in args.target:
+    if os.path.exists(target):
+        with open(target, 'r') as target_file:
+            for target_entry in target_file:
+                populate_targets(target_entry)
+    else:
+        populate_targets(target)
 
 if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
@@ -282,7 +284,7 @@ def concurrency(targets):
     '''
     try:
         pool = Pool(args.threads)
-        jobs = [pool.spawn(connect, str(target)) for target in targets]
+        jobs = [pool.spawn(main_greenlet, str(target)) for target in targets]
         joinall(jobs)
     except KeyboardInterrupt:
         shutdown(0)

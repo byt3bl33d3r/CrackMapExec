@@ -22,7 +22,6 @@ import os
 import logging
 import cmd
 
-from core.logger import *
 from impacket import version
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5.dcom import wmi
@@ -31,7 +30,8 @@ import core.settings as settings
 
 class WMIQUERY:
 
-    def __init__(self, username, password, domain, hashes = None, doKerberos = False, aesKey = None, oxidResolver = True):
+    def __init__(self, logger, username, password, domain, hashes = None, doKerberos = False, aesKey = None, oxidResolver = True):
+        self.__logger = logger
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -53,15 +53,16 @@ class WMIQUERY:
         iWbemServices= iWbemLevel1Login.NTLMLogin(namespace, NULL, NULL)
         iWbemLevel1Login.RemRelease()
 
-        shell = WMIShell(iWbemServices, address)
+        shell = WMIShell(self.__logger, iWbemServices, address)
         shell.onecmd(command)
 
         iWbemServices.RemRelease()
         dcom.disconnect()
 
 class WMIShell(cmd.Cmd):
-    def __init__(self, iWbemServices, address):
+    def __init__(self, logger, iWbemServices, address):
         cmd.Cmd.__init__(self)
+        self.logger = logger
         self.address = address
         self.iWbemServices = iWbemServices
 
@@ -104,7 +105,7 @@ class WMIShell(cmd.Cmd):
                 line = []
                 for rec in record:
                     line.append('{}: {}'.format(rec, record[rec]['value']))
-                print_att(' | '.join(line))
+                self.logger.results(' | '.join(line))
             except Exception, e:
                 #import traceback
                 #print traceback.print_exc()
@@ -120,7 +121,7 @@ class WMIShell(cmd.Cmd):
             line = line[:-1]
         try:
             iEnumWbemClassObject = self.iWbemServices.ExecQuery(line.strip('\n'))
-            print_succ('{}:{} Executed specified WMI query:'.format(self.address, settings.args.port))
+            self.logger.success('Executed specified WMI query')
             self.printReply(iEnumWbemClassObject)
             iEnumWbemClassObject.RemRelease()
         except Exception, e:
