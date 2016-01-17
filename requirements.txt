@@ -5,3 +5,4 @@ pycrypto
 pyasn1
 termcolor
 colorama
+pyOpenSSL
