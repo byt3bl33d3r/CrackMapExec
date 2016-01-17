@@ -91,7 +91,7 @@ def main_greenlet(host):
                                                            'port': settings.args.port,
                                                            'service': 'SMB'})
 
-        cme_logger.info("{} (name:{}) (domain:{})".format(smb.getServerOS(), s_name, domain))
+        cme_logger.info(u"{} (name:{}) (domain:{})".format(smb.getServerOS(), s_name, domain))
 
         if settings.args.mssql_instance or settings.args.mssql is not None:
             mssql_greenlet(host, s_name, domain)

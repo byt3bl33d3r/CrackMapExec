@@ -110,7 +110,7 @@ sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion dept
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
 cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="wmi", help="Method to execute the command (default: wmi)")
-cgroup.add_argument('--force-ps32', action='store_true', dest='force_ps32', help='Force all PowerShell code/commands to run in a 32bit process')
+cgroup.add_argument('--ps-arch', default='auto', choices={'32', '64', 'auto'}, help='Process architecture all PowerShell code/commands should run in (default: auto)')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
 cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
