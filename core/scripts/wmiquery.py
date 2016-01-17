@@ -30,7 +30,7 @@ import core.settings as settings
 
 class WMIQUERY:
 
-    def __init__(self, logger, username, password, domain, hashes = None, doKerberos = False, aesKey = None, oxidResolver = True):
+    def __init__(self, logger, username, domain, password, hashes = None, doKerberos = False, aesKey = None, oxidResolver = True):
         self.__logger = logger
         self.__username = username
         self.__password = password
@@ -42,6 +42,8 @@ class WMIQUERY:
         self.__nthash = ''
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
+        if self.__password is None:
+            self.__password = ''
 
     def run(self, command, address, namespace):
 

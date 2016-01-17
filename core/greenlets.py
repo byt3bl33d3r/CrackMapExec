@@ -200,9 +200,9 @@ def main_greenlet(host):
 
             if settings.args.wmi_query:
                 wmi_query = WMIQUERY(cme_logger,
-                                     settings.args.user, 
-                                     settings.args.passwd, 
-                                     domain, 
+                                     settings.args.user,  
+                                     domain,
+                                     settings.args.passwd,
                                      settings.args.hash,
                                      settings.args.kerb,
                                      settings.args.aesKey)
