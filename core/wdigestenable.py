@@ -1,11 +1,11 @@
 from scripts.secretsdump import RemoteOperations
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
-from logger import *
 
 class WdisgestEnable:
 
-    def __init__(self, smbconnection, doKerb):
+    def __init__(self, logger, smbconnection, doKerb):
+        self.logger = logger
         self.smbconnection = smbconnection
         self.peer = ':'.join(map(str, smbconnection.getSMBServer().get_socket().getpeername()))
         self.doKerb = doKerb
@@ -28,7 +28,7 @@ class WdisgestEnable:
             rtype, data = rrp.hBaseRegQueryValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
 
             if int(data) == 1:
-                print_succ('{} UseLogonCredential registry key created successfully'.format(self.peer))
+                self.logger.success('UseLogonCredential registry key created successfully')
 
         try:
             remoteOps.finish()
@@ -53,7 +53,7 @@ class WdisgestEnable:
                 #Check to make sure the reg key is actually deleted
                 rtype, data = rrp.hBaseRegQueryValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
             except DCERPCException:
-                print_succ('{} UseLogonCredential registry key deleted successfully'.format(self.peer))
+                self.logger.success('UseLogonCredential registry key deleted successfully')
 
         try:
             remoteOps.finish()

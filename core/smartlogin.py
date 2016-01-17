@@ -6,7 +6,10 @@ import os
 import csv
 import StringIO
 
-def smart_login(host, smb, domain):
+class MSSQLSessionError(Exception):
+    pass
+
+def smart_login(host, domain, connection, cme_logger):
     '''
         This function should probably be called ugly_login
     ''' 
@@ -19,11 +22,12 @@ def smart_login(host, smb, domain):
 
                     if settings.args.fail_limit:
                         if settings.args.fail_limit == fails:
-                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached login fail limit')
                             raise socket.error
+                    
                     if settings.args.gfail_limit:
                         if settings.gfails >= settings.args.gfail_limit:
-                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached global login fail limit')
                             raise socket.error
 
                     line = line.strip()
@@ -54,23 +58,45 @@ def smart_login(host, smb, domain):
 
                     try:
                         if settings.args.kerb:
-                            smb.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
+                            if settings.args.mssql is not None:
+                                res = connection.kerberosLogin(None, user, passwd, domain, ':'.join(lmhash, nthash), settings.args.aesKey)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError
+                            else:
+                                connection.kerberosLogin(user, passwd, domain, lmhash, nthash, settings.args.aesKey)
+
                         else:
-                            smb.login(user, passwd, domain, lmhash, nthash)
-                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                            if settings.args.mssql is not None:
+                                res = connection.login(None, user, passwd, domain, ':'.join(lmhash, nthash), True)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError
+                            else:
+                                connection.login(user, passwd, domain, lmhash, nthash)
+
+                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, passwd))
+
                         settings.args.user = user
                         settings.args.passwd = passwd
                         settings.args.hash = ':'.join(lmhash, nthash)
-                        return smb
+                        
+                        return connection
+                    
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        cme_logger.error("{}\\{}:{} {}".format(domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in e:
                             fails += 1
                             settings.gfails += 1
                         continue
 
+                    except MSSQLSessionError:
+                        fails += 1
+                        settings.gfails += 1
+                        continue
+
                 except Exception as e:
-                    print_error("Error parsing line '{}' in combo file: {}".format(line, e))
+                    cme_logger.error("Error parsing line '{}' in combo file: {}".format(line, e))
                     continue
     else:
         usernames = []
@@ -122,11 +148,12 @@ def smart_login(host, smb, domain):
 
                     if settings.args.fail_limit:
                         if settings.args.fail_limit == fails:
-                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached login fail limit')
                             raise socket.error
+                    
                     if settings.args.gfail_limit:
                         if settings.gfails >= settings.args.gfail_limit:
-                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached global login fail limit')
                             raise socket.error
 
                     ntlm_hash = ntlm_hash.strip().lower()
@@ -135,18 +162,38 @@ def smart_login(host, smb, domain):
 
                     try:
                         if settings.args.kerb:
-                            smb.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
+                            if settings.args.mssql is not None:
+                                res = connection.kerberosLogin(None, user, '', domain, ':'.join(lmhash, nthash), settings.args.aesKey)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError  
+                            else:
+                                connection.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
                         else:
-                            smb.login(user, '', domain, lmhash, nthash)
-                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, ntlm_hash))
+                            if settings.args.mssql is not None:
+                                res = connection.login(None, user, '', domain, ':'.join(lmhash, nthash), True)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError
+                            else:
+                                connection.login(user, '', domain, lmhash, nthash)
+                        
+                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
                         settings.args.user = user
                         settings.args.hash = ntlm_hash
-                        return smb
+                        
+                        return connection
+
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, ntlm_hash, e))
+                        cme_logger.error("{}\\{}:{} {}".format(domain, user, ntlm_hash, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
+                        continue
+
+                    except MSSQLSessionError:
+                        fails += 1
+                        settings.gfails += 1
                         continue
 
             if passwords:
@@ -154,11 +201,12 @@ def smart_login(host, smb, domain):
 
                     if settings.args.fail_limit:
                         if settings.args.fail_limit == fails:
-                            print_status('{}:{} Reached login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached login fail limit')
                             raise socket.error
+
                     if settings.args.gfail_limit:
                         if settings.gfails >= settings.args.gfail_limit:
-                            print_status('{}:{} Reached global login fail limit'.format(host, settings.args.port))
+                            cme_logger.info('Reached global login fail limit')
                             raise socket.error
 
                     passwd = passwd.strip()
@@ -166,18 +214,38 @@ def smart_login(host, smb, domain):
                     if passwd == '': passwd = "''"
                     try:
                         if settings.args.kerb:
-                            smb.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
+                            if settings.args.mssql is not None:
+                                connection.kerberosLogin(None, user, passwd, domain, None, settings.args.aesKey)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError
+                            else:
+                                connection.kerberosLogin(user, passwd, domain, '', '', settings.args.aesKey)
                         else:
-                            smb.login(user, passwd, domain)
-                        print_succ("{}:{} Login successful {}\\{}:{}".format(host, settings.args.port, domain, user, passwd))
+                            if settings.args.mssql is not None:
+                                res = connection.login(None, user, passwd, domain, None, True)
+                                if res is not True:
+                                    connection.printReplies()
+                                    raise MSSQLSessionError
+                            else:
+                                connection.login(user, passwd, domain)
+
+                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd
-                        return smb
+                        
+                        return connection
+
                     except SessionError as e:
-                        print_error("{}:{} {}\\{}:{} {}".format(host, settings.args.port, domain, user, passwd, e))
+                        cme_logger.error("{}\\{}:{} {}".format(domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
+                        continue
+
+                    except MSSQLSessionError:
+                        fails += 1
+                        settings.gfails += 1
                         continue
 
     raise socket.error #So we fail without a peep

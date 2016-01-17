@@ -21,7 +21,6 @@ import argparse
 import random
 import logging
 
-from core.logger import *
 from gevent import sleep
 from impacket import version
 from impacket.dcerpc.v5 import tsch, transport
@@ -30,7 +29,8 @@ from StringIO import StringIO
 
 
 class TSCH_EXEC:
-    def __init__(self, command=None, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False, noOutput=False):
+    def __init__(self, logger, command=None, username='', password='', domain='', hashes=None, aesKey=None, doKerberos=False, noOutput=False):
+        self.__logger = logger
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -65,7 +65,7 @@ class TSCH_EXEC:
         def output_callback(data):
             buf = StringIO(data.strip()).readlines()
             for line in buf:
-                print_att(line.strip())
+                self.__logger.results(line.strip())
 
         dce = rpctransport.get_dce_rpc()
 
@@ -159,7 +159,7 @@ class TSCH_EXEC:
                 tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
 
         peer = ':'.join(map(str, rpctransport.get_socket().getpeername()))
-        print_succ('{} Executed command via ATEXEC'.format(peer))
+        self.__logger.success('Executed command via ATEXEC')
 
         if self.__noOutput is False:
             smbConnection = rpctransport.get_smb_connection()

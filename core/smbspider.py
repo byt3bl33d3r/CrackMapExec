@@ -2,7 +2,6 @@ import re
 import settings
 import traceback
 
-from logger import *
 from time import time, strftime, localtime
 from impacket.smbconnection import SessionError
 from remotefilesystem import RemoteFile
@@ -10,11 +9,12 @@ from impacket.smb3structs import FILE_READ_DATA
 
 class SMBSPIDER:
 
-    def __init__(self, host, smbconnection):
+    def __init__(self, logger, host, smbconnection):
+        self.__logger = logger
         self.__smbconnection = smbconnection
         self.__start_time = time()
         self.__host = host
-        print_status("{}:{} Started spidering".format(self.__host, settings.args.port))
+        self.__logger.success("Started spidering")
 
     def spider(self, subfolder, depth):
         '''
@@ -54,13 +54,13 @@ class SMBSPIDER:
             for pattern in settings.args.pattern:
                 if re.findall(pattern, result.get_longname()):
                     if result.is_directory():
-                        print_att(u"//{}/{}{} [dir]".format(self.__host, path, result.get_longname()))
+                        self.__logger.results(u"//{}/{}{} [dir]".format(self.__host, path, result.get_longname()))
                     else:
-                        print_att(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.__host,
-                                                                           path,
-                                                                           result.get_longname(),
-                                                                           strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
-                                                                           result.get_filesize()))
+                        self.__logger.results(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.__host,
+                                                                                       path,
+                                                                                       result.get_longname(),
+                                                                                       strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
+                                                                                       result.get_filesize()))
 
                 if settings.args.search_content:
                     if not result.is_directory():
@@ -85,13 +85,13 @@ class SMBSPIDER:
                         return
 
                 if re.findall(pattern, contents):
-                    print_att(u"//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(self.__host,
-                                                                                            path,
-                                                                                            result.get_longname(),
-                                                                                            strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
-                                                                                            result.get_filesize(),
-                                                                                            rfile.tell(),
-                                                                                            pattern.pattern))
+                    self.__logger.results(u"//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:{}]".format(self.__host,
+                                                                                                        path,
+                                                                                                        result.get_longname(),
+                                                                                                        strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
+                                                                                                        result.get_filesize(),
+                                                                                                        rfile.tell(),
+                                                                                                        pattern.pattern))
                     rfile.close()
                     return
 
@@ -101,10 +101,8 @@ class SMBSPIDER:
             if settings.args.verbose: traceback.print_exc()
 
         except Exception as e:
-            print_error(str(e))
+            self.__logger.error(str(e))
             if settings.args.verbose: traceback.print_exc()
 
     def finish(self):
-        print_status("{}:{} Done spidering (Completed in {})".format(self.__host, 
-                                                                     settings.args.port, 
-                                                                     time() - self.__start_time))
+        self.__logger.error("Done spidering (Completed in {})".format(time() - self.__start_time))

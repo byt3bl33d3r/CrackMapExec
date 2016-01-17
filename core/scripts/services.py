@@ -19,7 +19,6 @@ import sys
 import logging
 import codecs
 
-from core.logger import *
 from impacket import version
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.dcerpc.v5.ndr import NULL
@@ -32,7 +31,7 @@ class SVCCTL:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, username, password, domain, protocol, action, options):
+    def __init__(self, logger, username, password, domain, protocol, action, options):
         self.__username = username
         self.__password = password
         self.__protocol = SVCCTL.KNOWN_PROTOCOLS.keys()
@@ -46,6 +45,7 @@ class SVCCTL:
         self.__protocol = protocol
         self.__addr = None
         self.__port = None
+        self.__logger = logger
 
         if options.hash is not None:
             self.__lmhash, self.__nthash = options.hash.split(':')
@@ -92,19 +92,19 @@ class SVCCTL:
             serviceHandle = ans['lpServiceHandle']
 
         if self.__action == 'START':
-            print_status("{}:{} Starting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Starting service {}".format(self.__options.service_name))
             scmr.hRStartServiceW(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'STOP':
-            print_status("{}:{} Stopping service {}".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Stopping service {}".format(self.__options.service_name))
             scmr.hRControlService(rpc, serviceHandle, scmr.SERVICE_CONTROL_STOP)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'DELETE':
-            print_status("{}:{} Deleting service {}".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Deleting service {}".format(self.__options.service_name))
             scmr.hRDeleteService(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'CONFIG':
-            print_succ("{}:{} Service config for {}:".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Service config for {}".format(self.__options.service_name))
             resp = scmr.hRQueryServiceConfigW(rpc, serviceHandle)
             output = "TYPE              : %2d - " % resp['lpServiceConfig']['dwServiceType']
             if resp['lpServiceConfig']['dwServiceType'] & 0x1:
@@ -117,7 +117,7 @@ class SVCCTL:
                 output += "SERVICE_WIN32_SHARE_PROCESS "
             if resp['lpServiceConfig']['dwServiceType'] & 0x100:
                 output += "SERVICE_INTERACTIVE_PROCESS "
-            print_att(output)
+            self.__logger.results(output)
 
             output = "START_TYPE        : %2d - " % resp['lpServiceConfig']['dwStartType']
             if resp['lpServiceConfig']['dwStartType'] == 0x0:
@@ -132,7 +132,7 @@ class SVCCTL:
                 output += "DISABLED"
             else:
                 output += "UNKOWN"
-            print_att(output)
+            self.logger.results(output)
 
             output = "ERROR_CONTROL     : %2d - " % resp['lpServiceConfig']['dwErrorControl']
             if resp['lpServiceConfig']['dwErrorControl'] == 0x0:
@@ -145,16 +145,16 @@ class SVCCTL:
                 output += "CRITICAL"
             else:
                 output += "UNKOWN"
-            print_att(output)
+            self.__logger.results(output)
 
-            print_att("BINARY_PATH_NAME  : %s" % resp['lpServiceConfig']['lpBinaryPathName'][:-1])
-            print_att("LOAD_ORDER_GROUP  : %s" % resp['lpServiceConfig']['lpLoadOrderGroup'][:-1])
-            print_att("TAG               : %d" % resp['lpServiceConfig']['dwTagId'])
-            print_att("DISPLAY_NAME      : %s" % resp['lpServiceConfig']['lpDisplayName'][:-1])
-            print_att("DEPENDENCIES      : %s" % resp['lpServiceConfig']['lpDependencies'][:-1])
-            print_att("SERVICE_START_NAME: %s" % resp['lpServiceConfig']['lpServiceStartName'][:-1])
+            self.__logger.results("BINARY_PATH_NAME  : %s" % resp['lpServiceConfig']['lpBinaryPathName'][:-1])
+            self.__logger.results("LOAD_ORDER_GROUP  : %s" % resp['lpServiceConfig']['lpLoadOrderGroup'][:-1])
+            self.__logger.results("TAG               : %d" % resp['lpServiceConfig']['dwTagId'])
+            self.__logger.results("DISPLAY_NAME      : %s" % resp['lpServiceConfig']['lpDisplayName'][:-1])
+            self.__logger.results("DEPENDENCIES      : %s" % resp['lpServiceConfig']['lpDependencies'][:-1])
+            self.__logger.results("SERVICE_START_NAME: %s" % resp['lpServiceConfig']['lpServiceStartName'][:-1])
         elif self.__action == 'STATUS':
-            print_succ("{}:{} Service status for {}:".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Service status for {}".format(self.__options.service_name))
             resp = scmr.hRQueryServiceStatus(rpc, serviceHandle)
             output = "%s - " % self.__options.service_name
             state = resp['lpServiceStatus']['dwCurrentState']
@@ -174,9 +174,9 @@ class SVCCTL:
                output += "STOPPED"
             else:
                output += "UNKOWN"
-            print_att(output)
+            self.__logger.results(output)
         elif self.__action == 'LIST':
-            print_succ("{}:{} Available services:".format(self.__addr, self.__port))
+            self.__logger.success("Enumerating services")
             #resp = rpc.EnumServicesStatusW(scManagerHandle, svcctl.SERVICE_WIN32_SHARE_PROCESS )
             #resp = rpc.EnumServicesStatusW(scManagerHandle, svcctl.SERVICE_WIN32_OWN_PROCESS )
             #resp = rpc.EnumServicesStatusW(scManagerHandle, serviceType = svcctl.SERVICE_FILE_SYSTEM_DRIVER, serviceState = svcctl.SERVICE_STATE_ALL )
@@ -200,13 +200,13 @@ class SVCCTL:
                    output += "STOPPED"
                 else:
                    output += "UNKOWN"
-                print_att(output)
-            print_att("Total Services: %d" % len(resp))
+                self.__logger.results(output)
+            self.__logger.results("Total Services: {}".format(len(resp)))
         elif self.__action == 'CREATE':
-            print_status("{}:{} Creating service {}".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Creating service {}".format(self.__options.service_name))
             scmr.hRCreateServiceW(rpc, scManagerHandle,self.__options.service_name + '\x00', self.__options.service_display_name + '\x00', lpBinaryPathName=self.__options.service_bin_path + '\x00')
         elif self.__action == 'CHANGE':
-            print_status("{}:{} Changing service config for {}".format(self.__addr, self.__port, self.__options.service_name))
+            self.__logger.success("Changing service config for {}".format(self.__options.service_name))
             if self.__options.start_type is not None:
                 start_type = int(self.__options.start_type)
             else:

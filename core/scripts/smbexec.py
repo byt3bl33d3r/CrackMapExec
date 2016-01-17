@@ -35,7 +35,6 @@ import logging
 import random
 import string
 
-from core.logger import *
 from core.servers.smbserver import SMBServer
 from impacket import version
 from impacket.smbconnection import *
@@ -51,11 +50,12 @@ class SMBEXEC:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, command, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None, noOutput=False):
+    def __init__(self, logger, command, protocols = None, username = '', password = '', domain = '', hashes = None, aesKey = None, doKerberos = None, mode = None, share = None, noOutput=False):
         
         if not protocols:
             protocols = SMBEXEC.KNOWN_PROTOCOLS.keys()
 
+        self.__logger = logger
         self.__username = username
         self.__password = password
         self.__command = command
@@ -100,7 +100,7 @@ class SMBEXEC:
                 if self.__mode == 'SERVER':
                     serverThread = SMBServer()
                     serverThread.start()
-                self.shell = RemoteShell(self.__share, rpctransport, self.__mode, self.__serviceName, self.__noOutput)
+                self.shell = RemoteShell(self.__logger, self.__share, rpctransport, self.__mode, self.__serviceName, self.__noOutput)
                 self.shell.onecmd(self.__command)
                 self.shell.finish()
                 if self.__mode == 'SERVER':
@@ -111,8 +111,9 @@ class SMBEXEC:
                     self.shell.finish()
 
 class RemoteShell(cmd.Cmd):
-    def __init__(self, share, rpc, mode, serviceName, noOutput):
+    def __init__(self, logger, share, rpc, mode, serviceName, noOutput):
         cmd.Cmd.__init__(self)
+        self.__logger = logger
         self.__share = share
         self.__mode = mode
         self.__output = '\\Windows\\Temp\\' + OUTPUT_FILENAME 
@@ -235,9 +236,9 @@ class RemoteShell(cmd.Cmd):
     def send_data(self, data):
         self.execute_remote(data)
         peer = ':'.join(map(str, self.__rpc.get_socket().getpeername()))
-        print_succ("{} Executed command via SMBEXEC".format(peer))
+        self.__logger.success("Executed command via SMBEXEC")
         if self.__noOutput is False:
             buf = StringIO(self.__outputBuffer.strip()).readlines()
             for line in buf:
-                print_att(line.strip())
+                self.__logger.results(line.strip())
         self.__outputBuffer = ''

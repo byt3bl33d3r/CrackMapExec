@@ -2,7 +2,6 @@ import sys
 import logging
 import codecs
 
-from core.logger import *
 from impacket import version
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.dcerpc.v5 import transport, samr
@@ -15,13 +14,14 @@ class PassPolDump:
         '445/SMB': (r'ncacn_np:%s[\pipe\samr]', 445),
         }
 
-    def __init__(self, protocols = None,
+    def __init__(self, logger, protocols = None,
                  username = '', password = '', domain = '', hashes = None, aesKey=None, doKerberos = False):
         if not protocols:
             self.__protocols = PassPolDump.KNOWN_PROTOCOLS.keys()
         else:
             self.__protocols = [protocols]
 
+        self.__logger = logger
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -63,6 +63,7 @@ class PassPolDump:
             resp = samr.hSamrOpenDomain(dce, serverHandle = serverHandle, domainId = resp['DomainId'])
             domainHandle = resp['DomainHandle']
 
+            self.__logger.success('Dumping password policy')
             self.get_pass_pol(addr, rpctransport, dce, domainHandle)
 
     def convert(self, low, high, no_zero):
@@ -108,8 +109,8 @@ class PassPolDump:
 
         pass_hst_len = resp['Buffer']['Password']['PasswordHistoryLength']
 
-        print_att('Minimum password length: {}'.format(min_pass_len))
-        print_att('Password history length: {}'.format(pass_hst_len))
+        self.__logger.results('Minimum password length: {}'.format(min_pass_len))
+        self.__logger.results('Password history length: {}'.format(pass_hst_len))
 
         max_pass_age = self.convert(resp['Buffer']['Password']['MaxPasswordAge']['LowPart'], 
                                     resp['Buffer']['Password']['MaxPasswordAge']['HighPart'],
@@ -119,16 +120,16 @@ class PassPolDump:
                                     resp['Buffer']['Password']['MinPasswordAge']['HighPart'],
                                     1)
 
-        print_att('Maximum password age: {}'.format(max_pass_age))
-        print_att('Minimum password age: {}'.format(min_pass_age))
+        self.__logger.results('Maximum password age: {}'.format(max_pass_age))
+        self.__logger.results('Minimum password age: {}'.format(min_pass_age))
 
         resp = samr.hSamrQueryInformationDomain2(dce, domainHandle,samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation)
 
         lock_threshold = int(resp['Buffer']['Lockout']['LockoutThreshold'])
 
-        print_att("Account lockout threshold: {}".format(lock_threshold))
+        self.__logger.results("Account lockout threshold: {}".format(lock_threshold))
 
         lock_duration = None
         if lock_threshold != 0: lock_duration = int(resp['Buffer']['Lockout']['LockoutDuration']) / -600000000
 
-        print_att("Account lockout duration: {}".format(lock_duration))
+        self.__logger.results("Account lockout duration: {}".format(lock_duration))

@@ -35,7 +35,7 @@ class SAMRDump:
         }
 
 
-    def __init__(self, protocols = None,
+    def __init__(self, logger, protocols = None,
                  username = '', password = '', domain = '', hashes = None, aesKey=None, doKerberos = False):
         if not protocols:
             self.__protocols = SAMRDump.KNOWN_PROTOCOLS.keys()
@@ -49,6 +49,7 @@ class SAMRDump:
         self.__nthash = ''
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
+        self.__logger = logger
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(':')
         if password is None:
@@ -80,15 +81,15 @@ class SAMRDump:
 
         # Display results.
 
-        print_succ('{}:{} Dumping users:'.format(addr, protocol[:-4]))
+        self.__logger.success('Dumping users')
         for entry in entries:
             (username, uid, user) = entry
             base = "%s (%d)" % (username, uid)
-            print_att(u'{}/FullName: {}'.format(base, user['FullName']))
-            print_att(u'{}/UserComment: {}' .format(base, user['UserComment']))
-            print_att(u'{}/PrimaryGroupId: {}'.format(base, user['PrimaryGroupId']))
-            print_att(u'{}/BadPasswordCount: {}'.format(base, user['BadPasswordCount']))
-            print_att(u'{}/LogonCount: {}'.format(base, user['LogonCount']))
+            self.__logger.results(u'{}/FullName: {}'.format(base, user['FullName']))
+            self.__logger.results(u'{}/UserComment: {}' .format(base, user['UserComment']))
+            self.__logger.results(u'{}/PrimaryGroupId: {}'.format(base, user['PrimaryGroupId']))
+            self.__logger.results(u'{}/BadPasswordCount: {}'.format(base, user['BadPasswordCount']))
+            self.__logger.results(u'{}/LogonCount: {}'.format(base, user['LogonCount']))
 
         if entries:
             num = len(entries)
