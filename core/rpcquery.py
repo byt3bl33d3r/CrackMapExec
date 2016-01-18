@@ -13,6 +13,8 @@ class RPCQUERY():
         self.__nthash = ''
         self.__local_ip = None
         self.__ts = ('8a885d04-1ceb-11c9-9fe8-08002b104860', '2.0')
+        if self.__password is None:
+            self.__password = ''
         if hashes:
             self.__lmhash, self.__nthash = hashes.split(':')
 
