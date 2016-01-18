@@ -59,7 +59,7 @@ def smart_login(host, domain, connection, cme_logger):
                     try:
                         if settings.args.kerb:
                             if settings.args.mssql is not None:
-                                res = connection.kerberosLogin(None, user, passwd, domain, ':'.join(lmhash, nthash), settings.args.aesKey)
+                                res = connection.kerberosLogin(None, user, passwd, domain, ':'.join([lmhash, nthash]), settings.args.aesKey)
                                 if res is not True:
                                     connection.printReplies()
                                     raise MSSQLSessionError
@@ -68,7 +68,7 @@ def smart_login(host, domain, connection, cme_logger):
 
                         else:
                             if settings.args.mssql is not None:
-                                res = connection.login(None, user, passwd, domain, ':'.join(lmhash, nthash), True)
+                                res = connection.login(None, user, passwd, domain, ':'.join([lmhash, nthash]), True)
                                 if res is not True:
                                     connection.printReplies()
                                     raise MSSQLSessionError
@@ -79,7 +79,7 @@ def smart_login(host, domain, connection, cme_logger):
 
                         settings.args.user = user
                         settings.args.passwd = passwd
-                        settings.args.hash = ':'.join(lmhash, nthash)
+                        settings.args.hash = ':'.join([lmhash, nthash])
                         
                         return connection
                     
@@ -163,7 +163,7 @@ def smart_login(host, domain, connection, cme_logger):
                     try:
                         if settings.args.kerb:
                             if settings.args.mssql is not None:
-                                res = connection.kerberosLogin(None, user, '', domain, ':'.join(lmhash, nthash), settings.args.aesKey)
+                                res = connection.kerberosLogin(None, user, '', domain, ':'.join([lmhash, nthash]), settings.args.aesKey)
                                 if res is not True:
                                     connection.printReplies()
                                     raise MSSQLSessionError  
@@ -171,7 +171,7 @@ def smart_login(host, domain, connection, cme_logger):
                                 connection.kerberosLogin(user, '', domain, lmhash, nthash, settings.args.aesKey)
                         else:
                             if settings.args.mssql is not None:
-                                res = connection.login(None, user, '', domain, ':'.join(lmhash, nthash), True)
+                                res = connection.login(None, user, '', domain, ':'.join([lmhash, nthash]), True)
                                 if res is not True:
                                     connection.printReplies()
                                     raise MSSQLSessionError
