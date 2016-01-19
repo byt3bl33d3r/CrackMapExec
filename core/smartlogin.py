@@ -75,7 +75,7 @@ def smart_login(host, domain, connection, cme_logger):
                             else:
                                 connection.login(user, passwd, domain, lmhash, nthash)
 
-                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, passwd))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
 
                         settings.args.user = user
                         settings.args.passwd = passwd
@@ -84,7 +84,7 @@ def smart_login(host, domain, connection, cme_logger):
                         return connection
                     
                     except SessionError as e:
-                        cme_logger.error("{}\\{}:{} {}".format(domain, user, passwd, e))
+                        cme_logger.error(u"{}\\{}:{} {}".format(domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in e:
                             fails += 1
                             settings.gfails += 1
@@ -178,14 +178,14 @@ def smart_login(host, domain, connection, cme_logger):
                             else:
                                 connection.login(user, '', domain, lmhash, nthash)
                         
-                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
                         settings.args.user = user
                         settings.args.hash = ntlm_hash
                         
                         return connection
 
                     except SessionError as e:
-                        cme_logger.error("{}\\{}:{} {}".format(domain, user, ntlm_hash, e))
+                        cme_logger.error(u"{}\\{}:{} {}".format(domain, user, ntlm_hash, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
@@ -230,14 +230,14 @@ def smart_login(host, domain, connection, cme_logger):
                             else:
                                 connection.login(user, passwd, domain)
 
-                        cme_logger.success("Login successful {}\\{}:{}".format(domain, user, passwd))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
                         settings.args.user = user
                         settings.args.passwd = passwd
                         
                         return connection
 
                     except SessionError as e:
-                        cme_logger.error("{}\\{}:{} {}".format(domain, user, passwd, e))
+                        cme_logger.error(u"{}\\{}:{} {}".format(domain, user, passwd, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1

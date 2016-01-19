@@ -33,10 +33,10 @@ class SHAREDUMP:
 		        pass
 
 		self.__logger.success('Enumerating shares')
-		self.__logger.results('{:>15} {:>15}'.format('SHARE', 'Permissions'))
-		self.__logger.results('{:>15} {:>15}'.format('-----', '-----------'))
+		self.__logger.results('{:<10} {}'.format('SHARE', 'Permissions'))
+		self.__logger.results('{:<10} {}'.format('-----', '-----------'))
 		for share, perm in permissions.iteritems():
 		    if not perm:
-		        self.__logger.results(u'{:>15} {:>15}'.format(share, 'NO ACCESS'))
+		        self.__logger.results(u'{:<10} {}'.format(share, 'NO ACCESS'))
 		    else:
-		        self.__logger.results(u'{:>15} {:>15}'.format(share, ', '.join(perm)))
+		        self.__logger.results(u'{:<10} {}'.format(share, ', '.join(perm)))

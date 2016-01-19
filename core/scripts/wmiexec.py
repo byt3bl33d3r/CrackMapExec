@@ -234,5 +234,5 @@ class RemoteShell(cmd.Cmd):
         if self.__noOutput is False:
             buf = StringIO(self.__outputBuffer.strip()).readlines()
             for line in buf:
-                self.__logger.results(line.strip())
+                self.__logger.results(u'{}'.format(line.strip()))
         self.__outputBuffer = ''

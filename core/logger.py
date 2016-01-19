@@ -28,26 +28,26 @@ class CMEAdapter(logging.LoggerAdapter):
         self.action = action
 
     def process(self, msg, kwargs):
-        return '{} {}:{} {} {}'.format(colored(self.extra['service'], 'blue', attrs=['bold']), 
+        return u'{} {}:{} {:<10} {}'.format(colored(self.extra['service'], 'blue', attrs=['bold']), 
                                        self.extra['host'],
                                        self.extra['port'],
                                        self.extra['hostname'],
                                        msg), kwargs
 
     def info(self, msg, *args, **kwargs):
-        msg, kwargs = self.process(colored("[*] ", 'blue', attrs=['bold']) + msg, kwargs)
+        msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
     def error(self, msg, *args, **kwargs):
-        msg, kwargs = self.process(colored("[-] ", 'red', attrs=['bold']) + msg, kwargs)
+        msg, kwargs = self.process(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
     def success(self, msg, *args, **kwargs):
-        msg, kwargs = self.process(colored("[+] ", 'green', attrs=['bold']) + msg, kwargs)
+        msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
     def results(self, msg, *args, **kwargs):
-        msg, kwargs = self.process(colored(msg, 'yellow', attrs=['bold']), kwargs)
+        msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
     def logMessage(self, message):

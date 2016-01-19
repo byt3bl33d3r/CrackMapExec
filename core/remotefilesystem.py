@@ -75,7 +75,7 @@ class RemoteFileSystem:
         elif path != '*':
             path = settings.args.share + '/' + path[:-2]
 
-        self.__logger.success("Contents of {}:".format(path))
+        self.__logger.success(u"Contents of {}:".format(path.decode('utf-8')))
         for f in dir_list:
             self.__logger.results(u"{}rw-rw-rw- {:>7} {} {}".format('d' if f.is_directory() > 0 else '-', 
                                                             f.get_filesize(),
