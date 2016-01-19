@@ -8,15 +8,15 @@ class EXECUTOR:
 
     """Yes, I know this sounds like the pokemon... deal with it"""
 
-    def __init__(self, logger, command, host, domain, noOutput, smbconnection, method):
+    def __init__(self, logger, command, host, domain, noOutput, smbconnection, method, user, passwd, ntlm_hash):
 
         if method == 'wmi':
             wmi_exec = WMIEXEC(logger,
                                command,
-                               settings.args.user,
-                               settings.args.passwd, 
+                               user,
+                               passwd, 
                                domain, 
-                               settings.args.hash, 
+                               ntlm_hash, 
                                settings.args.aesKey,
                                settings.args.share, 
                                noOutput, 
@@ -27,10 +27,10 @@ class EXECUTOR:
             smb_exec = SMBEXEC(logger,
                                command,
                                '{}/SMB'.format(settings.args.port), 
-                               settings.args.user,
-                               settings.args.passwd, 
+                               user,
+                               passwd, 
                                domain, 
-                               settings.args.hash, 
+                               ntlm_hash, 
                                settings.args.aesKey,
                                settings.args.kerb, 
                                'SHARE',
@@ -41,10 +41,10 @@ class EXECUTOR:
         elif method == 'atexec':
             atsvc_exec = TSCH_EXEC(logger,
                                    command,
-                                   settings.args.user, 
-                                   settings.args.passwd, 
+                                   user, 
+                                   passwd, 
                                    domain,
-                                   settings.args.hash, 
+                                   ntlm_hash, 
                                    settings.args.aesKey, 
                                    settings.args.kerb,
                                    noOutput)

@@ -31,7 +31,7 @@ class SVCCTL:
         '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
         }
 
-    def __init__(self, logger, username, password, domain, protocol, action, options):
+    def __init__(self, logger, username, password, domain, protocol, action, aesKey, kerb, ntlmhash, options):
         self.__username = username
         self.__password = password
         self.__protocol = SVCCTL.KNOWN_PROTOCOLS.keys()
@@ -40,15 +40,15 @@ class SVCCTL:
         self.__domain = domain
         self.__lmhash = ''
         self.__nthash = ''
-        self.__aesKey = options.aesKey
-        self.__doKerberos = options.kerb
+        self.__aesKey = aesKey
+        self.__doKerberos = kerb
         self.__protocol = protocol
         self.__addr = None
         self.__port = None
         self.__logger = logger
 
-        if options.hash is not None:
-            self.__lmhash, self.__nthash = options.hash.split(':')
+        if ntlmhash is not None:
+            self.__lmhash, self.__nthash = ntlmhash.split(':')
 
     def run(self, addr):
 

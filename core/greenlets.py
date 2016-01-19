@@ -53,7 +53,7 @@ def mssql_greenlet(host, server_name, domain):
                    cme_logger.results(key + ":" + instance[key])
 
     if settings.args.mssql is not None:
-        ms_sql = smart_login(host, domain, ms_sql, cme_logger)
+        ms_sql, user, passwd, ntlm_hash, domain = smart_login(host, domain, ms_sql, cme_logger)
         sql_shell = SQLSHELL(ms_sql, cme_logger)
 
         if settings.args.mssql != '':
@@ -67,6 +67,8 @@ def mssql_greenlet(host, server_name, domain):
 
         if settings.args.xp_cmd:
             sql_shell.onecmd("xp_cmdshell {}".format(settings.args.xp_cmd))
+
+    ms_sql.disconnect()
 
 def main_greenlet(host):
 
@@ -95,7 +97,6 @@ def main_greenlet(host):
 
         if settings.args.mssql_instance or settings.args.mssql is not None:
             mssql_greenlet(host, s_name, domain)
-            return
 
         try:
             '''
@@ -111,7 +112,7 @@ def main_greenlet(host):
 
         if (settings.args.user is not None and (settings.args.passwd is not None or settings.args.hash is not None)) or settings.args.combo_file:
 
-            smb = smart_login(host, domain, smb, cme_logger)
+            smb, user, passwd, ntlm_hash, domain = smart_login(host, domain, smb, cme_logger)
             #Get our IP from the socket
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
@@ -133,10 +134,10 @@ def main_greenlet(host):
             if settings.args.enum_users:
                 users = SAMRDump(cme_logger,
                                  '{}/SMB'.format(settings.args.port),
-                                 settings.args.user, 
-                                 settings.args.passwd, 
+                                 user,
+                                 passwd, 
                                  domain, 
-                                 settings.args.hash, 
+                                 ntlm_hash, 
                                  settings.args.aesKey,
                                  settings.args.kerb)
                 users.dump(host)
@@ -161,30 +162,30 @@ def main_greenlet(host):
             if settings.args.pass_pol:
                 pass_pol = PassPolDump(cme_logger,
                                  '{}/SMB'.format(settings.args.port),
-                                 settings.args.user, 
-                                 settings.args.passwd, 
+                                 user, 
+                                 passwd, 
                                  domain,
-                                 settings.args.hash, 
+                                 ntlm_hash, 
                                  settings.args.aesKey,
                                  settings.args.kerb)
                 pass_pol.dump(host)
 
             if settings.args.rid_brute:
                 lookup = LSALookupSid(cme_logger,
-                                      settings.args.user,
-                                      settings.args.passwd,
+                                      user,
+                                      passwd,
                                       domain,
                                       '{}/SMB'.format(settings.args.port), 
-                                      settings.args.hash, 
+                                      ntlm_hash, 
                                       settings.args.rid_brute)
                 lookup.dump(host)
 
             if settings.args.enum_sessions or settings.args.enum_disks or settings.args.enum_lusers:
                 rpc_query = RPCQUERY(cme_logger,
-                                     settings.args.user, 
-                                     settings.args.passwd, 
+                                     user, 
+                                     passwd, 
                                      domain, 
-                                     settings.args.hash)
+                                     ntlm_hash)
 
                 if settings.args.enum_sessions:
                     rpc_query.enum_sessions(host)
@@ -200,10 +201,10 @@ def main_greenlet(host):
 
             if settings.args.wmi_query:
                 wmi_query = WMIQUERY(cme_logger,
-                                     settings.args.user,  
+                                     user,  
                                      domain,
-                                     settings.args.passwd,
-                                     settings.args.hash,
+                                     passwd,
+                                     ntlm_hash,
                                      settings.args.kerb,
                                      settings.args.aesKey)
 
@@ -222,11 +223,14 @@ def main_greenlet(host):
 
             if settings.args.service:
                 service_control = SVCCTL(cme_logger,
-                                         settings.args.user, 
-                                         settings.args.passwd, 
+                                         user, 
+                                         passwd, 
                                          domain,
                                          '{}/SMB'.format(settings.args.port),
                                          settings.args.service, 
+                                         settings.args.aesKey,
+                                         settings.args.kerb,
+                                         ntlm_hash,
                                          settings.args)
                 service_control.run(host)
 
@@ -237,7 +241,10 @@ def main_greenlet(host):
                          domain, 
                          settings.args.no_output, 
                          smb, 
-                         settings.args.execm)
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)
 
             if settings.args.pscommand:
                 EXECUTOR(cme_logger, 
@@ -246,7 +253,10 @@ def main_greenlet(host):
                          domain, 
                          settings.args.no_output, 
                          smb, 
-                         settings.args.execm)
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)
 
             if settings.args.mimikatz:
                 powah_command = PowerShell(settings.args.server, local_ip)
@@ -256,7 +266,10 @@ def main_greenlet(host):
                          domain, 
                          True, 
                          smb, 
-                         settings.args.execm)
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)
 
             if settings.args.gpp_passwords:
                 powah_command = PowerShell(settings.args.server, local_ip)
@@ -266,7 +279,10 @@ def main_greenlet(host):
                          domain, 
                          True, 
                          smb, 
-                         settings.args.execm)      
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)      
 
             if settings.args.mimikatz_cmd:
                 powah_command = PowerShell(settings.args.server, local_ip)
@@ -276,7 +292,10 @@ def main_greenlet(host):
                          domain, 
                          True, 
                          smb, 
-                         settings.args.execm)
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)
 
             if settings.args.powerview:
                 #For some reason powerview functions only seem to work when using smbexec...
@@ -288,7 +307,10 @@ def main_greenlet(host):
                          domain, 
                          True, 
                          smb, 
-                         'smbexec')
+                         'smbexec',
+                         user,
+                         passwd,
+                         ntlm_hash)
 
             if settings.args.inject:
                 powah_command = PowerShell(settings.args.server, local_ip)
@@ -299,7 +321,10 @@ def main_greenlet(host):
                              domain, 
                              True, 
                              smb, 
-                             settings.args.execm)
+                             settings.args.execm,
+                             user,
+                             passwd,
+                             ntlm_hash)
 
                 if settings.args.inject == 'shellcode':
                     EXECUTOR(cme_logger, 
@@ -308,7 +333,10 @@ def main_greenlet(host):
                              domain, 
                              True,
                              smb, 
-                             settings.args.execm)
+                             settings.args.execm,
+                             user,
+                             passwd,
+                             ntlm_hash)
 
                 if settings.args.inject == 'dll' or settings.args.inject == 'exe':
                     EXECUTOR(cme_logger, 
@@ -317,7 +345,10 @@ def main_greenlet(host):
                              domain, 
                              True, 
                              smb, 
-                             settings.args.execm)
+                             settings.args.execm,
+                             user,
+                             passwd,
+                             ntlm_hash)
         try:
             smb.logoff()
         except:
