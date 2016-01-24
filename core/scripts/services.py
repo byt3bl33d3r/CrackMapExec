@@ -92,19 +92,19 @@ class SVCCTL:
             serviceHandle = ans['lpServiceHandle']
 
         if self.__action == 'START':
-            self.__logger.success("Starting service {}".format(self.__options.service_name))
+            self.__logger.success(u"Starting service {}".format(unicode(self.__options.service_name, 'utf-8')))
             scmr.hRStartServiceW(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'STOP':
-            self.__logger.success("Stopping service {}".format(self.__options.service_name))
+            self.__logger.success(u"Stopping service {}".format(unicode(self.__options.service_name, 'utf-8')))
             scmr.hRControlService(rpc, serviceHandle, scmr.SERVICE_CONTROL_STOP)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'DELETE':
-            self.__logger.success("Deleting service {}".format(self.__options.service_name))
+            self.__logger.success(u"Deleting service {}".format(unicode(self.__options.service_name, 'utf-8')))
             scmr.hRDeleteService(rpc, serviceHandle)
             scmr.hRCloseServiceHandle(rpc, serviceHandle)
         elif self.__action == 'CONFIG':
-            self.__logger.success("Service config for {}".format(self.__options.service_name))
+            self.__logger.success(u"Service config for {}".format(unicode(self.__options.service_name, 'utf-8')))
             resp = scmr.hRQueryServiceConfigW(rpc, serviceHandle)
             output = "TYPE              : %2d - " % resp['lpServiceConfig']['dwServiceType']
             if resp['lpServiceConfig']['dwServiceType'] & 0x1:
@@ -132,7 +132,7 @@ class SVCCTL:
                 output += "DISABLED"
             else:
                 output += "UNKOWN"
-            self.logger.results(output)
+            self.__logger.results(output)
 
             output = "ERROR_CONTROL     : %2d - " % resp['lpServiceConfig']['dwErrorControl']
             if resp['lpServiceConfig']['dwErrorControl'] == 0x0:
@@ -154,9 +154,9 @@ class SVCCTL:
             self.__logger.results("DEPENDENCIES      : %s" % resp['lpServiceConfig']['lpDependencies'][:-1])
             self.__logger.results("SERVICE_START_NAME: %s" % resp['lpServiceConfig']['lpServiceStartName'][:-1])
         elif self.__action == 'STATUS':
-            self.__logger.success("Service status for {}".format(self.__options.service_name))
+            self.__logger.success(u"Service status for {}".format(unicode(self.__options.service_name, 'utf-8')))
             resp = scmr.hRQueryServiceStatus(rpc, serviceHandle)
-            output = "%s - " % self.__options.service_name
+            output = u"%s - " % format(unicode(self.__options.service_name, 'utf-8'))
             state = resp['lpServiceStatus']['dwCurrentState']
             if state == scmr.SERVICE_CONTINUE_PENDING:
                output += "CONTINUE PENDING"
@@ -203,10 +203,10 @@ class SVCCTL:
                 self.__logger.results(output)
             self.__logger.results("Total Services: {}".format(len(resp)))
         elif self.__action == 'CREATE':
-            self.__logger.success("Creating service {}".format(self.__options.service_name))
+            self.__logger.success(u"Creating service {}".format(unicode(self.__options.service_name, 'utf-8')))
             scmr.hRCreateServiceW(rpc, scManagerHandle,self.__options.service_name + '\x00', self.__options.service_display_name + '\x00', lpBinaryPathName=self.__options.service_bin_path + '\x00')
         elif self.__action == 'CHANGE':
-            self.__logger.success("Changing service config for {}".format(self.__options.service_name))
+            self.__logger.success(u"Changing service config for {}".format(unicode(self.__options.service_name, 'utf-8')))
             if self.__options.start_type is not None:
                 start_type = int(self.__options.start_type)
             else:
