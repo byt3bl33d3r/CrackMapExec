@@ -82,7 +82,13 @@ def smart_login(host, domain, connection, cme_logger):
                         else:
                             connection.login(user, '', domain, lmhash, nthash)
 
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+			# check if user is admin
+                        try:
+                            if connection.connectTree('C$'):
+                        	cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, ntlm_hash))
+                        except:
+                            cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+
                         return connection, user, None, ntlm_hash, domain
 
                     except SessionError as e:
@@ -104,8 +110,14 @@ def smart_login(host, domain, connection, cme_logger):
                             if res is not True:
                                 connection.printReplies()
                                 raise Exception
+
+                        # check if user is admin
+                        try:
+                            if connection.connectTree('C$'):
+                                cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, ntlm_hash))
+                        except:
+                            cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
                         
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
                         return connection, user, None, ntlm_hash, domain
 
                     except Exception as e:
@@ -121,7 +133,13 @@ def smart_login(host, domain, connection, cme_logger):
                         else:
                             connection.login(user, passwd, domain, '', '')
 
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        # check if user is admin
+                        try:
+                            if connection.connectTree('C$'):
+                                cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, passwd))
+                        except:
+                            cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+
                         return connection, user, passwd, None, domain
 
                     except SessionError as e:
@@ -144,7 +162,13 @@ def smart_login(host, domain, connection, cme_logger):
                                 connection.printReplies()
                                 raise Exception
                         
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        # check if user is admin
+                        try:
+                            if connection.connectTree('C$'):
+                                cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, passwd))
+                        except:
+                            cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+
                         return connection, user, passwd, None, domain
 
                     except Exception as e:
@@ -177,7 +201,13 @@ def smart_login(host, domain, connection, cme_logger):
                                 else:
                                     connection.login(user, '', domain, lmhash, nthash)
 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                        	# check if user is admin
+                        	try:
+                            	    if connection.connectTree('C$'):
+                                	cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, ntlm_hash))
+                        	except:
+                            	    cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+
                                 return connection, user, None, ntlm_hash, domain
 
                             except SessionError as e:
@@ -201,7 +231,13 @@ def smart_login(host, domain, connection, cme_logger):
                                         connection.printReplies()
                                         raise Exception
                                 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+				# check if user is admin
+                        	try:
+                            	    if connection.connectTree('C$'):
+                                	cme_logger.success(u"Login successful {}\\{}:{} Administrator".format(domain, user, ntlm_hash))
+                        	except:
+                                    cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+
                                 return connection, user, None, ntlm_hash, domain
 
                             except Exception:
@@ -220,7 +256,13 @@ def smart_login(host, domain, connection, cme_logger):
                                 else:
                                     connection.login(user, passwd, domain, '', '')
 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        	# check if user is admin
+                        	try:
+                            	    if connection.connectTree('C$'):
+					cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        	except:
+                                    cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+
                                 return connection, user, passwd, None, domain
 
                             except SessionError as e:
@@ -242,8 +284,14 @@ def smart_login(host, domain, connection, cme_logger):
                                     if res is not True:
                                         connection.printReplies()
                                         raise Exception
+
+                                # check if user is admin
+                                try:
+                                    if connection.connectTree('C$'):
+                                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                                except:
+                                    cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
                                 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
                                 return connection, user, passwd, None, domain
 
                             except Exception:
