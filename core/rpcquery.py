@@ -66,7 +66,7 @@ class RPCQUERY():
         for session in sessions:
             if level == 502:
                 if session['sesi502_cname'][:-1] != self.__local_ip:
-                    self.__logger.results('\\\\{} {} [opens:{} time:{} idle:{}]'.format(session['sesi502_cname'], 
+                    self.__logger.results(u'\\\\{} {} [opens:{} time:{} idle:{}]'.format(session['sesi502_cname'], 
                                                                                         session['sesi502_username'],
                                                                                         session['sesi502_num_opens'],
                                                                                         session['sesi502_time'],
@@ -74,7 +74,7 @@ class RPCQUERY():
 
             elif level == 0:
                 if session['sesi0_cname'][:-1] != self.__local_ip:
-                    self.__logger.results('\\\\{}'.format(session['sesi0_cname']))
+                    self.__logger.results(u'\\\\{}'.format(session['sesi0_cname']))
 
     def enum_disks(self, host):
         dce, rpctransport = self.connect(host, 'srvsvc')

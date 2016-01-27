@@ -82,11 +82,11 @@ def smart_login(host, domain, connection, cme_logger):
                         else:
                             connection.login(user, '', domain, lmhash, nthash)
 
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), ntlm_hash))
                         return connection, user, None, ntlm_hash, domain
 
                     except SessionError as e:
-                        cme_logger.error(u"{}\\{}:{} {}".format(domain, user, ntlm_hash, e))
+                        cme_logger.error(u"{}\\{}:{} {}".format(domain, unicode(user, 'utf-8'), ntlm_hash, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
@@ -105,7 +105,7 @@ def smart_login(host, domain, connection, cme_logger):
                                 connection.printReplies()
                                 raise Exception
                         
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), ntlm_hash))
                         return connection, user, None, ntlm_hash, domain
 
                     except Exception as e:
@@ -121,11 +121,12 @@ def smart_login(host, domain, connection, cme_logger):
                         else:
                             connection.login(user, passwd, domain, '', '')
 
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), passwd))
                         return connection, user, passwd, None, domain
 
                     except SessionError as e:
-                        cme_logger.error(u"{}\\{}:{} {}".format(domain, user, passwd, e))
+                        print "yolo"
+                        cme_logger.error(u"{}\\{}:{} {}".format(domain, unicode(user, 'utf-8'), passwd, e))
                         if 'STATUS_LOGON_FAILURE' in str(e):
                             fails += 1
                             settings.gfails += 1
@@ -144,7 +145,7 @@ def smart_login(host, domain, connection, cme_logger):
                                 connection.printReplies()
                                 raise Exception
                         
-                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                        cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), passwd))
                         return connection, user, passwd, None, domain
 
                     except Exception as e:
@@ -177,11 +178,11 @@ def smart_login(host, domain, connection, cme_logger):
                                 else:
                                     connection.login(user, '', domain, lmhash, nthash)
 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), ntlm_hash))
                                 return connection, user, None, ntlm_hash, domain
 
                             except SessionError as e:
-                                cme_logger.error(u"{}\\{}:{} {}".format(domain, user, ntlm_hash, e))
+                                cme_logger.error(u"{}\\{}:{} {}".format(domain, unicode(user, 'utf-8'), ntlm_hash, e))
                                 if 'STATUS_LOGON_FAILURE' in str(e):
                                     fails += 1
                                     settings.gfails += 1
@@ -201,7 +202,7 @@ def smart_login(host, domain, connection, cme_logger):
                                         connection.printReplies()
                                         raise Exception
                                 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, ntlm_hash))
+                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), ntlm_hash))
                                 return connection, user, None, ntlm_hash, domain
 
                             except Exception:
@@ -220,11 +221,11 @@ def smart_login(host, domain, connection, cme_logger):
                                 else:
                                     connection.login(user, passwd, domain, '', '')
 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), passwd))
                                 return connection, user, passwd, None, domain
 
                             except SessionError as e:
-                                cme_logger.error(u"{}\\{}:{} {}".format(domain, user, passwd, e))
+                                cme_logger.error(u"{}\\{}:{} {}".format(domain, unicode(user, 'utf-8'), passwd, e))
                                 if 'STATUS_LOGON_FAILURE' in str(e):
                                     fails += 1
                                     settings.gfails += 1
@@ -243,7 +244,7 @@ def smart_login(host, domain, connection, cme_logger):
                                         connection.printReplies()
                                         raise Exception
                                 
-                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, user, passwd))
+                                cme_logger.success(u"Login successful {}\\{}:{}".format(domain, unicode(user, 'utf-8'), passwd))
                                 return connection, user, passwd, None, domain
 
                             except Exception:
