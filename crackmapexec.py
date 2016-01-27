@@ -62,7 +62,7 @@ parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how m
 parser.add_argument("-u", metavar="USERNAME", dest='user', nargs='*', default=[], type=str, help="Username(s) or file(s) containing usernames")
 parser.add_argument("-p", metavar="PASSWORD", dest='passwd', nargs= '*', default=[], type=str, help="Password(s) or file(s) containing passwords")
 parser.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], type=str, help='NTLM hash(es) or file(s) containing NTLM hashes')
-parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, default=None, help="Combo file containing a list of domain\\username:password or username:password entries")
+parser.add_argument("-C", metavar="COMBO_FILE", dest='combo_file', type=str, default=None, help="Combo file containing pwdump formatted entries or list of domain\\username:password or username:password entries")
 parser.add_argument('-k', action="store", dest='aesKey', metavar="HEX_KEY", help='AES key to use for Kerberos Authentication (128 or 256 bits)')
 parser.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
 parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./root/cimv2', help='WMI Namespace (default: //./root/cimv2)')
