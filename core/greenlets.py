@@ -27,54 +27,12 @@ import traceback
 import socket
 import logging
 
-def mssql_greenlet(host, server_name, domain):
-
-    cme_logger = CMEAdapter(logging.getLogger('CME'), {'host': host, 
-                                                       'hostname': server_name,
-                                                       'port': settings.args.mssql_port,
-                                                       'service': 'MSSQL'})
-
-    try:
-        ms_sql = tds.MSSQL(host, int(settings.args.mssql_port), cme_logger)
-        ms_sql.connect()
-    except socket.error as e:
-        if settings.args.verbose: print_error(str(e))
-        return
-
-    if settings.args.mssql_instance:
-        instances = ms_sql.getInstances(5)
-        if len(instances) == 0:
-            cme_logger.info("No MSSQL Instances found")
-        else:
-            cme_logger.success("Enumerating MSSQL instances")
-            for i, instance in enumerate(instances):
-                cme_logger.results("Instance {}".format(i))
-                for key in instance.keys():
-                   cme_logger.results(key + ":" + instance[key])
-
-    if settings.args.mssql is not None:
-        ms_sql, user, passwd, ntlm_hash, domain = smart_login(host, domain, ms_sql, cme_logger)
-        sql_shell = SQLSHELL(ms_sql, cme_logger)
-
-        if settings.args.mssql != '':
-            sql_shell.onecmd(settings.args.mssql)
-
-        if settings.args.enable_xpcmdshell:
-            sql_shell.onecmd('enable_xp_cmdshell')
-
-        if settings.args.disable_xpcmdshell:
-            sql_shell.onecmd('disable_xp_cmdshell')
-
-        if settings.args.xp_cmd:
-            sql_shell.onecmd("xp_cmdshell {}".format(settings.args.xp_cmd))
-
-    ms_sql.disconnect()
-
 def main_greenlet(host):
 
     try:
-
         smb = SMBConnection(host, host, None, settings.args.port)
+        #Get our IP from the socket
+        local_ip = smb.getSMBServer().get_socket().getsockname()[0]
         try:
             smb.login('' , '')
         except SessionError as e:
@@ -95,9 +53,6 @@ def main_greenlet(host):
 
         cme_logger.info(u"{} (name:{}) (domain:{})".format(smb.getServerOS(), s_name, domain))
 
-        if settings.args.mssql_instance or settings.args.mssql is not None:
-            mssql_greenlet(host, s_name, domain)
-
         try:
             '''
                 DC's seem to want us to logoff first
@@ -108,131 +63,171 @@ def main_greenlet(host):
         except NetBIOSError:
             pass
         except socket.error:
-            smb = SMBConnection(host, host, None, settings.args.port)
+            pass
 
-        if (settings.args.user is not None and (settings.args.passwd is not None or settings.args.hash is not None)) or settings.args.combo_file:
+        if settings.args.mssql:
+            cme_logger = CMEAdapter(logging.getLogger('CME'), {'host': host, 
+                                                               'hostname': s_name,
+                                                               'port': settings.args.mssql_port,
+                                                               'service': 'MSSQL'})
 
-            smb, user, passwd, ntlm_hash, domain = smart_login(host, domain, smb, cme_logger)
-            #Get our IP from the socket
-            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
+            #try:
+            ms_sql = tds.MSSQL(host, int(settings.args.mssql_port), cme_logger)
+            ms_sql.connect()
 
-            if settings.args.delete or settings.args.download or settings.args.list or settings.args.upload:
-                rfs = RemoteFileSystem(host, smb, cme_logger)
-                if settings.args.delete:
-                    rfs.delete()
-                if settings.args.download:
-                    rfs.download()
-                if settings.args.upload:
-                    rfs.upload()
-                if settings.args.list:
-                    rfs.list()
+            instances = ms_sql.getInstances(5)
+            cme_logger.info("Found {} MSSQL instance(s)".format(len(instances)))
+            for i, instance in enumerate(instances):
+                cme_logger.results("Instance {}".format(i))
+                for key in instance.keys():
+                   cme_logger.results(key + ":" + instance[key])
 
-            if settings.args.enum_shares:
-                shares = SHAREDUMP(smb, cme_logger)
-                shares.dump(host)
+            try:
+                ms_sql.disconnect()
+            except:
+                pass
 
-            if settings.args.enum_users:
-                users = SAMRDump(cme_logger,
-                                 '{}/SMB'.format(settings.args.port),
-                                 user,
-                                 passwd, 
-                                 domain, 
-                                 ntlm_hash, 
-                                 settings.args.aesKey,
-                                 settings.args.kerb)
-                users.dump(host)
+            #except socket.error as e:
+            #    if settings.args.verbose: mssql_cme_logger.error(str(e))
 
-            if settings.args.sam or settings.args.lsa or settings.args.ntds:
-                dumper = DumpSecrets(cme_logger,
-                                     'logs/{}'.format(host),
-                                     smb,
-                                     settings.args.kerb)
+        if (settings.args.user and (settings.args.passwd or settings.args.hash)) or settings.args.combo_file:
 
-                dumper.do_remote_ops()
-                if settings.args.sam:
-                    dumper.dump_SAM()
-                if settings.args.lsa:
-                    dumper.dump_LSA()
-                if settings.args.ntds:
-                    dumper.dump_NTDS(settings.args.ntds,
-                                     settings.args.ntds_history,
-                                     settings.args.ntds_pwdLastSet)
-                dumper.cleanup()
+            ms_sql = None
+            smb = None
 
-            if settings.args.pass_pol:
-                pass_pol = PassPolDump(cme_logger,
-                                 '{}/SMB'.format(settings.args.port),
-                                 user, 
-                                 passwd, 
-                                 domain,
-                                 ntlm_hash, 
-                                 settings.args.aesKey,
-                                 settings.args.kerb)
-                pass_pol.dump(host)
+            if settings.args.mssql:
+                ms_sql = tds.MSSQL(host, int(settings.args.mssql_port), cme_logger)
+                ms_sql.connect()
+                ms_sql, user, passwd, ntlm_hash, domain = smart_login(host, domain, ms_sql, cme_logger)
+                sql_shell = SQLSHELL(ms_sql, cme_logger)
+            else:
+                smb = SMBConnection(host, host, None, settings.args.port)
+                smb, user, passwd, ntlm_hash, domain = smart_login(host, domain, smb, cme_logger)
 
-            if settings.args.rid_brute:
-                lookup = LSALookupSid(cme_logger,
-                                      user,
-                                      passwd,
-                                      domain,
-                                      '{}/SMB'.format(settings.args.port), 
-                                      ntlm_hash, 
-                                      settings.args.rid_brute)
-                lookup.dump(host)
+            if ms_sql:
+                connection = ms_sql
+                if settings.args.mssql_query:
+                    sql_shell.onecmd(settings.args.mssql_query)
 
-            if settings.args.enum_sessions or settings.args.enum_disks or settings.args.enum_lusers:
-                rpc_query = RPCQUERY(cme_logger,
-                                     user, 
+            if smb:
+                connection = smb
+                if settings.args.delete or settings.args.download or settings.args.list or settings.args.upload:
+                    rfs = RemoteFileSystem(host, smb, cme_logger)
+                    if settings.args.delete:
+                        rfs.delete()
+                    if settings.args.download:
+                        rfs.download()
+                    if settings.args.upload:
+                        rfs.upload()
+                    if settings.args.list:
+                        rfs.list()
+
+                if settings.args.enum_shares:
+                    shares = SHAREDUMP(smb, cme_logger)
+                    shares.dump(host)
+
+                if settings.args.enum_users:
+                    users = SAMRDump(cme_logger,
+                                     '{}/SMB'.format(settings.args.port),
+                                     user,
                                      passwd, 
                                      domain, 
-                                     ntlm_hash)
+                                     ntlm_hash, 
+                                     settings.args.aesKey,
+                                     settings.args.kerb)
+                    users.dump(host)
 
-                if settings.args.enum_sessions:
-                    rpc_query.enum_sessions(host)
-                if settings.args.enum_disks:
-                    rpc_query.enum_disks(host)
-                if settings.args.enum_lusers:
-                    rpc_query.enum_lusers(host)
+                if settings.args.sam or settings.args.lsa or settings.args.ntds:
+                    dumper = DumpSecrets(cme_logger,
+                                         'logs/{}'.format(host),
+                                         smb,
+                                         settings.args.kerb)
 
-            if settings.args.spider:
-                smb_spider = SMBSPIDER(cme_logger, host, smb)
-                smb_spider.spider(settings.args.spider, settings.args.depth)
-                smb_spider.finish()
+                    dumper.do_remote_ops()
+                    if settings.args.sam:
+                        dumper.dump_SAM()
+                    if settings.args.lsa:
+                        dumper.dump_LSA()
+                    if settings.args.ntds:
+                        dumper.dump_NTDS(settings.args.ntds,
+                                         settings.args.ntds_history,
+                                         settings.args.ntds_pwdLastSet)
+                    dumper.cleanup()
 
-            if settings.args.wmi_query:
-                wmi_query = WMIQUERY(cme_logger,
-                                     user,  
+                if settings.args.pass_pol:
+                    pass_pol = PassPolDump(cme_logger,
+                                     '{}/SMB'.format(settings.args.port),
+                                     user, 
+                                     passwd, 
                                      domain,
-                                     passwd,
-                                     ntlm_hash,
-                                     settings.args.kerb,
-                                     settings.args.aesKey)
+                                     ntlm_hash, 
+                                     settings.args.aesKey,
+                                     settings.args.kerb)
+                    pass_pol.dump(host)
 
-                wmi_query.run(settings.args.wmi_query, host, settings.args.namespace)
+                if settings.args.rid_brute:
+                    lookup = LSALookupSid(cme_logger,
+                                          user,
+                                          passwd,
+                                          domain,
+                                          '{}/SMB'.format(settings.args.port), 
+                                          ntlm_hash, 
+                                          settings.args.rid_brute)
+                    lookup.dump(host)
 
-            if settings.args.check_uac:
-                uac = UACdump(cme_logger, smb, settings.args.kerb)
-                uac.run()
-
-            if settings.args.enable_wdigest or settings.args.disable_wdigest:
-                wdigest = WdisgestEnable(cme_logger, smb, settings.args.kerb)
-                if settings.args.enable_wdigest:
-                    wdigest.enable()
-                elif settings.args.disable_wdigest:
-                    wdigest.disable()
-
-            if settings.args.service:
-                service_control = SVCCTL(cme_logger,
+                if settings.args.enum_sessions or settings.args.enum_disks or settings.args.enum_lusers:
+                    rpc_query = RPCQUERY(cme_logger,
                                          user, 
                                          passwd, 
+                                         domain, 
+                                         ntlm_hash)
+
+                    if settings.args.enum_sessions:
+                        rpc_query.enum_sessions(host)
+                    if settings.args.enum_disks:
+                        rpc_query.enum_disks(host)
+                    if settings.args.enum_lusers:
+                        rpc_query.enum_lusers(host)
+
+                if settings.args.spider:
+                    smb_spider = SMBSPIDER(cme_logger, host, smb)
+                    smb_spider.spider(settings.args.spider, settings.args.depth)
+                    smb_spider.finish()
+
+                if settings.args.wmi_query:
+                    wmi_query = WMIQUERY(cme_logger,
+                                         user,  
                                          domain,
-                                         '{}/SMB'.format(settings.args.port),
-                                         settings.args.service, 
-                                         settings.args.aesKey,
-                                         settings.args.kerb,
+                                         passwd,
                                          ntlm_hash,
-                                         settings.args)
-                service_control.run(host)
+                                         settings.args.kerb,
+                                         settings.args.aesKey)
+
+                    wmi_query.run(settings.args.wmi_query, host, settings.args.namespace)
+
+                if settings.args.check_uac:
+                    uac = UACdump(cme_logger, smb, settings.args.kerb)
+                    uac.run()
+
+                if settings.args.enable_wdigest or settings.args.disable_wdigest:
+                    wdigest = WdisgestEnable(cme_logger, smb, settings.args.kerb)
+                    if settings.args.enable_wdigest:
+                        wdigest.enable()
+                    elif settings.args.disable_wdigest:
+                        wdigest.disable()
+
+                if settings.args.service:
+                    service_control = SVCCTL(cme_logger,
+                                             user, 
+                                             passwd, 
+                                             domain,
+                                             '{}/SMB'.format(settings.args.port),
+                                             settings.args.service, 
+                                             settings.args.aesKey,
+                                             settings.args.kerb,
+                                             ntlm_hash,
+                                             settings.args)
+                    service_control.run(host)
 
             if settings.args.command:
                 EXECUTOR(cme_logger, 
@@ -240,7 +235,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          settings.args.no_output, 
-                         smb, 
+                         connection, 
                          settings.args.execm,
                          user,
                          passwd,
@@ -252,7 +247,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          settings.args.no_output, 
-                         smb, 
+                         connection, 
                          settings.args.execm,
                          user,
                          passwd,
@@ -265,7 +260,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          True, 
-                         smb, 
+                         connection, 
                          settings.args.execm,
                          user,
                          passwd,
@@ -278,7 +273,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          True, 
-                         smb, 
+                         connection, 
                          settings.args.execm,
                          user,
                          passwd,
@@ -291,7 +286,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          True, 
-                         smb, 
+                         connection, 
                          settings.args.execm,
                          user,
                          passwd,
@@ -306,7 +301,7 @@ def main_greenlet(host):
                          host, 
                          domain, 
                          True, 
-                         smb, 
+                         connection, 
                          'smbexec',
                          user,
                          passwd,
@@ -320,7 +315,7 @@ def main_greenlet(host):
                              host, 
                              domain, 
                              True, 
-                             smb, 
+                             connection, 
                              settings.args.execm,
                              user,
                              passwd,
@@ -332,7 +327,7 @@ def main_greenlet(host):
                              host, 
                              domain, 
                              True,
-                             smb, 
+                             connection, 
                              settings.args.execm,
                              user,
                              passwd,
@@ -344,13 +339,19 @@ def main_greenlet(host):
                              host, 
                              domain, 
                              True, 
-                             smb, 
+                             connection, 
                              settings.args.execm,
                              user,
                              passwd,
                              ntlm_hash)
+
         try:
             smb.logoff()
+        except:
+            pass
+
+        try:
+            ms_sql.disconnect()
         except:
             pass
 

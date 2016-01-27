@@ -57,7 +57,7 @@ parser = argparse.ArgumentParser(description="""
                                 version='{} - {}'.format(VERSION, CODENAME),
                                 epilog='Hut Hut! Wat Wat!')
 
-parser.add_argument("target", nargs='*', type=str, help="The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets")
+parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
 parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")
 parser.add_argument("-u", metavar="USERNAME", dest='user', nargs='*', default=[], type=str, help="Username(s) or file(s) containing usernames")
 parser.add_argument("-p", metavar="PASSWORD", dest='passwd', nargs= '*', default=[], type=str, help="Password(s) or file(s) containing passwords")
@@ -139,12 +139,9 @@ wgroup.add_argument("--start-name", metavar='NAME', help='Name of the account un
 wgroup.add_argument("--start-pass", metavar='PASS', help='Password of the account whose name was specified with the --start-name parameter')
 
 mgroup = parser.add_argument_group("MSSQL Interaction", "Options for interacting with MSSQL DB's")
-mgroup.add_argument("--mssql", nargs='?', const='', metavar='QUERY', help='Authenticate with the provided credentials against the MSSQL service, optionally execute the specified query')
+mgroup.add_argument("--mssql", action='store_true', help='Authenticate with the provided credentials against the MSSQL service')
 mgroup.add_argument("--mssql-port", default=1433, metavar='PORT', help='MSSQL service port (default: 1433)')
-mgroup.add_argument("--mssql-instance", action='store_true', help='Enumerate the MSSQL intances on the target hosts')
-mgroup.add_argument("--enable-xpcmdshell", action='store_true', help='Enable xp_cmdshell on target DB\'s')
-mgroup.add_argument("--disable-xpcmdshell", action='store_true', help='Disable xp_cmdshell on target DB\'s')
-mgroup.add_argument("--xp-cmd", metavar='COMMAND', help='Execute the specified command using xp_cmdshell')
+mgroup.add_argument("--mssql-query", metavar='QUERY', type=str, help='Execute the specifed query against the MSSQL DB')
 
 if len(sys.argv) == 1:
     parser.print_help()

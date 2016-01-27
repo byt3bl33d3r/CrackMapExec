@@ -76,14 +76,19 @@ class SQLSHELL(cmd.Cmd):
     def do_shell(self, s):
         os.system(s)
 
-    def do_xp_cmdshell(self, s):
+    def do_xp_cmdshell(self, s, noOutput=False):
         try:
+            self.do_enable_xp_cmdshell('')
             self.sql.sql_query("exec master..xp_cmdshell '%s'" % s)
-            self.sql.printReplies()
-            self.sql.colMeta[0]['TypeData'] = 80*2
-            self.sql.printRows()
+            self.logger.success('Executed command via XP_CMDSHELL')
+            if noOutput is False:
+                self.sql.printReplies()
+                self.sql.colMeta[0]['TypeData'] = 80*2
+                self.sql.printRows()
+            self.do_disable_xp_cmdshell('')
         except:
-            pass
+            if noOutput is True:
+                self.sql.printReplies()
 
     def do_lcd(self, s):
         if s == '':
@@ -92,20 +97,10 @@ class SQLSHELL(cmd.Cmd):
             os.chdir(s)
 
     def do_enable_xp_cmdshell(self, line):
-        try:
-            self.sql.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")
-            self.sql.printReplies()
-            self.sql.printRows()
-        except:
-            pass
+        self.sql.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")
 
     def do_disable_xp_cmdshell(self, line):
-        try:
-            self.sql.sql_query("exec sp_configure 'xp_cmdshell', 0 ;RECONFIGURE;exec sp_configure 'show advanced options', 0 ;RECONFIGURE;")
-            self.sql.printReplies()
-            self.sql.printRows()
-        except:
-            pass
+        self.sql.sql_query("exec sp_configure 'xp_cmdshell', 0 ;RECONFIGURE;exec sp_configure 'show advanced options', 0 ;RECONFIGURE;")
 
     def default(self, line):
         try:
