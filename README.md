@@ -32,11 +32,9 @@ The biggest improvements over the above tools are:
 - Uses **ONLY** native WinAPI calls for discovering sessions, users, dumping SAM hashes etc...
 - Opsec safe (no binaries are uploaded to dump clear-text credentials, inject shellcode etc...)
 
-#Installation on Kali Linux
+#Installation
 
-**Note: it's recommended to install CrackMapExec in a [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs), to avoid conflicts with the older Impacket version thats currently in the Kali repos**
-
-Run ```pip install --upgrade -r requirements.txt```
+See the [Installation](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation) wiki page for install instructions
 
 #Quick Demo
 
@@ -66,16 +64,18 @@ Just a little demo showing off the basics
                                             Codename: 'Pink Bubbles'
 
 positional arguments:
-  target                The target IP, range, CIDR identifier, hostname, FQDN or list or file containg a list of targets
+  target                The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets
 
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
   -t THREADS            Set how many concurrent threads to use (defaults to 100)
-  -u USERNAME           Username(s) or file containing usernames
-  -p PASSWORD           Password(s) or file containing passwords
-  -H HASH               NTLM hash(es) or file containing NTLM hashes
-  -C COMBO_FILE         Combo file containing a list of domain\username:password or username:password entries
+  -u [USERNAME [USERNAME ...]]
+                        Username(s) or file(s) containing usernames
+  -p [PASSWORD [PASSWORD ...]]
+                        Password(s) or file(s) containing passwords
+  -H [HASH [HASH ...]]  NTLM hash(es) or file(s) containing NTLM hashes
+  -C COMBO_FILE         Combo file containing pwdump formatted entries or list of domain\username:password or username:password entries
   -k HEX_KEY            AES key to use for Kerberos Authentication (128 or 256 bits)
   -d DOMAIN             Domain name
   -n NAMESPACE          WMI Namespace (default: //./root/cimv2)
@@ -179,12 +179,9 @@ Service Interaction:
 MSSQL Interaction:
   Options for interacting with MSSQL DB's
 
-  --mssql [QUERY]       Authenticate with the provided credentials against the MSSQL service, optionally execute the specified query
+  --mssql               Authenticate with the provided credentials against the MSSQL service
   --mssql-port PORT     MSSQL service port (default: 1433)
-  --mssql-instance      Enumerate the MSSQL intances on the target hosts
-  --enable-xpcmdshell   Enable xp_cmdshell on target DB's
-  --disable-xpcmdshell  Disable xp_cmdshell on target DB's
-  --xp-cmd COMMAND      Execute the specified command using xp_cmdshell
+  --mssql-query QUERY   Execute the specifed query against the MSSQL DB
 
 Hut Hut! Wat Wat!
 ```
@@ -193,4 +190,4 @@ Hut Hut! Wat Wat!
 - ~~Kerberos support~~
 - ~~Execute custom commands with mimikatz~~
 - Add a plugin system (??)
-- ~~0wn everything~~ 
+- ~~0wn everything~~
