@@ -69,7 +69,7 @@ parser.add_argument("-n", metavar='NAMESPACE', dest='namespace', default='//./ro
 parser.add_argument("-s", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
 parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
-parser.add_argument("--server", choices={'http', 'https'}, default='http', help='Use the selected server (defaults to http)')
+parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (defaults to https)')
 parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
 parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
 #How much fail can we limit? can we fail at failing to limit? da da da dum
