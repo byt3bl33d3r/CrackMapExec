@@ -11,8 +11,20 @@ import BaseHTTPServer
 import ssl
 
 func_name = re.compile('CHANGE_ME_HERE')
-comments  = re.compile('#.+')
-synopsis  = re.compile('<#.+#>')
+
+def strip_powershell_comments(data):
+    """
+    Strip block comments, line comments, empty lines, verbose statements,
+    and debug statements from a PowerShell source file.
+    """
+
+    # strip block comments
+    strippedCode = re.sub(re.compile('<#.*?#>', re.DOTALL), '', data)
+
+    # strip blank lines, lines starting with #, and verbose/debug statements
+    strippedCode = "\n".join([line for line in strippedCode.split('\n') if ((line.strip() != '') and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")) )])
+
+    return strippedCode
 
 class MimikatzServer(BaseHTTPRequestHandler):
 
@@ -34,9 +46,8 @@ class MimikatzServer(BaseHTTPRequestHandler):
                 ps_script = script.read()
                 if self.path[1:] != 'powerview.ps1':
                     logging.info('Obfuscating Powershell script')
-                    ps_script = eval(synopsis.sub('', repr(ps_script))) #Removes the synopsys
                     ps_script = func_name.sub(settings.obfs_func_name, ps_script) #Randomizes the function name
-                    ps_script = comments.sub('', ps_script) #Removes the comments
+                    ps_script = strip_powershell_comments(ps_script)
                     #logging.info('Sending the following modified powershell script: {}'.format(ps_script))
                 self.wfile.write(ps_script)
 
