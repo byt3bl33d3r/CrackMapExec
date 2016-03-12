@@ -72,6 +72,7 @@ parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default
 parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (defaults to https)')
 parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
 #How much fail can we limit? can we fail at failing to limit? da da da dum
+parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
 parser.add_argument("--fail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed per host (default: None)')
 parser.add_argument("--gfail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed globally (default: None)')
 parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
@@ -282,7 +283,8 @@ def concurrency(targets):
     try:
         pool = Pool(args.threads)
         jobs = [pool.spawn(main_greenlet, str(target)) for target in targets]
-        joinall(jobs)
+        for job in jobs:
+            job.join(timeout=args.timeout)
     except KeyboardInterrupt:
         shutdown(0)
 
