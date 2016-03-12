@@ -54,7 +54,7 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 64)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))
 
     def gpp_passwords(self):
         command = """
@@ -76,7 +76,7 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 64)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))
 
     def powerview(self, command):
 
@@ -99,7 +99,7 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 64)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))
 
     def inject_meterpreter(self):
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
@@ -133,7 +133,7 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 32)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))
 
     def inject_shellcode(self):
         command = """
@@ -154,7 +154,7 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 32)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))
 
     def inject_exe_dll(self):
         command = """
@@ -178,4 +178,4 @@ class PowerShell:
         if self.arch == 'auto':
             return ps_command(command, 32)
         else:
-            return ps_command(Command, int(self.arch))
+            return ps_command(command, int(self.arch))

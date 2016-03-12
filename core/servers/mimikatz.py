@@ -110,7 +110,7 @@ def http_server(port):
 
 def https_server(port):
     https_server = BaseHTTPServer.HTTPServer(('0.0.0.0', port), MimikatzServer)
-    https_server.socket = ssl.wrap_socket(https_server.socket, certfile='certs/crackmapexec.crt', keyfile='certs/crackmapexec.key', server_side=True)
+    https_server.socket = ssl.wrap_socket(https_server.socket, certfile='certs/cme.crt', keyfile='certs/cme.key', server_side=True)
     t = Thread(name='https_server', target=https_server.serve_forever)
     t.setDaemon(True)
     t.start()
