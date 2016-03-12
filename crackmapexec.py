@@ -71,7 +71,6 @@ parser.add_argument('--kerb', action="store_true", dest='kerb', help='Use Kerber
 parser.add_argument("--port", dest='port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
 parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (defaults to https)')
 parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
-parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
 #How much fail can we limit? can we fail at failing to limit? da da da dum
 parser.add_argument("--fail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed per host (default: None)')
 parser.add_argument("--gfail-limit", metavar='LIMIT', type=int, default=None, help='The max number of failed login attempts allowed globally (default: None)')
@@ -111,6 +110,7 @@ sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion dept
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
 cgroup.add_argument('--execm', choices={"wmi", "smbexec", "atexec"}, default="wmi", help="Method to execute the command (default: wmi)")
+cgroup.add_argument('--ps-arch', default='auto', choices={'32', '64', 'auto'}, help='Process architecture all PowerShell code/commands should run in (default: auto)')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
 cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Excute the specified powershell command')
@@ -282,8 +282,7 @@ def concurrency(targets):
     try:
         pool = Pool(args.threads)
         jobs = [pool.spawn(main_greenlet, str(target)) for target in targets]
-        for job in jobs:
-            job.join(timeout=args.timeout)
+        joinall(jobs)
     except KeyboardInterrupt:
         shutdown(0)
 
