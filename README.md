@@ -83,8 +83,9 @@ optional arguments:
   --kerb                Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters
   --port {139,445}      SMB port (default: 445)
   --server {http,https}
-                        Use the selected server (defaults to http)
+                        Use the selected server (defaults to https)
   --server-port PORT    Start the server on the specified port
+  --timeout TIMEOUT     Max timeout in seconds of each thread (default: 20)
   --fail-limit LIMIT    The max number of failed login attempts allowed per host (default: None)
   --gfail-limit LIMIT   The max number of failed login attempts allowed globally (default: None)
   --verbose             Enable verbose output
@@ -110,6 +111,7 @@ Mapping/Enumeration:
   Options for Mapping/Enumerating
 
   --shares              List shares
+  --tokens              Enumerate available tokens
   --check-uac           Checks UAC status
   --sessions            Enumerate active sessions
   --disks               Enumerate disks
