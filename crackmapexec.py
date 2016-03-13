@@ -91,6 +91,7 @@ rgroup.add_argument("--disable-wdigest", action='store_true', help="Deletes the 
 
 egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
 egroup.add_argument("--shares", action="store_true", dest="enum_shares", help="List shares")
+egroup.add_argument("--tokens", action='store_true', help="Enumerate available tokens")
 egroup.add_argument('--check-uac', action='store_true', dest='check_uac', help='Checks UAC status')
 egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
 egroup.add_argument('--disks', action='store_true', dest='enum_disks', help='Enumerate disks')
@@ -268,7 +269,7 @@ for target in args.target:
     else:
         populate_targets(target)
 
-if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.tokens or args.inject or args.ntds == 'ninja':
     if args.server == 'http':
         http_server(args.server_port)
 
@@ -290,7 +291,7 @@ def concurrency(targets):
 
 concurrency(targets)
 
-if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.inject or args.ntds == 'ninja':
+if args.mimikatz or args.powerview or args.gpp_passwords or args.mimikatz_cmd or args.tokens or args.inject or args.ntds == 'ninja':
     try:
         while True:
             sleep(1)

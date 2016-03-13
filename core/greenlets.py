@@ -307,6 +307,19 @@ def main_greenlet(host):
                          passwd,
                          ntlm_hash)
 
+            if settings.args.tokens:
+                powah_command = PowerShell(settings.args.server, local_ip)
+                EXECUTOR(cme_logger, 
+                         powah_command.token_enum(), 
+                         host, 
+                         domain, 
+                         True, 
+                         connection, 
+                         settings.args.execm,
+                         user,
+                         passwd,
+                         ntlm_hash)
+
             if settings.args.inject:
                 powah_command = PowerShell(settings.args.server, local_ip)
                 if settings.args.inject.startswith('met_'):
