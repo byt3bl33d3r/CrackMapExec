@@ -1,0 +1,3 @@
+[submodule "data/PowerSploit"]
+	path = data/PowerSploit
+	url = https://github.com/PowerShellMafia/PowerSploit
