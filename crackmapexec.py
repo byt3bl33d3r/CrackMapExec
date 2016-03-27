@@ -72,7 +72,7 @@ parser.add_argument("--smb-port", dest='smb_port', type=int, choices={139, 445},
 parser.add_argument("--mssql-port", dest='mssql_port', default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
 parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (default: https)')
 parser.add_argument("--server-port", dest='server_port', metavar='PORT', type=int, help='Start the server on the specified port')
-parser.add_argument("--local-auth", dest='local_auth', action='store_true', help='Authenticate localy to each target')
+parser.add_argument("--local-auth", dest='local_auth', action='store_true', help='Authenticate locally to each target')
 parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
 parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
 
