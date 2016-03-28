@@ -11,14 +11,7 @@ This project was inspired by/based off of:
 
 Additionally some code was stolen from @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
 
-This repo also includes the following scripts from the [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) project:
-- [Invoke-Mimikatz.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-Mimikatz.ps1)
-- [Invoke-NinjaCopy.ps1](https://github.com/mattifestation/PowerSploit/blob/master/Exfiltration/Invoke-NinjaCopy.ps1)
-- [Invoke-ReflectivePEInjection.ps1](https://github.com/mattifestation/PowerSploit/blob/master/CodeExecution/Invoke-ReflectivePEInjection.ps1)
-- [Invoke-Shellcode.ps1](https://github.com/mattifestation/PowerSploit/blob/master/CodeExecution/Invoke--Shellcode.ps1)
-- [Get-GPPPassword.ps1](https://github.com/PowerShellMafia/PowerSploit/blob/master/Exfiltration/Get-GPPPassword.ps1)
-
-and the [PowerView](https://github.com/PowerShellEmpire/PowerTools/blob/master/PowerView/powerview.ps1) script from the [PowerTools](https://github.com/PowerShellEmpire/PowerTools) repository
+This repo also includes the [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) repository as a submodule.
 
 #Description
 
