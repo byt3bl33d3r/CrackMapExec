@@ -9,7 +9,10 @@ This project was inspired by/based off of:
 - @gojhonny's [CredCrack](https://github.com/gojhonny/CredCrack)
 - @pentestgeek's [smbexec](https://github.com/pentestgeek/smbexec)
 
-Additionally some code was stolen from @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
+Unintentional contributors:
+
+- @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
+- The [Empire](https://github.com/PowerShellEmpire/Empire) project
 
 This repo also includes the [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) repository as a submodule.
 
