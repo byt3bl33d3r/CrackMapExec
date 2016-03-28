@@ -12,7 +12,7 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-           COMMAND Mimikatz command to execute
+           COMMAND Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
         '''
 
         self.mimikatz_command = 'privilege::debug sekurlsa::logonpasswords exit'
