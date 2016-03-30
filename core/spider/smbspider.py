@@ -92,7 +92,11 @@ class SMBSpider:
                     contents = rfile.read(4096)
                 except SessionError as e:
                     if 'STATUS_END_OF_FILE' in str(e):
-                        return
+                        break
+
+                except Exception:
+                    traceback.print_exc()
+                    break
 
                 if self.args.pattern:
                     for pattern in self.args.pattern:
@@ -104,7 +108,6 @@ class SMBSpider:
                                                                                                                 result.get_filesize(),
                                                                                                                 rfile.tell(),
                                                                                                                 pattern))
-                            break
 
                 elif self.args.regex:
                     for regex in self.args.regex:
@@ -116,8 +119,6 @@ class SMBSpider:
                                                                                                               result.get_filesize(),
                                                                                                               rfile.tell(),
                                                                                                               regex.pattern))
-                            break
-
             rfile.close()
             return
 
@@ -126,8 +127,7 @@ class SMBSpider:
                 pass
 
         except Exception:
-            pass
-            #traceback.print_exc()
+            traceback.print_exc()
 
     def finish(self):
         self.logger.info("Done spidering (Completed in {})".format(time() - self.start_time))

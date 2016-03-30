@@ -234,8 +234,8 @@ try:
     pool = Pool(args.threads)
     jobs = [pool.spawn(connector, str(target), args, db, module, context, server) for target in targets]
 
-    #Dumping the NTDS.DIT can take a long time, so we ignore the thread timeout
-    if args.ntds:
+    #Dumping the NTDS.DIT and/or spidering shares can take a long time, so we ignore the thread timeout
+    if args.ntds or args.spider:
         joinall(jobs)
     elif not args.ntds:
         for job in jobs:
