@@ -36,12 +36,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 class CMEServer(threading.Thread):
 
-    def __init__(self, module, context, port, server_type='https'):
+    def __init__(self, module, context, srv_host, port, server_type='https'):
 
         try:
             threading.Thread.__init__(self)
 
-            self.server = BaseHTTPServer.HTTPServer(('0.0.0.0', int(port)), RequestHandler)
+            self.server = BaseHTTPServer.HTTPServer((srv_host, int(port)), RequestHandler)
             self.server.hosts   = []
             self.server.module  = module
             self.server.context = context

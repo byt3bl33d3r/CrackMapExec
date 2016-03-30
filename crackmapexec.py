@@ -71,6 +71,7 @@ parser.add_argument("--share", metavar="SHARE", dest='share', default="C$", help
 parser.add_argument("--smb-port", dest='smb_port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
 parser.add_argument("--mssql-port", dest='mssql_port', default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
 parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (default: https)')
+parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
 parser.add_argument("--server-port", dest='server_port', metavar='PORT', type=int, help='Start the server on the specified port')
 parser.add_argument("--local-auth", dest='local_auth', action='store_true', help='Authenticate locally to each target')
 parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
@@ -215,7 +216,7 @@ if args.module:
         module.options(context, module_options)
 
         if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
-            server = CMEServer(module, context, args.server_port, args.server)
+            server = CMEServer(module, context, args.server_host, args.server_port, args.server)
             server.start()
 
 for target in args.target:
