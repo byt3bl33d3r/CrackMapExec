@@ -35,7 +35,7 @@ class CMEModule:
 
         context.log.debug('Payload: {}'.format(payload))
         payload = create_ps_command(payload)
-        print connection.execute(payload, get_output=True)
+        connection.execute(payload)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
@@ -63,6 +63,6 @@ class CMEModule:
         if len(data) > 0:
             context.log.success('Enumerated available tokens')
 
-            buf = StringIO(data).read()
+            buf = StringIO(data.strip()).readlines()
             for line in buf:
-                context.log.highlight(line)
+                context.log.highlight(line.strip())
