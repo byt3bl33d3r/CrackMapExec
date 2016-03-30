@@ -95,8 +95,8 @@ Credential Gathering:
                         (drsuapi is the fastest)
   --ntds-history        Dump NTDS.dit password history
   --ntds-pwdLastSet     Shows the pwdLastSet attribute for each NTDS.dit account
-  --enable-wdigest      Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1
-  --disable-wdigest     Deletes the 'UseLogonCredential' registry key
+  --wdigest {enable,disable}
+                        Creates/Deletes the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1
 
 Mapping/Enumeration:
   Options for Mapping/Enumerating
@@ -121,8 +121,10 @@ Spidering:
   --content             Enable file content searching
   --exclude-dirs DIR_LIST
                         Directories to exclude from spidering
-  --pattern PATTERN     Pattern to search for in folders, filenames and file content
-  --regex REGEX         Regex to search for in folders, filenames and file content
+  --pattern [PATTERN [PATTERN ...]]
+                        Pattern(s) to search for in folders, filenames and file content
+  --regex [REGEX [REGEX ...]]
+                        Regex(s) to search for in folders, filenames and file content
   --depth DEPTH         Spider recursion depth (default: 10)
 
 Command Execution:
