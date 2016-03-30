@@ -102,8 +102,8 @@ sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str
 sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
 sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', dest='exclude_dirs', help='Directories to exclude from spidering')
 esgroup = sgroup.add_mutually_exclusive_group()
-esgroup.add_argument("--pattern", type=str, help='Pattern to search for in folders, filenames and file content')
-esgroup.add_argument("--regex", type=str, help='Regex to search for in folders, filenames and file content')
+esgroup.add_argument("--pattern", nargs='*', help='Pattern(s) to search for in folders, filenames and file content')
+esgroup.add_argument("--regex", nargs='*', help='Regex(s) to search for in folders, filenames and file content')
 sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")

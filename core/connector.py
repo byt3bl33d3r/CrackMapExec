@@ -165,19 +165,24 @@ def connector(target, args, db, module, context, cmeserver):
                         if connection.admin_privs and args.uac:
                             UAC(connection.conn, logger).enum()
 
+                        if args.spider:
+                            spider = SMBSpider(logger, connection, args)
+                            spider.spider(args.spider, args.depth)
+                            spider.finish()
+
                         if args.enum_shares:
                             ShareEnum(connection.conn, logger).enum()
 
                         if args.enum_lusers or args.enum_disks or args.enum_sessions:
                             rpc_connection = RPCQUERY(connection, logger)
 
-                            if connection.admin_privs and args.enum_lusers:
+                            if args.enum_lusers:
                                 rpc_connection.enum_lusers()
 
                             if args.enum_sessions:
                                 rpc_connection.enum_sessions()
 
-                            if connection.admin_privs and args.enum_disks:
+                            if args.enum_disks:
                                 rpc_connection.enum_disks()
 
                         if args.pass_pol:

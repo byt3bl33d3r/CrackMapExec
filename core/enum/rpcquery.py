@@ -43,8 +43,12 @@ class RPCQUERY():
 
     def enum_lusers(self):
         dce, rpctransport = self.connect('wkssvc')
-        resp = wkst.hNetrWkstaUserEnum(dce, 1)
-        lusers =  resp['UserInfo']['WkstaUserInfo']['Level1']['Buffer']
+
+        try:
+            resp = wkst.hNetrWkstaUserEnum(dce, 1)
+            lusers =  resp['UserInfo']['WkstaUserInfo']['Level1']['Buffer']
+        except Exception:
+            return
 
         self.logger.success("Enumerating logged on users")
         for user in lusers:
@@ -55,14 +59,20 @@ class RPCQUERY():
 
     def enum_sessions(self):
         dce, rpctransport = self.connect('srvsvc')
-        level = 502
+        
         try:
+            level = 502
             resp = srvs.hNetrSessionEnum(dce, NULL, NULL, level)
             sessions  = resp['InfoStruct']['SessionInfo']['Level502']['Buffer']
         except Exception:
+            pass
+
+        try:
             level = 0
             resp = srvs.hNetrSessionEnum(dce, NULL, NULL, level)
             sessions  = resp['InfoStruct']['SessionInfo']['Level0']['Buffer']
+        except Exception:
+            return
 
         self.logger.success("Enumerating active sessions")
         for session in sessions:
@@ -80,10 +90,16 @@ class RPCQUERY():
 
     def enum_disks(self):
         dce, rpctransport = self.connect('srvsvc')
+
         try:
             resp = srvs.hNetrServerDiskEnum(dce, 1)
         except Exception:
+            pass
+
+        try:
             resp = srvs.hNetrServerDiskEnum(dce, 0)
+        except Exception:
+            return
 
         self.logger.success("Enumerating disks")
         for disk in resp['DiskInfoStruct']['Buffer']:
