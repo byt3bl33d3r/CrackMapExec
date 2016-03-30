@@ -7,8 +7,11 @@ from binascii import hexlify, unhexlify
 from struct import unpack
 from datetime import datetime
 from core.credentials.cryptocommon import CryptoCommon
+from Crypto.Cipher import DES, ARC4
+from core.credentials.commonstructs import SAMR_RPC_SID
 from impacket.ese import ESENT_DB
 import logging
+import hashlib
 import random
 import string
 import os

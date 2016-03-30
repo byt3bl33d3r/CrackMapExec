@@ -1,4 +1,5 @@
 from impacket.structure import Structure
+from struct import unpack
 
 # Structures
 # Taken from http://insecurety.net/?p=768
