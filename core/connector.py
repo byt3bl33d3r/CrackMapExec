@@ -153,13 +153,13 @@ def connector(target, args, db, module, context, cmeserver):
                             if args.ntds:
                                 secrets_dump.NTDS_dump(args.ntds, args.ntds_pwdLastSet, args.ntds_history)
 
-                        if connection.admin_privs and (args.enable_wdigest or args.disable_wdigest):
+                        if connection.admin_privs and args.wdigest:
                             w_digest = WDIGEST(logger, connection.conn)
 
-                            if args.enable_wdigest:
+                            if args.wdigest == 'enable':
                                 w_digest.enable()
 
-                            elif args.disable_wdigest:
+                            elif args.wdigest == 'disable':
                                 w_digest.disable()
 
                         if connection.admin_privs and args.uac:

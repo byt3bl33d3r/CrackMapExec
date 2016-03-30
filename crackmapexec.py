@@ -82,8 +82,7 @@ rgroup.add_argument("--lsa", action='store_true', help='Dump LSA secrets from ta
 rgroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, help="Dump the NTDS.dit from target DCs using the specifed method\n(drsuapi is the fastest)")
 rgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
 rgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
-rgroup.add_argument("--enable-wdigest", action='store_true', help="Creates the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1")
-rgroup.add_argument("--disable-wdigest", action='store_true', help="Deletes the 'UseLogonCredential' registry key")
+rgroup.add_argument("--wdigest", choices={'enable', 'disable'}, help="Creates/Deletes the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1")
 
 egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
 egroup.add_argument("--shares", action="store_true", dest="enum_shares", help="Enumerate shares and access")
