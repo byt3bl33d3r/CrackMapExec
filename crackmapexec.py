@@ -138,18 +138,18 @@ if os.geteuid() is not 0:
     logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getpass.getuser()))
     sys.exit(1)
 
+if not os.path.exists('data/cme.db'):
+    logger.error('Could not find CME database, did you run the setup_database.py script?')
+    sys.exit(1)
+
 if not args.server_port:
     args.server_port = server_port_dict[args.server]
 
-try:
-    # set the database connection to autocommit w/ isolation level
-    db_connection = sqlite3.connect('data/cme.db', check_same_thread=False)
-    db_connection.text_factory = str
-    db_connection.isolation_level = None
-    db = CMEDatabase(db_connection)
-except Exception as e:
-    logger.error("Could not connect to CME database: {}".format(e))
-    sys.exit(1)
+# set the database connection to autocommit w/ isolation level
+db_connection = sqlite3.connect('data/cme.db', check_same_thread=False)
+db_connection.text_factory = str
+db_connection.isolation_level = None
+db = CMEDatabase(db_connection)
 
 if args.cred_id:
     try:
