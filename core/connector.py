@@ -106,7 +106,9 @@ def connector(target, args, db, module, context, cmeserver):
                     module_logger = CMEAdapter(getLogger('CME'), {'module': module.name.upper(), 'host': remote_ip, 'port': args.smb_port, 'hostname': servername})
                     context = Context(db, module_logger, args)
                     context.localip  = local_ip
-                    cmeserver.server.context.localip = local_ip
+
+                    if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                        cmeserver.server.context.localip = local_ip
 
                     if hasattr(module, 'on_login'):
                         module.on_login(context, connection)

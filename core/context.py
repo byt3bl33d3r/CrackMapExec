@@ -1,4 +1,5 @@
 import logging
+from ConfigParser import ConfigParser
 
 class Context:
 
@@ -7,6 +8,9 @@ class Context:
         self.log = logger
         self.log.debug = logging.debug
         self.localip = None
+
+        self.conf = ConfigParser()
+        self.conf.read('cme.conf')
 
         for key, value in vars(arg_namespace).iteritems():
             setattr(self, key, value)

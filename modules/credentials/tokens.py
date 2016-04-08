@@ -1,4 +1,5 @@
 from core.helpers import create_ps_command, obfs_ps_script, gen_random_string
+from datetime import datetime
 from StringIO import StringIO
 
 class CMEModule:
@@ -66,3 +67,8 @@ class CMEModule:
             buf = StringIO(data.strip()).readlines()
             for line in buf:
                 context.log.highlight(line.strip())
+
+            log_name = 'Tokens-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            with open('logs/' + log_name, 'w') as tokens_output:
+                tokens_output.write(data)
+            context.log.info("Saved output to {}".format(log_name))

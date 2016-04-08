@@ -4,5 +4,6 @@ netaddr
 pycrypto
 pyasn1
 termcolor
+requests
 colorama
 pyOpenSSL

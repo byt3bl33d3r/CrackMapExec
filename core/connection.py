@@ -89,6 +89,9 @@ class Connection:
             self.check_if_admin()
             self.db.add_credential('plaintext', self.domain, username, password)
 
+            if self.admin_privs:
+                self.db.link_cred_to_host('plaintext', self.domain, username, password, self.host)
+
             out = u'{}\\{}:{} {}'.format(self.domain, 
                                          username, 
                                          password,
@@ -116,6 +119,9 @@ class Connection:
             self.username = username
             self.check_if_admin()
             self.db.add_credential('hash', self.domain, username, ntlm_hash)
+
+            if self.admin_privs:
+                self.db.link_cred_to_host('hash', self.domain, username, ntlm_hash, self.host)
 
             out = u'{}\\{} {} {}'.format(self.domain, 
                                          username, 

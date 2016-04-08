@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 import sqlite3
 
 conn = sqlite3.connect('../data/cme.db')
@@ -13,6 +15,13 @@ c.execute('''CREATE TABLE "hosts" (
     "hostname" text,
     "domain" test,
     "os" text
+    )''')
+
+#This table keeps track of which credential has admin access over which machine
+c.execute('''CREATE TABLE "links" (
+    "id" integer PRIMARY KEY,
+    "credid" integer,
+    "hostid" integer
     )''')
 
 # type = hash, plaintext

@@ -2,6 +2,7 @@ import logging
 import random
 import string
 from gevent import sleep
+from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import transport, drsuapi, scmr, rrp, samr, epm
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from impacket.dcerpc.v5.dtypes import NULL
