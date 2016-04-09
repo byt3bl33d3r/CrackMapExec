@@ -72,10 +72,10 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
+            request.stop_tracking_host()
+
             with open(self.payload_path, 'rb') as payload:
                 request.wfile.write(payload.read())
-
-            request.stop_tracking_host()
 
         else:
             request.send_response(404)

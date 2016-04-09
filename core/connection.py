@@ -100,7 +100,8 @@ class Connection:
             self.logger.success(out)
             return True
         except SessionError as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, username, password, str(e).split(':')[1]))
+            error, desc = e.getErrorString()
+            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain, username, password, error, '({})'.format(desc) if self.args.verbose else ''))
             return False
 
     def hash_login(self, username, ntlm_hash):
@@ -131,7 +132,8 @@ class Connection:
             self.logger.success(out)
             return True
         except SessionError as e:
-            self.logger.error(u'{}\\{} {} {}'.format(self.domain, username, ntlm_hash, str(e).split(':')[1]))
+            error, desc = e.getErrorString()
+            self.logger.error(u'{}\\{} {} {}'.format(self.domain, username, ntlm_hash, error))
             return False
 
     def login(self):
