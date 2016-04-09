@@ -50,7 +50,7 @@ def connector(target, args, db, module, context, cmeserver):
 
         logger = CMEAdapter(getLogger('CME'), {'host': remote_ip, 'port': args.smb_port, 'hostname': u'{}'.format(servername)})
 
-        logger.info(u"{} (name:{}) (domain:{})".format(serveros, servername, domain))
+        logger.info(u"{} (name:{}) (domain:{})".format(serveros, servername.decode('utf-8'), domain.decode('utf-8')))
 
         try:
             '''

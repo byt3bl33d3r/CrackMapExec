@@ -48,7 +48,7 @@ class CMEAdapter(logging.LoggerAdapter):
         return u'{:<25} {}:{} {:<15} {}'.format(module_name,
                                            self.extra['host'],
                                            self.extra['port'], 
-                                           self.extra['hostname'] if self.extra['hostname'] else 'NONE', 
+                                           self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE', 
                                            msg), kwargs
 
     def info(self, msg, *args, **kwargs):

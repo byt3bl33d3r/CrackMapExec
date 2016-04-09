@@ -92,16 +92,20 @@ class Connection:
             if self.admin_privs:
                 self.db.link_cred_to_host('plaintext', self.domain, username, password, self.host)
 
-            out = u'{}\\{}:{} {}'.format(self.domain, 
-                                         username, 
-                                         password,
+            out = u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'), 
+                                         username.decode('utf-8'), 
+                                         password.decode('utf-8'),
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
 
             self.logger.success(out)
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain, username, password, error, '({})'.format(desc) if self.args.verbose else ''))
+            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain.decode('utf-8'), 
+                                                        username.decode('utf-8'), 
+                                                        password.decode('utf-8'), 
+                                                        error, 
+                                                        '({})'.format(desc) if self.args.verbose else ''))
             return False
 
     def hash_login(self, username, ntlm_hash):
@@ -124,8 +128,8 @@ class Connection:
             if self.admin_privs:
                 self.db.link_cred_to_host('hash', self.domain, username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(self.domain, 
-                                         username, 
+            out = u'{}\\{} {} {}'.format(self.domain.decode('utf-8'), 
+                                         username.decode('utf-8'), 
                                          ntlm_hash, 
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
 
@@ -133,7 +137,11 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {}'.format(self.domain, username, ntlm_hash, error))
+            self.logger.error(u'{}\\{} {} {} {}'.format(self.domain.decode('utf-8'), 
+                                                        username.decode('utf-8'), 
+                                                        ntlm_hash, 
+                                                        error, 
+                                                        '({})'.format(desc) if self.args.verbose else ''))
             return False
 
     def login(self):

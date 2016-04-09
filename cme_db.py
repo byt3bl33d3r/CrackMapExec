@@ -44,7 +44,11 @@ class CMEDatabaseNavigator(cmd.Cmd):
             domain = host[3]
             os = host[4]
 
-            print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), '{:<17}'.format(ip), '{:<25}'.format(hostname), '{:<17}'.format(domain), '{:<17}'.format(os))
+            print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                         '{:<17}'.format(ip), 
+                                         u'{:<25}'.format(hostname.decode('utf-8')), 
+                                         u'{:<17}'.format(domain.decode('utf-8')),
+                                         '{:<17}'.format(os))
 
         print ""
 
@@ -66,7 +70,11 @@ class CMEDatabaseNavigator(cmd.Cmd):
                     username = cred[3]
                     password = cred[4]
 
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(credID), '{:<12}'.format(credType), '{:<17}'.format(domain), '{:<21}'.format(username), '{:<17}'.format(password))
+                    print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
+                                                '{:<12}'.format(credType), 
+                                                u'{:<17}'.format(domain.decode('utf-8')), 
+                                                u'{:<21}'.format(username.decode('utf-8')), 
+                                                u'{:<17}'.format(password.decode('utf-8')))
 
         print ""
 
@@ -92,7 +100,11 @@ class CMEDatabaseNavigator(cmd.Cmd):
             username = cred[3]
             password = cred[4]
 
-            print u"  {}{}{}{}{}".format('{:<8}'.format(credID), '{:<12}'.format(credType), '{:<17}'.format(domain), '{:<21}'.format(username), '{:<17}'.format(password))
+            print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
+                                         '{:<12}'.format(credType), 
+                                         u'{:<17}'.format(domain.decode('utf-8')), 
+                                         u'{:<21}'.format(username.decode('utf-8')), 
+                                         u'{:<17}'.format(password.decode('utf-8')))
 
         print ""
 
@@ -114,7 +126,11 @@ class CMEDatabaseNavigator(cmd.Cmd):
                     domain = host[3]
                     os = host[4]
 
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), '{:<17}'.format(ip), '{:<25}'.format(hostname), '{:<17}'.format(domain), '{:<17}'.format(os))
+                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                                 '{:<17}'.format(ip), 
+                                                 u'{:<25}'.format(hostname.decode('utf-8')), 
+                                                 u'{:<17}'.format(domain.decode('utf-8')), 
+                                                 '{:<17}'.format(os))
 
         print ""
 
@@ -136,7 +152,12 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
             links = self.db.get_links(hostID=hostID)
 
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID), '{:<15}'.format(str(len(links)) + ' Cred(s)'), '{:<17}'.format(ip), '{:<25}'.format(hostname), '{:<17}'.format(domain), '{:<17}'.format(os))
+            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                           '{:<15}'.format(str(len(links)) + ' Cred(s)'), 
+                                           '{:<17}'.format(ip), 
+                                           u'{:<25}'.format(hostname.decode('utf-8')), 
+                                           u'{:<17}'.format(domain.decode('utf-8')), 
+                                           '{:<17}'.format(os))
 
         print ""
 
@@ -158,7 +179,12 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
             links = self.db.get_links(credID=credID)
 
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID), '{:<13}'.format(str(len(links)) + ' Host(s)'), '{:<12}'.format(credType), '{:<17}'.format(domain), '{:<21}'.format(username), '{:<17}'.format(password))
+            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID), 
+                                           '{:<13}'.format(str(len(links)) + ' Host(s)'), 
+                                           '{:<12}'.format(credType), 
+                                           u'{:<17}'.format(domain.decode('utf-8')), 
+                                           u'{:<21}'.format(username.decode('utf-8')), 
+                                           u'{:<17}'.format(password.decode('utf-8')))
 
         print ""
 
