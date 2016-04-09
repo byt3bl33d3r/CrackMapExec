@@ -52,10 +52,9 @@ class RPCQUERY():
 
         self.logger.success("Enumerating logged on users")
         for user in lusers:
-            self.logger.highlight(u'{}\\{} {} {}'.format(user['wkui1_logon_domain'],
-                                                         user['wkui1_username'],
-                                                         user['wkui1_logon_server'],
-                                                         user['wkui1_oth_domains']))
+            self.logger.highlight(u'Username: {}\\{} {}'.format(user['wkui1_logon_domain'],
+                                                                user['wkui1_username'],
+                                                                'LogonServer: {}'.format(user['wkui1_logon_server']) if user['wkui1_logon_server'] != '\x00' else ''))
 
     def enum_sessions(self):
         dce, rpctransport = self.connect('srvsvc')
