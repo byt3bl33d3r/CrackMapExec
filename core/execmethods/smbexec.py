@@ -1,5 +1,6 @@
 import traceback
 
+from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
 from core.helpers import gen_random_string
@@ -90,9 +91,13 @@ class SMBEXEC:
         def output_callback(data):
             self.__outputBuffer += data
 
-        self.transferClient.getFile(self.__share, self.__output, output_callback)
-        
-        self.transferClient.deleteFile(self.__share, self.__output)
+        while True:
+            try:
+                self.transferClient.getFile(self.__share, self.__output, output_callback)        
+                self.transferClient.deleteFile(self.__share, self.__output)
+                break
+            except Exception:
+                sleep(2)
 
     def execute_remote(self, data):
         if self.__retOutput:

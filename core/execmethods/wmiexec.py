@@ -88,7 +88,7 @@ class WMIEXEC:
             except Exception as e:
                 if str(e).find('STATUS_SHARING_VIOLATION') >=0:
                     # Output not finished, let's wait
-                    sleep(1)
+                    sleep(2)
                     pass
                 else:
                     #print str(e)
