@@ -80,7 +80,7 @@ class CMEModule:
                 if ('Password' in buf[i]) and ('(null)' not in buf[i]):
                     passw  = buf[i].split(':')[1].strip()
                     domain = buf[i-1].split(':')[1].strip().upper()
-                    user   = buf[i-2].split(':')[1].strip().lower()
+                    user   = buf[i-2].split(':')[1].strip()
 
                     #Dont parse machine accounts
                     if not user[-1:] == '$':

