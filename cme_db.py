@@ -170,7 +170,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
             for link in links:
                 linkID, credID, hostID = link
-                creds = self.db.get_credentials(fileterTerm=credID)
+                creds = self.db.get_credentials(filterTerm=credID)
 
                 for cred in creds:
                     credID = cred[0]
