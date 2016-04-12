@@ -17,11 +17,11 @@ class CMEModule:
             DOMAIN        The domain to query for computers (default: current domain) 
         '''
 
-        self.group = None
+        self.computername = None
         self.domain = None
         self.spn = None
-        if 'GROUP' in module_options:
-            self.group = module_options['GROUP']
+        if 'COMPUTERNAME' in module_options:
+            self.computername = module_options['COMPUTERNAME']
 
         if 'DOMAIN' in module_options:
             self.domain = module_options['DOMAIN']
@@ -34,8 +34,8 @@ class CMEModule:
 
         powah_command = 'Get-NetComputer'
 
-        if self.group:
-            powah_command += ' -ComputerName "{}"'.format(self.group)
+        if self.computername:
+            powah_command += ' -ComputerName "{}"'.format(self.computername)
 
         if self.domain:
             powah_command += ' -Domain {}'.format(self.domain)
