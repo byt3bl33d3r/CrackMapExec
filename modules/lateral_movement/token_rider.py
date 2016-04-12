@@ -52,8 +52,8 @@ class CMEModule:
                 context.log.error('Path to CMDFILE invalid!')
                 sys.exit(1)
 
-            cmdfile = open(path, 'r').read()
-            self.command = cmdfile.strip() 
+            with open(path, 'r') as cmdfile:
+                self.command = cmdfile.read().strip() 
 
         targets = module_options['TARGET'].split(',')
         for target in targets:

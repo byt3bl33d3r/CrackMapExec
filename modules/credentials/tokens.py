@@ -1,6 +1,8 @@
 from core.helpers import create_ps_command, obfs_ps_script, gen_random_string
 from datetime import datetime
 from StringIO import StringIO
+import os
+import sys
 
 class CMEModule:
     '''
@@ -12,7 +14,28 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
+            USER      Search for the specified username in available tokens
+            USERFILE  File containing usernames to search for in available tokens
         '''
+
+        self.user = None
+        self.userfile = None
+
+        if 'USER' in module_options and 'USERFILE' in module_options:
+            context.log.error('USER and USERFILE options are mutually exclusive!')
+            sys.exit(1)
+
+        if 'USER' in module_options:
+            self.user = module_options['USER']
+
+        elif 'USERFILE' in module_options:
+            path = os.path.expanduser(module_options['USERFILE'])
+            
+            if not os.path.exists(path):
+                context.log.error('Path to USERFILE invalid!')
+                sys.exit(1) 
+
+            self.userfile = open(path, 'r')
 
         self.obfs_name = gen_random_string()
 
@@ -62,11 +85,30 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data) > 0:
+
+            def print_post_data(data):
+                buf = StringIO(data.strip()).readlines()
+                for line in buf:
+                    context.log.highlight(line.strip())
+
             context.log.success('Enumerated available tokens')
 
-            buf = StringIO(data.strip()).readlines()
-            for line in buf:
-                context.log.highlight(line.strip())
+            if self.user:
+                if data.find(self.user) != -1:
+                    context.log.success("Found token for user {}!".format(self.user))
+                    print_post_data(data)
+
+            elif self.userfile:
+                self.userfile.seek(0)
+                for user in self.userfile:
+                    user = user.strip()
+                    if data.find(user) != -1:
+                        context.log.success("Found token for user {}!".format(user))
+                        print_post_data(data)
+                        break
+
+            else:
+                print_post_data(data)
 
             log_name = 'Tokens-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             with open('logs/' + log_name, 'w') as tokens_output:
