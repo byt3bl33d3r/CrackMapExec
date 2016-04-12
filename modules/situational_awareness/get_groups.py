@@ -8,7 +8,7 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'GetGroupMembers'
+    name = 'GetGroups'
 
     def options(self, context, module_options):
         '''
