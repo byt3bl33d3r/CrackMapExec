@@ -122,6 +122,15 @@ class CMEDatabaseNavigator(cmd.Cmd):
             except ConnectionError as e:
                 print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
 
+    def complete_import(self, text, line, begidx, endidx):
+        "Tab-complete 'import' commands."
+        
+        commands = ["empire"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
     def do_host(self, line):
 
         if not line:

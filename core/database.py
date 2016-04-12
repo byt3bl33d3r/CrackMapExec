@@ -29,7 +29,7 @@ class CMEDatabase:
 
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM credentials WHERE LOWER(credtype) LIKE LOWER(?) AND LOWER(domain) LIKE LOWER(?) AND LOWER(username) LIKE LOWER(?) AND password LIKE ?", [credtype, domain, username, password])
+        cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
         results = cur.fetchall()
 
         if not len(results):
@@ -50,7 +50,7 @@ class CMEDatabase:
 
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM credentials WHERE LOWER(credtype) LIKE LOWER(?) AND LOWER(domain) LIKE LOWER(?) AND LOWER(username) LIKE LOWER(?) AND password LIKE ?", [credtype, domain, username, password])
+        cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
         creds = cur.fetchall()
 
         cur.execute('SELECT * FROM hosts WHERE ip LIKE ?', [host])
