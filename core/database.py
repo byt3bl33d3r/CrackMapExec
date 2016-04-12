@@ -21,6 +21,12 @@ class CMEDatabase:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
+
+        # In case the LM hash is blank
+        if credtype == 'hash':
+            if password.find(':') == -1:
+                password = ':' + password
+
         cur = self.conn.cursor()
 
         cur.execute("SELECT * FROM credentials WHERE LOWER(credtype) LIKE LOWER(?) AND LOWER(domain) LIKE LOWER(?) AND LOWER(username) LIKE LOWER(?) AND password LIKE ?", [credtype, domain, username, password])
@@ -30,6 +36,15 @@ class CMEDatabase:
             cur.execute("INSERT INTO credentials (credtype, domain, username, password) VALUES (?,?,?,?)", [credtype, domain, username, password] )
 
         cur.close()
+
+    def remove_credentials(self, credIDs):
+        """
+        Removes a credential ID from the database
+        """
+        for credID in credIDs:
+            cur = self.conn.cursor()
+            cur.execute("DELETE FROM credentials WHERE id=?", [credID])
+            cur.close()
 
     def link_cred_to_host(self, credtype, domain, username, password, host):
 
@@ -69,6 +84,20 @@ class CMEDatabase:
         cur.close()
         return results
 
+    def remove_links(self, credIDs=None, hostIDs=None):
+
+        cur = self.conn.cursor()
+
+        if credIDs:
+            for credID in credIDs:
+                cur.execute("DELETE FROM links WHERE credid=?", [credID])
+        
+        elif hostIDs:
+            for hostID in hostIDs:
+                cur.execute("DELETE FROM links WHERE hostid=?", [hostID])
+
+        cur.close()
+
     def is_credential_valid(self, credentialID):
         """
         Check if this credential ID is valid.
@@ -79,7 +108,7 @@ class CMEDatabase:
         cur.close()
         return len(results) > 0
 
-    def get_credentials(self, filterTerm=None):
+    def get_credentials(self, filterTerm=None, credtype=None):
         """
         Return credentials from the database.
         """
@@ -90,7 +119,11 @@ class CMEDatabase:
         if self.is_credential_valid(filterTerm):
             cur.execute("SELECT * FROM credentials WHERE id=? LIMIT 1", [filterTerm])
 
-        # if we're filtering by host/username
+        # if we're filtering by credtype
+        elif credtype:
+            cur.execute("SELECT * FROM credentials WHERE credtype=?", [credtype])
+
+        # if we're filtering by username
         elif filterTerm and filterTerm != "":
             cur.execute("SELECT * FROM credentials WHERE LOWER(username) LIKE LOWER(?)", [filterTerm])
 

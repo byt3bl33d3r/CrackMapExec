@@ -77,12 +77,12 @@ class CMEModule:
 
             i = 0
             while i < len(buf):
-                if ('Password' in buf[i]) and ('(null)' not in buf[i]):
+                if ('Password' in buf[i]) and ('(null)' not in buf[i]) and ('(null)' not in buf[i-2]):
                     passw  = buf[i].split(':')[1].strip()
                     domain = buf[i-1].split(':')[1].strip().upper()
                     user   = buf[i-2].split(':')[1].strip()
 
-                    #Dont parse machine accounts
+                    #Don't parse machine accounts
                     if not user[-1:] == '$':
                         context.db.add_credential('plaintext', domain, user, passw)
                         plaintext_creds.append('{}\\{}:{}'.format(domain, user, passw))

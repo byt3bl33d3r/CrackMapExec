@@ -92,8 +92,8 @@ class Connection:
             if self.admin_privs:
                 self.db.link_cred_to_host('plaintext', self.domain, username, password, self.host)
 
-            out = u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'), 
-                                         username.decode('utf-8'), 
+            out = u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
+                                         username.decode('utf-8'),
                                          password.decode('utf-8'),
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
 
@@ -101,10 +101,10 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain.decode('utf-8'), 
-                                                        username.decode('utf-8'), 
-                                                        password.decode('utf-8'), 
-                                                        error, 
+            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain.decode('utf-8'),
+                                                        username.decode('utf-8'),
+                                                        password.decode('utf-8'),
+                                                        error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
             return False
 
@@ -137,10 +137,10 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {} {}'.format(self.domain.decode('utf-8'), 
-                                                        username.decode('utf-8'), 
-                                                        ntlm_hash, 
-                                                        error, 
+            self.logger.error(u'{}\\{} {} {} {}'.format(self.domain.decode('utf-8'),
+                                                        username.decode('utf-8'),
+                                                        ntlm_hash,
+                                                        error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
             return False
 
