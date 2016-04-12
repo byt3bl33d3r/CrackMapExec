@@ -14,8 +14,8 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-            USER      Search for the specified username in available tokens
-            USERFILE  File containing usernames to search for in available tokens
+            USER      Search for the specified username in available tokens (default: None)
+            USERFILE  File containing usernames to search for in available tokens (defult: None)
         '''
 
         self.user = None
