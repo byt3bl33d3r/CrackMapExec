@@ -1,5 +1,12 @@
 #! /bin/bash
 
+IFS='/' read -a array <<< pwd
+
+if [[ "$(pwd)" != *setup ]]
+then
+    cd ./setup
+fi
+
 echo -e '\n [*] Installing core deps\n'
 apt-get install libssl-dev libffi-dev python-dev virtualenvwrapper
 
@@ -19,3 +26,5 @@ pip install -r ../requirements.txt
 
 echo -e '\n [*] Creating the database\n'
 python setup_database.py
+
+echo -e '\n [*] Setup complete!\n'
