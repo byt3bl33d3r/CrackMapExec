@@ -8,7 +8,7 @@ then
 fi
 
 echo -e '\n [*] Installing core deps\n'
-apt-get install libssl-dev libffi-dev python-dev virtualenvwrapper
+apt-get install libssl-dev libffi-dev python-dev virtualenvwrapper build-essential
 
 echo -e '\n [*] Intializing and updating submodules\n'
 git submodule init
@@ -28,3 +28,6 @@ echo -e '\n [*] Creating the database\n'
 python setup_database.py
 
 echo -e '\n [*] Setup complete!\n'
+
+echo -e "[*] To run CME you must first do 'workon CME'"
+echo -e "[*] To use Kali's python dependencies and run other python tools first run 'deactivate CME'"

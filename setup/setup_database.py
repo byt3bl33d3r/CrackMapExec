@@ -37,4 +37,4 @@ c.execute('''CREATE TABLE "credentials" (
 conn.commit()
 conn.close()
 
-print "[*] Database setup completed!"
+print "\n [*] Database setup completed! \n"
