@@ -8,7 +8,7 @@ then
 fi
 
 echo -e '\n [*] Installing core deps\n'
-apt-get install libssl-dev libffi-dev python-dev virtualenvwrapper build-essential
+apt-get install -y libssl-dev libffi-dev python-dev virtualenvwrapper build-essential
 
 echo -e '\n [*] Intializing and updating submodules\n'
 git submodule init
