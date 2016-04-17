@@ -29,5 +29,5 @@ python setup_database.py
 
 echo -e '\n [*] Setup complete!\n'
 
-echo -e "[*] To run CME you must first do 'workon CME'"
-echo -e "[*] To use Kali's python dependencies and run other python tools first run 'deactivate CME'"
+echo -e "[*] To run CME you must first do 'workon CME' (first time you might get a 'command not found' error if so restart your terminal or run 'source /usr/share/virtualenvwrapper/virtualenvwrapper.sh'\n"
+echo -e "[*] To use Kali's python dependencies and run other python tools run 'deactivate CME'"
