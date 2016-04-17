@@ -54,7 +54,11 @@ class Connection:
             lmhash = ''
             nthash = ''
             if self.hash:
-                lmhash, nthash = self.hash.split(':')
+                if self.hash.find(':') != -1:
+                    lmhash, nthash = self.hash.split(':')
+                else:
+                    nthash = self.hash
+
             if hasattr(rpctransport, 'set_credentials'):
                 # This method exists only for selected protocol sequences.
                 rpctransport.set_credentials(self.username, self.password if self.password is not None else '', self.domain, lmhash, nthash)
@@ -109,7 +113,15 @@ class Connection:
             return False
 
     def hash_login(self, username, ntlm_hash):
-        lmhash, nthash = ntlm_hash.split(':')
+        lmhash = ''
+        nthash = ''
+
+        #This checks to see if we didn't provide the LM Hash
+        if ntlm_hash.find(':') != -1:
+            lmhash, nthash = ntlm_hash.split(':')
+        else:
+            nthash = ntlm_hash
+
         try:
             if self.args.mssql:
                 res = self.conn.login(None, username, '', self.domain, ntlm_hash, True)

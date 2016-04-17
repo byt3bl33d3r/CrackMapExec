@@ -31,8 +31,13 @@ class SMBEXEC:
         #self.__mode  = mode
         #self.__aesKey = aesKey
         #self.__doKerberos = doKerberos
+
         if hashes is not None:
-            self.__lmhash, self.__nthash = hashes.split(':')
+        #This checks to see if we didn't provide the LM Hash
+            if hashes.find(':') != -1:
+                self.__lmhash, self.__nthash = hashes.split(':')
+            else:
+                self.__nthash = hashes
 
         if self.__password is None:
             self.__password = ''

@@ -21,12 +21,6 @@ class CMEDatabase:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-
-        # In case the LM hash is blank
-        if credtype == 'hash':
-            if password.find(':') == -1:
-                password = ':' + password
-
         cur = self.conn.cursor()
 
         cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])

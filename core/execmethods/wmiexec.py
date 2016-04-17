@@ -24,8 +24,13 @@ class WMIEXEC:
         self.__aesKey = None
         self.__doKerberos = False
         self.__retOutput = True
+
         if hashes is not None:
-            self.__lmhash, self.__nthash = hashes.split(':')
+        #This checks to see if we didn't provide the LM Hash
+            if hashes.find(':') != -1:
+                self.__lmhash, self.__nthash = hashes.split(':')
+            else:
+                self.__nthash = hashes
 
         if self.__password is None:
             self.__password = '' 

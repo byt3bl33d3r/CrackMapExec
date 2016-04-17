@@ -134,10 +134,6 @@ if args.verbose:
 
 logger = CMEAdapter(setup_logger())
 
-if os.geteuid() is not 0:
-    logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getpass.getuser()))
-    sys.exit(1)
-
 if not os.path.exists('data/cme.db'):
     logger.error('Could not find CME database, did you run the setup_database.py script?')
     sys.exit(1)
@@ -216,6 +212,11 @@ if args.module:
         module.options(context, module_options)
 
         if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+
+            if args.server_port <= 1024 and os.geteuid() is not 0:
+                logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getpass.getuser()))
+                sys.exit(1)
+
             server = CMEServer(module, context, args.server_host, args.server_port, args.server)
             server.start()
 
