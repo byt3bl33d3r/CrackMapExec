@@ -35,7 +35,7 @@ class CMEModule:
                 context.log.error('Path to USERFILE invalid!')
                 sys.exit(1) 
 
-            self.userfile = open(path, 'r')
+            self.userfile = path
 
         self.obfs_name = gen_random_string()
 
@@ -99,13 +99,13 @@ class CMEModule:
                     print_post_data(data)
 
             elif self.userfile:
-                self.userfile.seek(0)
-                for user in self.userfile:
-                    user = user.strip()
-                    if data.find(user) != -1:
-                        context.log.success("Found token for user {}!".format(user))
-                        print_post_data(data)
-                        break
+                with open(self.userfile, 'r') as userfile:
+                    for user in userfile:
+                        user = user.strip()
+                        if data.find(user) != -1:
+                            context.log.success("Found token for user {}!".format(user))
+                            print_post_data(data)
+                            break
 
             else:
                 print_post_data(data)

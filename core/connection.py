@@ -230,4 +230,4 @@ class Connection:
 
         output = exec_method.execute(payload, get_output)
 
-        return u'{}'.format(output.strip())
+        return u'{}'.format(output.strip().decode('utf-8'))
