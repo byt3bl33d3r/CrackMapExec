@@ -138,9 +138,6 @@ if not os.path.exists('data/cme.db'):
     logger.error('Could not find CME database, did you run the setup_database.py script?')
     sys.exit(1)
 
-if not args.server_port:
-    args.server_port = server_port_dict[args.server]
-
 # set the database connection to autocommit w/ isolation level
 db_connection = sqlite3.connect('data/cme.db', check_same_thread=False)
 db_connection.text_factory = str
@@ -212,6 +209,12 @@ if args.module:
         module.options(context, module_options)
 
         if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+
+            if hasattr(module, 'required_server'):
+                args.server = getattr(module, 'required_server')
+
+            if not args.server_port:
+                args.server_port = server_port_dict[args.server]
 
             if args.server_port <= 1024 and os.geteuid() is not 0:
                 logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getpass.getuser()))
