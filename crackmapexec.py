@@ -203,7 +203,7 @@ if args.module:
         module_options = {}
 
         for option in args.module_options:
-            key, value = option.split('=')
+            key, value = option.split('=', 1)
             module_options[str(key).upper()] = value
 
         module.options(context, module_options)
