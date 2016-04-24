@@ -1,15 +1,17 @@
 from core.credentials.offlineregistry import OfflineRegistry
 from core.credentials.cryptocommon import CryptoCommon
-from core.credentials.commonstructs import LSA_SECRET, LSA_SECRET_BLOB, NL_RECORD
+from core.credentials.commonstructs import LSA_SECRET, LSA_SECRET_BLOB, NL_RECORD, LSA_SECRET_XP
 from impacket import ntlm
 from impacket.winregistry import hexdump
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, DES, ARC4
 from Crypto.Hash import MD4
 from binascii import hexlify
 import logging
 import ntpath
 import hashlib
 import codecs
+from struct import unpack
+import hmac as HMAC
 
 class LSASecrets(OfflineRegistry):
     def __init__(self, securityFile, bootKey, logger, remoteOps = None, isRemote = False):
