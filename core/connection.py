@@ -175,7 +175,6 @@ class Connection:
                                 for f_hash in ntlm_hash:
                                     if self.hash_login(usr.strip(), f_hash.strip()): return
 
-
                     elif self.args.password:
                         for password in self.args.password:
                             if type(password) is not file:

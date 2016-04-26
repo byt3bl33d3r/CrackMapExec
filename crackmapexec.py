@@ -159,18 +159,22 @@ if args.cred_id:
         logger.error("Invalid database credential ID!")
         sys.exit(1)
 else:
-    for user, passw, ntlm_hash in zip(args.username, args.password, args.hash):
+    for user in args.username:
         if os.path.exists(user):
             args.username.remove(user)
             args.username.append(open(user, 'r'))
 
-        if os.path.exists(passw):
-            args.password.remove(passw)
-            args.password.append(open(passw, 'r'))
+    if args.password:
+        for passw in args.password:
+            if os.path.exists(passw):
+                args.password.remove(passw)
+                args.password.append(open(passw, 'r'))
 
-        if os.path.exists(ntlm_hash):
-            args.hash.remove(ntlm_hash)
-            args.hash.append(open(ntlm_hash, 'r'))
+    elif args.hash:
+        for ntlm_hash in args.hash:
+            if os.path.exists(ntlm_hash):
+                args.hash.remove(ntlm_hash)
+                args.hash.append(open(ntlm_hash, 'r'))
 
 if args.module:
     if not os.path.exists(args.module):

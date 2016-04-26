@@ -3,6 +3,7 @@ import sqlite3
 import sys
 import os
 import requests
+import argparse
 from requests import ConnectionError
 from ConfigParser import ConfigParser
 from core.database import CMEDatabase
@@ -131,118 +132,6 @@ class CMEDatabaseNavigator(cmd.Cmd):
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
-    def do_host(self, line):
-
-        if not line:
-            return
-
-        hosts = self.db.get_hosts(filterTerm=line)
-
-        print "\nHost(s):\n"
-        print "  HostID  IP               Hostname                 Domain           OS"
-        print "  ------  --               --------                 ------           --"
-
-        hostIDList = []
-
-        for host in hosts:
-            hostID = host[0]
-            hostIDList.append(hostID)
-
-            ip = host[1]
-            hostname = host[2]
-            domain = host[3]
-            os = host[4]
-
-            print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                         '{:<17}'.format(ip), 
-                                         u'{:<25}'.format(hostname.decode('utf-8')), 
-                                         u'{:<17}'.format(domain.decode('utf-8')),
-                                         '{:<17}'.format(os))
-
-        print ""
-
-        print "\nCredential(s) with Admin Access:\n"
-        print "  CredID  CredType    Domain           UserName             Password"
-        print "  ------  --------    ------           --------             --------"
-
-        for hostID in hostIDList: 
-            links = self.db.get_links(hostID=hostID)
-
-            for link in links:
-                linkID, credID, hostID = link
-                creds = self.db.get_credentials(filterTerm=credID)
-
-                for cred in creds:
-                    credID = cred[0]
-                    credType = cred[1]
-                    domain = cred[2]
-                    username = cred[3]
-                    password = cred[4]
-
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
-                                                '{:<12}'.format(credType), 
-                                                u'{:<17}'.format(domain.decode('utf-8')), 
-                                                u'{:<21}'.format(username.decode('utf-8')), 
-                                                u'{:<17}'.format(password.decode('utf-8')))
-
-        print ""
-
-    def do_cred(self, line):
-
-        if not line:
-            return
-
-        creds = self.db.get_credentials(filterTerm=line)
-
-        print "\nCredential(s):\n"
-        print "  CredID  CredType    Domain           UserName             Password"
-        print "  ------  --------    ------           --------             --------"
-
-        credIDList = []
-
-        for cred in creds:
-            credID = cred[0]
-            credIDList.append(credID)
-
-            credType = cred[1]
-            domain = cred[2]
-            username = cred[3]
-            password = cred[4]
-
-            print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
-                                         '{:<12}'.format(credType), 
-                                         u'{:<17}'.format(domain.decode('utf-8')), 
-                                         u'{:<21}'.format(username.decode('utf-8')), 
-                                         u'{:<17}'.format(password.decode('utf-8')))
-
-        print ""
-
-        print "\nAdmin Access to Host(s):\n"
-        print "  HostID  IP               Hostname                 Domain           OS"
-        print "  ------  --               --------                 ------           --"
-
-        for credID in credIDList:
-            links = self.db.get_links(credID=credID)
-
-            for link in links:
-                linkID, credID, hostID =  link
-                hosts = self.db.get_hosts(hostID)
-
-                for host in hosts:
-                    hostID = host[0]
-                    ip = host[1]
-                    hostname = host[2]
-                    domain = host[3]
-                    os = host[4]
-
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                                 '{:<17}'.format(ip), 
-                                                 u'{:<25}'.format(hostname.decode('utf-8')), 
-                                                 u'{:<17}'.format(domain.decode('utf-8')), 
-                                                 '{:<17}'.format(os))
-
-        print ""
-
     def do_hosts(self, line):
 
         filterTerm = line.strip()
@@ -253,7 +142,55 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
         else:
             hosts = self.db.get_hosts(filterTerm=filterTerm)
-            self.display_hosts(hosts)
+
+            print "\nHost(s):\n"
+            print "  HostID  IP               Hostname                 Domain           OS"
+            print "  ------  --               --------                 ------           --"
+
+            hostIDList = []
+
+            for host in hosts:
+                hostID = host[0]
+                hostIDList.append(hostID)
+
+                ip = host[1]
+                hostname = host[2]
+                domain = host[3]
+                os = host[4]
+
+                print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                             '{:<17}'.format(ip), 
+                                             u'{:<25}'.format(hostname.decode('utf-8')), 
+                                             u'{:<17}'.format(domain.decode('utf-8')),
+                                             '{:<17}'.format(os))
+
+            print ""
+
+            print "\nCredential(s) with Admin Access:\n"
+            print "  CredID  CredType    Domain           UserName             Password"
+            print "  ------  --------    ------           --------             --------"
+
+            for hostID in hostIDList: 
+                links = self.db.get_links(hostID=hostID)
+
+                for link in links:
+                    linkID, credID, hostID = link
+                    creds = self.db.get_credentials(filterTerm=credID)
+
+                    for cred in creds:
+                        credID = cred[0]
+                        credType = cred[1]
+                        domain = cred[2]
+                        username = cred[3]
+                        password = cred[4]
+
+                        print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
+                                                    '{:<12}'.format(credType), 
+                                                    u'{:<17}'.format(domain.decode('utf-8')), 
+                                                    u'{:<21}'.format(username.decode('utf-8')), 
+                                                    u'{:<17}'.format(password.decode('utf-8')))
+
+            print ""
 
     def do_creds(self, line):
 
@@ -299,7 +236,55 @@ class CMEDatabaseNavigator(cmd.Cmd):
         
         else:
             creds = self.db.get_credentials(filterTerm=filterTerm)
-            self.display_creds(creds)
+
+            print "\nCredential(s):\n"
+            print "  CredID  CredType    Domain           UserName             Password"
+            print "  ------  --------    ------           --------             --------"
+
+            credIDList = []
+
+            for cred in creds:
+                credID = cred[0]
+                credIDList.append(credID)
+
+                credType = cred[1]
+                domain = cred[2]
+                username = cred[3]
+                password = cred[4]
+
+                print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
+                                             '{:<12}'.format(credType), 
+                                             u'{:<17}'.format(domain.decode('utf-8')), 
+                                             u'{:<21}'.format(username.decode('utf-8')), 
+                                             u'{:<17}'.format(password.decode('utf-8')))
+
+            print ""
+
+            print "\nAdmin Access to Host(s):\n"
+            print "  HostID  IP               Hostname                 Domain           OS"
+            print "  ------  --               --------                 ------           --"
+
+            for credID in credIDList:
+                links = self.db.get_links(credID=credID)
+
+                for link in links:
+                    linkID, credID, hostID =  link
+                    hosts = self.db.get_hosts(hostID)
+
+                    for host in hosts:
+                        hostID = host[0]
+                        ip = host[1]
+                        hostname = host[2]
+                        domain = host[3]
+                        os = host[4]
+
+                        print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                                     '{:<17}'.format(ip), 
+                                                     u'{:<25}'.format(hostname.decode('utf-8')), 
+                                                     u'{:<17}'.format(domain.decode('utf-8')), 
+                                                     '{:<17}'.format(os))
+
+            print ""
 
     def complete_creds(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
@@ -312,8 +297,12 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
 if __name__ == '__main__':
 
-    if not os.path.exists('data/cme.db'):
-        print 'Could not find CME database, did you run the setup_database.py script?'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", nargs='?', type=str, default='data/cme.db', help="path to CME database (default: data/cme.db)")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.path):
+        print 'Path to CME database invalid'
         sys.exit(1)
 
     try:
