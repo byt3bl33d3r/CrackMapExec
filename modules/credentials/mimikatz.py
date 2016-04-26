@@ -212,7 +212,7 @@ class CMEModule:
                     context.db.add_credential(credtype, domain, username, password)
                     context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
-        log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
-        with open('logs/' + log_name, 'w') as mimikatz_output:
-            mimikatz_output.write(data)
-        context.log.info("Saved Mimikatz's output to {}".format(log_name))
+            log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            with open('logs/' + log_name, 'w') as mimikatz_output:
+                mimikatz_output.write(data)
+            context.log.info("Saved Mimikatz's output to {}".format(log_name))

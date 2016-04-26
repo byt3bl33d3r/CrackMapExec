@@ -80,7 +80,7 @@ class CMEModule:
         #We've received the response, stop tracking this host
         response.stop_tracking_host()
 
-        if len(data) > 0:
+        if len(data):
             def print_post_data(data):
                 buf = StringIO(data.strip()).readlines()
                 for line in buf:
@@ -88,7 +88,7 @@ class CMEModule:
 
             print_post_data(data)
 
-        log_name = 'Groups-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
-        with open('logs/' + log_name, 'w') as log_file:
-            log_file.write(data)
-        context.log.info("Saved output to {}".format(log_name))
+            log_name = 'Groups-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            with open('logs/' + log_name, 'w') as log_file:
+                log_file.write(data)
+            context.log.info("Saved output to {}".format(log_name))
