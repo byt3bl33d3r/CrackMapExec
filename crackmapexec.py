@@ -64,7 +64,7 @@ parser.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domai
 msgroup = parser.add_mutually_exclusive_group()
 msgroup.add_argument("-p", metavar="PASSWORD", dest='password', nargs= '*', default=[], help="Password(s) or file(s) containing passwords")
 msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
-parser.add_argument("-m", metavar='MODULE', dest='module', help='Payload module to use')
+parser.add_argument("-m", "--module", metavar='MODULE', dest='module', help='Payload module to use')
 parser.add_argument('-o', metavar='MODULE_OPTION', nargs='*', default=[], dest='module_options', help='Payload module options')
 parser.add_argument('--module-info', action='store_true', dest='module_info', help='Display module info')
 parser.add_argument("--share", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
