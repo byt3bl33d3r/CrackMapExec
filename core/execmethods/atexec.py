@@ -1,5 +1,3 @@
-import traceback
-
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
 from core.helpers import gen_random_string
@@ -38,11 +36,8 @@ class TSCH_EXEC:
 
     def execute(self, command, output=False):
         self.__retOutput = output
-        try:
-            self.doStuff(command)
-            return self.__outputBuffer
-        except Exception as e:
-            traceback.print_exc()
+        self.doStuff(command)
+        return self.__outputBuffer
 
     def doStuff(self, command):
         
@@ -113,33 +108,28 @@ class TSCH_EXEC:
 
         #logging.info("Task XML: {}".format(xml))
         taskCreated = False
-        try:
-            #logging.info('Creating task \\%s' % tmpName)
-            tsch.hSchRpcRegisterTask(dce, '\\%s' % tmpName, xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
-            taskCreated = True
+        #logging.info('Creating task \\%s' % tmpName)
+        tsch.hSchRpcRegisterTask(dce, '\\%s' % tmpName, xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        taskCreated = True
 
-            #logging.info('Running task \\%s' % tmpName)
-            tsch.hSchRpcRun(dce, '\\%s' % tmpName)
+        #logging.info('Running task \\%s' % tmpName)
+        tsch.hSchRpcRun(dce, '\\%s' % tmpName)
 
-            done = False
-            while not done:
-                #logging.debug('Calling SchRpcGetLastRunInfo for \\%s' % tmpName)
-                resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % tmpName)
-                if resp['pLastRuntime']['wYear'] != 0:
-                    done = True
-                else:
-                    sleep(2)
+        done = False
+        while not done:
+            #logging.debug('Calling SchRpcGetLastRunInfo for \\%s' % tmpName)
+            resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % tmpName)
+            if resp['pLastRuntime']['wYear'] != 0:
+                done = True
+            else:
+                sleep(2)
 
-            #logging.info('Deleting task \\%s' % tmpName)
+        #logging.info('Deleting task \\%s' % tmpName)
+        tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
+        taskCreated = False
+
+        if taskCreated is True:
             tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
-            taskCreated = False
-        except tsch.DCERPCSessionError, e:
-            traceback.print_exc()
-            e.get_packet().dump()
-
-        finally:
-            if taskCreated is True:
-                tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
 
         peer = ':'.join(map(str, self.__rpctransport.get_socket().getpeername()))
         #self.__logger.success('Executed command via ATEXEC')

@@ -107,7 +107,7 @@ esgroup.add_argument("--regex", nargs='*', help='Regex(s) to search for in folde
 sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
 cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
-cgroup.add_argument('--exec-method', choices={"wmiexec", "smbexec", "atexec"}, default="wmiexec", help="Method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
+cgroup.add_argument('--exec-method', choices={"wmiexec", "smbexec", "atexec"}, default=None, help="Method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
 cgroup.add_argument('--force-ps32', action='store_true', help='Force the PowerShell command to run in a 32-bit process')
 cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
 cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")

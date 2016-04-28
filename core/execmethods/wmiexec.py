@@ -1,5 +1,4 @@
 import ntpath
-import traceback
 
 from gevent import sleep
 from core.helpers import gen_random_string
@@ -45,19 +44,14 @@ class WMIEXEC:
 
     def execute(self, command, output=False):
         self.__retOutput = output
-        try:
-            if self.__retOutput:
-                self.__smbconnection.setTimeout(100000)
-                self.cd('\\')
+        if self.__retOutput:
+            self.__smbconnection.setTimeout(100000)
+            self.cd('\\')
 
-            self.execute_remote(command)
-            self.__dcom.disconnect()
-            return self.__outputBuffer
-        except Exception as e:
-            traceback.print_exc()
-            self.__dcom.disconnect()
+        self.execute_remote(command)
+        self.__dcom.disconnect()
+        return self.__outputBuffer
 
-        
     def cd(self, s):
         self.execute_remote('cd ' + s)
         if len(self.__outputBuffer.strip('\r\n')) > 0:

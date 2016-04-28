@@ -1,3 +1,4 @@
+from traceback import format_exc
 from core.helpers import highlight
 from core.execmethods.mssqlexec import MSSQLEXEC
 from core.execmethods.wmiexec import WMIEXEC
@@ -211,17 +212,42 @@ class Connection:
         
         elif not self.args.mssql:
 
-            if not method:
-                method = self.args.exec_method
+            if not method and not self.args.exec_method:
+                try:
+                    exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                except:
+                    if self.args.verbose:
+                        self.logger.debug('Error executing command via wmiexec, traceback:')
+                        self.logger.debug(format_exc())
 
-            if method == 'wmiexec':
-                exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                    try:
+                        exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    except:
+                        if self.args.verbose:
+                            self.logger.debug('Error executing command via smbexec, traceback:')
+                            self.logger.debug(format_exc())
 
-            elif method == 'smbexec':
-                exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                        try:
+                            exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
+                        except:
+                            if self.args.verbose:
+                                self.logger.debug('Error executing command via atexec, traceback:')
+                                self.logger.debug(format_exc())
+                            return
 
-            elif method == 'atexec':
-                exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
+            elif method or self.args.exec_method:
+
+                if not method:
+                    method = self.args.exec_method
+
+                if method == 'wmiexec':
+                    exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+
+                elif method == 'smbexec':
+                    exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+
+                elif method == 'atexec':
+                    exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
 
         if self.cmeserver:
             if hasattr(self.cmeserver.server.module, 'on_request') or hasattr(self.cmeserver.server.module, 'on_response'):

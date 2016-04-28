@@ -127,7 +127,7 @@ def connector(target, args, db, module, context, cmeserver):
                         if args.pscommand:
                             output = connection.execute(create_ps_command(args.pscommand), get_output=get_output, method=args.exec_method)
 
-                        logger.success('Executed command via {}'.format(args.exec_method))
+                        logger.success('Executed command {}'.format('via {}'.format(args.exec_method) if args.exec_method else ''))
                         buf = StringIO(output).readlines()
                         for line in buf:
                             logger.highlight(line.strip())

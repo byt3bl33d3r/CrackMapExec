@@ -1,5 +1,3 @@
-import traceback
-
 from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
@@ -58,11 +56,7 @@ class SMBEXEC:
         #rpctransport.set_kerberos(self.__doKerberos)
 
         self.__scmr = self.__rpctransport.get_dce_rpc()
-        try:
-            self.__scmr.connect()
-        except Exception as e:
-            traceback.print_exc()
-
+        self.__scmr.connect()
         s = self.__rpctransport.get_smb_connection()
         # We don't wanna deal with timeouts from now on.
         s.setTimeout(100000)
@@ -73,17 +67,14 @@ class SMBEXEC:
         self.transferClient = self.__rpctransport.get_smb_connection()
 
     def execute(self, command, output=False):
-            self.__retOutput = output
-            try:
-                if self.__retOutput:
-                    self.cd('')
+        self.__retOutput = output
+        if self.__retOutput:
+            self.cd('')
 
-                self.execute_remote(command)
-                self.finish()
-                return self.__outputBuffer
-            except Exception as e:
-                traceback.print_exc()
-
+        self.execute_remote(command)
+        self.finish()
+        return self.__outputBuffer
+            
     def cd(self, s):
         self.execute_remote('cd ' )
 
