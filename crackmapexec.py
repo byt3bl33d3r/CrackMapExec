@@ -224,7 +224,7 @@ if args.module:
                 logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getpass.getuser()))
                 sys.exit(1)
 
-            server = CMEServer(module, context, args.server_host, args.server_port, args.server)
+            server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
             server.start()
 
 for target in args.target:
