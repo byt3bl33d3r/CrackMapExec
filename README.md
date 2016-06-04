@@ -30,9 +30,12 @@ The biggest improvements over the above tools are:
 
 #Installation
 
-```pip install crackmapexec``` should do the trick 99.9% of the time.
+To get the latest stable version: ```pip install crackmapexec```
 
-If you get compilation errors on Kali/Debian/Ubuntu, run ```apt-get install -y libssl-dev libffi-dev python-dev build-essential``` and try again.
+If you like living on the bleeding-edge: ```pip install git+https://github.com/byt3bl33d3r/CrackMapExec```
+
+**Note for Kali/Debian/Ubuntu Users:** 
+If you get compilation errors run ```apt-get install -y libssl-dev libffi-dev python-dev build-essential``` and try again.
 
 #Quick Demo
 
