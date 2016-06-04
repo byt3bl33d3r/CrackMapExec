@@ -55,8 +55,9 @@ To install run ```pip install crackmapexec```
                             @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                             @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                      
-                                                  Version: 3.0
-                                        Codename: 'So looong gay boy!'
+                                                  Version: 3.1
+                                              Codename: 'Duchess'
+
 
 positional arguments:
   target                The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets
@@ -72,15 +73,18 @@ optional arguments:
   -p [PASSWORD [PASSWORD ...]]
                         Password(s) or file(s) containing passwords
   -H [HASH [HASH ...]]  NTLM hash(es) or file(s) containing NTLM hashes
-  -m MODULE             Payload module to use
+  -M MODULE, --module MODULE
+                        Payload module to use
   -o [MODULE_OPTION [MODULE_OPTION ...]]
                         Payload module options
-  --module-info         Display module info
+  -L, --list-modules    List available modules
+  --show-options        Display module options
   --share SHARE         Specify a share (default: C$)
   --smb-port {139,445}  SMB port (default: 445)
   --mssql-port PORT     MSSQL port (default: 1433)
   --server {http,https}
                         Use the selected server (default: https)
+  --server-host HOST    IP to bind the server to (default: 0.0.0.0)
   --server-port PORT    Start the server on the specified port
   --local-auth          Authenticate locally to each target
   --timeout TIMEOUT     Max timeout in seconds of each thread (default: 20)
@@ -143,7 +147,8 @@ MSSQL Interaction:
   --mssql               Switches CME into MSSQL Mode. If credentials are provided will authenticate against all discovered MSSQL DBs
   --mssql-query QUERY   Execute the specifed query against the MSSQL DB
 
-HA! Made you look!
+I swear I had something for this...
+
 ```
 
 #To do
