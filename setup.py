@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
     version='3.1',
-    description='something something crack something something',
+    description='A swiss army knife for pentesting Windows/Active Directory environments',
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 2.7',
