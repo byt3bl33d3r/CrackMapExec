@@ -30,9 +30,23 @@ The biggest improvements over the above tools are:
 
 #Installation
 
-To get the latest stable version: ```pip install --process-dependency-links crackmapexec```
+Use [virtualenvwrapper](https://virtualenvwrapper.readthedocs.org/en/latest/) to install CrackMapExec in a python [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs)
 
-If you like living on the bleeding-edge: ```pip install --process-dependency-links git+https://github.com/byt3bl33d3r/CrackMapExec```
+To get the latest stable version: 
+
+```
+#~ pip install git+https://github.com/CoreSecurity/impacket
+#~ pip install crackmapexec
+```
+
+If you like living on the bleeding-edge:
+
+```
+#~ pip install git+https://github.com/CoreSecurity/impacket
+#~ git clone https://github.com/byt3bl33d3r/CrackMapExec
+#- cd CrackMapExec && git submodule init && git submodule update --recursive
+#~ python setup.py install
+```
 
 **Note for Kali/Debian/Ubuntu Users:**
 
