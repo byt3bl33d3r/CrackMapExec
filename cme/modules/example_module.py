@@ -5,7 +5,9 @@ class CMEModule:
 
     '''
 
-    name = 'Example'
+    name = 'example module'
+
+    description = 'Something Something'
 
     def options(self, context, module_options):
         '''Required. Module options get parsed here. Additionally, put the modules usage here as well'''

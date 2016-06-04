@@ -16,12 +16,12 @@ requests.packages.urllib3.disable_warnings()
 
 class CMEDatabaseNavigator(cmd.Cmd):
 
-    def __init__(self):
+    def __init__(self, db_path):
         cmd.Cmd.__init__(self)
         self.prompt = 'cmedb > '
         try:
             # set the database connection to autocommit w/ isolation level
-            conn = sqlite3.connect('data/cme.db', check_same_thread=False)
+            conn = sqlite3.connect(db_path, check_same_thread=False)
             conn.text_factory = str
             conn.isolation_level = None
             self.db = CMEDatabase(conn)
@@ -300,15 +300,18 @@ class CMEDatabaseNavigator(cmd.Cmd):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs='?', type=str, default='data/cme.db', help="path to CME database (default: data/cme.db)")
+    parser.add_argument("path", nargs='?', type=str, default=None, help="path to CME database (default: data/cme.db)")
     args = parser.parse_args()
 
-    if not os.path.exists(args.path):
+    db_path = os.path.join(os.path.expanduser('~/.cme'), 'cme.db')
+
+    if args.path:
+        db_path = os.path.expanduser(args.path)
         print 'Path to CME database invalid'
         sys.exit(1)
 
     try:
-        cmedbnav = CMEDatabaseNavigator()
+        cmedbnav = CMEDatabaseNavigator(db_path)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass

@@ -2,7 +2,6 @@ import imp
 import os
 import sys
 import cme
-from getpass import getuser
 from logging import getLogger
 from cme.context import Context
 from cme.logger import CMEAdapter
@@ -24,9 +23,13 @@ class ModuleLoader:
             self.logger.error('{} missing the name variable'.format(module_path))
             module_error = True
 
+        elif not hasattr(module, 'description'):
+            self.logger.error('{} missing the description variable'.format(module_path))
+            module_error = True    
+
         elif not hasattr(module, 'options'):
             self.logger.error('{} missing the options function'.format(module_path))
-            module_error = True 
+            module_error = True
 
         elif not hasattr(module, 'on_login') and not (module, 'on_admin_login'):
             self.logger.error('{} missing the on_login/on_admin_login function(s)'.format(module_path))
@@ -48,19 +51,19 @@ class ModuleLoader:
 
         modules_path = os.path.join(os.path.dirname(cme.__file__), 'modules')
         for module in os.listdir(modules_path):
-            if module[-3:] == '.py':
+            if module[-3:] == '.py' and module != 'example_module.py':
                 module_path = os.path.join(modules_path, module)
                 m = self.load_module(os.path.join(modules_path, module))
                 if m:
-                    modules[m.name] = {'path': module, 'description': m.__doc__, 'options': m.options.__doc__}
+                    modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}
 
         modules_path = os.path.join(self.cme_path, 'modules')
         for module in os.listdir(modules_path):
-            if module[-3:] == '.py':
+            if module[-3:] == '.py' and module != 'example_module.py':
                 module_path = os.path.join(modules_path, module)
                 m = self.load_module(module_path)
                 if m:
-                    modules[m.name] = {'path': module_path, 'description': m.__doc__, 'options': m.options.__doc__}
+                    modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}
 
         return modules
 
@@ -90,13 +93,9 @@ class ModuleLoader:
                     args.server = getattr(module, 'required_server')
 
                 if not self.server_port:
-                    if self.args.server_port <= 1024 and os.geteuid() is not 0:
-                        self.logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getuser()))
-                        sys.exit(1)
-                    
                     self. server_port = self.args.server_port
 
-                server = CMEServer(module, context, self.args.server_host, self.server_port, self.args.server)
+                server = CMEServer(module, context, self.logger, self.args.server_host, self.server_port, self.args.server)
                 server.start()
 
             return module, context, server

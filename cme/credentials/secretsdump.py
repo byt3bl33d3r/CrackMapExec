@@ -7,6 +7,7 @@ from cme.credentials.lsa import LSASecrets
 from cme.credentials.ntds import NTDSHashes
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 import traceback
+import os
 import logging
 
 class DumpSecrets:
@@ -28,7 +29,7 @@ class DumpSecrets:
         self.__history = False
         self.__noLMHash = True
         self.__isRemote = True
-        self.__outputFileName = 'logs/{}_{}'.format(connection.hostname, connection.host)
+        self.__outputFileName = os.path.join(os.path.expanduser('~/.cme'), 'logs/{}_{}'.format(connection.hostname, connection.host))
         self.__doKerberos = False
         self.__justDC = False
         self.__justDCNTLM = False

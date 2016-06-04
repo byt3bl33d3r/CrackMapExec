@@ -11,7 +11,9 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name='Empire_Exec'
+    name='empire_exec'
+
+    description = "Uses Empire's RESTful API to generate a launcher for the specified listener and executes it"
 
     def options(self, context, module_options):
         '''

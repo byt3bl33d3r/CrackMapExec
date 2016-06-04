@@ -1,6 +1,8 @@
 import random
 import string
 import re
+import cme
+import os
 from base64 import b64encode
 from termcolor import colored
 
@@ -13,6 +15,14 @@ def validate_ntlm(data):
         return True
     else:
         return False
+
+def get_ps_script(path):
+    return os.path.join(os.path.dirname(cme.__file__), 'data', 'PowerSploit', path)
+
+def write_log(data, log_name):
+    logs_dir = os.path.join(os.path.expanduser('~/.cme'), 'logs')
+    with open(os.path.join(logs_dir, log_name), 'w') as mimikatz_output:
+        mimikatz_output.write(data)
 
 def obfs_ps_script(script, function_name=None):
     """

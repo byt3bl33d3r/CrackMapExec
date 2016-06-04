@@ -43,7 +43,7 @@ def main():
                                 @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
                                                          
                                                       {}: {}
-                                                {}: {}
+                                                  {}: {}
     """.format(highlight('Version', 'red'),
                highlight(VERSION),
                highlight('Codename', 'red'),
@@ -63,8 +63,8 @@ def main():
     msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
     parser.add_argument("-M", "--module", metavar='MODULE', dest='module', help='Payload module to use')
     parser.add_argument('-o', metavar='MODULE_OPTION', nargs='*', default=[], dest='module_options', help='Payload module options')
-    parser.add_argument('--module-info', action='store_true', dest='module_info', help='Display module info')
-    parser.add_argument('--list-modules', action='store_true', help='List available modules')
+    parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
+    parser.add_argument('--show-options', action='store_true', dest='show_options', help='Display module options')
     parser.add_argument("--share", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
     parser.add_argument("--smb-port", dest='smb_port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
     parser.add_argument("--mssql-port", dest='mssql_port', default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
@@ -190,14 +190,16 @@ def main():
     modules = loader.get_modules()
 
     if args.list_modules:
-        for module in modules:
-            print module
+        for m in modules:
+            logger.info('{:<20} {}'.format(m, modules[m]['description']))
 
-    elif args.modules:
-        for module in modules.keys():
-            if args.module.lower() == module.lower():
-                module, context, server = loader.init_module(modules[module]['path'])
-                break
+    elif args.module:
+        for m in modules.keys():
+            if args.module.lower() == m.lower():
+                if args.show_options:
+                    logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+                elif not args.show_options:
+                    module, context, server = loader.init_module(modules[m]['path'])
 
     try:
         '''

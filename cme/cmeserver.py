@@ -1,6 +1,9 @@
 import BaseHTTPServer
 import threading
 import ssl
+import os
+import sys
+from getpass import getuser
 from BaseHTTPServer import BaseHTTPRequestHandler
 from logging import getLogger
 from gevent import sleep
@@ -36,7 +39,11 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 class CMEServer(threading.Thread):
 
-    def __init__(self, module, context, srv_host, port, server_type='https'):
+    def __init__(self, module, context, logger, srv_host, port, server_type='https'):
+
+        if port <= 1024 and os.geteuid() != 0:
+            logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getuser()))
+            sys.exit(1)
 
         try:
             threading.Thread.__init__(self)
@@ -46,12 +53,19 @@ class CMEServer(threading.Thread):
             self.server.module  = module
             self.server.context = context
             self.server.log     = context.log
+            self.cert_path      = os.path.join(os.path.expanduser('~/.cme'), 'cme.pem')
 
             if server_type == 'https':
-                self.server.socket = ssl.wrap_socket(self.server.socket, certfile='data/cme.pem', server_side=True)
+                self.server.socket = ssl.wrap_socket(self.server.socket, certfile=self.cert_path, server_side=True)
 
         except Exception as e:
-            print 'Error starting CME Server: {}'.format(e)
+            errno, message = e.args
+            if errno == 98 and message == 'Address already in use':
+                logger.error('Error starting CME server: the port is already in use, try specifying a diffrent port using --server-port')
+            else:
+                logger.error('Error starting CME server: {}'.format(message))
+
+            sys.exit(1)
 
     def base_server(self):
         return self.server

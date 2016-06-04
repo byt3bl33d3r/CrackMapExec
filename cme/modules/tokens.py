@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string
+from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, get_ps_script
 from datetime import datetime
 from StringIO import StringIO
 import os
@@ -10,7 +10,9 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'Tokens'
+    name = 'tokens'
+
+    description = "Enumerates available tokens using Powersploit's Invoke-TokenManipulation"
 
     def options(self, context, module_options):
         '''
@@ -67,7 +69,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open('data/PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1', 'r') as ps_script:
+            with open(get_ps_script('Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 

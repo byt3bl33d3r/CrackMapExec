@@ -15,6 +15,8 @@ class CMEModule:
 
     name='com_exec'
 
+    description = 'Executes a command using a COM scriptlet to bypass whitelisting'
+
     required_server='http'
 
     def options(self, context, module_options):
