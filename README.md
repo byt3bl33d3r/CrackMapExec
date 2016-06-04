@@ -30,7 +30,9 @@ The biggest improvements over the above tools are:
 
 #Installation
 
-To install run ```pip install crackmapexec```
+```pip install crackmapexec``` should do the trick 99.9% of the time.
+
+If you get compilation errors on Kali/Debian/Ubuntu, run ```apt-get install -y libssl-dev libffi-dev python-dev build-essential``` and try again.
 
 #Quick Demo
 
