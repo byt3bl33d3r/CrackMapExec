@@ -1,6 +1,7 @@
 import BaseHTTPServer
 import threading
 import ssl
+<<<<<<< HEAD:cme/cmeserver.py
 <<<<<<< 23d8a6517fb1a36bac9b09e3923201ee291d00ac:cme/cmeserver.py
 import os
 import sys
@@ -8,6 +9,9 @@ from getpass import getuser
 =======
 import sys
 >>>>>>> Added error handling for CME server in case the port is already in use.:core/cmeserver.py
+=======
+import sys
+>>>>>>> da4e55380a1d1ad46d3176c513b829bd4a7099f4:core/cmeserver.py
 from BaseHTTPServer import BaseHTTPRequestHandler
 from logging import getLogger
 from gevent import sleep
