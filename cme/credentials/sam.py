@@ -1,6 +1,6 @@
-from core.credentials.offlineregistry import OfflineRegistry
-from core.credentials.commonstructs import DOMAIN_ACCOUNT_F, USER_ACCOUNT_V
-from core.credentials.cryptocommon import CryptoCommon
+from cme.credentials.offlineregistry import OfflineRegistry
+from cme.credentials.commonstructs import DOMAIN_ACCOUNT_F, USER_ACCOUNT_V
+from cme.credentials.cryptocommon import CryptoCommon
 from impacket import ntlm
 from binascii import hexlify
 from Crypto.Cipher import DES, ARC4

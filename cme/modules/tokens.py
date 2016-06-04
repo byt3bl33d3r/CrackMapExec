@@ -1,4 +1,4 @@
-from core.helpers import create_ps_command, obfs_ps_script, gen_random_string
+from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string
 from datetime import datetime
 from StringIO import StringIO
 import os

@@ -1,39 +1,47 @@
-from core.helpers import create_ps_command, obfs_ps_script
+from cme.helpers import create_ps_command, obfs_ps_script
 from StringIO import StringIO
 from datetime import datetime
 
 class CMEModule:
     '''
-        Wrapper for PowerView's Get-NetGroupMember function
+        Wrapper for PowerView's Get-NetGroup function
         Module by @byt3bl33d3r
     '''
 
-    name = 'GetGroupMembers'
+    name = 'GetComputers'
 
     def options(self, context, module_options):
         '''
-            GROUP  The group name to query for users (default: "Domain Admins")
-            DOMAIN The domain to query for group users (default: current domain) 
+            COMPUTERNAME  Return computers with a specific name, wildcards accepted (default: all computers)
+            SPN           Return computers with a specific service principal name, wildcards accepted (default: None)
+            DOMAIN        The domain to query for computers (default: current domain) 
         '''
 
-        self.group = None
+        self.computername = None
         self.domain = None
-        if 'GROUP' in module_options:
-            self.group = module_options['GROUP']
+        self.spn = None
+        if 'COMPUTERNAME' in module_options:
+            self.computername = module_options['COMPUTERNAME']
 
         if 'DOMAIN' in module_options:
             self.domain = module_options['DOMAIN']
 
+        if 'SPN' in module_options:
+            self.spn = module_options['SPN']
+
 
     def on_admin_login(self, context, connection):
 
-        powah_command = 'Get-NetGroupMember'
+        powah_command = 'Get-NetComputer'
 
-        if self.group:
-            powah_command += ' -GroupName "{}"'.format(self.group)
+        if self.computername:
+            powah_command += ' -ComputerName "{}"'.format(self.computername)
 
         if self.domain:
             powah_command += ' -Domain {}'.format(self.domain)
+
+        if self.spn:
+            powah_command += ' -SPN {}'.format(self.spn)
 
         powah_command += ' | Out-String'
 
@@ -88,7 +96,7 @@ class CMEModule:
 
             print_post_data(data)
 
-            log_name = 'GroupMembers-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            log_name = 'Computers-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             with open('logs/' + log_name, 'w') as log_file:
                 log_file.write(data)
             context.log.info("Saved output to {}".format(log_name))

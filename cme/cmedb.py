@@ -297,7 +297,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("path", nargs='?', type=str, default='data/cme.db', help="path to CME database (default: data/cme.db)")

@@ -1,7 +1,7 @@
 import ntpath
 
 from gevent import sleep
-from core.helpers import gen_random_string
+from cme.helpers import gen_random_string
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL

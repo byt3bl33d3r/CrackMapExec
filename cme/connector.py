@@ -1,24 +1,24 @@
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.nmb import NetBIOSError
 from impacket import tds
-from core.mssql import *
+from cme.mssql import *
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from core.connection import Connection
+from cme.connection import Connection
 from logging import getLogger
-from core.logger import CMEAdapter
-from core.context import Context
-from core.helpers import create_ps_command
+from cme.logger import CMEAdapter
+from cme.context import Context
+from cme.helpers import create_ps_command
 from StringIO import StringIO
-from core.enum.shares import ShareEnum
-from core.enum.uac import UAC
-from core.enum.rpcquery import RPCQUERY
-from core.enum.passpol import PassPolDump
-from core.enum.users import SAMRDump
-from core.enum.wmiquery import WMIQUERY
-from core.enum.lookupsid import LSALookupSid
-from core.credentials.secretsdump import DumpSecrets
-from core.credentials.wdigest import WDIGEST
-from core.spider.smbspider import SMBSpider
+from cme.enum.shares import ShareEnum
+from cme.enum.uac import UAC
+from cme.enum.rpcquery import RPCQUERY
+from cme.enum.passpol import PassPolDump
+from cme.enum.users import SAMRDump
+from cme.enum.wmiquery import WMIQUERY
+from cme.enum.lookupsid import LSALookupSid
+from cme.credentials.secretsdump import DumpSecrets
+from cme.credentials.wdigest import WDIGEST
+from cme.spider.smbspider import SMBSpider
 import socket
 
 def connector(target, args, db, module, context, cmeserver):

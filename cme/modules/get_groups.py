@@ -1,4 +1,4 @@
-from core.helpers import create_ps_command, obfs_ps_script
+from cme.helpers import create_ps_command, obfs_ps_script
 from StringIO import StringIO
 from datetime import datetime
 

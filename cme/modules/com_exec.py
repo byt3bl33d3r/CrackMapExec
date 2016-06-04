@@ -1,4 +1,4 @@
-from core.helpers import gen_random_string
+from cme.helpers import gen_random_string
 from sys import exit
 import os
 

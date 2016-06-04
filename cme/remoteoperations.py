@@ -6,9 +6,9 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import transport, drsuapi, scmr, rrp, samr, epm
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from impacket.dcerpc.v5.dtypes import NULL
-from core.credentials.ntds import NTDSHashes
+from cme.credentials.ntds import NTDSHashes
 from binascii import unhexlify, hexlify
-from core.remotefile import RemoteFile
+from cme.remotefile import RemoteFile
 
 class RemoteOperations:
     def __init__(self, smbConnection, doKerberos):

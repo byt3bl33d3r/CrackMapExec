@@ -30,7 +30,7 @@ The biggest improvements over the above tools are:
 
 #Installation
 
-See the [Installation](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation) wiki page for install instructions
+To install run ```pip install crackmapexec```
 
 #Quick Demo
 

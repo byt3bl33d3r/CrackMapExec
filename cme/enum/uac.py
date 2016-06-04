@@ -1,4 +1,4 @@
-from core.remoteoperations import RemoteOperations
+from cme.remoteoperations import RemoteOperations
 from impacket.dcerpc.v5 import rrp
 
 class UAC:

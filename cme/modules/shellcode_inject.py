@@ -1,5 +1,5 @@
 import os
-from core.helpers import gen_random_string, create_ps_command, obfs_ps_script
+from cme.helpers import gen_random_string, create_ps_command, obfs_ps_script
 from sys import exit
 
 class CMEModule:

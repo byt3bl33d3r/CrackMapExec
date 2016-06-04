@@ -4,8 +4,8 @@ import ssl
 from BaseHTTPServer import BaseHTTPRequestHandler
 from logging import getLogger
 from gevent import sleep
-from core.helpers import highlight
-from core.logger import CMEAdapter
+from cme.helpers import highlight
+from cme.logger import CMEAdapter
 
 class RequestHandler(BaseHTTPRequestHandler):
 

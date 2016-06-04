@@ -1,7 +1,7 @@
 from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
-from core.helpers import gen_random_string
+from cme.helpers import gen_random_string
 
 class SMBEXEC:
     KNOWN_PROTOCOLS = {

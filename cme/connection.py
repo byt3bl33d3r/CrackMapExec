@@ -1,9 +1,9 @@
 from traceback import format_exc
-from core.helpers import highlight
-from core.execmethods.mssqlexec import MSSQLEXEC
-from core.execmethods.wmiexec import WMIEXEC
-from core.execmethods.smbexec import SMBEXEC
-from core.execmethods.atexec import TSCH_EXEC
+from helpers import highlight
+from cme.execmethods.mssqlexec import MSSQLEXEC
+from cme.execmethods.wmiexec import WMIEXEC
+from cme.execmethods.smbexec import SMBEXEC
+from cme.execmethods.atexec import TSCH_EXEC
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.smbconnection import SessionError

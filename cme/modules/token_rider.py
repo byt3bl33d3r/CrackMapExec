@@ -1,5 +1,5 @@
 from StringIO import StringIO
-from core.helpers import create_ps_command, gen_random_string, obfs_ps_script
+from cme.helpers import create_ps_command, gen_random_string, obfs_ps_script
 from base64 import b64encode
 import sys
 import os

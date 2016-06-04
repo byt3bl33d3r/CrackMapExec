@@ -1,5 +1,5 @@
 from impacket.smbconnection import SessionError
-from core.helpers import gen_random_string
+from cme.helpers import gen_random_string
 import random
 import string
 import ntpath

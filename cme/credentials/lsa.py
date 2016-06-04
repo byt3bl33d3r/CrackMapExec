@@ -1,6 +1,6 @@
-from core.credentials.offlineregistry import OfflineRegistry
-from core.credentials.cryptocommon import CryptoCommon
-from core.credentials.commonstructs import LSA_SECRET, LSA_SECRET_BLOB, NL_RECORD, LSA_SECRET_XP
+from cme.credentials.offlineregistry import OfflineRegistry
+from cme.credentials.cryptocommon import CryptoCommon
+from cme.credentials.commonstructs import LSA_SECRET, LSA_SECRET_BLOB, NL_RECORD, LSA_SECRET_XP
 from impacket import ntlm
 from impacket.winregistry import hexdump
 from Crypto.Cipher import AES, DES, ARC4

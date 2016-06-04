@@ -1,10 +1,10 @@
 from impacket import winregistry
 from binascii import unhexlify, hexlify
 from gevent import sleep
-from core.remoteoperations import RemoteOperations
-from core.credentials.sam import SAMHashes
-from core.credentials.lsa import LSASecrets
-from core.credentials.ntds import NTDSHashes
+from cme.remoteoperations import RemoteOperations
+from cme.credentials.sam import SAMHashes
+from cme.credentials.lsa import LSASecrets
+from cme.credentials.ntds import NTDSHashes
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 import traceback
 import logging

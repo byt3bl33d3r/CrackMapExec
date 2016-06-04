@@ -1,4 +1,4 @@
-from core.helpers import create_ps_command, obfs_ps_script, gen_random_string, validate_ntlm
+from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, validate_ntlm
 from datetime import datetime
 import re
 

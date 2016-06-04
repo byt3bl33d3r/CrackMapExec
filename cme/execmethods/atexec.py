@@ -1,6 +1,6 @@
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
-from core.helpers import gen_random_string
+from cme.helpers import gen_random_string
 from gevent import sleep
 
 class TSCH_EXEC:
