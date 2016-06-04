@@ -30,9 +30,9 @@ The biggest improvements over the above tools are:
 
 #Installation
 
-To get the latest stable version: ```pip install crackmapexec```
+To get the latest stable version: ```pip install --process-dependency-links crackmapexec```
 
-If you like living on the bleeding-edge: ```pip install git+https://github.com/byt3bl33d3r/CrackMapExec```
+If you like living on the bleeding-edge: ```pip install --process-dependency-links git+https://github.com/byt3bl33d3r/CrackMapExec```
 
 **Note for Kali/Debian/Ubuntu Users:**
 
