@@ -49,21 +49,15 @@ class ModuleLoader:
     def get_modules(self):
         modules = {}
 
-        modules_path = os.path.join(os.path.dirname(cme.__file__), 'modules')
-        for module in os.listdir(modules_path):
-            if module[-3:] == '.py' and module != 'example_module.py':
-                module_path = os.path.join(modules_path, module)
-                m = self.load_module(os.path.join(modules_path, module))
-                if m:
-                    modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}
+        modules_paths = [os.path.join(os.path.dirname(cme.__file__), 'modules'), os.path.join(self.cme_path, 'modules')]
 
-        modules_path = os.path.join(self.cme_path, 'modules')
-        for module in os.listdir(modules_path):
-            if module[-3:] == '.py' and module != 'example_module.py':
-                module_path = os.path.join(modules_path, module)
-                m = self.load_module(module_path)
-                if m:
-                    modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}
+        for path in modules_paths:
+            for module in os.listdir(path):
+                if module[-3:] == '.py' and module != 'example_module.py':
+                    module_path = os.path.join(path, module)
+                    m = self.load_module(os.path.join(path, module))
+                    if m:
+                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__}
 
         return modules
 
