@@ -28,6 +28,8 @@ The biggest improvements over the above tools are:
 - Uses **ONLY** native WinAPI calls for discovering sessions, users, dumping SAM hashes etc...
 - Opsec safe (no binaries are uploaded to dump clear-text credentials, inject shellcode etc...)
 
+Additionally, a back-end database is used to store used/dumped credentals. It also automatically correlates Admin credentials to hosts and vice-versa allowing you to easily keep track of credentials and gain additional situational awarness in large environments.  
+
 #Installation
 
 Use [virtualenvwrapper](https://virtualenvwrapper.readthedocs.org/en/latest/) to install CrackMapExec in a python [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs)
