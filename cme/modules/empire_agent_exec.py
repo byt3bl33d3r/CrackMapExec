@@ -3,7 +3,8 @@ import requests
 from requests import ConnectionError
 
 #The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-requests.packages.urllib3.disable_warnings()
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class CMEModule:
     '''

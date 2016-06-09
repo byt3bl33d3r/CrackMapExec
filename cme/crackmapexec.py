@@ -192,14 +192,18 @@ def main():
         if args.list_modules:
             for m in modules:
                 logger.info('{:<20} {}'.format(m, modules[m]['description']))
+            sys.exit(0)
+
+        elif args.module and args.show_options:
+            for m in modules.keys():
+                if args.module.lower() == m.lower():
+                    logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+            sys.exit(0)
 
         elif args.module:
             for m in modules.keys():
                 if args.module.lower() == m.lower():
-                    if args.show_options:
-                        logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
-                    elif not args.show_options:
-                        module, context, server = loader.init_module(modules[m]['path'])
+                    module, context, server = loader.init_module(modules[m]['path'])
 
     try:
         '''

@@ -1,4 +1,5 @@
 import logging
+import os
 from ConfigParser import ConfigParser
 
 class Context:
@@ -10,7 +11,7 @@ class Context:
         self.localip = None
 
         self.conf = ConfigParser()
-        self.conf.read('cme.conf')
+        self.conf.read(os.path.expanduser('~/.cme/cme.conf'))
 
         for key, value in vars(arg_namespace).iteritems():
             setattr(self, key, value)

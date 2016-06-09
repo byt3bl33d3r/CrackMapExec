@@ -1,22 +1,23 @@
 #!/usr/bin/env python2
 
+import requests
+from requests import ConnectionError
+#The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 import cmd
 import sqlite3
 import sys
 import os
-import requests
 import argparse
-from requests import ConnectionError
 from ConfigParser import ConfigParser
 from cme.database import CMEDatabase
 from cme.helpers import validate_ntlm
 
-#The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-requests.packages.urllib3.disable_warnings()
-
 class CMEDatabaseNavigator(cmd.Cmd):
 
-    def __init__(self, db_path):
+    def __init__(self, db_path, config_path):
         cmd.Cmd.__init__(self)
         self.prompt = 'cmedb > '
         try:
@@ -31,9 +32,10 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
         try:
             self.config = ConfigParser()
-            self.config.read('cme.conf')
+            self.config.read(config_path)
         except Exception as e:
             print "[-] Error reading cme.conf: {}".format(e)
+            sys.exit(1)
 
     def display_creds(self, creds):
 
@@ -300,18 +302,23 @@ class CMEDatabaseNavigator(cmd.Cmd):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs='?', type=str, default=None, help="path to CME database (default: data/cme.db)")
+    parser.add_argument("--db-path", type=str, default='~/.cme/cme.db', help="Path to CME database (default: ~/.cme/cme.db)")
+    parser.add_argument("--config-path", type=str, default='~/.cme/cme.conf', help='Path to the CME configuration file (default: ~/.cme/cme.conf)')
     args = parser.parse_args()
 
-    db_path = os.path.join(os.path.expanduser('~/.cme'), 'cme.db')
+    db_path = os.path.expanduser(args.db_path)
+    config_path = os.path.expanduser(args.config_path)
 
-    if args.path:
-        db_path = os.path.expanduser(args.path)
-        print 'Path to CME database invalid'
+    if not os.path.exists(db_path):
+        print '[-] Path to database invalid!'
+        sys.exit(1)
+
+    if not os.path.exists(config_path):
+        print "[-] Path to config file invalid!"
         sys.exit(1)
 
     try:
-        cmedbnav = CMEDatabaseNavigator(db_path)
+        cmedbnav = CMEDatabaseNavigator(db_path, config_path)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass
