@@ -1,3 +1,4 @@
+![Supported Python versions](https://img.shields.io/badge/python-2.7-blue.svg)
 # CrackMapExec
 A swiss army knife for pentesting Windows/Active Directory environments
 
