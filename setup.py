@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='3.1.0',
+    version='3.1.1',
     description='A swiss army knife for pentesting Windows/Active Directory environments',
     classifiers=[
         'License :: OSI Approved :: BSD License',
