@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, get_ps_script
+from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, get_ps_script, write_log
 from datetime import datetime
 from StringIO import StringIO
 import os
@@ -113,6 +113,5 @@ class CMEModule:
                 print_post_data(data)
 
             log_name = 'Tokens-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
-            with open('logs/' + log_name, 'w') as tokens_output:
-                tokens_output.write(data)
+            write_log(data, log_name)
             context.log.info("Saved output to {}".format(log_name))
