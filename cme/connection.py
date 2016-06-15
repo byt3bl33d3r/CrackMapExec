@@ -1,3 +1,4 @@
+import logging
 from traceback import format_exc
 from helpers import highlight
 from cme.execmethods.mssqlexec import MSSQLEXEC
@@ -205,49 +206,55 @@ class Connection:
                                 for f_pass in password:
                                     if self.plaintext_login(user, f_pass.strip()): return
 
-    def execute(self, payload, get_output=False, method=None):
+    def execute(self, payload, get_output=False, methods=None):
+
+        default_methods = ['wmiexec', 'atexec', 'smbexec']
 
         if self.args.mssql:
-            exec_method = MSSQLEXEC(self.conn) 
-        
+            exec_method = MSSQLEXEC(self.conn)
+            logging.debug('Executed command via mssqlexec')
+
         elif not self.args.mssql:
 
-            if not method and not self.args.exec_method:
-                try:
-                    exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
-                except:
-                    if self.args.verbose:
-                        self.logger.debug('Error executing command via wmiexec, traceback:')
-                        self.logger.debug(format_exc())
+            if not methods and not self.args.exec_method:
+                methods = default_methods
 
-                    try:
-                        exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
-                    except:
-                        if self.args.verbose:
-                            self.logger.debug('Error executing command via smbexec, traceback:')
-                            self.logger.debug(format_exc())
+            elif methods or self.args.exec_method:
 
-                        try:
-                            exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
-                        except:
-                            if self.args.verbose:
-                                self.logger.debug('Error executing command via atexec, traceback:')
-                                self.logger.debug(format_exc())
-                            return
+                if not methods:
+                    methods = [self.args.exec_method]
 
-            elif method or self.args.exec_method:
-
-                if not method:
-                    method = self.args.exec_method
+            for method in methods:
 
                 if method == 'wmiexec':
-                    exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
-
-                elif method == 'smbexec':
-                    exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    try:
+                        exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                        logging.debug('Executed command via wmiexec')
+                        break
+                    except:
+                        logging.debug('Error executing command via wmiexec, traceback:')
+                        logging.debug(format_exc())
+                        continue
 
                 elif method == 'atexec':
-                    exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
+                    try:
+                        exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
+                        logging.debug('Executed command via atexec')
+                        break
+                    except:
+                        logging.debug('Error executing command via atexec, traceback:')
+                        logging.debug(format_exc())
+                        continue
+
+                elif method == 'smbexec':
+                    try:
+                        exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                        logging.debug('Executed command via smbexec')
+                        break
+                    except:
+                        logging.debug('Error executing command via smbexec, traceback:')
+                        logging.debug(format_exc())
+                        continue
 
         if self.cmeserver:
             if hasattr(self.cmeserver.server.module, 'on_request') or hasattr(self.cmeserver.server.module, 'on_response'):

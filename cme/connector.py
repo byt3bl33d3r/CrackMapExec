@@ -122,10 +122,10 @@ def connector(target, args, db, module, context, cmeserver):
                         if args.mssql: args.exec_method = 'mssqlexec'
 
                         if args.command:
-                            output = connection.execute(args.command, get_output=get_output, method=args.exec_method)
+                            output = connection.execute(args.command, get_output=get_output)
 
                         if args.pscommand:
-                            output = connection.execute(create_ps_command(args.pscommand), get_output=get_output, method=args.exec_method)
+                            output = connection.execute(create_ps_command(args.pscommand), get_output=get_output)
 
                         logger.success('Executed command {}'.format('via {}'.format(args.exec_method) if args.exec_method else ''))
                         buf = StringIO(output).readlines()

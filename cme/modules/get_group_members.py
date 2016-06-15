@@ -57,7 +57,7 @@ class CMEModule:
 
         context.log.debug('Payload: {}'.format(payload))
         payload = create_ps_command(payload)
-        connection.execute(payload, method='smbexec')
+        connection.execute(payload, methods=['atexec', 'smbexec'])
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
