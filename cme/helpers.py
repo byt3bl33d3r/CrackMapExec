@@ -17,7 +17,7 @@ def validate_ntlm(data):
         return False
 
 def get_ps_script(path):
-    return os.path.join(os.path.dirname(cme.__file__), 'data', 'PowerSploit', path)
+    return os.path.join(os.path.dirname(cme.__file__), 'data', path)
 
 def write_log(data, log_name):
     logs_dir = os.path.join(os.path.expanduser('~/.cme'), 'logs')

