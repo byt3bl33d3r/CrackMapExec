@@ -6,3 +6,4 @@ pyasn1
 termcolor
 requests
 pyOpenSSL
+msgpack-python

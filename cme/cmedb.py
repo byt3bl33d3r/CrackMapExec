@@ -11,7 +11,9 @@ import sqlite3
 import sys
 import os
 import argparse
+from time import sleep
 from ConfigParser import ConfigParser
+from cme.msfrpc import Msfrpc
 from cme.database import CMEDatabase
 from cme.helpers import validate_ntlm
 
@@ -127,10 +129,49 @@ class CMEDatabaseNavigator(cmd.Cmd):
             except ConnectionError as e:
                 print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
 
+        elif line == 'metasploit':
+            msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'), 
+                          'port': self.config.get('Metasploit', 'rpc_port')})
+
+            try:
+                msf.login('msf', self.config.get('Metasploit', 'password'))
+            except MsfAuthError:
+                print "[-] Error authenticating to Metasploit's MSGRPC server!"
+                return
+
+            console_id = str(msf.call('console.create')['id'])
+
+            msf.call('console.write', [console_id, 'creds\n'])
+
+            sleep(2)
+
+            creds = msf.call('console.read', [console_id])
+
+            for entry in creds['data'].split('\n'):
+                cred = entry.split()
+                try:
+                    host = cred[0]
+                    port = cred[2]
+                    proto = cred[3]
+                    username = cred[4]
+                    password = cred[5]
+                    cred_type = cred[6]
+
+                    if port == '445/tcp' and proto == '(smb)':
+                        if cred_type == 'Password':
+                            self.db.add_credential('plaintext', '', username, password)
+                
+                except IndexError:
+                    continue
+
+            msf.call('console.destroy', [console_id])
+
+            print "[+] Metasploit credential import successful"
+
     def complete_import(self, text, line, begidx, endidx):
         "Tab-complete 'import' commands."
         
-        commands = ["empire"]
+        commands = ["empire", "metasploit"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
