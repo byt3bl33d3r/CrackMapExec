@@ -157,10 +157,9 @@ class CMEDatabaseNavigator(cmd.Cmd):
                     password = cred[5]
                     cred_type = cred[6]
 
-                    if port == '445/tcp' and proto == '(smb)':
-                        if cred_type == 'Password':
-                            self.db.add_credential('plaintext', '', username, password)
-                
+                    if proto == '(smb)' and cred_type == 'Password':
+                        self.db.add_credential('plaintext', '', username, password)
+
                 except IndexError:
                     continue
 
