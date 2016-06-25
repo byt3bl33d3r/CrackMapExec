@@ -23,7 +23,8 @@ setup(name='crackmapexec',
         'pycrypto',
         'pyasn1',
         'termcolor',
-        'requests'
+        'requests',
+        'msgpack-python'
       ],
     dependency_links = ['https://github.com/CoreSecurity/impacket/archive/master.zip#egg=impacket-0.9.15dev0'],
     entry_points = {
