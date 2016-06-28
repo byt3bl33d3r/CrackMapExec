@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='3.1.1',
+    version='3.1.2',
     description='A swiss army knife for pentesting Windows/Active Directory environments',
     classifiers=[
         'License :: OSI Approved :: BSD License',
@@ -16,7 +16,7 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'impacket==0.9.15dev0',
+        'impacket>=0.9.15',
         'gevent',
         'netaddr',
         'pyOpenSSL',
@@ -25,8 +25,7 @@ setup(name='crackmapexec',
         'termcolor',
         'requests',
         'msgpack-python'
-      ],
-    dependency_links = ['https://github.com/CoreSecurity/impacket/archive/master.zip#egg=impacket-0.9.15dev0'],
+    ],
     entry_points = {
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],
     },

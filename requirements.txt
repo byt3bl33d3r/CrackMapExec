@@ -1,4 +1,4 @@
-git+https://github.com/CoreSecurity/impacket
+impacket>=0.9.15
 gevent
 netaddr
 pycrypto

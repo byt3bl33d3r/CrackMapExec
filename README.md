@@ -38,14 +38,12 @@ Use [virtualenvwrapper](https://virtualenvwrapper.readthedocs.org/en/latest/) to
 To get the latest stable version: 
 
 ```
-#~ pip install git+https://github.com/CoreSecurity/impacket
 #~ pip install crackmapexec
 ```
 
 If you like living on the bleeding-edge:
 
 ```
-#~ pip install git+https://github.com/CoreSecurity/impacket
 #~ git clone https://github.com/byt3bl33d3r/CrackMapExec
 #- cd CrackMapExec && git submodule init && git submodule update --recursive
 #~ python setup.py install

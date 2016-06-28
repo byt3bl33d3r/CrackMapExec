@@ -1,2 +1,4 @@
+include README.md
+include LICENSE
 recursive-include cme/data *
 recursive-include cme/modules *
