@@ -34,6 +34,7 @@ class WMIQUERY:
         self.__hash = connection.hash
         self.__domain = connection.domain
         self.__namespace = wmi_namespace
+        self.__iWbemServices = None
         self.__doKerberos = False
         self.__aesKey = None
         self.__oxidResolver = True
@@ -49,10 +50,13 @@ class WMIQUERY:
         self.__dcom = DCOMConnection(self.__addr, self.__username, self.__password, self.__domain, 
                               self.__lmhash, self.__nthash, self.__aesKey, self.__oxidResolver, self.__doKerberos)
 
-        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login,wmi.IID_IWbemLevel1Login)
-        iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
-        self.__iWbemServices= iWbemLevel1Login.NTLMLogin(self.__namespace, NULL, NULL)
-        iWbemLevel1Login.RemRelease()
+        try:
+            iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login,wmi.IID_IWbemLevel1Login)
+            iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
+            self.__iWbemServices= iWbemLevel1Login.NTLMLogin(self.__namespace, NULL, NULL)
+            iWbemLevel1Login.RemRelease()
+        except Exception as e:
+            self.__logger.error(e)
 
     def query(self, query):
 
@@ -61,16 +65,15 @@ class WMIQUERY:
         if query[-1:] == ';':
             query = query[:-1]
 
-        try:
+        if self.__iWbemServices:
+
             iEnumWbemClassObject = self.__iWbemServices.ExecQuery(query.strip('\n'))
             self.__logger.success('Executed specified WMI query')
             self.printReply(iEnumWbemClassObject)
             iEnumWbemClassObject.RemRelease()
-        except Exception as e:
-            traceback.print_exc()
 
-        self.__iWbemServices.RemRelease()
-        self.__dcom.disconnect()
+            self.__iWbemServices.RemRelease()
+            self.__dcom.disconnect()
 
     def describe(self, sClass):
         sClass = sClass.strip('\n')
