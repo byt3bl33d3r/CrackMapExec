@@ -1,9 +1,14 @@
-#Command string used
+## Steps to reproduce
 
-#CME verbose output (using the --verbose flag)
+1. ...
+2. ...
 
-#Target OS
+## Command string used
 
-#Steps to reproduce
+## CME verbose output (using the --verbose flag)
 
-#Detailed issue explanation
+## OS
+
+## Target OS
+
+## Detailed issue explanation
