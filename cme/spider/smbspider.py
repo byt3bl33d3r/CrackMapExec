@@ -2,6 +2,7 @@ from time import time, strftime, localtime
 from cme.remotefile import RemoteFile
 from impacket.smb3structs import FILE_READ_DATA
 from impacket.smbconnection import SessionError
+from sys import exit
 import re
 import traceback
 
@@ -12,6 +13,15 @@ class SMBSpider:
         self.smbconnection = connection.conn
         self.start_time = time()
         self.args = args
+
+        self.regex = None
+        if self.args.regex:
+            try:
+                self.regex = [re.compile(regex) for regex in self.args.regex]
+            except Exception as e:
+                self.logger.error('Regex compilation error: {}'.format(e))
+                exit(1)
+
         self.logger.info("Started spidering")
 
     def spider(self, subfolder, depth):
@@ -29,12 +39,16 @@ class SMBSpider:
         else:
             subfolder = subfolder.replace('/*/', '/') + '/*'
 
+        filelist = None
         try:
             filelist = self.smbconnection.listPath(self.args.share, subfolder)
             self.dir_list(filelist, subfolder)
             if depth == 0:
                 return
         except SessionError as e:
+            if not filelist:
+                self.logger.error("Failed to connect to share {}: {}".format(self.args.share, e))
+                return 
             pass
 
         for result in filelist:
@@ -60,9 +74,9 @@ class SMBSpider:
                                                                                            strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
                                                                                            result.get_filesize()))
 
-            elif self.args.regex:
-                for regex in self.args.regex:
-                    if re.findall(regex, result.get_longname()):
+            elif self.regex:
+                for regex in self.regex:
+                    if regex.findall(result.get_longname()):
                         if result.is_directory():
                             self.logger.highlight(u"//{}/{}{} [dir]".format(self.args.share, path, result.get_longname()))
                         else:
@@ -90,6 +104,8 @@ class SMBSpider:
             while True:
                 try:
                     contents = rfile.read(4096)
+                    if not contents:
+                        break
                 except SessionError as e:
                     if 'STATUS_END_OF_FILE' in str(e):
                         break
@@ -109,9 +125,9 @@ class SMBSpider:
                                                                                                                 rfile.tell(),
                                                                                                                 pattern))
 
-                elif self.args.regex:
-                    for regex in self.args.regex:
-                        if re.findall(pattern, contents):
+                elif self.regex:
+                    for regex in self.regex:
+                        if regex.findall(contents):
                             self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.args.share,
                                                                                                               path,
                                                                                                               result.get_longname(),
