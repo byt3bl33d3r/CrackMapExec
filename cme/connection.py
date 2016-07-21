@@ -176,6 +176,7 @@ class Connection:
                             elif type(ntlm_hash) is file:
                                 for f_hash in ntlm_hash:
                                     if self.hash_login(usr.strip(), f_hash.strip()): return
+                                ntlm_hash.seek(0)
 
                     elif self.args.password:
                         for password in self.args.password:
@@ -185,6 +186,7 @@ class Connection:
                             elif type(password) is file:
                                 for f_pass in password:
                                     if self.plaintext_login(usr.strip(), f_pass.strip()): return
+                                password.seek(0)
 
             elif type(user) is not file:
 
@@ -196,6 +198,7 @@ class Connection:
                             elif type(ntlm_hash) is file:
                                 for f_hash in ntlm_hash:
                                     if self.hash_login(user, f_hash.strip()): return
+                                ntlm_hash.seek(0)
 
                     elif self.args.password:
                         for password in self.args.password:
@@ -205,6 +208,7 @@ class Connection:
                             elif type(password) is file:
                                 for f_pass in password:
                                     if self.plaintext_login(user, f_pass.strip()): return
+                                password.seek(0)
 
     def execute(self, payload, get_output=False, methods=None):
 
