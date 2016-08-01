@@ -1,4 +1,4 @@
-import ntpath
+import ntpath, logging
 
 from gevent import sleep
 from cme.helpers import gen_random_string
@@ -16,7 +16,7 @@ class WMIEXEC:
         self.__nthash = ''
         self.__share = share
         self.__smbconnection = smbconnection
-        self.__output = '\\' + gen_random_string(6)
+        self.__output = None
         self.__outputBuffer = ''
         self.__shell = 'cmd.exe /Q /c '
         self.__pwd = 'C:\\'
@@ -61,13 +61,16 @@ class WMIEXEC:
             self.__pwd = ntpath.normpath(ntpath.join(self.__pwd, s))
             self.execute_remote('cd ')
             self.__pwd = self.__outputBuffer.strip('\r\n')
-            self.prompt = self.__pwd + '>'
             self.__outputBuffer = ''
     
     def execute_remote(self, data):
+        self.__output = '\\Windows\\Temp\\' + gen_random_string(6)
+
         command = self.__shell + data 
         if self.__retOutput:
             command += ' 1> ' + '\\\\127.0.0.1\\%s' % self.__share + self.__output  + ' 2>&1'
+
+        logging.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
         self.get_output()
 

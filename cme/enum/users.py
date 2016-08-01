@@ -19,20 +19,18 @@ import logging
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 from impacket.dcerpc.v5 import transport, samr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.smb import SMB_DIALECT
 
 class ListUsersException(Exception):
     pass
 
 class SAMRDump:
-    KNOWN_PROTOCOLS = {
-        '139/SMB': (r'ncacn_np:%s[\pipe\samr]', 139),
-        '445/SMB': (r'ncacn_np:%s[\pipe\samr]', 445),
-        }
 
-    def __init__(self, logger, protocol, connection):
+    def __init__(self, logger, protocol, connection, port=445):
 
         self.__username = connection.username
         self.__addr = connection.host
+        self.__port = port
         self.__password = connection.password
         self.__domain = connection.domain
         self.__hash = connection.hash
@@ -51,19 +49,26 @@ class SAMRDump:
 
     def enum(self):
         """Dumps the list of users and shares registered present at
-        addr. Addr is a valid host name or IP address.
+        remoteName. remoteName is a valid host name or IP address.
         """
+
+        entries = []
 
         logging.info('Retrieving endpoint list from %s' % self.__addr)
 
-        # Try all requested protocols until one works.
-        entries = []
+        stringbinding = 'ncacn_np:%s[\pipe\samr]' % self.__addr
+        logging.debug('StringBinding %s'%stringbinding)
+        rpctransport = transport.DCERPCTransportFactory(stringbinding)
+        rpctransport.set_dport(self.__port)
+        #rpctransport.setRemoteHost(self.__addr)
 
-        protodef = SAMRDump.KNOWN_PROTOCOLS['{}/SMB'.format(self.__protocol)]
-        port = protodef[1]
-
-        logging.info("Trying protocol %s..." % self.__protocol)
-        rpctransport = transport.SMBTransport(self.__addr, port, r'\samr', self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, doKerberos = self.__doKerberos)
+        if hasattr(rpctransport,'preferred_dialect'):
+            rpctransport.preferred_dialect(SMB_DIALECT)
+        if hasattr(rpctransport, 'set_credentials'):
+            # This method exists only for selected protocol sequences.
+            rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash,
+                                         self.__nthash)# self.__aesKey)
+        #rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
         try:
             entries = self.__fetchList(rpctransport)

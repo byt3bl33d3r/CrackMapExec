@@ -1,16 +1,15 @@
+import logging
 from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
+from impacket.smb import SMB_DIALECT
 from cme.helpers import gen_random_string
 
 class SMBEXEC:
-    KNOWN_PROTOCOLS = {
-        '139/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 139),
-        '445/SMB': (r'ncacn_np:%s[\pipe\svcctl]', 445),
-        }
 
-    def __init__(self, host, protocol, username = '', password = '', domain = '', hashes = None, share = None):
+    def __init__(self, host, protocol, username = '', password = '', domain = '', hashes = None, share = None, port=445):
         self.__host = host
+        self.__port = port
         self.__username = username
         self.__password = password
         self.__serviceName = gen_random_string()
@@ -18,8 +17,8 @@ class SMBEXEC:
         self.__lmhash = ''
         self.__nthash = ''
         self.__share = share
-        self.__output = '\\Windows\\Temp\\' + gen_random_string() 
-        self.__batchFile = '%TEMP%\\' + gen_random_string() + '.bat'
+        self.__output = None
+        self.__batchFile = None
         self.__outputBuffer = ''
         self.__shell = '%COMSPEC% /Q /c '
         self.__retOutput = False
@@ -40,20 +39,17 @@ class SMBEXEC:
         if self.__password is None:
             self.__password = ''
 
-        protodef = SMBEXEC.KNOWN_PROTOCOLS['{}/SMB'.format(protocol)]
-        port = protodef[1]
-
-        stringbinding = protodef[0] % self.__host
-
+        stringbinding = 'ncacn_np:%s[\pipe\svcctl]' % self.__host
+        logging.debug('StringBinding %s'%stringbinding)
         self.__rpctransport = transport.DCERPCTransportFactory(stringbinding)
-        self.__rpctransport.set_dport(port)
-
+        self.__rpctransport.set_dport(self.__port)
+        #self.__rpctransport.setRemoteHost(self.__host)
         if hasattr(self.__rpctransport,'preferred_dialect'):
             self.__rpctransport.preferred_dialect(SMB_DIALECT)
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-        #rpctransport.set_kerberos(self.__doKerberos)
+        #rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
         self.__scmr = self.__rpctransport.get_dce_rpc()
         self.__scmr.connect()
@@ -76,7 +72,10 @@ class SMBEXEC:
         return self.__outputBuffer
             
     def cd(self, s):
+        ret_state = self.__retOutput
+        self.__retOutput = False
         self.execute_remote('cd ' )
+        self.__retOutput = ret_state
 
     def get_output(self):
 
@@ -96,12 +95,17 @@ class SMBEXEC:
                 sleep(2)
 
     def execute_remote(self, data):
+        self.__output = '\\Windows\\Temp\\' + gen_random_string() 
+        self.__batchFile = '%TEMP%\\' + gen_random_string() + '.bat'
+
         if self.__retOutput:
             command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
         else:
             command = self.__shell + 'echo ' + data + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
         
         command += ' & ' + 'del ' + self.__batchFile 
+
+        logging.debug('Executing command: ' + command)
 
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
         service = resp['lpServiceHandle']
