@@ -117,7 +117,7 @@ class CMEModule:
                     context.log.highlight('URL: ' + cred['url'])
                     context.log.highlight('Username: ' + cred['user'])
                     context.log.highlight('Password: ' + cred['passw'])
-                    context.log.highlight('\n')
+                    context.log.highlight('')
 
             log_name = 'EnumChrome-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)

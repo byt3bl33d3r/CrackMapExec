@@ -1,3 +1,6 @@
 [submodule "cme/data/PowerSploit"]
 	path = cme/data/PowerSploit
 	url = https://github.com/PowerShellMafia/PowerSploit
+[submodule "cme/data/mimikittenz"]
+	path = cme/data/mimikittenz
+	url = https://github.com/putterpanda/mimikittenz
