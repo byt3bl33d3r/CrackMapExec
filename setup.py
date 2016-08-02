@@ -27,7 +27,7 @@ setup(name='crackmapexec',
         'msgpack-python'
     ],
     entry_points = {
-        'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],
+        'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],
     },
     include_package_data=True,
     zip_safe=False)
