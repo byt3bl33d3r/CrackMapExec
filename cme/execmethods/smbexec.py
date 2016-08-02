@@ -2,7 +2,6 @@ import logging
 from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
-from impacket.smb import SMB_DIALECT
 from cme.helpers import gen_random_string
 
 class SMBEXEC:
@@ -44,8 +43,6 @@ class SMBEXEC:
         self.__rpctransport = transport.DCERPCTransportFactory(stringbinding)
         self.__rpctransport.set_dport(self.__port)
         #self.__rpctransport.setRemoteHost(self.__host)
-        if hasattr(self.__rpctransport,'preferred_dialect'):
-            self.__rpctransport.preferred_dialect(SMB_DIALECT)
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)

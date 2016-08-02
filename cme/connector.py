@@ -83,7 +83,7 @@ def connector(target, args, db, module, context, cmeserver):
             except:
                 pass
 
-        if args.username and (args.password or args.hash):
+        if (args.username and (args.password or args.hash)) or args.cred_id:
             conn = None
 
             if args.mssql and (instances is not None and len(instances) > 0):

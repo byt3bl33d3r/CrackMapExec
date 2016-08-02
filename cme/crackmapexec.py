@@ -21,8 +21,8 @@ import sys
 
 def main():
 
-    VERSION  = '3.1'
-    CODENAME = '\'Duchess\''
+    VERSION  = '3.1.3'
+    CODENAME = '\'Stoofvlees\''
 
     parser = argparse.ArgumentParser(description=""" 
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
@@ -51,11 +51,11 @@ def main():
 
                                     formatter_class=RawTextHelpFormatter,
                                     version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog='I swear I had something for this...')
+                                    epilog="What is it? It's a stew... But what is it? It's a stew...")
 
     parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
-    parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (defaults to 100)")
-    parser.add_argument('-id', metavar="CRED_ID", type=int, dest='cred_id', help='Database credential ID to use for authentication')
+    parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
+    parser.add_argument('-id', metavar="CRED_ID", nargs='*', default=[], type=int, dest='cred_id', help='Database credential ID(s) to use for authentication')
     parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='*', default=[], help="Username(s) or file(s) containing usernames")
     parser.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
     msgroup = parser.add_mutually_exclusive_group()
@@ -74,6 +74,9 @@ def main():
     parser.add_argument("--local-auth", dest='local_auth', action='store_true', help='Authenticate locally to each target')
     parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
     parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
+    fail_group = parser.add_mutually_exclusive_group()
+    fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='Max number of global failed login attemptes')
+    fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='Max number of failed login attemptes per host')
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
@@ -145,37 +148,23 @@ def main():
     db_connection.isolation_level = None
     db = CMEDatabase(db_connection)
 
-    if args.cred_id:
-        try:
-            c_id, credtype, domain, username, password = db.get_credentials(filterTerm=args.cred_id)[0]
-            args.username = [username]
-
-            if not args.domain:
-                args.domain = domain
-            if credtype == 'hash':
-                args.hash = [password]
-            elif credtype == 'plaintext':
-                args.password = [password]
-        except IndexError:
-            logger.error("Invalid database credential ID!")
-            sys.exit(1)
-    else:
+    if args.username:
         for user in args.username:
             if os.path.exists(user):
                 args.username.remove(user)
                 args.username.append(open(user, 'r'))
 
-        if args.password:
-            for passw in args.password:
-                if os.path.exists(passw):
-                    args.password.remove(passw)
-                    args.password.append(open(passw, 'r'))
+    if args.password:
+        for passw in args.password:
+            if os.path.exists(passw):
+                args.password.remove(passw)
+                args.password.append(open(passw, 'r'))
 
-        elif args.hash:
-            for ntlm_hash in args.hash:
-                if os.path.exists(ntlm_hash):
-                    args.hash.remove(ntlm_hash)
-                    args.hash.append(open(ntlm_hash, 'r'))
+    elif args.hash:
+        for ntlm_hash in args.hash:
+            if os.path.exists(ntlm_hash):
+                args.hash.remove(ntlm_hash)
+                args.hash.append(open(ntlm_hash, 'r'))
 
     for target in args.target:
         if os.path.exists(target):

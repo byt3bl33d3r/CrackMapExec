@@ -8,6 +8,10 @@ from cme.execmethods.atexec import TSCH_EXEC
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.smbconnection import SessionError
+from gevent.coros import BoundedSemaphore
+
+sem = BoundedSemaphore(1)
+global_failed_logins = 0
 
 class Connection:
 
@@ -24,8 +28,20 @@ class Connection:
         self.username = None
         self.hash = None
         self.admin_privs = False
+        self.failed_logins = 0
+
+        if self.args.local_auth:
+            self.domain = self.hostname
 
         self.login()
+
+    def over_fail_limit(self):
+        global global_failed_logins
+
+        if global_failed_logins == self.args.gfail_limit: return True
+        if self.failed_logins == self.args.fail_limit: return True
+
+        return False
 
     def check_if_admin(self):
         if self.args.mssql:
@@ -79,26 +95,27 @@ class Connection:
             except DCERPCException:
                 pass
 
-    def plaintext_login(self, username, password):
+    def plaintext_login(self, domain, username, password):
         try:
             if self.args.mssql:
-                res = self.conn.login(None, username, password, self.domain, None, True)
+                res = self.conn.login(None, username, password, domain, None, True)
                 if res is not True:
                     self.conn.printReplies()
                     return False
             
             elif not self.args.mssql:
-                self.conn.login(username, password, self.domain)
+                self.conn.login(username, password, domain)
 
             self.password = password
             self.username = username
+            self.domain = domain
             self.check_if_admin()
-            self.db.add_credential('plaintext', self.domain, username, password)
+            self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
-                self.db.link_cred_to_host('plaintext', self.domain, username, password, self.host)
+                self.db.link_cred_to_host('plaintext', domain, username, password, self.host)
 
-            out = u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
+            out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
                                          password.decode('utf-8'),
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
@@ -107,14 +124,18 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(self.domain.decode('utf-8'),
+            if error == 'STATUS_LOGON_FAILURE': 
+                global global_failed_logins; global_failed_logins += 1
+                self.failed_logins += 1
+
+            self.logger.error(u'{}\\{}:{} {} {}'.format(domain.decode('utf-8'),
                                                         username.decode('utf-8'),
                                                         password.decode('utf-8'),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
             return False
 
-    def hash_login(self, username, ntlm_hash):
+    def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
         nthash = ''
 
@@ -126,23 +147,24 @@ class Connection:
 
         try:
             if self.args.mssql:
-                res = self.conn.login(None, username, '', self.domain, ntlm_hash, True)
+                res = self.conn.login(None, username, '', domain, ntlm_hash, True)
                 if res is not True:
                     self.conn.printReplies()
                     return False
 
             elif not self.args.mssql:
-                self.conn.login(username, '', self.domain, lmhash, nthash)
+                self.conn.login(username, '', domain, lmhash, nthash)
 
             self.hash = ntlm_hash
             self.username = username
+            self.domain = domain
             self.check_if_admin()
-            self.db.add_credential('hash', self.domain, username, ntlm_hash)
+            self.db.add_credential('hash', domain, username, ntlm_hash)
 
             if self.admin_privs:
-                self.db.link_cred_to_host('hash', self.domain, username, ntlm_hash, self.host)
+                self.db.link_cred_to_host('hash', domain, username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(self.domain.decode('utf-8'), 
+            out = u'{}\\{} {} {}'.format(domain.decode('utf-8'), 
                                          username.decode('utf-8'), 
                                          ntlm_hash, 
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
@@ -151,7 +173,11 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {} {}'.format(self.domain.decode('utf-8'),
+            if error == 'STATUS_LOGON_FAILURE': 
+                global global_failed_logins; global_failed_logins += 1
+                self.failed_logins += 1
+
+            self.logger.error(u'{}\\{} {} {} {}'.format(domain.decode('utf-8'),
                                                         username.decode('utf-8'),
                                                         ntlm_hash,
                                                         error,
@@ -159,56 +185,78 @@ class Connection:
             return False
 
     def login(self):
-        if self.args.local_auth:
-            self.domain = self.hostname
+        for cred_id in self.args.cred_id:
+            with sem:
+                try:
+                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=cred_id)[0]
+
+                    if not domain: domain = self.domain
+                    if self.args.domain: domain = self.args.domain
+
+                    if credtype == 'hash' and not self.over_fail_limit():
+                        self.hash_login(domain, username, password)
+
+                    elif credtype == 'plaintext' and not self.over_fail_limit():
+                        self.plaintext_login(domain, username, password)
+     
+                except IndexError:
+                    self.logger.error("Invalid database credential ID!")
 
         for user in self.args.username:
-
             if type(user) is file:
-
                 for usr in user:
-
                     if self.args.hash:
-                        for ntlm_hash in self.args.hash:
-                            if type(ntlm_hash) is not file:
-                                if self.hash_login(usr.strip(), ntlm_hash): return
+                        with sem:
+                            for ntlm_hash in self.args.hash:
+                                if type(ntlm_hash) is not file:
+                                    if not self.over_fail_limit():
+                                        if self.hash_login(self.domain, usr.strip(), ntlm_hash): return
                             
-                            elif type(ntlm_hash) is file:
-                                for f_hash in ntlm_hash:
-                                    if self.hash_login(usr.strip(), f_hash.strip()): return
-                                ntlm_hash.seek(0)
+                                elif type(ntlm_hash) is file:
+                                    for f_hash in ntlm_hash:
+                                        if not self.over_fail_limit():
+                                            if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return
+                                    ntlm_hash.seek(0)
 
                     elif self.args.password:
-                        for password in self.args.password:
-                            if type(password) is not file:
-                                if self.plaintext_login(usr.strip(), password): return
-                            
-                            elif type(password) is file:
-                                for f_pass in password:
-                                    if self.plaintext_login(usr.strip(), f_pass.strip()): return
-                                password.seek(0)
+                        with sem:
+                            for password in self.args.password:
+                                if type(password) is not file:
+                                    if not self.over_fail_limit():
+                                        if self.plaintext_login(self.domain, usr.strip(), password): return
+                                
+                                elif type(password) is file:
+                                    for f_pass in password:
+                                        if not self.over_fail_limit():
+                                            if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return
+                                    password.seek(0)
 
             elif type(user) is not file:
-
                     if self.args.hash:
-                        for ntlm_hash in self.args.hash:
-                            if type(ntlm_hash) is not file:
-                                if self.hash_login(user, ntlm_hash): return
-                            
-                            elif type(ntlm_hash) is file:
-                                for f_hash in ntlm_hash:
-                                    if self.hash_login(user, f_hash.strip()): return
-                                ntlm_hash.seek(0)
+                        with sem:
+                            for ntlm_hash in self.args.hash:
+                                if type(ntlm_hash) is not file:
+                                    if not self.over_fail_limit():
+                                        if self.hash_login(self.domain, user, ntlm_hash): return
+                                
+                                elif type(ntlm_hash) is file:
+                                    for f_hash in ntlm_hash:
+                                        if not self.over_fail_limit():
+                                            if self.hash_login(self.domain, user, f_hash.strip()): return
+                                    ntlm_hash.seek(0)
 
                     elif self.args.password:
-                        for password in self.args.password:
-                            if type(password) is not file:
-                                if self.plaintext_login(user, password): return
-                            
-                            elif type(password) is file:
-                                for f_pass in password:
-                                    if self.plaintext_login(user, f_pass.strip()): return
-                                password.seek(0)
+                        with sem:
+                            for password in self.args.password:
+                                if type(password) is not file:
+                                    if not self.over_fail_limit():
+                                        if self.plaintext_login(self.domain, user, password): return
+                                
+                                elif type(password) is file:
+                                    for f_pass in password:
+                                        if not self.over_fail_limit():
+                                            if self.plaintext_login(self.domain, user, f_pass.strip()): return
+                                    password.seek(0)
 
     def execute(self, payload, get_output=False, methods=None):
 
