@@ -42,7 +42,9 @@ class SMBEXEC:
         logging.debug('StringBinding %s'%stringbinding)
         self.__rpctransport = transport.DCERPCTransportFactory(stringbinding)
         self.__rpctransport.set_dport(self.__port)
-        #self.__rpctransport.setRemoteHost(self.__host)
+        
+        if hasattr(self.__rpctransport, 'setRemoteHost'):
+            self.__rpctransport.setRemoteHost(self.__host)
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)

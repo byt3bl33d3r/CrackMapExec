@@ -12,6 +12,7 @@ from gevent.coros import BoundedSemaphore
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
+user_failed_logins = {}
 
 class Connection:
 
@@ -35,11 +36,14 @@ class Connection:
 
         self.login()
 
-    def over_fail_limit(self):
+    def over_fail_limit(self, username):
         global global_failed_logins
+        global user_failed_logins
 
         if global_failed_logins == self.args.gfail_limit: return True
         if self.failed_logins == self.args.fail_limit: return True
+        if username in user_failed_logins.keys():
+            if self.args.ufail_limit == user_failed_logins[username]: return True
 
         return False
 
@@ -124,15 +128,22 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            if error == 'STATUS_LOGON_FAILURE': 
-                global global_failed_logins; global_failed_logins += 1
-                self.failed_logins += 1
-
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain.decode('utf-8'),
                                                         username.decode('utf-8'),
                                                         password.decode('utf-8'),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
+            if error == 'STATUS_LOGON_FAILURE': 
+                global global_failed_logins
+                global user_failed_logins
+                
+                if username not in user_failed_logins.keys():
+                    user_failed_logins[username] = 0
+
+                user_failed_logins[username] += 1
+                global_failed_logins += 1
+                self.failed_logins += 1
+
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -173,15 +184,22 @@ class Connection:
             return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            if error == 'STATUS_LOGON_FAILURE': 
-                global global_failed_logins; global_failed_logins += 1
-                self.failed_logins += 1
-
             self.logger.error(u'{}\\{} {} {} {}'.format(domain.decode('utf-8'),
                                                         username.decode('utf-8'),
                                                         ntlm_hash,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
+            if error == 'STATUS_LOGON_FAILURE': 
+                global global_failed_logins
+                global user_failed_logins
+                
+                if username not in user_failed_logins.keys():
+                    user_failed_logins[username] = 0
+
+                user_failed_logins[username] += 1
+                global_failed_logins += 1
+                self.failed_logins += 1
+
             return False
 
     def login(self):
@@ -209,12 +227,12 @@ class Connection:
                         with sem:
                             for ntlm_hash in self.args.hash:
                                 if type(ntlm_hash) is not file:
-                                    if not self.over_fail_limit():
+                                    if not self.over_fail_limit(usr.strip()):
                                         if self.hash_login(self.domain, usr.strip(), ntlm_hash): return
                             
                                 elif type(ntlm_hash) is file:
                                     for f_hash in ntlm_hash:
-                                        if not self.over_fail_limit():
+                                        if not self.over_fail_limit(usr.strip()):
                                             if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return
                                     ntlm_hash.seek(0)
 
@@ -222,12 +240,12 @@ class Connection:
                         with sem:
                             for password in self.args.password:
                                 if type(password) is not file:
-                                    if not self.over_fail_limit():
+                                    if not self.over_fail_limit(usr.strip()):
                                         if self.plaintext_login(self.domain, usr.strip(), password): return
                                 
                                 elif type(password) is file:
                                     for f_pass in password:
-                                        if not self.over_fail_limit():
+                                        if not self.over_fail_limit(usr.strip()):
                                             if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return
                                     password.seek(0)
 
@@ -236,12 +254,12 @@ class Connection:
                         with sem:
                             for ntlm_hash in self.args.hash:
                                 if type(ntlm_hash) is not file:
-                                    if not self.over_fail_limit():
+                                    if not self.over_fail_limit(user):
                                         if self.hash_login(self.domain, user, ntlm_hash): return
                                 
                                 elif type(ntlm_hash) is file:
                                     for f_hash in ntlm_hash:
-                                        if not self.over_fail_limit():
+                                        if not self.over_fail_limit(user):
                                             if self.hash_login(self.domain, user, f_hash.strip()): return
                                     ntlm_hash.seek(0)
 
@@ -249,12 +267,12 @@ class Connection:
                         with sem:
                             for password in self.args.password:
                                 if type(password) is not file:
-                                    if not self.over_fail_limit():
+                                    if not self.over_fail_limit(user):
                                         if self.plaintext_login(self.domain, user, password): return
                                 
                                 elif type(password) is file:
                                     for f_pass in password:
-                                        if not self.over_fail_limit():
+                                        if not self.over_fail_limit(user):
                                             if self.plaintext_login(self.domain, user, f_pass.strip()): return
                                     password.seek(0)
 

@@ -59,8 +59,9 @@ class SAMRDump:
         logging.debug('StringBinding %s'%stringbinding)
         rpctransport = transport.DCERPCTransportFactory(stringbinding)
         rpctransport.set_dport(self.__port)
-        #rpctransport.setRemoteHost(self.__addr)
 
+        if hasattr(rpctransport, setRemoteHost):
+            rpctransport.setRemoteHost(self.__addr)
         if hasattr(rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash,

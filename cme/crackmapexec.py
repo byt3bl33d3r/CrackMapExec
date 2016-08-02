@@ -75,8 +75,9 @@ def main():
     parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
     parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
     fail_group = parser.add_mutually_exclusive_group()
-    fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='Max number of global failed login attemptes')
-    fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='Max number of failed login attemptes per host')
+    fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='Max number of global failed login attempts')
+    fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per username')
+    fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per host')
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
