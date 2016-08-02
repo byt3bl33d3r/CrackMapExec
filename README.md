@@ -63,25 +63,25 @@ See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for d
 #Usage
 
 ```
-  ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
- /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
-|  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
-|  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |     
-|  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
- \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
+      ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
+     /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
+    |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
+    |  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |     
+    |  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
+     \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
-                 Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
+                     Swiss army knife for pentesting Windows/Active Directory environments | @byt3bl33d3r
 
-                       Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
+                           Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
 
-                                                   Inspired by:
-                            @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
-                            @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
-                            @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
-                                                     
-                                                  Version: 3.1
-                                              Codename: 'Duchess'
-
+                                                       Inspired by:
+                                @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
+                                @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
+                                @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
+                                                         
+                                                      Version: 3.1.3
+                                                  Codename: 'Stoofvlees'
+    
 
 positional arguments:
   target                The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets
@@ -89,8 +89,9 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show program's version number and exit
-  -t THREADS            Set how many concurrent threads to use (defaults to 100)
-  -id CRED_ID           Database credential ID to use for authentication
+  -t THREADS            Set how many concurrent threads to use (default: 100)
+  -id [CRED_ID [CRED_ID ...]]
+                        Database credential ID(s) to use for authentication
   -u [USERNAME [USERNAME ...]]
                         Username(s) or file(s) containing usernames
   -d DOMAIN             Domain name
@@ -113,6 +114,8 @@ optional arguments:
   --local-auth          Authenticate locally to each target
   --timeout TIMEOUT     Max timeout in seconds of each thread (default: 20)
   --verbose             Enable verbose output
+  --gfail-limit LIMIT   Max number of global failed login attemptes
+  --fail-limit LIMIT    Max number of failed login attemptes per host
 
 Credential Gathering:
   Options for gathering credentials
@@ -171,8 +174,7 @@ MSSQL Interaction:
   --mssql               Switches CME into MSSQL Mode. If credentials are provided will authenticate against all discovered MSSQL DBs
   --mssql-query QUERY   Execute the specifed query against the MSSQL DB
 
-I swear I had something for this...
-
+What is it? It's a stew... But what is it? It's a stew...
 ```
 
 #To do
