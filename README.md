@@ -114,8 +114,9 @@ optional arguments:
   --local-auth          Authenticate locally to each target
   --timeout TIMEOUT     Max timeout in seconds of each thread (default: 20)
   --verbose             Enable verbose output
-  --gfail-limit LIMIT   Max number of global failed login attemptes
-  --fail-limit LIMIT    Max number of failed login attemptes per host
+  --gfail-limit LIMIT   Max number of global failed login attempts
+  --ufail-limit LIMIT   Max number of failed login attempts per username
+  --fail-limit LIMIT    Max number of failed login attempts per host
 
 Credential Gathering:
   Options for gathering credentials
