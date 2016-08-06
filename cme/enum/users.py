@@ -60,7 +60,7 @@ class SAMRDump:
         rpctransport = transport.DCERPCTransportFactory(stringbinding)
         rpctransport.set_dport(self.__port)
 
-        if hasattr(rpctransport, setRemoteHost):
+        if hasattr(rpctransport, 'setRemoteHost'):
             rpctransport.setRemoteHost(self.__addr)
         if hasattr(rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.

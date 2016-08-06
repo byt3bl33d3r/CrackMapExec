@@ -22,7 +22,7 @@ class WDIGEST:
             ans = rrp.hBaseRegOpenKey(self.rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
             keyHandle = ans['phkResult']
 
-            rrp.hBaseRegSetValue(self.rrp, keyHandle, 'UseLogonCredential\x00',  rrp.REG_DWORD, '\x01\x00')
+            rrp.hBaseRegSetValue(self.rrp, keyHandle, 'UseLogonCredential\x00',  rrp.REG_DWORD, 1)
 
             rtype, data = rrp.hBaseRegQueryValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
 
@@ -46,15 +46,26 @@ class WDIGEST:
             ans = rrp.hBaseRegOpenKey(self.rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
             keyHandle = ans['phkResult']
 
-            rrp.hBaseRegDeleteValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
+            try:
+                rrp.hBaseRegDeleteValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
+            except:
+                self.logger.success('UseLogonCredential registry key not present')
+
+                try:
+                    remoteOps.finish()
+                except:
+                    pass
+
+                return
 
             try:
                 #Check to make sure the reg key is actually deleted
                 rtype, data = rrp.hBaseRegQueryValue(self.rrp, keyHandle, 'UseLogonCredential\x00')
             except DCERPCException:
                 self.logger.success('UseLogonCredential registry key deleted successfully')
+                
+                try:
+                    remoteOps.finish()
+                except:
+                    pass
 
-        try:
-            remoteOps.finish()
-        except:
-            pass

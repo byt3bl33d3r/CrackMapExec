@@ -211,10 +211,10 @@ class Connection:
                     if not domain: domain = self.domain
                     if self.args.domain: domain = self.args.domain
 
-                    if credtype == 'hash' and not self.over_fail_limit():
+                    if credtype == 'hash' and not self.over_fail_limit(username):
                         self.hash_login(domain, username, password)
 
-                    elif credtype == 'plaintext' and not self.over_fail_limit():
+                    elif credtype == 'plaintext' and not self.over_fail_limit(username):
                         self.plaintext_login(domain, username, password)
      
                 except IndexError:

