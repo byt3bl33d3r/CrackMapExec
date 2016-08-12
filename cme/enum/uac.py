@@ -3,9 +3,9 @@ from impacket.dcerpc.v5 import rrp
 
 class UAC:
 
-    def __init__(self, smbconnection, logger):
-        self.logger = logger
-        self.smbconnection = smbconnection
+    def __init__(self, connection):
+        self.logger = connection.logger
+        self.smbconnection = connection.conn
         self.doKerb = False
 
     def enum(self):

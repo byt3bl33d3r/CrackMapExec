@@ -4,9 +4,9 @@ from impacket.dcerpc.v5 import rrp
 
 class WDIGEST:
 
-    def __init__(self, logger, smbconnection):
-        self.logger = logger
-        self.smbconnection = smbconnection
+    def __init__(self, connection):
+        self.logger = connection.logger
+        self.smbconnection = connection.conn
         self.doKerb = False
         self.rrp = None
 

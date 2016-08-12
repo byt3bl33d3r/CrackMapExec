@@ -32,14 +32,14 @@ class LSALookupSid:
         #'135/TCP': (r'ncacn_ip_tcp:%s', 135),
         }
 
-    def __init__(self, logger, protocol, connection, maxRid=4000):
-        self.__logger = logger
+    def __init__(self, connection):
+        self.__logger = connection.logger
         self.__addr = connection.host
         self.__username = connection.username
         self.__password = connection.password
-        self.__protocol = protocol
+        self.__protocol = connection.args.smb_port
         self.__hash = connection.hash
-        self.__maxRid = int(maxRid)
+        self.__maxRid = int(connection.args.rid_brute)
         self.__domain = connection.domain
         self.__lmhash = ''
         self.__nthash = ''

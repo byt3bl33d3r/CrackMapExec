@@ -25,20 +25,19 @@ class ListUsersException(Exception):
 
 class SAMRDump:
 
-    def __init__(self, logger, protocol, connection, port=445):
+    def __init__(self, connection):
 
         self.__username = connection.username
         self.__addr = connection.host
-        self.__port = port
+        self.__port = connection.args.smb_port
         self.__password = connection.password
         self.__domain = connection.domain
         self.__hash = connection.hash
-        self.__protocol = protocol
         self.__lmhash = ''
         self.__nthash = ''
         self.__aesKey = None
         self.__doKerberos = False
-        self.__logger = logger
+        self.__logger = connection.logger
 
         if self.__hash is not None:
             self.__lmhash, self.__nthash = self.__hash.split(':')

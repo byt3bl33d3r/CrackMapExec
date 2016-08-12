@@ -11,7 +11,7 @@ import os
 import logging
 
 class DumpSecrets:
-    def __init__(self, connection, logger):
+    def __init__(self, connection):
         self.__useVSSMethod = False
         self.__smbConnection = connection.conn
         self.__db = connection.db
@@ -35,7 +35,7 @@ class DumpSecrets:
         self.__justDCNTLM = False
         self.__pwdLastSet = False
         self.__resumeFileName = None
-        self.__logger = logger
+        self.__logger = connection.logger
 
     def getBootKey(self):
         # Local Version whenever we are given the files directly

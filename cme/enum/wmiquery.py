@@ -26,14 +26,15 @@ from impacket.dcerpc.v5.dcomrt import DCOMConnection
 
 class WMIQUERY:
 
-    def __init__(self, logger, connection, wmi_namespace):
-        self.__logger = logger
+    def __init__(self, connection):
+        self.__logger = connection.logger
         self.__addr = connection.host
         self.__username = connection.username
         self.__password = connection.password
         self.__hash = connection.hash
         self.__domain = connection.domain
-        self.__namespace = wmi_namespace
+        self.__namespace = connection.args.wmi_namespace
+        self.__query = connection.args.wmi
         self.__iWbemServices = None
         self.__doKerberos = False
         self.__aesKey = None
@@ -58,9 +59,9 @@ class WMIQUERY:
         except Exception as e:
             self.__logger.error(e)
 
-    def query(self, query):
+    def query(self):
 
-        query = query.strip('\n')
+        query = self.__query.strip('\n')
 
         if query[-1:] == ';':
             query = query[:-1]

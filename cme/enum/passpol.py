@@ -13,10 +13,10 @@ class PassPolDump:
         '445/SMB': (r'ncacn_np:%s[\pipe\samr]', 445),
         }
 
-    def __init__(self, logger, protocol, connection):
-        self.logger = logger
+    def __init__(self, connection):
+        self.logger = connection.logger
         self.addr = connection.host
-        self.protocol = protocol
+        self.protocol = connection.args.smb_port
         self.username = connection.username
         self.password = connection.password
         self.domain = connection.domain

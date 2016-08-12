@@ -6,9 +6,9 @@ import ntpath
 
 class ShareEnum:
 
-    def __init__(self, smbconnection, logger):
-        self.smbconnection = smbconnection
-        self.logger = logger
+    def __init__(self, connection):
+        self.smbconnection = connection.conn
+        self.logger = connection.logger
         self.permissions = {}
         self.root = ntpath.normpath("\\" + gen_random_string())
 

@@ -7,7 +7,7 @@ monkey.patch_all()
 from gevent.pool import Pool
 from gevent import joinall
 from argparse import RawTextHelpFormatter
-from cme.connector import connector
+from cme.connection import Connection
 from cme.database import CMEDatabase
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers import highlight
@@ -18,10 +18,11 @@ import sqlite3
 import argparse
 import os
 import sys
+import logging
 
 def main():
 
-    VERSION  = '3.1.3'
+    VERSION  = '3.1.5-dev'
     CODENAME = '\'Stoofvlees\''
 
     parser = argparse.ArgumentParser(description=""" 
@@ -57,27 +58,28 @@ def main():
     parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
     parser.add_argument('-id', metavar="CRED_ID", nargs='*', default=[], type=int, dest='cred_id', help='Database credential ID(s) to use for authentication')
     parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='*', default=[], help="Username(s) or file(s) containing usernames")
-    parser.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
+    ddgroup = parser.add_mutually_exclusive_group()
+    ddgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
+    ddgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
     msgroup = parser.add_mutually_exclusive_group()
     msgroup.add_argument("-p", metavar="PASSWORD", dest='password', nargs= '*', default=[], help="Password(s) or file(s) containing passwords")
     msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
     parser.add_argument("-M", "--module", metavar='MODULE', dest='module', help='Payload module to use')
     parser.add_argument('-o', metavar='MODULE_OPTION', nargs='*', default=[], dest='module_options', help='Payload module options')
     parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
-    parser.add_argument('--show-options', action='store_true', dest='show_options', help='Display module options')
-    parser.add_argument("--share", metavar="SHARE", dest='share', default="C$", help="Specify a share (default: C$)")
-    parser.add_argument("--smb-port", dest='smb_port', type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
-    parser.add_argument("--mssql-port", dest='mssql_port', default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
+    parser.add_argument('--show-options', action='store_true', help='Display module options')
+    parser.add_argument("--share", metavar="SHARE", default="C$", help="Specify a share (default: C$)")
+    parser.add_argument("--smb-port", type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
+    parser.add_argument("--mssql-port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
     parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (default: https)')
     parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
-    parser.add_argument("--server-port", dest='server_port', metavar='PORT', type=int, help='Start the server on the specified port')
-    parser.add_argument("--local-auth", dest='local_auth', action='store_true', help='Authenticate locally to each target')
+    parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
     parser.add_argument("--timeout", default=20, type=int, help='Max timeout in seconds of each thread (default: 20)')
-    parser.add_argument("--verbose", action='store_true', dest='verbose', help="Enable verbose output")
     fail_group = parser.add_mutually_exclusive_group()
     fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='Max number of global failed login attempts')
     fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per username')
     fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per host')
+    parser.add_argument("--verbose", action='store_true', help="Enable verbose output")
 
     rgroup = parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
     rgroup.add_argument("--sam", action='store_true', help='Dump SAM hashes from target systems')
@@ -88,21 +90,21 @@ def main():
     rgroup.add_argument("--wdigest", choices={'enable', 'disable'}, help="Creates/Deletes the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1")
 
     egroup = parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
-    egroup.add_argument("--shares", action="store_true", dest="enum_shares", help="Enumerate shares and access")
+    egroup.add_argument("--shares", action="store_true", help="Enumerate shares and access")
     egroup.add_argument('--uac', action='store_true', help='Checks UAC status')
-    egroup.add_argument("--sessions", action='store_true', dest='enum_sessions', help='Enumerate active sessions')
-    egroup.add_argument('--disks', action='store_true', dest='enum_disks', help='Enumerate disks')
-    egroup.add_argument("--users", action='store_true', dest='enum_users', help='Enumerate users')
-    egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', dest='rid_brute', help='Enumerate users by bruteforcing RID\'s (default: 4000)')
-    egroup.add_argument("--pass-pol", action='store_true', dest='pass_pol', help='Dump password policy')
-    egroup.add_argument("--lusers", action='store_true', dest='enum_lusers', help='Enumerate logged on users')
-    egroup.add_argument("--wmi", metavar='QUERY', type=str, dest='wmi_query', help='Issues the specified WMI query')
-    egroup.add_argument("--wmi-namespace", metavar='NAMESPACE', dest='wmi_namespace', default='//./root/cimv2', help='WMI Namespace (default: //./root/cimv2)')
+    egroup.add_argument("--sessions", action='store_true', help='Enumerate active sessions')
+    egroup.add_argument('--disks', action='store_true', help='Enumerate disks')
+    egroup.add_argument("--users", action='store_true', help='Enumerate users')
+    egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', help='Enumerate users by bruteforcing RID\'s (default: 4000)')
+    egroup.add_argument("--pass-pol", action='store_true', help='Dump password policy')
+    egroup.add_argument("--lusers", action='store_true', help='Enumerate logged on users')
+    egroup.add_argument("--wmi", metavar='QUERY', type=str, help='Issues the specified WMI query')
+    egroup.add_argument("--wmi-namespace", metavar='NAMESPACE', default='//./root/cimv2', help='WMI Namespace (default: //./root/cimv2)')
 
     sgroup = parser.add_argument_group("Spidering", "Options for spidering shares")
     sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str, help='Folder to spider (default: root directory)')
-    sgroup.add_argument("--content", dest='search_content', action='store_true', help='Enable file content searching')
-    sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', dest='exclude_dirs', help='Directories to exclude from spidering')
+    sgroup.add_argument("--content", action='store_true', help='Enable file content searching')
+    sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', help='Directories to exclude from spidering')
     esgroup = sgroup.add_mutually_exclusive_group()
     esgroup.add_argument("--pattern", nargs='*', help='Pattern(s) to search for in folders, filenames and file content')
     esgroup.add_argument("--regex", nargs='*', help='Regex(s) to search for in folders, filenames and file content')
@@ -111,9 +113,10 @@ def main():
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
     cgroup.add_argument('--exec-method', choices={"wmiexec", "smbexec", "atexec"}, default=None, help="Method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
     cgroup.add_argument('--force-ps32', action='store_true', help='Force the PowerShell command to run in a 32-bit process')
-    cgroup.add_argument('--no-output', action='store_true', dest='no_output', help='Do not retrieve command output')
-    cgroup.add_argument("-x", metavar="COMMAND", dest='command', help="Execute the specified command")
-    cgroup.add_argument("-X", metavar="PS_COMMAND", dest='pscommand', help='Execute the specified PowerShell command')
+    cgroup.add_argument('--no-output', action='store_true', help='Do not retrieve command output')
+    xxxgroup = cgroup.add_mutually_exclusive_group()
+    xxxgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="Execute the specified command")
+    xxxgroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='Execute the specified PowerShell command')
 
     mgroup = parser.add_argument_group("MSSQL Interaction", "Options for interacting with MSSQL DBs")
     mgroup.add_argument("--mssql", action='store_true', help='Switches CME into MSSQL Mode. If credentials are provided will authenticate against all discovered MSSQL DBs')
@@ -138,6 +141,8 @@ def main():
 
     if args.verbose:
         setup_debug_logger()
+
+    logging.debug(vars(args))
 
     if not args.server_port:
         args.server_port = server_port_dict[args.server]
@@ -201,7 +206,7 @@ def main():
             Whoever came up with that name has a fetish for traffic lights
         '''
         pool = Pool(args.threads)
-        jobs = [pool.spawn(connector, str(target), args, db, module, context, server) for target in targets]
+        jobs = [pool.spawn(Connection, args, db, str(target), module, server) for target in targets]
 
         #Dumping the NTDS.DIT and/or spidering shares can take a long time, so we ignore the thread timeout
         if args.ntds or args.spider:

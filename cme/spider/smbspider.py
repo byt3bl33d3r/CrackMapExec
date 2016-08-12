@@ -8,11 +8,12 @@ import traceback
 
 class SMBSpider:
 
-    def __init__(self, logger, connection, args):
-        self.logger = logger
+    def __init__(self, connection):
+        self.logger = connection.logger
         self.smbconnection = connection.conn
         self.start_time = time()
-        self.args = args
+        self.args = connection.args
+        self.results = None
 
         self.regex = None
         if self.args.regex:

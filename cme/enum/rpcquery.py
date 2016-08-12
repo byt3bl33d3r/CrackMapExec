@@ -3,8 +3,8 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.dtypes import NULL
 
 class RPCQUERY():
-    def __init__(self, connection, logger):
-        self.logger = logger
+    def __init__(self, connection):
+        self.logger = connection.logger
         self.connection = connection
         self.host = connection.host
         self.username = connection.username
