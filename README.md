@@ -17,6 +17,9 @@ Unintentional contributors:
 
 This repo also includes the [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) repository as a submodule.
 
+#Documentation, Tutorials, Examples
+See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
+
 #Description
 
 CrackMapExec is your one-stop-shop for pentesting Windows/Active Directory environments!
@@ -52,9 +55,6 @@ If you like living on the bleeding-edge:
 **Note for Kali/Debian/Ubuntu Users:**
 
 If you get compilation errors run ```apt-get install -y libssl-dev libffi-dev python-dev build-essential``` and try again.
-
-#Documentation, Tutorials, Examples
-See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
 
 #To do
 - Kerberos support
