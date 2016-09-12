@@ -41,12 +41,14 @@ def requires_admin(func):
 
 class Connection:
 
-    def __init__(self, args, db, host, module, cmeserver):
+    def __init__(self, args, db, host, module, chain_list, cmeserver, share_name):
         self.args = args
         self.db = db
         self.host = host
         self.module = module
+        self.chain_list = chain_list
         self.cmeserver = cmeserver
+        self.share_name = share_name
         self.conn = None
         self.hostname = None
         self.domain = None
@@ -148,9 +150,13 @@ class Connection:
 
             self.login()
 
-            if ((self.password is not None or self.hash is not None) and self.username is not None):
+            if (self.password is not None or self.hash is not None) and self.username is not None:
 
-                if self.module:
+                if self.module or self.chain_list:
+
+                    if self.chain_list:
+                        module = self.chain_list[0]['object']
+
                     module_logger = CMEAdapter(getLogger('CME'), {
                                                                   'module': module.name.upper(), 
                                                                   'host': self.host, 
@@ -163,13 +169,42 @@ class Connection:
                     if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
                         cmeserver.server.context.localip = local_ip
 
-                    if hasattr(module, 'on_login'):
-                        module.on_login(context, self)
+                    if self.module:
 
-                    if hasattr(module, 'on_admin_login') and self.admin_privs:
-                        module.on_admin_login(context, self)
+                        launcher = module.launcher(context, None if not hasattr(module, 'command') else module.command)
+                        payload = module.payload(context, None if not hasattr(module, 'command') else module.command)
 
-                elif self.module is None:
+                        if hasattr(module, 'on_login'):
+                            module.on_login(context, self, launcher, payload)
+
+                        if self.admin_privs and hasattr(module, 'on_admin_login'):
+                            module.on_admin_login(context, self, launcher, payload)
+
+                    elif self.chain_list:
+                        module_list = self.chain_list[:]
+                        module_list.reverse()
+
+                        final_launcher = module_list[0]['object'].launcher(context, None if not hasattr(module_list[0]['object'], 'command') else module_list[0]['object'].command)
+                        if len(module_list) > 2:
+                            for m in module_list:
+                                if m['object'] == module or m['object'] == module_list[0]['object']:
+                                    continue
+                                
+                                final_launcher = m['object'].launcher(context, final_launcher)
+
+                        if module == module_list[0]['object']: 
+                            final_launcher = None if not hasattr(module_list[0]['object'], 'command') else module_list[0]['object'].command
+                        
+                        launcher = module.launcher(context, final_launcher)
+                        payload  = module.payload(context, final_launcher)
+
+                        if hasattr(module, 'on_login'):
+                            module.on_login(context, self)
+
+                        if self.admin_privs and hasattr(module, 'on_admin_login'):
+                            module.on_admin_login(context, self, launcher, payload)
+
+                elif self.module is None and self.chain_list is None:
                     for k, v in vars(self.args).iteritems():
                         if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                             if v is not False and v is not None:
@@ -345,16 +380,16 @@ class Connection:
         for cred_id in self.args.cred_id:
             with sem:
                 try:
-                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=cred_id)[0]
+                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=int(cred_id))[0]
 
                     if not domain: domain = self.domain
                     if self.args.domain: domain = self.args.domain
 
                     if credtype == 'hash' and not self.over_fail_limit(username):
-                        self.hash_login(domain, username, password)
+                        if self.hash_login(domain, username, password): return
 
                     elif credtype == 'plaintext' and not self.over_fail_limit(username):
-                        self.plaintext_login(domain, username, password)
+                        if self.plaintext_login(domain, username, password): return
      
                 except IndexError:
                     self.logger.error("Invalid database credential ID!")
@@ -442,7 +477,7 @@ class Connection:
 
                 if method == 'wmiexec':
                     try:
-                        exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                        exec_method = WMIEXEC(self.host, self.share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
                         logging.debug('Executed command via wmiexec')
                         break
                     except:
@@ -452,7 +487,7 @@ class Connection:
 
                 elif method == 'atexec':
                     try:
-                        exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
+                        exec_method = TSCH_EXEC(self.host, self.share_name, self.username, self.password, self.domain, self.hash) #self.args.share)
                         logging.debug('Executed command via atexec')
                         break
                     except:
@@ -462,7 +497,7 @@ class Connection:
 
                 elif method == 'smbexec':
                     try:
-                        exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                        exec_method = SMBEXEC(self.host, self.share_name, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
                         logging.debug('Executed command via smbexec')
                         break
                     except:
@@ -470,9 +505,7 @@ class Connection:
                         logging.debug(format_exc())
                         continue
 
-        if self.cmeserver:
-            if hasattr(self.cmeserver.server.module, 'on_request') or hasattr(self.cmeserver.server.module, 'on_response'):
-                self.cmeserver.server.hosts.append(self.host)
+        if self.cmeserver: self.cmeserver.track_host(self.host)
 
         output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8'))
 
@@ -502,7 +535,9 @@ class Connection:
 
     @requires_admin
     def ntds(self):
-        return DumpSecrets(self).NTDS_dump()
+        #We could just return the whole NTDS.dit database but in large domains it would be huge 
+        #and would take up too much memory
+        DumpSecrets(self).NTDS_dump()
 
     @requires_admin
     def wdigest(self):

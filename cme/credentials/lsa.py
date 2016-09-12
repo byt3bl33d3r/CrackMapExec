@@ -181,6 +181,8 @@ class LSASecrets(OfflineRegistry):
                 self.__cachedItems.append(answer)
                 self.__logger.highlight(answer)
 
+        return self.__cachedItems
+
     def __printSecret(self, name, secretItem):
         # Based on [MS-LSAD] section 3.1.1.4
 
@@ -301,6 +303,8 @@ class LSASecrets(OfflineRegistry):
                     secret = self.__decryptSecret(self.__LSAKey, value[1])
 
                 self.__printSecret(key, secret)
+
+        return self.__secretItems
 
     def exportSecrets(self, fileName):
         if len(self.__secretItems) > 0:

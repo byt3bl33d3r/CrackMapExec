@@ -38,3 +38,5 @@ class ShareEnum:
                 self.logger.highlight(u'{:<15} {}'.format(share, 'NO ACCESS'))
             else:
                 self.logger.highlight(u'{:<15} {}'.format(share, ', '.join(perm)))
+
+        return self.permissions

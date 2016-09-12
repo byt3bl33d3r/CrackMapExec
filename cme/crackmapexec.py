@@ -10,10 +10,14 @@ from argparse import RawTextHelpFormatter
 from cme.connection import Connection
 from cme.database import CMEDatabase
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
-from cme.helpers import highlight
+from cme.helpers import highlight, gen_random_string
 from cme.targetparser import parse_targets
 from cme.moduleloader import ModuleLoader
+from cme.modulechainloader import ModuleChainLoader
+from cme.cmesmbserver import CMESMBServer
 from cme.first_run import first_run_setup
+from getpass import getuser
+from pprint import pformat
 import sqlite3
 import argparse
 import os
@@ -56,7 +60,7 @@ def main():
 
     parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
     parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
-    parser.add_argument('-id', metavar="CRED_ID", nargs='*', default=[], type=int, dest='cred_id', help='Database credential ID(s) to use for authentication')
+    parser.add_argument('-id', metavar="CRED_ID", nargs='*', default=[], type=str, dest='cred_id', help='Database credential ID(s) to use for authentication')
     parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='*', default=[], help="Username(s) or file(s) containing usernames")
     ddgroup = parser.add_mutually_exclusive_group()
     ddgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
@@ -64,7 +68,9 @@ def main():
     msgroup = parser.add_mutually_exclusive_group()
     msgroup.add_argument("-p", metavar="PASSWORD", dest='password', nargs= '*', default=[], help="Password(s) or file(s) containing passwords")
     msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
-    parser.add_argument("-M", "--module", metavar='MODULE', dest='module', help='Payload module to use')
+    mcgroup = parser.add_mutually_exclusive_group()
+    mcgroup.add_argument("-M", "--module", metavar='MODULE', help='Payload module to use')
+    mcgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     parser.add_argument('-o', metavar='MODULE_OPTION', nargs='*', default=[], dest='module_options', help='Payload module options')
     parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
     parser.add_argument('--show-options', action='store_true', help='Display module options')
@@ -131,18 +137,25 @@ def main():
     
     cme_path = os.path.expanduser('~/.cme')
 
-    module  = None
-    server  = None
-    context = None
-    targets = []
+    module     = None
+    chain_list = None
+    server     = None
+    context    = None
+    smb_server = None
+    share_name = gen_random_string(5).upper()
+    targets    = []
     server_port_dict = {'http': 80, 'https': 443}
 
     args = parser.parse_args()
 
+    if os.geteuid() != 0:
+        logger.error("I'm sorry {}, I'm afraid I can't let you do that (cause I need root)".format(getuser()))
+        sys.exit(1)
+
     if args.verbose:
         setup_debug_logger()
 
-    logging.debug(vars(args))
+    logging.debug('Passed args:\n' + pformat(vars(args)))
 
     if not args.server_port:
         args.server_port = server_port_dict[args.server]
@@ -172,6 +185,14 @@ def main():
                 args.hash.remove(ntlm_hash)
                 args.hash.append(open(ntlm_hash, 'r'))
 
+    if args.cred_id:
+        for cred_id in args.cred_id:
+            if '-' in str(cred_id):
+                start_id, end_id = cred_id.split('-')
+                for n in range(int(start_id), int(end_id) + 1):
+                    args.cred_id.append(n)
+                args.cred_id.remove(cred_id)
+
     for target in args.target:
         if os.path.exists(target):
             with open(target, 'r') as target_file:
@@ -186,7 +207,7 @@ def main():
 
         if args.list_modules:
             for m in modules:
-                logger.info('{:<20} {}'.format(m, modules[m]['description']))
+                logger.info('{:<25} Chainable: {:<10} {}'.format(m, str(modules[m]['chain_support']), modules[m]['description']))
             sys.exit(0)
 
         elif args.module and args.show_options:
@@ -200,13 +221,20 @@ def main():
                 if args.module.lower() == m.lower():
                     module, context, server = loader.init_module(modules[m]['path'])
 
+    elif args.module_chain:
+        chain_list, server = ModuleChainLoader(args, db, logger).init_module_chain()
+
+    if args.execute or args.ps_execute or args.module or args.module_chain:
+        smb_server = CMESMBServer(logger, share_name, args.verbose)
+        smb_server.start()
+
     try:
         '''
             Open all the greenlet (as supposed to redlet??) threads 
             Whoever came up with that name has a fetish for traffic lights
         '''
         pool = Pool(args.threads)
-        jobs = [pool.spawn(Connection, args, db, str(target), module, server) for target in targets]
+        jobs = [pool.spawn(Connection, args, db, str(target), module, chain_list, server, share_name) for target in targets]
 
         #Dumping the NTDS.DIT and/or spidering shares can take a long time, so we ignore the thread timeout
         if args.ntds or args.spider:
@@ -219,5 +247,9 @@ def main():
 
     if server:
         server.shutdown()
+
+    if smb_server:
+        pass
+        #smb_server.shutdown()
 
     logger.info('KTHXBYE!')

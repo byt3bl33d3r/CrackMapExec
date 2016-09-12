@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 setup(name='crackmapexec',
     version='3.1.5-dev',
     description='A swiss army knife for pentesting Windows/Active Directory environments',
+    dependency_links = ['https://github.com/CoreSecurity/impacket/tarball/master#egg=impacket-0.9.16dev'],
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 2.7',
@@ -16,7 +17,7 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'impacket>=0.9.15',
+        'impacket>=0.9.16dev',
         'gevent',
         'netaddr',
         'pyOpenSSL',
