@@ -249,7 +249,6 @@ def main():
         server.shutdown()
 
     if smb_server:
-        pass
-        #smb_server.shutdown()
+        smb_server.shutdown()
 
     logger.info('KTHXBYE!')
