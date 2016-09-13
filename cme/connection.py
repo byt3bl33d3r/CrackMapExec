@@ -6,7 +6,7 @@ from StringIO import StringIO
 from functools import wraps
 from gevent.coros import BoundedSemaphore
 from impacket.smbconnection import SMBConnection, SessionError
-from impacket.nmb import NetBIOSError, SessionError
+from impacket.nmb import NetBIOSError
 from impacket import tds
 from cme.mssql import *
 from impacket.dcerpc.v5.rpcrt import DCERPCException
