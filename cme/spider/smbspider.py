@@ -25,6 +25,15 @@ class SMBSpider:
 
         self.logger.info("Started spidering")
 
+    def get_lastm_time(self, result_obj):
+        lastm_time = None
+        try:
+            lastm_time = strftime('%Y-%m-%d %H:%M', localtime(result_obj.get_mtime_epoch()))
+        except Exception:
+            pass
+
+        return lastm_time
+
     def spider(self, subfolder, depth):
         '''
             Apperently spiders don't like stars *!
@@ -72,7 +81,7 @@ class SMBSpider:
                             self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.args.share,
                                                                                            path,
                                                                                            result.get_longname(),
-                                                                                           strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
+                                                                                           'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
                                                                                            result.get_filesize()))
 
             elif self.regex:
@@ -84,10 +93,10 @@ class SMBSpider:
                             self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.args.share,
                                                                                            path,
                                                                                            result.get_longname(),
-                                                                                           strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())),
+                                                                                           'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
                                                                                            result.get_filesize()))
 
-            if self.args.search_content:
+            if self.args.content:
                 if not result.is_directory():
                     self.search_content(path, result)
 
@@ -121,7 +130,7 @@ class SMBSpider:
                             self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.args.share,
                                                                                                                 path,
                                                                                                                 result.get_longname(),
-                                                                                                                strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
+                                                                                                                'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result), 
                                                                                                                 result.get_filesize(),
                                                                                                                 rfile.tell(),
                                                                                                                 pattern))
@@ -132,7 +141,7 @@ class SMBSpider:
                             self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.args.share,
                                                                                                               path,
                                                                                                               result.get_longname(),
-                                                                                                              strftime('%Y-%m-%d %H:%M', localtime(result.get_mtime_epoch())), 
+                                                                                                              'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result), 
                                                                                                               result.get_filesize(),
                                                                                                               rfile.tell(),
                                                                                                               regex.pattern))

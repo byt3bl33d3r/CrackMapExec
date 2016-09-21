@@ -54,6 +54,7 @@ class ModuleChainLoader(ModuleLoader):
         return True
 
     def init_module_chain(self):
+        server_port_dict = {'http': 80, 'https': 443}
         modules = self.get_modules()
 
         #Initialize all modules specified in the chain command and add the objects to chain_list
@@ -69,10 +70,15 @@ class ModuleChainLoader(ModuleLoader):
             if module['object'] != self.chain_list[-1]['object']: module['options']['COMMAND'] = 'dont notice me senpai'
             getattr(module['object'], 'options')(context, module['options'])
 
+            if hasattr(module['object'], 'required_server'):
+                self.args.server = getattr(module['object'], 'required_server')
+
+        if not self.args.server_port:
+            self.args.server_port = server_port_dict[self.args.server]
+
         if self.is_module_chain_sane():
             server_logger = CMEAdapter(getLogger('CME'), {'module': 'CMESERVER'})
             context = Context(self.db, server_logger, self.args)
-
 
             server = CMEChainServer(self.chain_list, context, self.logger, self.args.server_host, self.args.server_port, self.args.server)
             server.start()

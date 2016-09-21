@@ -77,6 +77,7 @@ class ModuleLoader:
         module  = None
         server  = None
         context = None
+        server_port_dict = {'http': 80, 'https': 443}
 
         module = self.load_module(module_path)
 
@@ -96,6 +97,9 @@ class ModuleLoader:
 
                 if hasattr(module, 'required_server'):
                     self.args.server = getattr(module, 'required_server')
+
+            if not self.args.server_port:
+                self.args.server_port = server_port_dict[self.args.server]
 
                 server = CMEServer(module, context, self.logger, self.args.server_host, self.args.server_port, self.args.server)
                 server.start()

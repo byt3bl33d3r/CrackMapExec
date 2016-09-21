@@ -75,8 +75,8 @@ class CMEAdapter(logging.LoggerAdapter):
         self.highlight(message)
 
 def setup_debug_logger():
-    debug_output_string = "%(asctime)s {:<59} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
-    formatter = logging.Formatter(debug_output_string, datefmt="%m-%d-%Y %H:%M:%S")
+    debug_output_string = "{:<59} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
+    formatter = logging.Formatter(debug_output_string)
     streamHandler = logging.StreamHandler(sys.stdout)
     streamHandler.setFormatter(formatter)
 
@@ -89,7 +89,7 @@ def setup_debug_logger():
 
 def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
 
-    formatter = logging.Formatter("%(asctime)s %(message)s", datefmt="%m-%d-%Y %H:%M:%S")
+    formatter = logging.Formatter("%(message)s")
 
     if log_to_file:
         if not log_prefix:

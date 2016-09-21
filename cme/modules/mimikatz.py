@@ -212,7 +212,11 @@ class CMEModule:
                 context.log.success("Found credentials in Mimikatz output (domain\\username:password)")
                 for cred_set in creds:
                     credtype, domain, username, password,_,_ = cred_set
-                    context.db.add_credential(credtype, domain, username, password)
+                    
+                    #Get the hostid from the DB
+                    hostid = context.db.get_hosts(response.client_address[0])[0][0]
+
+                    context.db.add_credential(credtype, domain, username, password, hostid)
                     context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))

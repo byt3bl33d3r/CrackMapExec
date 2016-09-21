@@ -187,54 +187,57 @@ class CMEDatabaseNavigator(cmd.Cmd):
         else:
             hosts = self.db.get_hosts(filterTerm=filterTerm)
 
-            print "\nHost(s):\n"
-            print "  HostID  IP               Hostname                 Domain           OS"
-            print "  ------  --               --------                 ------           --"
+            if len(hosts) > 1:
+                self.display_hosts(hosts)
+            elif len(hosts) == 1:
+                print "\nHost(s):\n"
+                print "  HostID  IP               Hostname                 Domain           OS"
+                print "  ------  --               --------                 ------           --"
 
-            hostIDList = []
+                hostIDList = []
 
-            for host in hosts:
-                hostID = host[0]
-                hostIDList.append(hostID)
+                for host in hosts:
+                    hostID = host[0]
+                    hostIDList.append(hostID)
 
-                ip = host[1]
-                hostname = host[2]
-                domain = host[3]
-                os = host[4]
+                    ip = host[1]
+                    hostname = host[2]
+                    domain = host[3]
+                    os = host[4]
 
-                print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                             '{:<17}'.format(ip), 
-                                             u'{:<25}'.format(hostname.decode('utf-8')), 
-                                             u'{:<17}'.format(domain.decode('utf-8')),
-                                             '{:<17}'.format(os))
+                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
+                                                 '{:<17}'.format(ip), 
+                                                 u'{:<25}'.format(hostname.decode('utf-8')), 
+                                                 u'{:<17}'.format(domain.decode('utf-8')),
+                                                 '{:<17}'.format(os))
 
-            print ""
+                print ""
 
-            print "\nCredential(s) with Admin Access:\n"
-            print "  CredID  CredType    Domain           UserName             Password"
-            print "  ------  --------    ------           --------             --------"
+                print "\nCredential(s) with Admin Access:\n"
+                print "  CredID  CredType    Domain           UserName             Password"
+                print "  ------  --------    ------           --------             --------"
 
-            for hostID in hostIDList: 
-                links = self.db.get_links(hostID=hostID)
+                for hostID in hostIDList: 
+                    links = self.db.get_links(hostID=hostID)
 
-                for link in links:
-                    linkID, credID, hostID = link
-                    creds = self.db.get_credentials(filterTerm=credID)
+                    for link in links:
+                        linkID, credID, hostID = link
+                        creds = self.db.get_credentials(filterTerm=credID)
 
-                    for cred in creds:
-                        credID = cred[0]
-                        credType = cred[1]
-                        domain = cred[2]
-                        username = cred[3]
-                        password = cred[4]
+                        for cred in creds:
+                            credID = cred[0]
+                            credType = cred[1]
+                            domain = cred[2]
+                            username = cred[3]
+                            password = cred[4]
 
-                        print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
-                                                    '{:<12}'.format(credType), 
-                                                    u'{:<17}'.format(domain.decode('utf-8')), 
-                                                    u'{:<21}'.format(username.decode('utf-8')), 
-                                                    u'{:<17}'.format(password.decode('utf-8')))
+                            print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
+                                                        '{:<12}'.format(credType), 
+                                                        u'{:<17}'.format(domain.decode('utf-8')), 
+                                                        u'{:<21}'.format(username.decode('utf-8')), 
+                                                        u'{:<17}'.format(password.decode('utf-8')))
 
-            print ""
+                print ""
 
     def do_creds(self, line):
 
@@ -282,8 +285,8 @@ class CMEDatabaseNavigator(cmd.Cmd):
             creds = self.db.get_credentials(filterTerm=filterTerm)
 
             print "\nCredential(s):\n"
-            print "  CredID  CredType    Domain           UserName             Password"
-            print "  ------  --------    ------           --------             --------"
+            print "  CredID  CredType    Pillaged From HostID  Domain           UserName             Password"
+            print "  ------  --------    --------------------  ------           --------             --------"
 
             credIDList = []
 
@@ -295,12 +298,15 @@ class CMEDatabaseNavigator(cmd.Cmd):
                 domain = cred[2]
                 username = cred[3]
                 password = cred[4]
+                pillaged_from = cred[5]
 
-                print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
-                                             '{:<12}'.format(credType), 
-                                             u'{:<17}'.format(domain.decode('utf-8')), 
-                                             u'{:<21}'.format(username.decode('utf-8')), 
-                                             u'{:<17}'.format(password.decode('utf-8')))
+                print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID), 
+                                              '{:<12}'.format(credType),
+                                              '{:<22}'.format(pillaged_from),
+                                              u'{:<17}'.format(domain.decode('utf-8')), 
+                                              u'{:<21}'.format(username.decode('utf-8')), 
+                                              u'{:<17}'.format(password.decode('utf-8'))
+                                              )
 
             print ""
 

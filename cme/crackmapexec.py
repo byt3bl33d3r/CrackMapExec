@@ -60,18 +60,18 @@ def main():
 
     parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
     parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
-    parser.add_argument('-id', metavar="CRED_ID", nargs='*', default=[], type=str, dest='cred_id', help='Database credential ID(s) to use for authentication')
-    parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='*', default=[], help="Username(s) or file(s) containing usernames")
+    parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='Database credential ID(s) to use for authentication')
+    parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="Username(s) or file(s) containing usernames")
     ddgroup = parser.add_mutually_exclusive_group()
     ddgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
     ddgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
     msgroup = parser.add_mutually_exclusive_group()
-    msgroup.add_argument("-p", metavar="PASSWORD", dest='password', nargs= '*', default=[], help="Password(s) or file(s) containing passwords")
-    msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='*', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+    msgroup.add_argument("-p", metavar="PASSWORD", dest='password', nargs= '+', default=[], help="Password(s) or file(s) containing passwords")
+    msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
     mcgroup = parser.add_mutually_exclusive_group()
     mcgroup.add_argument("-M", "--module", metavar='MODULE', help='Payload module to use')
     mcgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
-    parser.add_argument('-o', metavar='MODULE_OPTION', nargs='*', default=[], dest='module_options', help='Payload module options')
+    parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='Payload module options')
     parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
     parser.add_argument('--show-options', action='store_true', help='Display module options')
     parser.add_argument("--share", metavar="SHARE", default="C$", help="Specify a share (default: C$)")
@@ -112,8 +112,8 @@ def main():
     sgroup.add_argument("--content", action='store_true', help='Enable file content searching')
     sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', help='Directories to exclude from spidering')
     esgroup = sgroup.add_mutually_exclusive_group()
-    esgroup.add_argument("--pattern", nargs='*', help='Pattern(s) to search for in folders, filenames and file content')
-    esgroup.add_argument("--regex", nargs='*', help='Regex(s) to search for in folders, filenames and file content')
+    esgroup.add_argument("--pattern", nargs='+', help='Pattern(s) to search for in folders, filenames and file content')
+    esgroup.add_argument("--regex", nargs='+', help='Regex(s) to search for in folders, filenames and file content')
     sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
 
     cgroup = parser.add_argument_group("Command Execution", "Options for executing commands")
@@ -127,6 +127,7 @@ def main():
     mgroup = parser.add_argument_group("MSSQL Interaction", "Options for interacting with MSSQL DBs")
     mgroup.add_argument("--mssql", action='store_true', help='Switches CME into MSSQL Mode. If credentials are provided will authenticate against all discovered MSSQL DBs')
     mgroup.add_argument("--mssql-query", metavar='QUERY', type=str, help='Execute the specifed query against the MSSQL DB')
+    mgroup.add_argument("--mssql-auth", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
 
     logger = CMEAdapter(setup_logger())
     first_run_setup(logger)
@@ -144,21 +145,13 @@ def main():
     smb_server = None
     share_name = gen_random_string(5).upper()
     targets    = []
-    server_port_dict = {'http': 80, 'https': 443}
 
     args = parser.parse_args()
-
-    if os.geteuid() != 0:
-        logger.error("I'm sorry {}, I'm afraid I can't let you do that (cause I need root)".format(getuser()))
-        sys.exit(1)
 
     if args.verbose:
         setup_debug_logger()
 
     logging.debug('Passed args:\n' + pformat(vars(args)))
-
-    if not args.server_port:
-        args.server_port = server_port_dict[args.server]
 
     db_path = os.path.join(cme_path, 'cme.db')
     # set the database connection to autocommit w/ isolation level
@@ -189,9 +182,13 @@ def main():
         for cred_id in args.cred_id:
             if '-' in str(cred_id):
                 start_id, end_id = cred_id.split('-')
-                for n in range(int(start_id), int(end_id) + 1):
-                    args.cred_id.append(n)
-                args.cred_id.remove(cred_id)
+                try:
+                    for n in range(int(start_id), int(end_id) + 1):
+                        args.cred_id.append(n)
+                    args.cred_id.remove(cred_id)
+                except Exception as e:
+                    logger.error('Error parsing database credential id: {}'.format(e))
+                    sys.exit(1)
 
     for target in args.target:
         if os.path.exists(target):
@@ -201,32 +198,42 @@ def main():
         else:
             targets.extend(parse_targets(target))
 
-    if args.module or args.list_modules:
+    if args.list_modules:
         loader = ModuleLoader(args, db, logger)
         modules = loader.get_modules()
 
-        if args.list_modules:
-            for m in modules:
-                logger.info('{:<25} Chainable: {:<10} {}'.format(m, str(modules[m]['chain_support']), modules[m]['description']))
-            sys.exit(0)
+        for m in modules:
+            logger.info('{:<25} Chainable: {:<10} {}'.format(m, str(modules[m]['chain_support']), modules[m]['description']))
+        sys.exit(0)
 
-        elif args.module and args.show_options:
-            for m in modules.keys():
-                if args.module.lower() == m.lower():
-                    logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
-            sys.exit(0)
+    elif args.module and args.show_options:
+        loader = ModuleLoader(args, db, logger)
+        modules = loader.get_modules()
 
-        elif args.module:
+        for m in modules.keys():
+            if args.module.lower() == m.lower():
+                logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+        sys.exit(0)
+
+    if args.execute or args.ps_execute or args.module or args.module_chain:
+
+        if os.geteuid() != 0:
+            logger.error("I'm sorry {}, I'm afraid I can't let you do that (cause I need root)".format(getuser()))
+            sys.exit(1)
+
+        loader = ModuleLoader(args, db, logger)
+        modules = loader.get_modules()
+
+        smb_server = CMESMBServer(logger, share_name, args.verbose)
+        smb_server.start()
+
+        if args.module:
             for m in modules.keys():
                 if args.module.lower() == m.lower():
                     module, context, server = loader.init_module(modules[m]['path'])
-
-    elif args.module_chain:
-        chain_list, server = ModuleChainLoader(args, db, logger).init_module_chain()
-
-    if args.execute or args.ps_execute or args.module or args.module_chain:
-        smb_server = CMESMBServer(logger, share_name, args.verbose)
-        smb_server.start()
+        
+        elif args.module_chain:
+            chain_list, server = ModuleChainLoader(args, db, logger).init_module_chain()
 
     try:
         '''

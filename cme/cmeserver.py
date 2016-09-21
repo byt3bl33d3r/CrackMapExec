@@ -3,6 +3,7 @@ import threading
 import ssl
 import os
 import sys
+import logging
 from BaseHTTPServer import BaseHTTPRequestHandler
 from logging import getLogger
 from gevent import sleep
@@ -54,6 +55,7 @@ class CMEServer(threading.Thread):
             self.server.log     = context.log
             self.cert_path      = os.path.join(os.path.expanduser('~/.cme'), 'cme.pem')
 
+            logging.debug('CME server type: ' + server_type)
             if server_type == 'https':
                 self.server.socket = ssl.wrap_socket(self.server.socket, certfile=self.cert_path, server_side=True)
 

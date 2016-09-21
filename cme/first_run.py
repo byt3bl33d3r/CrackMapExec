@@ -41,7 +41,7 @@ def first_run_setup(logger):
             "os" text
             )''')
 
-        #This table keeps track of which credential has admin access over which machine
+        #This table keeps track of which credential has admin access over which machine and vice-versa
         c.execute('''CREATE TABLE "links" (
             "id" integer PRIMARY KEY,
             "credid" integer,
@@ -54,7 +54,8 @@ def first_run_setup(logger):
             "credtype" text,
             "domain" text,
             "username" text,
-            "password" text
+            "password" text,
+            "pillagedfrom" integer
             )''')
 
         # commit the changes and close everything off

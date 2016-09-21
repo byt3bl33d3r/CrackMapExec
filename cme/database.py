@@ -17,7 +17,7 @@ class CMEDatabase:
 
         cur.close()
 
-    def add_credential(self, credtype, domain, username, password):
+    def add_credential(self, credtype, domain, username, password, pillaged_from=-1):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
@@ -27,7 +27,7 @@ class CMEDatabase:
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO credentials (credtype, domain, username, password) VALUES (?,?,?,?)", [credtype, domain, username, password] )
+            cur.execute("INSERT INTO credentials (credtype, domain, username, password, pillagedfrom) VALUES (?,?,?,?,?)", [credtype, domain, username, password, pillaged_from] )
 
         cur.close()
 
@@ -119,7 +119,7 @@ class CMEDatabase:
 
         # if we're filtering by username
         elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM credentials WHERE LOWER(username) LIKE LOWER(?)", [filterTerm])
+            cur.execute("SELECT * FROM credentials WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower())])
 
         # otherwise return all credentials            
         else:
@@ -152,7 +152,7 @@ class CMEDatabase:
 
         # if we're filtering by ip/hostname
         elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM hosts WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?) LIMIT 1", [filterTerm, filterTerm])
+            cur.execute("SELECT * FROM hosts WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower()), '%{}%'.format(filterTerm.lower())])
 
         # otherwise return all credentials            
         else:

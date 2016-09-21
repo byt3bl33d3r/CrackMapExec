@@ -99,16 +99,11 @@ class Connection:
 
             try:
                 '''
-                    DC's seem to want us to logoff first
-                    Windows workstations sometimes reset the connection, so we handle both cases here
+                    DC's seem to want us to logoff first, windows workstations sometimes reset the connection
                     (go home Windows, you're drunk)
                 '''
                 smb.logoff()
-            except NetBIOSError:
-                pass
-            except socket.error:
-                pass
-            except SessionError:
+            except:
                 pass
 
             if self.args.mssql:
@@ -278,7 +273,7 @@ class Connection:
     def plaintext_login(self, domain, username, password):
         try:
             if self.args.mssql:
-                res = self.conn.login(None, username, password, domain, None, True)
+                res = self.conn.login(None, username, password, domain, None, True if self.args.mssql_auth == 'windows' else False)
                 if res is not True:
                     self.conn.printReplies()
                     return False
@@ -334,7 +329,7 @@ class Connection:
 
         try:
             if self.args.mssql:
-                res = self.conn.login(None, username, '', domain, ntlm_hash, True)
+                res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True if self.args.mssql_auth == 'windows' else False)
                 if res is not True:
                     self.conn.printReplies()
                     return False
@@ -385,7 +380,11 @@ class Connection:
                     c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=int(cred_id))[0]
 
                     if not domain: domain = self.domain
-                    if self.args.domain: domain = self.args.domain
+
+                    if self.args.local_auth:
+                        domain = self.domain
+                    elif self.args.domain: 
+                        domain = self.args.domain
 
                     if credtype == 'hash' and not self.over_fail_limit(username):
                         if self.hash_login(domain, username, password): return
@@ -537,9 +536,8 @@ class Connection:
 
     @requires_admin
     def ntds(self):
-        #We could just return the whole NTDS.dit database but in large domains it would be huge 
-        #and would take up too much memory
-        DumpSecrets(self).NTDS_dump()
+        #We could just return the whole NTDS.dit database but in large domains it would be huge and would take up too much memory
+        DumpSecrets(self).NTDS_dump(self.args.ntds, self.args.ntds_pwdLastSet, self.args.ntds_history)
 
     @requires_admin
     def wdigest(self):

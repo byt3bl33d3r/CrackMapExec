@@ -17,8 +17,7 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        #'impacket>=0.9.16dev',
-        'impacket>=0.9.15'
+        'impacket>=0.9.15',
         'gevent',
         'netaddr',
         'pyOpenSSL',
