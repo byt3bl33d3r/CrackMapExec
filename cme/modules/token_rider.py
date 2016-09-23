@@ -159,7 +159,7 @@ class CMEModule:
         return payload
 
     def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher, methods=['atexec', 'smbexec'])
+        connection.execute(launcher, methods=['smbexec', 'atexec'])
         context.log.success('Executed launcher')
 
     def on_request(self, context, request, launcher, payload):

