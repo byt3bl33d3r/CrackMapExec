@@ -76,7 +76,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            request.wfile.write(ps_script)
+            request.wfile.write(payload)
 
         else:
             request.send_response(404)
