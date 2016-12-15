@@ -1,4 +1,5 @@
-impacket>=0.9.15
+git+https://github.com/CoreSecurity/impacket
+git+https://github.com/the-useless-one/pywerview
 gevent
 netaddr
 pycrypto

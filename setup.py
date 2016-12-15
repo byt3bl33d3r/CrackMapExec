@@ -1,14 +1,17 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='3.1.5-dev',
-    description='A swiss army knife for pentesting Windows/Active Directory environments',
-    #dependency_links = ['https://github.com/CoreSecurity/impacket/tarball/master#egg=impacket-0.9.16dev'],
+    version='4.0.0dev',
+    description='A swiss army knife for pentesting networks',
+    dependency_links = ['https://github.com/CoreSecurity/impacket/tarball/master#egg=impacket-0.9.16dev',
+                        'https://github.com/the-useless-one/pywerview/tarball/master#egg=pywerview-0.1.1'],
     classifiers=[
+        'Environment :: Console',
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python :: 2.7',
+        'Topic :: Security',
     ],
-    keywords='pentesting security windows smb active-directory',
+    keywords='pentesting security windows smb active-directory networks',
     url='http://github.com/byt3bl33d3r/CrackMapExec',
     author='byt3bl33d3r',
     author_email='byt3bl33d3r@gmail.com',
@@ -17,7 +20,8 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'impacket>=0.9.15',
+        'impacket>=0.9.16dev',
+        'pywerview>=0.1.1',
         'gevent',
         'netaddr',
         'pyOpenSSL',

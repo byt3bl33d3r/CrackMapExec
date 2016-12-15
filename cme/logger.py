@@ -5,7 +5,7 @@ from termcolor import colored
 from datetime import datetime
 
 #The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
-#There must be a better way of doing this...
+#There must be a better way of doing this, but this way we might save some penguins!
 
 ansi_escape = re.compile(r'\x1b[^m]*m')
 
@@ -23,8 +23,8 @@ logging.FileHandler.emit = antiansi_emit
 
 class CMEAdapter(logging.LoggerAdapter):
 
-    def __init__(self, logger, extra=None):
-        self.logger = logger
+    def __init__(self, logger_name='CME', extra=None):
+        self.logger = logging.getLogger(logger_name)
         self.extra = extra
 
     def process(self, msg, kwargs):
@@ -43,12 +43,12 @@ class CMEAdapter(logging.LoggerAdapter):
         if 'module' in self.extra.keys():
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
-            module_name = colored('CME', 'blue', attrs=['bold'])
+            module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
         return u'{:<25} {}:{} {:<15} {}'.format(module_name,
                                            self.extra['host'],
-                                           self.extra['port'], 
-                                           self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE', 
+                                           self.extra['port'],
+                                           self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE',
                                            msg), kwargs
 
     def info(self, msg, *args, **kwargs):

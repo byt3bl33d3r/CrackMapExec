@@ -2,12 +2,13 @@ import os
 import sqlite3
 import shutil
 import cme
+from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
 from sys import exit
 
 CME_PATH  = os.path.expanduser('~/.cme')
 TMP_PATH  = os.path.join('/tmp', 'cme_hosted')
-DB_PATH   = os.path.join(CME_PATH, 'cme.db')
+WS_PATH   = os.path.join(CME_PATH, 'workspaces')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
 
@@ -18,49 +19,41 @@ def first_run_setup(logger):
 
     if not os.path.exists(CME_PATH):
         logger.info('First time use detected')
-        logger.info('Creating home directory structure') 
+        logger.info('Creating home directory structure')
 
         os.mkdir(CME_PATH)
-        folders = ['logs', 'modules']
+        folders = ['logs', 'modules', 'protocols', 'workspaces']
         for folder in folders:
             os.mkdir(os.path.join(CME_PATH,folder))
 
-    if not os.path.exists(DB_PATH):
-        logger.info('Initializing the database')
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
+    if not os.path.exists(os.path.join(WS_PATH, 'default')):
+        logger.info('Creating default workspace')
+        os.mkdir(os.path.join(WS_PATH, 'default'))
 
-        # try to prevent some of the weird sqlite I/O errors
-        c.execute('PRAGMA journal_mode = OFF')
+    p_loader =  protocol_loader()
+    protocols = p_loader.get_protocols()
+    for protocol in protocols.keys():
+        try:
+            protocol_object = p_loader.load_protocol(protocols[protocol]['dbpath'])
+        except KeyError:
+            continue
 
-        c.execute('''CREATE TABLE "hosts" (
-            "id" integer PRIMARY KEY,
-            "ip" text,
-            "hostname" text,
-            "domain" test,
-            "os" text
-            )''')
+        proto_db_path = os.path.join(WS_PATH, 'default', protocol + '.db')
 
-        #This table keeps track of which credential has admin access over which machine and vice-versa
-        c.execute('''CREATE TABLE "links" (
-            "id" integer PRIMARY KEY,
-            "credid" integer,
-            "hostid" integer
-            )''')
+        if not os.path.exists(proto_db_path):
+            logger.info('Initializing {} protocol database'.format(protocol.upper()))
+            conn = sqlite3.connect(proto_db_path)
+            c = conn.cursor()
 
-        # type = hash, plaintext
-        c.execute('''CREATE TABLE "credentials" (
-            "id" integer PRIMARY KEY,
-            "credtype" text,
-            "domain" text,
-            "username" text,
-            "password" text,
-            "pillagedfrom" integer
-            )''')
+            # try to prevent some of the weird sqlite I/O errors
+            c.execute('PRAGMA journal_mode = OFF')
+            c.execute('PRAGMA foreign_keys = 1')
 
-        # commit the changes and close everything off
-        conn.commit()
-        conn.close()
+            getattr(protocol_object, 'database').db_schema(c)
+
+            # commit the changes and close everything off
+            conn.commit()
+            conn.close()
 
     if not os.path.exists(CONFIG_PATH):
         logger.info('Copying default configuration file')
