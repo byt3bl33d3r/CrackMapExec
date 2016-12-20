@@ -8,6 +8,7 @@ from gevent.pool import Pool
 from gevent import joinall
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.misc import gen_random_string
+from cme.helpers.logger import highlight
 from cme.targetparser import parse_targets
 from cme.cli import gen_cli_args
 from cme.loaders.protocol_loader import protocol_loader
@@ -129,7 +130,7 @@ def main():
             for m in modules:
                 logger.info('{:<25} {}'.format(m, modules[m]['description']))
 
-        elif args.module and args.module_options:
+        elif args.module and args.show_module_options:
 
             modules = loader.get_modules()
             for m in modules.keys():
@@ -143,6 +144,14 @@ def main():
                     module = loader.init_module(modules[m]['path'])
                     setattr(protocol_object, 'module', module)
                     break
+
+            if getattr(module, 'opsec_safe') is False:
+                ans = raw_input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n]', 'red'))
+                if ans.lower() == 'n' : sys.exit(1)
+
+            if getattr(module, 'multiple_hosts') is False and len(targets) > 1:
+                ans = raw_input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n]", 'red'))
+                if ans.lower() == 'n' : sys.exit(1)
 
             if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
 

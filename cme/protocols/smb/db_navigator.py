@@ -28,18 +28,20 @@ class navigator(cmd.Cmd):
         print "  ------  --------     --------    ------           --------             --------"
 
         for cred in creds:
-            # (id, credtype, domain, username, password, host, notes, sid)
-            credID = cred[0]
-            credType = cred[1]
-            domain = cred[2]
-            username = cred[3]
-            password = cred[4]
 
-            links = self.db.get_links(credID=credID)
+            credID = cred[0]
+            domain = cred[1]
+            username = cred[2]
+            password = cred[3]
+            local = cred[4]
+            credtype = cred[5]
+            pillaged_from = cred[6]
+
+            links = self.db.get_admin_relations(userID=credID)
 
             print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
                                            '{:<13}'.format(str(len(links)) + ' Host(s)'),
-                                           '{:<12}'.format(credType),
+                                           '{:<12}'.format(credtype),
                                            u'{:<17}'.format(domain.decode('utf-8')),
                                            u'{:<21}'.format(username.decode('utf-8')),
                                            u'{:<17}'.format(password.decode('utf-8')))
@@ -48,14 +50,15 @@ class navigator(cmd.Cmd):
 
     def display_groups(self, groups):
         print '\nGroups:\n'
-        print " GroupID  Name"
-        print " -------  ----"
+        print " GroupID Domain           Name"
+        print " -------  ------           ----"
 
         for group in groups:
             groupID = group[0]
-            name = group[1]
+            domain = group[1]
+            name = group[2]
 
-            print u" {} {}".format('{:<8}'.format(groupID), '{:<15}'.format(name))
+            print u" {} {} {}".format('{:<8}'.format(groupID), '{:<15}'.format(domain), '{:<15}'.format(name))
 
         print ""
 
@@ -73,7 +76,7 @@ class navigator(cmd.Cmd):
             domain = host[3]
             os = host[4]
 
-            links = self.db.get_links(hostID=hostID)
+            links = self.db.get_admin_relations(hostID=hostID)
 
             print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID),
                                            '{:<15}'.format(str(len(links)) + ' Cred(s)'),
@@ -184,8 +187,8 @@ class navigator(cmd.Cmd):
                 self.display_groups(groups)
             elif len(groups) == 1:
                 print '\nGroup:\n'
-                print " GroupID  Name"
-                print " -------  ----"
+                print " GroupID Domain           Name"
+                print " -------  ------           ----"
 
                 for group in groups:
                     groupID = group[0]
@@ -198,11 +201,11 @@ class navigator(cmd.Cmd):
         filterTerm = line.strip()
 
         if filterTerm == "":
-            hosts = self.db.get_hosts()
+            hosts = self.db.get_computers()
             self.display_hosts(hosts)
 
         else:
-            hosts = self.db.get_hosts(filterTerm=filterTerm)
+            hosts = self.db.get_computers(filterTerm=filterTerm)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
@@ -237,7 +240,7 @@ class navigator(cmd.Cmd):
                 print "  ------  --------    ------           --------             --------"
 
                 for hostID in hostIDList:
-                    links = self.db.get_links(hostID=hostID)
+                    links = self.db.get_admin_relations(hostID=hostID)
 
                     for link in links:
                         linkID, credID, hostID = link
@@ -245,13 +248,15 @@ class navigator(cmd.Cmd):
 
                         for cred in creds:
                             credID = cred[0]
-                            credType = cred[1]
-                            domain = cred[2]
-                            username = cred[3]
-                            password = cred[4]
+                            domain = cred[1]
+                            username = cred[2]
+                            password = cred[3]
+                            local = cred[4]
+                            credtype = cred[5]
+                            pillaged_from = cred[6]
 
                             print u"  {}{}{}{}{}".format('{:<8}'.format(credID),
-                                                        '{:<12}'.format(credType),
+                                                        '{:<12}'.format(credtype),
                                                         u'{:<17}'.format(domain.decode('utf-8')),
                                                         u'{:<21}'.format(username.decode('utf-8')),
                                                         u'{:<17}'.format(password.decode('utf-8')))
@@ -290,7 +295,7 @@ class navigator(cmd.Cmd):
                 return
             else:
                 self.db.remove_credentials(args)
-                self.db.remove_links(credIDs=args)
+                self.db.remove_admin_relation(userIDs=args)
 
         elif filterTerm.split()[0].lower() == "plaintext":
             creds = self.db.get_credentials(credtype="plaintext")
@@ -313,14 +318,15 @@ class navigator(cmd.Cmd):
                 credID = cred[0]
                 credIDList.append(credID)
 
-                credType = cred[1]
-                domain = cred[2]
-                username = cred[3]
-                password = cred[4]
-                pillaged_from = cred[5]
+                domain = cred[1]
+                username = cred[2]
+                password = cred[3]
+                local = cred[4]
+                credtype = cred[5]
+                pillaged_from = cred[6]
 
                 print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                              '{:<12}'.format(credType),
+                                              '{:<12}'.format(credtype),
                                               '{:<22}'.format(pillaged_from),
                                               u'{:<17}'.format(domain.decode('utf-8')),
                                               u'{:<21}'.format(username.decode('utf-8')),
@@ -334,11 +340,11 @@ class navigator(cmd.Cmd):
             print "  ------  --               --------                 ------           --"
 
             for credID in credIDList:
-                links = self.db.get_links(credID=credID)
+                links = self.db.get_admin_relations(userID=credID)
 
                 for link in links:
                     linkID, credID, hostID =  link
-                    hosts = self.db.get_hosts(hostID)
+                    hosts = self.db.get_computers(hostID)
 
                     for host in hosts:
                         hostID = host[0]

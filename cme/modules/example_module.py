@@ -5,10 +5,10 @@ class CMEModule:
 
     '''
     name = 'example module'
-
     description = 'I do something'
-
     supported_protocols = []
+    opsec_safe= True #Does the module touch disk?
+    multiple_hosts = True #Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         '''Required. Module options get parsed here. Additionally, put the modules usage here as well'''

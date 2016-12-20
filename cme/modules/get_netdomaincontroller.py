@@ -7,8 +7,12 @@ class CMEModule():
     name = 'get_netdomaincontroller'
     description = "Wrapper for PowerView's Get-NetDomainController"
     supported_protocols = ['mssql', 'smb']
+    opsec_safe = True
+    multiple_hosts = False
 
     def  options(self, context, module_options):
+        '''
+        '''
         pass
 
     def on_admin_login(self, context, connection):
@@ -49,7 +53,7 @@ class CMEModule():
                 if line != '\r\n' and not line.startswith('Name') and not line.startswith('---'):
                     hostname, domain, ip = filter(None, line.strip().split(' '))
                     #logging.debug('{} {} {}'.format(hostname, domain, ip))
-                    context.db.add_host(ip, hostname, domain, '', dc=True)
+                    context.db.add_computer(ip, hostname, domain, '', dc=True)
                     dc_count += 1
 
             context.log.success('Added {} Domain Controllers to the database'.format(highlight(dc_count)))

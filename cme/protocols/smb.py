@@ -111,7 +111,7 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
-        self.db.add_host(self.host, self.hostname, self.domain, self.server_os)
+        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
         try:
             '''
@@ -148,7 +148,7 @@ class smb(connection):
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
-                self.db.link_cred_to_host('plaintext', domain, username, password, self.host)
+                self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
             out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
@@ -189,7 +189,7 @@ class smb(connection):
             self.db.add_credential('hash', domain, username, ntlm_hash)
 
             if self.admin_privs:
-                self.db.link_cred_to_host('hash', domain, username, ntlm_hash, self.host)
+                self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
             out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),

@@ -15,21 +15,15 @@ class database:
             )''')
 
         # type = hash, plaintext
-        db_conn.execute('''CREATE TABLE "credentials" (
-            "id" integer PRIMARY KEY,
-            "userid", integer,
-            "credtype" text,
-            "password" text,
-            "pillaged_from_computerid" integer,
-            FOREIGN KEY(userid) REFERENCES users(id),
-            FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
-            )''')
-
         db_conn.execute('''CREATE TABLE "users" (
             "id" integer PRIMARY KEY,
             "domain" text,
             "username" text,
+            "password" text,
             "local" boolean,
+            "credtype" text,
+            "pillaged_from_computerid" integer,
+            FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
             )''')
 
         db_conn.execute('''CREATE TABLE "groups" (
@@ -88,7 +82,7 @@ class database:
 
     #    cur.close()
 
-    def add_host(self, ip, hostname, domain, os, dc=False):
+    def add_computer(self, ip, hostname, domain, os, dc=False):
         """
         Check if this host has already been added to the database, if not add it in.
         """
@@ -102,33 +96,28 @@ class database:
 
         cur.close()
 
-    def add_credential(self, credtype, domain, username, password, pillaged_from='NULL', local=False, userID=None):
+    def add_credential(self, credtype, domain, username, password, pillaged_from='NULL', local=False):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-        self.add_user(domain, username, local)
-
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND local=?", [domain, username, local])
+        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=? and local=?", [credtype, domain, username, password, local])
         results = cur.fetchall()
-        for user in results:
-            userid = user[0]
-            cur.execute("SELECT * from credentials WHERE userid=? AND credtype=? AND password=?", [userid, credtype, password])
-            results=cur.fetchall()
-            if not len(results):
-                cur.execute("INSERT INTO credentials (userid, credtype, password, pillaged_from_computerid) VALUES (?,?,?,?)", [userid, credtype, password, pillaged_from] )
+
+        if not len(results):
+            cur.execute("INSERT INTO users (domain, username, password, local, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?,?)", [domain, username, password, local, credtype, pillaged_from] )
 
         cur.close()
 
     def add_user(self, domain, username, local=False):
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) and LOWER(username)=LOWER(?) and local=(?)", [domain, username, local])
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND local=(?)", [domain, username, local])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO users (domain, username, local) VALUES (?,?,?)", [domain, username, local])
+            cur.execute("INSERT INTO users (domain, username, password, local, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?,?)", [domain, username, 'NULL', local, 'NULL', 'NULL'])
 
         cur.close()
 
@@ -161,12 +150,16 @@ class database:
             cur.execute("DELETE FROM credentials WHERE id=?", [credID])
             cur.close()
 
-    def add_admin_user(self, userid, host):
+    def add_admin_user(self, credtype, domain, username, password, host, local=False, userid=None):
 
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE userid=?", [userid])
-        users = cur.fetchall()
+        if userid:
+            cur.execute("SELECT * FROM users WHERE id=?", [userid])
+            users = cur.fetchall()
+        else:
+            cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=? and local=?", [credtype, domain, username, password, local])
+            users = cur.fetchall()
 
         cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [host])
         hosts = cur.fetchall()
@@ -218,7 +211,7 @@ class database:
         Check if this credential ID is valid.
         """
         cur = self.conn.cursor()
-        cur.execute('SELECT * FROM credentials WHERE id=? LIMIT 1', [credentialID])
+        cur.execute('SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1', [credentialID])
         results = cur.fetchall()
         cur.close()
         return len(results) > 0
@@ -232,18 +225,18 @@ class database:
 
         # if we're returning a single credential by ID
         if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM credentials WHERE id=? LIMIT 1", [filterTerm])
+            cur.execute("SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1", [filterTerm])
 
         # if we're filtering by credtype
         elif credtype:
-            cur.execute("SELECT * FROM credentials WHERE credtype=?", [credtype])
+            cur.execute("SELECT * FROM users WHERE credtype=? AND password IS NOT NULL", [credtype])
 
         elif userID:
-            cur.execute("SELECT * FROM credentials WHERE userid=?", [userID])
+            cur.execute("SELECT * FROM users WHERE userid=? AND password IS NOT NULL", [userID])
 
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM credentials")
+            cur.execute("SELECT * FROM users WHERE password IS NOT NULL")
 
         results = cur.fetchall()
         cur.close()
@@ -277,7 +270,7 @@ class database:
         cur.close()
         return results
 
-    def is_host_valid(self, hostID):
+    def is_computer_valid(self, hostID):
         """
         Check if this host ID is valid.
         """
@@ -287,7 +280,7 @@ class database:
         cur.close()
         return len(results) > 0
 
-    def get_hosts(self, filterTerm=None):
+    def get_computers(self, filterTerm=None):
         """
         Return hosts from the database.
         """
@@ -295,7 +288,7 @@ class database:
         cur = self.conn.cursor()
 
         # if we're returning a single host by ID
-        if self.is_host_valid(filterTerm):
+        if self.is_computer_valid(filterTerm):
             cur.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
 
         # if we're filtering by ip/hostname

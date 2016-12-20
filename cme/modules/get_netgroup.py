@@ -7,6 +7,8 @@ class CMEModule():
     name = 'get_netgroup'
     description = "Wrapper for PowerView's Get-NetGroup"
     supported_protocols = ['mssql', 'smb']
+    opsec_safe = True
+    multiple_hosts = False
 
     def  options(self, context, module_options):
         '''
@@ -21,11 +23,15 @@ class CMEModule():
         if module_options and 'GROUPNAME' in module_options:
             self.group_name = module_options['GROUPNAME']
 
+        elif module_options and 'USERNAME' in module_options:
+            self.user_name = module_options['USERNAME']
+
     def on_admin_login(self, context, connection):
         self.domain = connection.conn.getServerDomain()
 
         command = 'Get-NetGroup | Out-String'
         if self.group_name : command = 'Get-NetGroup -GroupName {} | Out-String'.format(self.group_name)
+        if self.user_name: command = 'Get-NetGroup -UserName {} | Out-String'.format(self.user_name)
 
         launcher = gen_ps_iex_cradle(context.server, context.localip, context.server_port, 'PowerView.ps1', command)
         ps_command = create_ps_command(launcher)
@@ -60,7 +66,12 @@ class CMEModule():
             context.log.info('Parsing output, please wait...')
             buf = StringIO(data).readlines()
             for line in buf:
-                context.db.add_group(self.domain, line.strip())
+                group_name = line.strip()
+                domain = self.domain
+                if self.user_name:
+                    domain, group_name = line.strip().split('\\')
+
+                context.db.add_group(domain, group_name)
                 group_count += 1
 
-            context.log.success('Added {} groups to the database'.format(highlight(group_count)))
+            context.log.success('Added {} group(s) to the database'.format(highlight(group_count)))

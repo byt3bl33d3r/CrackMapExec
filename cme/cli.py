@@ -59,7 +59,7 @@ def gen_cli_args():
     #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='Payload module options')
     module_parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
-    module_parser.add_argument('--options', dest='module_options', action='store_true', help='Display module options')
+    module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='Display module options')
     module_parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (default: https)')
     module_parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
     module_parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')

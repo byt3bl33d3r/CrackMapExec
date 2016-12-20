@@ -32,6 +32,14 @@ class module_loader:
             self.logger.error('{} missing the supported_protocols variable'.format(module_path))
             module_error = True
 
+        elif not hasattr(module, 'opsec_safe'):
+            self.logger.error('{} missing the opsec_safe variable'.format(module_path))
+            module_error = True
+
+        elif not hasattr(module, 'multiple_hosts'):
+            self.logger.error('{} missing the multiple_hosts variable'.format(module_path))
+            module_error = True
+
         elif not hasattr(module, 'options'):
             self.logger.error('{} missing the options function'.format(module_path))
             module_error = True

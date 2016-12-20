@@ -12,10 +12,10 @@ class CMEModule:
     '''
 
     name = 'mimikatz'
-
     description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
-
     supported_protocols = ['mssql', 'smb']
+    opsec_safe = True
+    multiple_hosts = True
 
     def options(self, context, module_options):
         '''
@@ -200,10 +200,10 @@ class CMEModule:
                 for cred_set in creds:
                     credtype, domain, username, password,_,_ = cred_set
                     #Get the hostid from the DB
-                    hostid = context.db.get_hosts(response.client_address[0])[0][0]
+                    hostid = context.db.get_computers(response.client_address[0])[0][0]
                     context.db.add_credential(credtype, domain, username, password, hostid)
 
-                context.log.success("Added {} credential(s) to the database".format(len(creds)))
+                context.log.success("Added {} credential(s) to the database".format(highlight(len(creds))))
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)
