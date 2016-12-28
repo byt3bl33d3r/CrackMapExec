@@ -4,7 +4,7 @@ from logging import getLogger
 from traceback import format_exc
 from StringIO import StringIO
 from functools import wraps
-from gevent.coros import BoundedSemaphore
+from gevent.lock import BoundedSemaphore
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.nmb import NetBIOSError
 from impacket import tds
