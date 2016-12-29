@@ -22,7 +22,7 @@ import logging
 
 def main():
 
-    VERSION  = '3.1.5-dev'
+    VERSION  = '3.1.5dev'
     CODENAME = '\'Stoofvlees\''
 
     parser = argparse.ArgumentParser(description="""
