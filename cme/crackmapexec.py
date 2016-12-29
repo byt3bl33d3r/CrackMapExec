@@ -52,7 +52,7 @@ def main():
 
                                     formatter_class=RawTextHelpFormatter,
                                     version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog="What is it? It's a stew... But what is it? It's a stew...")
+                                    epilog="Y'all got any more of that smidge left?")
 
     parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
     parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
