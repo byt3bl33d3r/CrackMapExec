@@ -6,15 +6,11 @@ from subprocess import check_output, PIPE
 from sys import exit
 
 CME_PATH  = os.path.expanduser('~/.cme')
-TMP_PATH  = os.path.join('/tmp', 'cme_hosted')
 DB_PATH   = os.path.join(CME_PATH, 'cme.db')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
 
 def first_run_setup(logger):
-
-    if not os.path.exists(TMP_PATH):
-        os.mkdir(TMP_PATH)
 
     if not os.path.exists(CME_PATH):
         logger.info('First time use detected')

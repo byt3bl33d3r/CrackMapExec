@@ -67,7 +67,6 @@ class SAMHashes(OfflineRegistry):
     def dump(self):
         NTPASSWORD = "NTPASSWORD\0"
         LMPASSWORD = "LMPASSWORD\0"
-        sam_hashes = []
 
         if self.__samFile is None:
             # No SAM file provided
@@ -115,10 +114,7 @@ class SAMHashes(OfflineRegistry):
             answer =  "%s:%d:%s:%s:::" % (userName, rid, hexlify(lmHash), hexlify(ntHash))
             self.__itemsFound[rid] = answer
             self.__logger.highlight(answer)
-            sam_hashes.append(answer)
             self.__db.add_credential('hash', self.__hostname, userName, '{}:{}'.format(hexlify(lmHash), hexlify(ntHash)))
-
-        return sam_hashes
 
     def export(self, fileName):
         if len(self.__itemsFound) > 0:

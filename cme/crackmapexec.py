@@ -10,14 +10,10 @@ from argparse import RawTextHelpFormatter
 from cme.connection import Connection
 from cme.database import CMEDatabase
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
-from cme.helpers import highlight, gen_random_string
+from cme.helpers import highlight
 from cme.targetparser import parse_targets
 from cme.moduleloader import ModuleLoader
-from cme.modulechainloader import ModuleChainLoader
-from cme.cmesmbserver import CMESMBServer
 from cme.first_run import first_run_setup
-from getpass import getuser
-from pprint import pformat
 import sqlite3
 import argparse
 import os
@@ -29,11 +25,11 @@ def main():
     VERSION  = '3.1.5-dev'
     CODENAME = '\'Stoofvlees\''
 
-    parser = argparse.ArgumentParser(description=""" 
-      ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______ 
+    parser = argparse.ArgumentParser(description="""
+      ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
      /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
     |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
-    |  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |     
+    |  |     |      /       /  /_\  \   |  |     |    <   |  |\/|  |   /  /_\  \   |   ___/  |   __|    >   <   |   __|  |  |
     |  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
      \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
@@ -46,7 +42,7 @@ def main():
                                 @ShawnDEvans's smbmap https://github.com/ShawnDEvans/smbmap
                                 @gojhonny's CredCrack https://github.com/gojhonny/CredCrack
                                 @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
-                                                         
+
                                                       {}: {}
                                                   {}: {}
     """.format(highlight('Version', 'red'),
@@ -70,7 +66,6 @@ def main():
     msgroup.add_argument("-H", metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
     mcgroup = parser.add_mutually_exclusive_group()
     mcgroup.add_argument("-M", "--module", metavar='MODULE', help='Payload module to use')
-    mcgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='Payload module options')
     parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
     parser.add_argument('--show-options', action='store_true', help='Display module options')
@@ -135,23 +130,20 @@ def main():
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
-    
+
     cme_path = os.path.expanduser('~/.cme')
 
-    module     = None
-    chain_list = None
-    server     = None
-    context    = None
-    smb_server = None
-    share_name = gen_random_string(5).upper()
-    targets    = []
+    module  = None
+    server  = None
+    context = None
+    targets = []
 
     args = parser.parse_args()
 
     if args.verbose:
         setup_debug_logger()
 
-    logging.debug('Passed args:\n' + pformat(vars(args)))
+    logging.debug(vars(args))
 
     db_path = os.path.join(cme_path, 'cme.db')
     # set the database connection to autocommit w/ isolation level
@@ -198,25 +190,22 @@ def main():
         else:
             targets.extend(parse_targets(target))
 
-    if args.list_modules:
+    if args.list_modules or args.show_options:
         loader = ModuleLoader(args, db, logger)
         modules = loader.get_modules()
 
-        for m in modules:
-            logger.info('{:<25} Chainable: {:<10} {}'.format(m, str(modules[m]['chain_support']), modules[m]['description']))
-        sys.exit(0)
+        if args.list_modules:
+            for m in modules:
+                logger.info('{:<20} {}'.format(m, modules[m]['description']))
+            sys.exit(0)
 
-    elif args.module and args.show_options:
-        loader = ModuleLoader(args, db, logger)
-        modules = loader.get_modules()
+        elif args.module and args.show_options:
+            for m in modules.keys():
+                if args.module.lower() == m.lower():
+                    logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+            sys.exit(0)
 
-        for m in modules.keys():
-            if args.module.lower() == m.lower():
-                logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
-        sys.exit(0)
-
-    if args.execute or args.ps_execute or args.module or args.module_chain:
-
+    if args.module:
         if os.geteuid() != 0:
             logger.error("I'm sorry {}, I'm afraid I can't let you do that (cause I need root)".format(getuser()))
             sys.exit(1)
@@ -224,24 +213,18 @@ def main():
         loader = ModuleLoader(args, db, logger)
         modules = loader.get_modules()
 
-        smb_server = CMESMBServer(logger, share_name, args.verbose)
-        smb_server.start()
-
         if args.module:
             for m in modules.keys():
                 if args.module.lower() == m.lower():
                     module, context, server = loader.init_module(modules[m]['path'])
-        
-        elif args.module_chain:
-            chain_list, server = ModuleChainLoader(args, db, logger).init_module_chain()
 
     try:
         '''
-            Open all the greenlet (as supposed to redlet??) threads 
+            Open all the greenlet (as supposed to redlet??) threads
             Whoever came up with that name has a fetish for traffic lights
         '''
         pool = Pool(args.threads)
-        jobs = [pool.spawn(Connection, args, db, str(target), module, chain_list, server, share_name) for target in targets]
+        jobs = [pool.spawn(Connection, args, db, str(target), module, server) for target in targets]
 
         #Dumping the NTDS.DIT and/or spidering shares can take a long time, so we ignore the thread timeout
         if args.ntds or args.spider:
@@ -254,8 +237,5 @@ def main():
 
     if server:
         server.shutdown()
-
-    if smb_server:
-        smb_server.shutdown()
 
     logger.info('KTHXBYE!')

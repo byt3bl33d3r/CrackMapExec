@@ -4,7 +4,7 @@ from logging import getLogger
 from traceback import format_exc
 from StringIO import StringIO
 from functools import wraps
-from gevent.coros import BoundedSemaphore
+from gevent.lock import BoundedSemaphore
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.nmb import NetBIOSError
 from impacket import tds
@@ -41,14 +41,12 @@ def requires_admin(func):
 
 class Connection:
 
-    def __init__(self, args, db, host, module, chain_list, cmeserver, share_name):
+    def __init__(self, args, db, host, module, cmeserver):
         self.args = args
         self.db = db
         self.host = host
         self.module = module
-        self.chain_list = chain_list
         self.cmeserver = cmeserver
-        self.share_name = share_name
         self.conn = None
         self.hostname = None
         self.domain = None
@@ -59,14 +57,14 @@ class Connection:
         self.hash = None
         self.admin_privs = False
         self.failed_logins = 0
-        
+
         try:
             smb = SMBConnection(self.host, self.host, None, self.args.smb_port)
 
             #Get our IP from the socket
             local_ip = smb.getSMBServer().get_socket().getsockname()[0]
 
-            #Get the remote ip address (in case the target is a hostname) 
+            #Get the remote ip address (in case the target is a hostname)
             remote_ip = smb.getRemoteHost()
 
             try:
@@ -86,14 +84,14 @@ class Connection:
             self.db.add_host(self.host, self.hostname, self.domain, self.server_os)
 
             self.logger = CMEAdapter(getLogger('CME'), {
-                                                        'host': self.host, 
+                                                        'host': self.host,
                                                         'port': self.args.smb_port,
                                                         'hostname': u'{}'.format(self.hostname)
                                                        })
 
             self.logger.info(u"{} (name:{}) (domain:{})".format(
                                                                 self.server_os,
-                                                                self.hostname.decode('utf-8'), 
+                                                                self.hostname.decode('utf-8'),
                                                                 self.domain.decode('utf-8')
                                                                 ))
 
@@ -127,11 +125,11 @@ class Connection:
                     pass
 
             if (self.args.username and (self.args.password or self.args.hash)) or self.args.cred_id:
-                
+
                 if self.args.mssql and (instances is not None and len(instances) > 0):
                     self.conn = tds.MSSQL(self.host, self.args.mssql_port, self.logger)
                     self.conn.connect()
-                
+
                 elif not args.mssql:
                     self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port)
 
@@ -147,17 +145,13 @@ class Connection:
 
             self.login()
 
-            if (self.password is not None or self.hash is not None) and self.username is not None:
+            if ((self.password is not None or self.hash is not None) and self.username is not None):
 
-                if self.module or self.chain_list:
-
-                    if self.chain_list:
-                        module = self.chain_list[0]['object']
-
+                if self.module:
                     module_logger = CMEAdapter(getLogger('CME'), {
-                                                                  'module': module.name.upper(), 
-                                                                  'host': self.host, 
-                                                                  'port': self.args.smb_port, 
+                                                                  'module': module.name.upper(),
+                                                                  'host': self.host,
+                                                                  'port': self.args.smb_port,
                                                                   'hostname': self.hostname
                                                                  })
                     context = Context(self.db, module_logger, self.args)
@@ -166,42 +160,13 @@ class Connection:
                     if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
                         cmeserver.server.context.localip = local_ip
 
-                    if self.module:
+                    if hasattr(module, 'on_login'):
+                        module.on_login(context, self)
 
-                        launcher = module.launcher(context, None if not hasattr(module, 'command') else module.command)
-                        payload = module.payload(context, None if not hasattr(module, 'command') else module.command)
+                    if hasattr(module, 'on_admin_login') and self.admin_privs:
+                        module.on_admin_login(context, self)
 
-                        if hasattr(module, 'on_login'):
-                            module.on_login(context, self, launcher, payload)
-
-                        if self.admin_privs and hasattr(module, 'on_admin_login'):
-                            module.on_admin_login(context, self, launcher, payload)
-
-                    elif self.chain_list:
-                        module_list = self.chain_list[:]
-                        module_list.reverse()
-
-                        final_launcher = module_list[0]['object'].launcher(context, None if not hasattr(module_list[0]['object'], 'command') else module_list[0]['object'].command)
-                        if len(module_list) > 2:
-                            for m in module_list:
-                                if m['object'] == module or m['object'] == module_list[0]['object']:
-                                    continue
-                                
-                                final_launcher = m['object'].launcher(context, final_launcher)
-
-                        if module == module_list[0]['object']: 
-                            final_launcher = None if not hasattr(module_list[0]['object'], 'command') else module_list[0]['object'].command
-                        
-                        launcher = module.launcher(context, final_launcher)
-                        payload  = module.payload(context, final_launcher)
-
-                        if hasattr(module, 'on_login'):
-                            module.on_login(context, self)
-
-                        if self.admin_privs and hasattr(module, 'on_admin_login'):
-                            module.on_admin_login(context, self, launcher, payload)
-
-                elif self.module is None and self.chain_list is None:
+                elif self.module is None:
                     for k, v in vars(self.args).iteritems():
                         if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                             if v is not False and v is not None:
@@ -233,7 +198,7 @@ class Connection:
 
         elif not self.args.mssql:
             '''
-                We use the OpenSCManagerW Win32API call to to establish a handle to the remote host. 
+                We use the OpenSCManagerW Win32API call to to establish a handle to the remote host.
                 If this succeeds, the user context has administrator access to the target.
 
                 Idea stolen from PowerView's Invoke-CheckLocalAdminAccess
@@ -277,7 +242,7 @@ class Connection:
                 if res is not True:
                     self.conn.printReplies()
                     return False
-            
+
             elif not self.args.mssql:
                 self.conn.login(username, password, domain)
 
@@ -304,10 +269,10 @@ class Connection:
                                                         password.decode('utf-8'),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
-            if error == 'STATUS_LOGON_FAILURE': 
+            if error == 'STATUS_LOGON_FAILURE':
                 global global_failed_logins
                 global user_failed_logins
-                
+
                 if username not in user_failed_logins.keys():
                     user_failed_logins[username] = 0
 
@@ -346,9 +311,9 @@ class Connection:
             if self.admin_privs:
                 self.db.link_cred_to_host('hash', domain, username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(domain.decode('utf-8'), 
-                                         username.decode('utf-8'), 
-                                         ntlm_hash, 
+            out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
+                                         username.decode('utf-8'),
+                                         ntlm_hash,
                                          highlight('(Pwn3d!)') if self.admin_privs else '')
 
             self.logger.success(out)
@@ -360,10 +325,10 @@ class Connection:
                                                         ntlm_hash,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
-            if error == 'STATUS_LOGON_FAILURE': 
+            if error == 'STATUS_LOGON_FAILURE':
                 global global_failed_logins
                 global user_failed_logins
-                
+
                 if username not in user_failed_logins.keys():
                     user_failed_logins[username] = 0
 
@@ -377,21 +342,21 @@ class Connection:
         for cred_id in self.args.cred_id:
             with sem:
                 try:
-                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=int(cred_id))[0]
+                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=cred_id)[0]
 
                     if not domain: domain = self.domain
 
                     if self.args.local_auth:
                         domain = self.domain
-                    elif self.args.domain: 
+                    elif self.args.domain:
                         domain = self.args.domain
 
                     if credtype == 'hash' and not self.over_fail_limit(username):
-                        if self.hash_login(domain, username, password): return
+                        self.hash_login(domain, username, password)
 
                     elif credtype == 'plaintext' and not self.over_fail_limit(username):
-                        if self.plaintext_login(domain, username, password): return
-     
+                        self.plaintext_login(domain, username, password)
+
                 except IndexError:
                     self.logger.error("Invalid database credential ID!")
 
@@ -404,7 +369,7 @@ class Connection:
                                 if type(ntlm_hash) is not file:
                                     if not self.over_fail_limit(usr.strip()):
                                         if self.hash_login(self.domain, usr.strip(), ntlm_hash): return
-                            
+
                                 elif type(ntlm_hash) is file:
                                     for f_hash in ntlm_hash:
                                         if not self.over_fail_limit(usr.strip()):
@@ -417,7 +382,7 @@ class Connection:
                                 if type(password) is not file:
                                     if not self.over_fail_limit(usr.strip()):
                                         if self.plaintext_login(self.domain, usr.strip(), password): return
-                                
+
                                 elif type(password) is file:
                                     for f_pass in password:
                                         if not self.over_fail_limit(usr.strip()):
@@ -431,7 +396,7 @@ class Connection:
                                 if type(ntlm_hash) is not file:
                                     if not self.over_fail_limit(user):
                                         if self.hash_login(self.domain, user, ntlm_hash): return
-                                
+
                                 elif type(ntlm_hash) is file:
                                     for f_hash in ntlm_hash:
                                         if not self.over_fail_limit(user):
@@ -444,7 +409,7 @@ class Connection:
                                 if type(password) is not file:
                                     if not self.over_fail_limit(user):
                                         if self.plaintext_login(self.domain, user, password): return
-                                
+
                                 elif type(password) is file:
                                     for f_pass in password:
                                         if not self.over_fail_limit(user):
@@ -456,7 +421,7 @@ class Connection:
 
         default_methods = ['wmiexec', 'atexec', 'smbexec']
 
-        if not payload and self.args.execute: 
+        if not payload and self.args.execute:
             payload = self.args.execute
             if not self.args.no_output: get_output = True
 
@@ -478,7 +443,7 @@ class Connection:
 
                 if method == 'wmiexec':
                     try:
-                        exec_method = WMIEXEC(self.host, self.share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                        exec_method = WMIEXEC(self.host, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
                         logging.debug('Executed command via wmiexec')
                         break
                     except:
@@ -488,7 +453,7 @@ class Connection:
 
                 elif method == 'atexec':
                     try:
-                        exec_method = TSCH_EXEC(self.host, self.share_name, self.username, self.password, self.domain, self.hash) #self.args.share)
+                        exec_method = TSCH_EXEC(self.host, self.username, self.password, self.domain, self.hash) #self.args.share)
                         logging.debug('Executed command via atexec')
                         break
                     except:
@@ -498,7 +463,7 @@ class Connection:
 
                 elif method == 'smbexec':
                     try:
-                        exec_method = SMBEXEC(self.host, self.share_name, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                        exec_method = SMBEXEC(self.host, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
                         logging.debug('Executed command via smbexec')
                         break
                     except:
@@ -506,7 +471,9 @@ class Connection:
                         logging.debug(format_exc())
                         continue
 
-        if self.cmeserver: self.cmeserver.track_host(self.host)
+        if self.cmeserver:
+            if hasattr(self.cmeserver.server.module, 'on_request') or hasattr(self.cmeserver.server.module, 'on_response'):
+                self.cmeserver.server.hosts.append(self.host)
 
         output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8'))
 

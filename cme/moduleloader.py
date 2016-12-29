@@ -26,20 +26,8 @@ class ModuleLoader:
             self.logger.error('{} missing the description variable'.format(module_path))
             module_error = True
 
-        elif not hasattr(module, 'chain_support'):
-            self.logger.error('{} missing the chain_support variable'.format(module_path))
-            module_error = True    
-
         elif not hasattr(module, 'options'):
             self.logger.error('{} missing the options function'.format(module_path))
-            module_error = True
-
-        elif not hasattr(module, 'launcher'):
-            self.logger.error('{} missing the launcher function'.format(module_path))
-            module_error = True
-
-        elif not hasattr(module, 'payload'):
-            self.logger.error('{} missing the payload function'.format(module_path))
             module_error = True
 
         elif not hasattr(module, 'on_login') and not (module, 'on_admin_login'):
@@ -68,7 +56,7 @@ class ModuleLoader:
                     module_path = os.path.join(path, module)
                     m = self.load_module(os.path.join(path, module))
                     if m:
-                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__, 'chain_support': m.chain_support}
+                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__}
 
         return modules
 
@@ -98,8 +86,8 @@ class ModuleLoader:
                 if hasattr(module, 'required_server'):
                     self.args.server = getattr(module, 'required_server')
 
-            if not self.args.server_port:
-                self.args.server_port = server_port_dict[self.args.server]
+                if not self.args.server_port:
+                    self.args.server_port = server_port_dict[self.args.server]
 
                 server = CMEServer(module, context, self.logger, self.args.server_host, self.args.server_port, self.args.server)
                 server.start()

@@ -4,6 +4,7 @@ import ssl
 import os
 import sys
 import logging
+from getpass import getuser
 from BaseHTTPServer import BaseHTTPRequestHandler
 from logging import getLogger
 from gevent import sleep
@@ -20,11 +21,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         if hasattr(self.server.module, 'on_request'):
             server_logger = CMEAdapter(getLogger('CME'), {'module': self.server.module.name.upper(), 'host': self.client_address[0]})
             self.server.context.log = server_logger
-            
-            launcher = self.server.module.launcher(self.server.context, None if not hasattr(self.server.module, 'command') else self.server.module.command)
-            payload  = self.server.module.payload(self.server.context, None if not hasattr(self.server.module, 'command') else self.server.module.command)
-            
-            self.server.module.on_request(self.server.context, self, launcher, payload)
+            self.server.module.on_request(self.server.context, self)
 
     def do_POST(self):
         if hasattr(self.server.module, 'on_response'):
@@ -45,6 +42,10 @@ class CMEServer(threading.Thread):
 
     def __init__(self, module, context, logger, srv_host, port, server_type='https'):
 
+        if port <= 1024 and os.geteuid() != 0:
+            logger.error("I'm sorry {}, I'm afraid I can't let you do that".format(getuser()))
+            sys.exit(1)
+
         try:
             threading.Thread.__init__(self)
 
@@ -62,22 +63,19 @@ class CMEServer(threading.Thread):
         except Exception as e:
             errno, message = e.args
             if errno == 98 and message == 'Address already in use':
-                logger.error('Error starting HTTP(S) server: the port is already in use, try specifying a diffrent port using --server-port')
+                logger.error('Error starting CME server: the port is already in use, try specifying a diffrent port using --server-port')
             else:
-                logger.error('Error starting HTTP(S) server: {}'.format(message))
+                logger.error('Error starting CME server: {}'.format(message))
 
             sys.exit(1)
 
     def base_server(self):
         return self.server
 
-    def track_host(self, host_ip):
-        self.server.hosts.append(host_ip)
-
     def run(self):
-        try: 
+        try:
             self.server.serve_forever()
-        except: 
+        except:
             pass
 
     def shutdown(self):
