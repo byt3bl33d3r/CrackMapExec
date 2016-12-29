@@ -23,7 +23,7 @@ import logging
 def main():
 
     VERSION  = '3.1.5dev'
-    CODENAME = '\'Stoofvlees\''
+    CODENAME = '\'Smidge\''
 
     parser = argparse.ArgumentParser(description="""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
@@ -44,7 +44,7 @@ def main():
                                 @pentestgeek's smbexec https://github.com/pentestgeek/smbexec
 
                                                       {}: {}
-                                                  {}: {}
+                                                     {}: {}
     """.format(highlight('Version', 'red'),
                highlight(VERSION),
                highlight('Codename', 'red'),
