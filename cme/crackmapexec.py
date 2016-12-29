@@ -22,7 +22,7 @@ import logging
 
 def main():
 
-    VERSION  = '3.1.5dev'
+    VERSION  = '3.1.5'
     CODENAME = '\'Smidge\''
 
     parser = argparse.ArgumentParser(description="""
