@@ -28,27 +28,28 @@ class CMEModule:
         self.empire_launcher = None
 
         headers = {'Content-Type': 'application/json'}
-
-        #Pull the username and password from the config file
-        payload = {'username': context.conf.get('Empire', 'username'), 
-                   'password': context.conf.get('Empire', 'password')}
-
         #Pull the host and port from the config file
         base_url = 'https://{}:{}'.format(context.conf.get('Empire', 'api_host'), context.conf.get('Empire', 'api_port'))
 
         try:
-            r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
-            if r.status_code == 200:
-                token = r.json()['token']
+            token = context.conf.get('Empire', 'rest_token')
+            if not token:
+                #Pull the username and password from the config file
+                payload = {'username': context.conf.get('Empire', 'username'),
+                                   'password': context.conf.get('Empire', 'password')}
 
+                r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+                if r.status_code == 200:
+                    token = r.json()['token']
+                else:
+                    context.log.error("Error authenticating to Empire's RESTful API server!")
+                    sys.exit(1)
+            else:
                 payload = {'StagerName': 'launcher', 'Listener': module_options['LISTENER']}
                 r = requests.post(base_url + '/api/stagers?token={}'.format(token), json=payload, headers=headers, verify=False)
                 self.empire_launcher = r.json()['launcher']['Output']
 
                 context.log.success("Successfully generated launcher for listener '{}'".format(module_options['LISTENER']))
-            else:
-                context.log.error("Error authenticating to Empire's RESTful API server!")
-                sys.exit(1)
 
         except ConnectionError as e:
             context.log.error("Unable to connect to Empire's RESTful API: {}".format(e))
