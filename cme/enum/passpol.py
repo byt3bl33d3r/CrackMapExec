@@ -99,34 +99,36 @@ class PassPolDump:
         return time
 
     def get_pass_pol(self, host, rpctransport, dce, domainHandle):
+        try:
+            resp = samr.hSamrQueryInformationDomain(dce, domainHandle, samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation)
 
-        resp = samr.hSamrQueryInformationDomain(dce, domainHandle, samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation)
+            min_pass_len = resp['Buffer']['Password']['MinPasswordLength']
 
-        min_pass_len = resp['Buffer']['Password']['MinPasswordLength']
+            pass_hst_len = resp['Buffer']['Password']['PasswordHistoryLength']
 
-        pass_hst_len = resp['Buffer']['Password']['PasswordHistoryLength']
+            self.logger.highlight('Minimum password length: {}'.format(min_pass_len))
+            self.logger.highlight('Password history length: {}'.format(pass_hst_len))
 
-        self.logger.highlight('Minimum password length: {}'.format(min_pass_len))
-        self.logger.highlight('Password history length: {}'.format(pass_hst_len))
+            max_pass_age = self.convert(resp['Buffer']['Password']['MaxPasswordAge']['LowPart'], 
+                                        resp['Buffer']['Password']['MaxPasswordAge']['HighPart'],
+                                        1)
 
-        max_pass_age = self.convert(resp['Buffer']['Password']['MaxPasswordAge']['LowPart'], 
-                                    resp['Buffer']['Password']['MaxPasswordAge']['HighPart'],
-                                    1)
+            min_pass_age = self.convert(resp['Buffer']['Password']['MinPasswordAge']['LowPart'], 
+                                        resp['Buffer']['Password']['MinPasswordAge']['HighPart'],
+                                        1)
 
-        min_pass_age = self.convert(resp['Buffer']['Password']['MinPasswordAge']['LowPart'], 
-                                    resp['Buffer']['Password']['MinPasswordAge']['HighPart'],
-                                    1)
+            self.logger.highlight('Maximum password age: {}'.format(max_pass_age))
+            self.logger.highlight('Minimum password age: {}'.format(min_pass_age))
 
-        self.logger.highlight('Maximum password age: {}'.format(max_pass_age))
-        self.logger.highlight('Minimum password age: {}'.format(min_pass_age))
+            resp = samr.hSamrQueryInformationDomain2(dce, domainHandle,samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation)
 
-        resp = samr.hSamrQueryInformationDomain2(dce, domainHandle,samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation)
+            lock_threshold = int(resp['Buffer']['Lockout']['LockoutThreshold'])
 
-        lock_threshold = int(resp['Buffer']['Lockout']['LockoutThreshold'])
+            self.logger.highlight("Account lockout threshold: {}".format(lock_threshold))
 
-        self.logger.highlight("Account lockout threshold: {}".format(lock_threshold))
+            lock_duration = None
+            if lock_threshold != 0: lock_duration = int(resp['Buffer']['Lockout']['LockoutDuration']) / -600000000
 
-        lock_duration = None
-        if lock_threshold != 0: lock_duration = int(resp['Buffer']['Lockout']['LockoutDuration']) / -600000000
-
-        self.logger.highlight("Account lockout duration: {}".format(lock_duration))
+            self.logger.highlight("Account lockout duration: {}".format(lock_duration))
+        except Exception as e:
+            self.logger.error("{}".format(e))
