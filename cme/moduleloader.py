@@ -76,6 +76,10 @@ class ModuleLoader:
             module_options = {}
 
             for option in self.args.module_options:
+                if '=' not in option:
+                    self.logger.error('All module options should be in KEY=VALUE format, use the --show-options flag to view available module options')
+                    sys.exit(1)
+
                 key, value = option.split('=', 1)
                 module_options[str(key).upper()] = value
 

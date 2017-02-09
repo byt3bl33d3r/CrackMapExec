@@ -14,6 +14,7 @@ from cme.helpers import highlight
 from cme.targetparser import parse_targets
 from cme.moduleloader import ModuleLoader
 from cme.first_run import first_run_setup
+from getpass import getuser
 import sqlite3
 import argparse
 import os
