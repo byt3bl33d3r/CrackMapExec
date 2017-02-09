@@ -342,7 +342,7 @@ class Connection:
         for cred_id in self.args.cred_id:
             with sem:
                 try:
-                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=cred_id)[0]
+                    c_id, credtype, domain, username, password,_= self.db.get_credentials(filterTerm=cred_id)[0]
 
                     if not domain: domain = self.domain
 
