@@ -7,3 +7,6 @@
 [submodule "cme/data/powersploit"]
 	path = cme/data/powersploit
 	url = https://github.com/PowerShellMafia/PowerSploit
+[submodule "cme/data/invoke-obfuscation"]
+	path = cme/data/invoke-obfuscation
+	url = https://github.com/danielbohannon/Invoke-Obfuscation
