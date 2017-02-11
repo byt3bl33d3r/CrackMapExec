@@ -1,0 +1,9 @@
+[submodule "cme/data/invoke-vnc"]
+	path = cme/data/invoke-vnc
+	url = https://github.com/artkond/Invoke-Vnc
+[submodule "cme/data/mimikittenz"]
+	path = cme/data/mimikittenz
+	url = https://github.com/putterpanda/mimikittenz
+[submodule "cme/data/powersploit"]
+	path = cme/data/powersploit
+	url = https://github.com/PowerShellMafia/PowerSploit
