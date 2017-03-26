@@ -16,3 +16,9 @@
 [submodule "cme/data/randomps-scripts"]
 	path = cme/data/randomps-scripts
 	url = https://github.com/xorrior/RandomPS-Scripts
+[submodule "cme/thirdparty/pywerview_"]
+	path = cme/thirdparty/pywerview
+	url = https://github.com/the-useless-one/pywerview
+[submodule "cme/thirdparty/impacket_"]
+	path = cme/thirdparty/impacket
+	url = https://github.com/CoreSecurity/impacket
