@@ -10,3 +10,9 @@
 [submodule "cme/data/invoke-obfuscation"]
 	path = cme/data/invoke-obfuscation
 	url = https://github.com/danielbohannon/Invoke-Obfuscation
+[submodule "cme/data/netripper"]
+	path = cme/data/netripper
+	url = https://github.com/NytroRST/NetRipper
+[submodule "cme/data/randomps-scripts"]
+	path = cme/data/randomps-scripts
+	url = https://github.com/xorrior/RandomPS-Scripts
