@@ -31,21 +31,25 @@ class CMEAdapter(logging.LoggerAdapter):
         if self.extra is None:
             return u'{}'.format(msg), kwargs
 
+        if 'module' in self.extra.keys():
+            if len(self.extra['module']) > 8:
+                self.extra['module'] = self.extra['module'][:8] + '...'
+
         #If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ('module' in self.extra.keys()):
             return u'{:<59} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
 
         #If the logger is being called from CMEServer
         if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<25} {:<33} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+            return u'{:<24} {:<34} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
-        #If the logger is being called from the main Connector function
+        #If the logger is being called from a protocol
         if 'module' in self.extra.keys():
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
-        return u'{:<25} {}:{} {:<15} {}'.format(module_name,
+        return u'{:<24} {}:{} {:<16} {}'.format(module_name,
                                            self.extra['host'],
                                            self.extra['port'],
                                            self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE',
@@ -75,7 +79,7 @@ class CMEAdapter(logging.LoggerAdapter):
         self.highlight(message)
 
 def setup_debug_logger():
-    debug_output_string = "{:<59} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
+    debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
     formatter = logging.Formatter(debug_output_string)
     streamHandler = logging.StreamHandler(sys.stdout)
     streamHandler.setFormatter(formatter)

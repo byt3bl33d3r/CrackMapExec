@@ -53,9 +53,12 @@ class module_loader:
         return True
 
     def load_module(self, module_path):
-        module = imp.load_source('payload_module', module_path).CMEModule()
-        if self.module_is_sane(module, module_path):
-            return module
+        try:
+            module = imp.load_source('payload_module', module_path).CMEModule()
+            if self.module_is_sane(module, module_path):
+                return module
+        except Exception as e:
+            self.logger.error('Failed loading module at {}: {}'.format(module_path, e))
 
         return None
 

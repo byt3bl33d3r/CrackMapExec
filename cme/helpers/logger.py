@@ -1,4 +1,5 @@
 import os
+import random
 from termcolor import colored
 
 def write_log(data, log_name):

@@ -6,7 +6,9 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 import cmd
 from time import sleep
+from sys import exit
 from cme.msfrpc import Msfrpc
+from cme.cmedb import UserExitedProto
 from cme.protocols.smb.database import database
 
 class navigator(cmd.Cmd):
@@ -19,73 +21,10 @@ class navigator(cmd.Cmd):
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, 'smb')
 
     def do_back(self, line):
-        raise
+        raise UserExitedProto
 
-    def display_creds(self, creds):
-
-        print "\nCredentials:\n"
-        print "  CredID  Admin On     CredType    Domain           UserName             Password"
-        print "  ------  --------     --------    ------           --------             --------"
-
-        for cred in creds:
-
-            credID = cred[0]
-            domain = cred[1]
-            username = cred[2]
-            password = cred[3]
-            local = cred[4]
-            credtype = cred[5]
-            pillaged_from = cred[6]
-
-            links = self.db.get_admin_relations(userID=credID)
-
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                           '{:<13}'.format(str(len(links)) + ' Host(s)'),
-                                           '{:<12}'.format(credtype),
-                                           u'{:<17}'.format(domain.decode('utf-8')),
-                                           u'{:<21}'.format(username.decode('utf-8')),
-                                           u'{:<17}'.format(password.decode('utf-8')))
-
-        print ""
-
-    def display_groups(self, groups):
-        print '\nGroups:\n'
-        print " GroupID Domain           Name"
-        print " -------  ------           ----"
-
-        for group in groups:
-            groupID = group[0]
-            domain = group[1]
-            name = group[2]
-
-            print u" {} {} {}".format('{:<8}'.format(groupID), '{:<15}'.format(domain), '{:<15}'.format(name))
-
-        print ""
-
-    def display_hosts(self, hosts):
-
-        print "\nHosts:\n"
-        print "  HostID  Admins         IP               Hostname                 Domain           OS"
-        print "  ------  ------         --               --------                 ------           --"
-
-        for host in hosts:
-            # (id, ip, hostname, domain, os)
-            hostID = host[0]
-            ip = host[1]
-            hostname = host[2]
-            domain = host[3]
-            os = host[4]
-
-            links = self.db.get_admin_relations(hostID=hostID)
-
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID),
-                                           '{:<15}'.format(str(len(links)) + ' Cred(s)'),
-                                           '{:<17}'.format(ip),
-                                           u'{:<25}'.format(hostname.decode('utf-8')),
-                                           u'{:<17}'.format(domain.decode('utf-8')),
-                                           '{:<17}'.format(os))
-
-        print ""
+    def do_exit(self, line):
+        exit(0)
 
     def do_import(self, line):
 
@@ -162,15 +101,71 @@ class navigator(cmd.Cmd):
 
             print "[+] Metasploit credential import successful"
 
-    def complete_import(self, text, line, begidx, endidx):
-        "Tab-complete 'import' commands."
+    def display_creds(self, creds):
 
-        commands = ["empire", "metasploit"]
+        print "\nCredentials:\n"
+        print "  CredID  Admin On     CredType    Domain           UserName             Password"
+        print "  ------  --------     --------    ------           --------             --------"
 
-        mline = line.partition(' ')[2]
-        offs = len(mline) - len(text)
-        return [s[offs:] for s in commands if s.startswith(mline)]
+        for cred in creds:
 
+            credID = cred[0]
+            domain = cred[1]
+            username = cred[2]
+            password = cred[3]
+            credtype = cred[4]
+            pillaged_from = cred[5]
+
+            links = self.db.get_admin_relations(userID=credID)
+
+            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
+                                           '{:<13}'.format(str(len(links)) + ' Host(s)'),
+                                           '{:<12}'.format(credtype),
+                                           u'{:<17}'.format(domain.decode('utf-8')),
+                                           u'{:<21}'.format(username.decode('utf-8')),
+                                           u'{:<17}'.format(password.decode('utf-8')))
+
+        print ""
+
+    def display_groups(self, groups):
+        print '\nGroups:\n'
+        print " GroupID  Domain           Name                                          Members"
+        print " -------  ------           ----                                          -------"
+
+        for group in groups:
+            groupID = group[0]
+            domain = group[1]
+            name = group[2]
+            members = len(self.db.get_group_relations(groupID=groupID))
+
+            print u" {} {} {} {}".format('{:<8}'.format(groupID), '{:<16}'.format(domain), '{:<35}'.format(name), '{}'.format(members))
+
+        print ""
+
+    def display_hosts(self, hosts):
+
+        print "\nHosts:\n"
+        print "  HostID  Admins         IP               Hostname                 Domain           OS"
+        print "  ------  ------         --               --------                 ------           --"
+
+        for host in hosts:
+            # (id, ip, hostname, domain, os)
+            hostID = host[0]
+            ip = host[1]
+            hostname = host[2]
+            domain = host[3]
+            os = host[4]
+
+            links = self.db.get_admin_relations(hostID=hostID)
+
+            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID),
+                                           '{:<15}'.format(str(len(links)) + ' Cred(s)'),
+                                           '{:<17}'.format(ip),
+                                           u'{:<25}'.format(hostname.decode('utf-8')),
+                                           u'{:<17}'.format(domain.decode('utf-8')),
+                                           '{:<17}'.format(os))
+
+        print ""
 
     def do_groups(self, line):
 
@@ -187,14 +182,46 @@ class navigator(cmd.Cmd):
                 self.display_groups(groups)
             elif len(groups) == 1:
                 print '\nGroup:\n'
-                print " GroupID Domain           Name"
+                print " GroupID Domain           Name "
                 print " -------  ------           ----"
 
                 for group in groups:
                     groupID = group[0]
-                    name = group[1]
+                    domain = group[1]
+                    name = group[2]
 
-                    members = self.db_
+                    print u" {} {} {}".format('{:<8}'.format(groupID), '{:<15}'.format(domain), '{:<15}'.format(name))
+
+                print ""
+
+                print "\nMembers:\n"
+                print " CredID  CredType    Pillaged From HostID  Domain           UserName             Password"
+                print " ------  --------    --------------------  ------           --------             --------"
+
+                for group in groups:
+                    members = self.db.get_group_relations(groupID=group[0])
+                    
+                    for member in members:
+                        _,userid,_ = member
+                        creds = self.db.get_credentials(filterTerm=userid)
+
+                        for cred in creds:
+                            credID = cred[0]
+                            domain = cred[1]
+                            username = cred[2]
+                            password = cred[3]
+                            credtype = cred[4]
+                            pillaged_from = cred[5]
+
+                            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
+                                                          '{:<12}'.format(credtype),
+                                                          '{:<22}'.format(pillaged_from),
+                                                          u'{:<17}'.format(domain.decode('utf-8')),
+                                                          u'{:<21}'.format(username.decode('utf-8')),
+                                                          u'{:<17}'.format(password.decode('utf-8'))
+                                                          )
+
+                print ""
 
     def do_hosts(self, line):
 
@@ -211,8 +238,8 @@ class navigator(cmd.Cmd):
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
                 print "\nHost(s):\n"
-                print "  HostID  IP               DC    Hostname                 Domain           OS"
-                print "  ------  --               --   --------                 ------           --"
+                print "  HostID  IP                Hostname                 Domain           OS               DC"
+                print "  ------  --                --------                 ------           --               --"
 
                 hostIDList = []
 
@@ -226,12 +253,12 @@ class navigator(cmd.Cmd):
                     os = host[4]
                     dc = host[5]
 
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID),
-                                                 '{:<17}'.format(ip),
-                                                 '{:<17}'.format(dc),
-                                                 u'{:<25}'.format(hostname.decode('utf-8')),
-                                                 u'{:<17}'.format(domain.decode('utf-8')),
-                                                 '{:<17}'.format(os))
+                    print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID),
+                                                   '{:<17}'.format(ip),
+                                                   u'{:<25}'.format(hostname.decode('utf-8')),
+                                                   u'{:<17}'.format(domain.decode('utf-8')),
+                                                   '{:<17}'.format(os),
+                                                   '{:<5}'.format(dc))
 
                 print ""
 
@@ -251,9 +278,8 @@ class navigator(cmd.Cmd):
                             domain = cred[1]
                             username = cred[2]
                             password = cred[3]
-                            local = cred[4]
-                            credtype = cred[5]
-                            pillaged_from = cred[6]
+                            credtype = cred[4]
+                            pillaged_from = cred[5]
 
                             print u"  {}{}{}{}{}".format('{:<8}'.format(credID),
                                                         '{:<12}'.format(credtype),
@@ -321,9 +347,8 @@ class navigator(cmd.Cmd):
                 domain = cred[1]
                 username = cred[2]
                 password = cred[3]
-                local = cred[4]
-                credtype = cred[5]
-                pillaged_from = cred[6]
+                credtype = cred[4]
+                pillaged_from = cred[5]
 
                 print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
                                               '{:<12}'.format(credtype),
@@ -332,6 +357,26 @@ class navigator(cmd.Cmd):
                                               u'{:<21}'.format(username.decode('utf-8')),
                                               u'{:<17}'.format(password.decode('utf-8'))
                                               )
+
+            print ""
+
+            print "\nMember of Group(s):\n"
+            print "  GroupID  Domain        Name"
+            print "  -------  ------        ----"
+
+            for credID in credIDList:
+                links = self.db.get_group_relations(userID=credID)
+
+                for link in links:
+                    linkID, userID, groupID = link
+                    groups = self.db.get_groups(groupID)
+
+                    for group in groups:
+                        groupID = group[0]
+                        domain  = group[1]
+                        name    = group[2]
+
+                        print u"{}{}{}".format(groupID, domain, name)
 
             print ""
 
@@ -360,6 +405,24 @@ class navigator(cmd.Cmd):
                                                      '{:<17}'.format(os))
 
             print ""
+
+    def complete_import(self, text, line, begidx, endidx):
+        "Tab-complete 'import' commands."
+
+        commands = ["empire", "metasploit"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
+    def complete_hosts(self, text, line, begidx, endidx):
+        "Tab-complete 'creds' commands."
+
+        commands = [ "add", "remove", "dc"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
 
     def complete_creds(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."

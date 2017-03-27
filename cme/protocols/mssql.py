@@ -20,21 +20,21 @@ class mssql(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        mssql_parser = parser.add_parser('mssql', help="Own stuff using MSSQL and/or Active Directory", parents=[std_parser, module_parser])
+        mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL and/or Active Directory", parents=[std_parser, module_parser])
         dgroup = mssql_parser.add_mutually_exclusive_group()
-        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain name")
-        dgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
+        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
+        dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         mssql_parser.add_argument("--port", default=1433, type=int, dest='mssql_port', metavar='PORT', help='MSSQL port (default: 1433)')
-        mssql_parser.add_argument("-q", "--query", metavar='QUERY', type=str, help='Execute the specified query against the MSSQL DB')
+        mssql_parser.add_argument("-q", "--query", metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
         mssql_parser.add_argument("-a", "--auth-type", dest='mssql_auth', choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument('--force-ps32', action='store_true', help='Force the PowerShell command to run in a 32-bit process')
-        cgroup.add_argument('--no-output', action='store_true', help='Do not retrieve command output')
+        cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
+        cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         xgroup = cgroup.add_mutually_exclusive_group()
-        xgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="Execute the specified command")
-        xgroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='Execute the specified PowerShell command')
+        xgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
+        xgroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='execute the specified PowerShell command')
 
         return parser
 

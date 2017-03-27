@@ -1,21 +1,29 @@
 ![Supported Python versions](https://img.shields.io/badge/python-2.7-blue.svg)
 # CrackMapExec
-A swiss army knife for pentesting Windows/Active Directory environments
+A swiss army knife for pentesting networks
 
-Powered by [Impacket](https://github.com/CoreSecurity/impacket)
+#Acknowledgments
+**(These are the people who did the hard stuff)**
 
-This project was inspired by/based off of:
-- @agsolino's [wmiexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiexec.py), [wmiquery.py](https://github.com/CoreSecurity/impacket/blob/master/examples/wmiquery.py), [smbexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/smbexec.py), [samrdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/samrdump.py), [secretsdump.py](https://github.com/CoreSecurity/impacket/blob/master/examples/secretsdump.py), [atexec.py](https://github.com/CoreSecurity/impacket/blob/master/examples/atexec.py) and [lookupsid.py](https://github.com/CoreSecurity/impacket/blob/master/examples/lookupsid.py) scripts (beyond awesome)
-- @ShawnDEvans's [smbmap](https://github.com/ShawnDEvans/smbmap)
-- @gojhonny's [CredCrack](https://github.com/gojhonny/CredCrack)
-- @pentestgeek's [smbexec](https://github.com/pentestgeek/smbexec)
+This project was originally inspired by:
+- [smbmap](https://github.com/ShawnDEvans/smbmap)
+- [CredCrack](https://github.com/gojhonny/CredCrack)
+- [smbexec](https://github.com/pentestgeek/smbexec)
 
 Unintentional contributors:
 
-- @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
 - The [Empire](https://github.com/PowerShellEmpire/Empire) project
+- @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
 
-This repo also includes the [PowerSploit](https://github.com/PowerShellMafia/PowerSploit) repository as a submodule.
+This repository contains the following repositories as submodules:
+- [Impacket](https://github.com/CoreSecurity/impacket)
+- [Pywerview](https://github.com/the-useless-one/pywerview)
+- [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
+- [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)
+- [Invoke-Vnc](https://github.com/artkond/Invoke-Vnc)
+- [Mimikittenz](https://github.com/putterpanda/mimikittenz)
+- [NetRipper](https://github.com/NytroRST/NetRipper)
+- [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
 
 #Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
@@ -38,6 +46,10 @@ Additionally, a database is used to store used/dumped credentals. It also automa
 
 Use [virtualenvwrapper](https://virtualenvwrapper.readthedocs.org/en/latest/) to install CrackMapExec in a python [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs)
 
+**Kali/Debian/Ubuntu Users:**
+
+- Run: ```apt-get install -y libssl-dev libffi-dev python-dev build-essential```
+
 To get the latest stable version: 
 
 ```
@@ -51,10 +63,6 @@ If you like living on the bleeding-edge:
 #- cd CrackMapExec && git submodule init && git submodule update --recursive
 #~ python setup.py install
 ```
-
-**Note for Kali/Debian/Ubuntu Users:**
-
-If you get compilation errors run ```apt-get install -y libssl-dev libffi-dev python-dev build-essential``` and try again.
 
 #To do
 - Kerberos support

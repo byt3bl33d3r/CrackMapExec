@@ -29,3 +29,7 @@ class CMEModule:
     def on_response(self, context, response):
         '''Optional. If the payload sends back its output to our server, add this function to the module to handle its output'''
         pass
+
+    def on_shutdown(self, context, connection):
+        '''Optional. Do something on shutdown'''
+        pass

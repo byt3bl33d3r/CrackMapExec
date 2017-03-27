@@ -1,5 +1,5 @@
 from traceback import format_exc
-from gevent.coros import BoundedSemaphore
+from gevent.lock import BoundedSemaphore
 from functools import wraps
 from cme.logger import CMEAdapter
 from cme.context import Context
@@ -14,7 +14,7 @@ def requires_admin(func):
         return func(self, *args, **kwargs)
     return wraps(func)(_decorator)
 
-class connection:
+class connection(object):
 
     def __init__(self, args, db, host):
         self.args = args
@@ -75,6 +75,7 @@ class connection:
                     context.localip  = self.local_ip
 
                     if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
+                        self.server.connection = self
                         self.server.context.localip = self.local_ip
 
                     if hasattr(self.module, 'on_login'):
@@ -82,6 +83,9 @@ class connection:
 
                     if self.admin_privs and hasattr(self.module, 'on_admin_login'):
                         self.module.on_admin_login(context, self)
+
+                    if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
+                        self.module.on_shutdown(context, self)
 
                 else:
                     for k, v in vars(self.args).iteritems():

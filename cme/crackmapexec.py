@@ -5,17 +5,14 @@ from gevent import monkey
 monkey.patch_all()
 
 from gevent.pool import Pool
-from gevent import joinall
+from gevent import sleep
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
-from cme.helpers.misc import gen_random_string
 from cme.helpers.logger import highlight
 from cme.targetparser import parse_targets
 from cme.cli import gen_cli_args
 from cme.loaders.protocol_loader import protocol_loader
 from cme.loaders.module_loader import module_loader
-#from cme.modulechainloader import ModuleChainLoader
 from cme.servers.http import CMEServer
-from cme.servers.smb import CMESMBServer
 from cme.first_run import first_run_setup
 from cme.context import Context
 from getpass import getuser
@@ -38,29 +35,35 @@ def main():
     args = gen_cli_args()
 
     if args.darrell:
-        links = open(os.path.join(os.path.dirname(cme.__file__), 'data', 'videos_for_darrel.txt')).read().splitlines()
+        links = open(os.path.join(os.path.dirname(cme.__file__), 'data', 'videos_for_darrell.harambe')).read().splitlines()
         try:
             webbrowser.open(random.choice(links))
         except:
-            print "Darrel wtf I'm trying to help you, here have a gorilla..."
-        sys.exit(1)
+            sys.exit(1)
 
     cme_path = os.path.expanduser('~/.cme')
 
     config = ConfigParser()
     config.read(os.path.join(cme_path, 'cme.conf'))
 
-    #module     = None
-    #chain_list = None
-    smb_share_name = gen_random_string(5).upper()
+    module  = None
+    module_server = None
+    targets = []
+    jitter = None
     server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
-    targets    = []
     current_workspace = config.get('CME', 'workspace')
 
     if args.verbose:
         setup_debug_logger()
 
     logging.debug('Passed args:\n' + pformat(vars(args)))
+
+    if args.jitter:
+        if '-' in args.jitter:
+            start, end = args.jitter.split('-')
+            jitter = (int(start), int(end))
+        else:
+            jitter = (0, int(args.jitter))
 
     if hasattr(args, 'username') and args.username:
         for user in args.username:
@@ -101,9 +104,6 @@ def main():
             else:
                 targets.extend(parse_targets(target))
 
-    smb_server = CMESMBServer(logger, smb_share_name, args.verbose)
-    smb_server.start()
-
     p_loader = protocol_loader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
     protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
@@ -118,9 +118,7 @@ def main():
     db_connection.isolation_level = None
     db = protocol_db_object(db_connection)
 
-    setattr(protocol_object, 'smb_share_name', smb_share_name)
-
-    if hasattr(args, 'module'): #or hasattr(args, 'module_chain'):
+    if hasattr(args, 'module'):
 
         loader = module_loader(args, db, logger)
 
@@ -129,6 +127,7 @@ def main():
 
             for m in modules:
                 logger.info('{:<25} {}'.format(m, modules[m]['description']))
+            sys.exit(0)
 
         elif args.module and args.show_module_options:
 
@@ -136,6 +135,7 @@ def main():
             for m in modules.keys():
                 if args.module.lower() == m.lower():
                     logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+            sys.exit(0)
 
         elif args.module:
             modules = loader.get_modules()
@@ -147,11 +147,13 @@ def main():
 
             if getattr(module, 'opsec_safe') is False:
                 ans = raw_input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n]', 'red'))
-                if ans.lower() == 'n' : sys.exit(1)
+                if ans.lower() not in ['y', 'yes', '']:
+                    sys.exit(1)
 
             if getattr(module, 'multiple_hosts') is False and len(targets) > 1:
                 ans = raw_input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n]", 'red'))
-                if ans.lower() == 'n' : sys.exit(1)
+                if ans.lower() not in ['y', 'yes', '']:
+                    sys.exit(1)
 
             if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
 
@@ -162,10 +164,9 @@ def main():
                     args.server_port = server_port_dict[args.server]
 
                 context = Context(db, logger, args)
-                server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
-                server.start()
-
-                setattr(protocol_object, 'server', server.server)
+                module_server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
+                module_server.start()
+                setattr(protocol_object, 'server', module_server.server)
 
     try:
         '''
@@ -173,22 +174,18 @@ def main():
             Whoever came up with that name has a fetish for traffic lights
         '''
         pool = Pool(args.threads)
-        jobs = [pool.spawn(protocol_object, args, db, str(target)) for target in targets]
-        #Dumping the NTDS.DIT and/or spidering shares can take a long time, so we ignore the thread timeout
-        #if args.ntds or args.spider:
-        #    joinall(jobs)
-        #else:
+        jobs = []
+        for target in targets:
+            jobs.append(pool.spawn(protocol_object, args, db, str(target)))
+
+            if jitter:
+                value = random.choice(range(jitter[0], jitter[1]))
+                logging.debug("Doin' the Jitterbug for {} seconds'.format(value)")
+                sleep(value)
+
         for job in jobs:
             job.join(timeout=args.timeout)
     except KeyboardInterrupt:
         pass
 
-    try:
-        server.shutdown()
-    except:
-        pass
-
-    smb_server.shutdown()
-
-    print '\n'
-    logger.info('KTHXBYE!')
+    if module_server: module_server.shutdown()

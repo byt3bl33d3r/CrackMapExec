@@ -7,7 +7,7 @@ from cme.helpers.logger import highlight
 def gen_cli_args():
 
     VERSION  = '4.0.0dev'
-    CODENAME = '\'Smidge\''
+    CODENAME = '\'Sercurty\''
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
@@ -23,8 +23,6 @@ def gen_cli_args():
                                          A swiss army knife for pentesting networks
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
-                            Powered by Impacket https://github.com/CoreSecurity/impacket (@agsolino)
-
                                                       {}: {}
                                                      {}: {}
 """.format(highlight('Version', 'red'),
@@ -34,35 +32,36 @@ def gen_cli_args():
 
                                     formatter_class=RawTextHelpFormatter,
                                     version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog="I enjoy the simple pleasures of Daffy Dook...")
+                                    epilog="Serrrrrrcuuurrrty?")
 
-    parser.add_argument("-t", type=int, dest="threads", default=100, help="Set how many concurrent threads to use (default: 100)")
-    parser.add_argument("--timeout", default=30, type=int, help='Max timeout in seconds of each thread (default: 30)')
-    parser.add_argument("--darrell", action='store_true', help='Give Darrell a hand')
-    parser.add_argument("--verbose", action='store_true', help="Enable verbose output")
+    parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
+    parser.add_argument("--timeout", default=60, type=int, help='max timeout in seconds of each thread (default: 60)')
+    parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='Sets a random delay between each connection (default: None)')
+    parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
+    parser.add_argument("--verbose", action='store_true', help="enable verbose output")
 
-    subparsers = parser.add_subparsers(title='Protocols', dest='protocol', description='Available Protocols')
+    subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
 
     std_parser = argparse.ArgumentParser(add_help=False)
-    std_parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
-    std_parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='Database credential ID(s) to use for authentication')
-    std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="Username(s) or file(s) containing usernames")
-    std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="Password(s) or file(s) containing passwords")
+    std_parser.add_argument("target", nargs='*', type=str, help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
+    std_parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='database credential ID(s) to use for authentication')
+    std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
+    std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     fail_group = std_parser.add_mutually_exclusive_group()
-    fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='Max number of global failed login attempts')
-    fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per username')
-    fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='Max number of failed login attempts per host')
+    fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='max number of global failed login attempts')
+    fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='max number of failed login attempts per username')
+    fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='max number of failed login attempts per host')
 
     module_parser = argparse.ArgumentParser(add_help=False)
     mgroup = module_parser.add_mutually_exclusive_group()
-    mgroup.add_argument("-M", "--module", metavar='MODULE', help='Payload module to use')
+    mgroup.add_argument("-M", "--module", metavar='MODULE', help='payload module to use')
     #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
-    module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='Payload module options')
-    module_parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
-    module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='Display module options')
-    module_parser.add_argument("--server", choices={'http', 'https'}, default='https', help='Use the selected server (default: https)')
+    module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='payload module options')
+    module_parser.add_argument('-L', '--list-modules', action='store_true', help='list available modules')
+    module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='display module options')
+    module_parser.add_argument("--server", choices={'http', 'https'}, default='https', help='use the selected server (default: https)')
     module_parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
-    module_parser.add_argument("--server-port", metavar='PORT', type=int, help='Start the server on the specified port')
+    module_parser.add_argument("--server-port", metavar='PORT', type=int, help='start the server on the specified port')
 
     for protocol in protocols.keys():
         protocol_object = p_loader.load_protocol(protocols[protocol]['path'])

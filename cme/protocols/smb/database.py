@@ -20,7 +20,6 @@ class database:
             "domain" text,
             "username" text,
             "password" text,
-            "local" boolean,
             "credtype" text,
             "pillaged_from_computerid" integer,
             FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
@@ -93,33 +92,77 @@ class database:
 
         if not len(results):
             cur.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
+        else:
+            for host in results:
+                if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
+                    cur.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
 
         cur.close()
 
-    def add_credential(self, credtype, domain, username, password, pillaged_from='NULL', local=False):
+        return cur.lastrowid
+
+    def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
+        user_rowid = None
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=? and local=?", [credtype, domain, username, password, local])
+        if groupid and not self.is_group_valid(groupid):
+            cur.close()
+            return
+
+        if pillaged_from and not self.is_computer_valid(pillaged_from):
+            cur.close()
+            return
+
+        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO users (domain, username, password, local, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?,?)", [domain, username, password, local, credtype, pillaged_from] )
+            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, password, credtype, pillaged_from])
+            user_rowid = cur.lastrowid
+            if groupid:
+                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        else:
+            for user in results:
+                if (password != user[3]) and (credType != user[4]) and (pillaged_from != user[5]):
+                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credType, pillaged_from, user[0]])
+                    user_rowid = cur.lastrowid
+                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
+                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
 
-    def add_user(self, domain, username, local=False):
+        return user_rowid
+
+    def add_user(self, domain, username, groupid=None):
+        
+        if groupid and not self.is_group_valid(groupid):
+            return
+
+        user_rowid = None
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND local=(?)", [domain, username, local])
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO users (domain, username, password, local, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?,?)", [domain, username, 'NULL', local, 'NULL', 'NULL'])
+            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, None, None, None])
+            user_rowid = cur.lastrowid
+            if groupid:
+                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        else:
+            for user in results:
+                if (domain != user[1]) and (username != user[2]):
+                    cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
+                    user_rowid = cur.lastrowid
+                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
+                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
+
+        return user_rowid
 
     def add_group(self, domain, name):
 
@@ -133,14 +176,8 @@ class database:
 
         cur.close()
 
-    def add_ntds_hash(self, hostid, domain, username, hash):
-
-        cur = self.conn.cursor()
-
-        cur.execute("INSERT INTO ntds (dcid, domain, username, hash) VALUES (?,?,?,?)", [hostid, domain, username, hash])
-
-        cur.close()
-
+        return cur.lastrowid
+    '''
     def remove_credentials(self, credIDs):
         """
         Removes a credential ID from the database
@@ -149,8 +186,8 @@ class database:
             cur = self.conn.cursor()
             cur.execute("DELETE FROM credentials WHERE id=?", [credID])
             cur.close()
-
-    def add_admin_user(self, credtype, domain, username, password, host, local=False, userid=None):
+    '''
+    def add_admin_user(self, credtype, domain, username, password, host, userid=None):
 
         cur = self.conn.cursor()
 
@@ -158,7 +195,7 @@ class database:
             cur.execute("SELECT * FROM users WHERE id=?", [userid])
             users = cur.fetchall()
         else:
-            cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=? and local=?", [credtype, domain, username, password, local])
+            cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
             users = cur.fetchall()
 
         cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [host])
@@ -183,13 +220,32 @@ class database:
         cur = self.conn.cursor()
 
         if userID:
-            cur.execute("SELECT * from admin_relations WHERE userid=?", [userID])
+            cur.execute("SELECT * FROM admin_relations WHERE userid=?", [userID])
 
         elif hostID:
-            cur.execute("SELECT * from admin_relations WHERE computerid=?", [hostID])
+            cur.execute("SELECT * FROM admin_relations WHERE computerid=?", [hostID])
 
         results = cur.fetchall()
         cur.close()
+
+        return results
+
+    def get_group_relations(self, userID=None, groupID=None):
+
+        cur = self.conn.cursor()
+
+        if userID and groupID:
+            cur.execute("SELECT * FROM group_relations WHERE userid=? and groupid=?", [userID, groupID])
+
+        elif userID:
+            cur.execute("SELECT * FROM group_relations WHERE userid=?", [userID])
+
+        elif groupID:
+            cur.execute("SELECT * FROM group_relations WHERE groupid=?", [groupID])
+
+        results = cur.fetchall()
+        cur.close()
+
         return results
 
     def remove_admin_relation(self, userIDs=None, hostIDs=None):
@@ -206,6 +262,21 @@ class database:
 
         cur.close()
 
+    def remove_group_relations(self, userID=None, groupID=None):
+
+        cur = self.conn.cursor()
+
+        if userID:
+            cur.execute("DELETE FROM group_relations WHERE userid=?", [userID])
+
+        elif groupID:
+            cur.execute("DELETE FROM group_relations WHERE groupid=?", [groupID])
+
+        results = cur.fetchall()
+        cur.close()
+
+        return results
+
     def is_credential_valid(self, credentialID):
         """
         Check if this credential ID is valid.
@@ -216,7 +287,18 @@ class database:
         cur.close()
         return len(results) > 0
 
-    def get_credentials(self, filterTerm=None, credtype=None, userID=None):
+    def is_credential_local(self, credentialID):
+        cur = self.conn.cursor()
+        cur.execute('SELECT domain FROM users WHERE id=?', [credentialID])
+        user_domain = cur.fetchall()
+
+        if user_domain:
+            cur.execute('SELECT * FROM computers WHERE LOWER(hostname)=LOWER(?)', [user_domain])
+            results = cur.fetchall()
+            cur.close()
+            return len(results) > 0
+
+    def get_credentials(self, filterTerm=None, credtype=None):
         """
         Return credentials from the database.
         """
@@ -225,14 +307,10 @@ class database:
 
         # if we're returning a single credential by ID
         if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1", [filterTerm])
+            cur.execute("SELECT * FROM users WHERE id=? AND password IS NOT NULL", [filterTerm])
 
-        # if we're filtering by credtype
         elif credtype:
             cur.execute("SELECT * FROM users WHERE credtype=? AND password IS NOT NULL", [credtype])
-
-        elif userID:
-            cur.execute("SELECT * FROM users WHERE userid=? AND password IS NOT NULL", [userID])
 
         # otherwise return all credentials
         else:
@@ -280,7 +358,7 @@ class database:
         cur.close()
         return len(results) > 0
 
-    def get_computers(self, filterTerm=None):
+    def get_computers(self, filterTerm=None, domain=None):
         """
         Return hosts from the database.
         """
@@ -291,11 +369,18 @@ class database:
         if self.is_computer_valid(filterTerm):
             cur.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
 
+        # if we're filtering by domain controllers
+        elif filterTerm == 'dc':
+            if domain:
+                cur.execute("SELECT * FROM computers WHERE dc=1 AND LOWER(domain)=LOWER(?)", [domain])
+            else:
+                cur.execute("SELECT * FROM computers WHERE dc=1")
+
         # if we're filtering by ip/hostname
         elif filterTerm and filterTerm != "":
             cur.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm), '%{}%'.format(filterTerm)])
 
-        # otherwise return all credentials
+        # otherwise return all computers
         else:
             cur.execute("SELECT * FROM computers")
 
@@ -303,14 +388,8 @@ class database:
         cur.close()
         return results
 
-    def get_group_members(self, groupID):
-        cur = self.conn.cursor()
-
-        cur.execute("SELECT * from group_relations WHERE groupid=?", [groupID])
-
-        results = cur.fetchall()
-        cur.close()
-        return results
+    def get_domain_controllers(self, domain=None):
+        return self.get_computers(filterTerm='dc', domain=domain)
 
     def is_group_valid(self, groupID):
         """
@@ -322,7 +401,7 @@ class database:
         cur.close()
         return len(results) > 0
 
-    def get_groups(self, filterTerm=None):
+    def get_groups(self, filterTerm=None, groupName=None, groupDomain=None):
         """
         Return groups from the database
         """
@@ -334,6 +413,9 @@ class database:
 
         elif filterTerm and filterTerm !="":
             cur.execute("SELECT * FROM groups WHERE LOWER(name) LIKE LOWER(?)", ['%{}%'.format(filterTerm)])
+
+        elif groupName and groupDomain:
+            cur.execute("SELECT * FROM groups WHERE LOWER(name)=? AND LOWER(domain)=?", [groupName, groupDomain])
 
         else:
             cur.execute("SELECT * FROM groups")

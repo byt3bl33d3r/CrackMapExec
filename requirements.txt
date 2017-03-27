@@ -1,6 +1,6 @@
-git+https://github.com/CoreSecurity/impacket
-git+https://github.com/the-useless-one/pywerview
-gevent
+pycrypto>=2.6
+pyasn1>=0.1.8
+gevent>=1.2.0
 netaddr
 pycrypto
 pyasn1

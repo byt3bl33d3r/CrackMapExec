@@ -1,5 +1,6 @@
 import cmd
 from cme.protocols.mssql.database import database
+from cme.cmedb import UserExitedProto
 
 class navigator(cmd.Cmd):
     def __init__(self, main_menu):
@@ -11,7 +12,7 @@ class navigator(cmd.Cmd):
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, 'mssql')
 
     def do_back(self, line):
-        raise
+        raise UserExitedProto
 
     def display_creds(self, creds):
 

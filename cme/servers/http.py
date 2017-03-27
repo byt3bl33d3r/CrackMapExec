@@ -33,6 +33,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         '''
         try:
             self.server.hosts.remove(self.client_address[0])
+            if hasattr(self.server.module, 'on_shutdown'):
+                self.server.module.on_shutdown(self.server.context, self.server.connection)
         except ValueError:
             pass
 
@@ -47,7 +49,7 @@ class CMEServer(threading.Thread):
             self.server.hosts   = []
             self.server.module  = module
             self.server.context = context
-            self.server.log     = context.log
+            self.server.log     = CMEAdapter(extra={'module': self.server.module.name.upper()})
             self.cert_path      = os.path.join(os.path.expanduser('~/.cme'), 'cme.pem')
             self.server.track_host = self.track_host
 
