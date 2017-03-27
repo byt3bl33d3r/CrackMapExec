@@ -2,7 +2,7 @@
 # CrackMapExec
 A swiss army knife for pentesting networks
 
-#Acknowledgments
+# Acknowledgments
 **(These are the people who did the hard stuff)**
 
 This project was originally inspired by:
@@ -25,10 +25,10 @@ This repository contains the following repositories as submodules:
 - [NetRipper](https://github.com/NytroRST/NetRipper)
 - [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
 
-#Documentation, Tutorials, Examples
+# Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
 
-#Description
+# Description
 
 CrackMapExec is your one-stop-shop for pentesting Windows/Active Directory environments!
 
@@ -42,7 +42,7 @@ The biggest improvements over the above tools are:
 
 Additionally, a database is used to store used/dumped credentals. It also automatically correlates Admin credentials to hosts and vice-versa allowing you to easily keep track of credential sets and gain additional situational awareness in large environments.
 
-#Installation
+# Installation
 
 Use [virtualenvwrapper](https://virtualenvwrapper.readthedocs.org/en/latest/) to install CrackMapExec in a python [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs)
 
@@ -64,6 +64,6 @@ If you like living on the bleeding-edge:
 #~ python setup.py install
 ```
 
-#To do
+# To do
 - Kerberos support
 - ~~0wn everything~~
