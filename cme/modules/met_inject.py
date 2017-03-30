@@ -65,7 +65,6 @@ class CMEModule:
         if self.procid:
             payload += " -ProcessID {}".format(self.procid)
 
-        context.log.debug('Payload:{}'.format(payload))
         payload = create_ps_command(payload, force_ps32=True)
         connection.execute(payload)
         context.log.success('Executed payload')

@@ -37,11 +37,11 @@ class CMEAdapter(logging.LoggerAdapter):
 
         #If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ('module' in self.extra.keys()):
-            return u'{:<59} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+            return u'{:<61} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
 
         #If the logger is being called from CMEServer
         if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<24} {:<34} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+            return u'{:<24} {:<36} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
         #If the logger is being called from a protocol
         if 'module' in self.extra.keys():
@@ -49,11 +49,11 @@ class CMEAdapter(logging.LoggerAdapter):
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
-        return u'{:<24} {}:{} {:<16} {}'.format(module_name,
-                                           self.extra['host'],
-                                           self.extra['port'],
-                                           self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE',
-                                           msg), kwargs
+        return u'{:<24} {:<15} {} {:<16} {}'.format(module_name,
+                                                    self.extra['host'],
+                                                    self.extra['port'],
+                                                    self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE',
+                                                    msg), kwargs
 
     def info(self, msg, *args, **kwargs):
         msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)

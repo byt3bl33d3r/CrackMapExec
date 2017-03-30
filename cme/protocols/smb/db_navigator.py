@@ -138,7 +138,7 @@ class navigator(cmd.Cmd):
             name = group[2]
             members = len(self.db.get_group_relations(groupID=groupID))
 
-            print u" {} {} {} {}".format('{:<8}'.format(groupID), '{:<16}'.format(domain), '{:<35}'.format(name), '{}'.format(members))
+            print u" {} {} {} {}".format('{:<8}'.format(groupID), '{:<16}'.format(domain), '{:<45}'.format(name), '{}'.format(members))
 
         print ""
 

@@ -20,7 +20,7 @@ from cme.protocols.smb.smbexec import SMBEXEC
 from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.helpers.logger import highlight
-from cme.helpers.misc import gen_random_string
+from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
 from datetime import datetime
@@ -168,12 +168,13 @@ class smb(connection):
                 dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
             except DCERPCException, e:
                 if str(e).find('syntaxes_not_supported') >= 0:
+                    dce.disconnect()
                     return 32
             else:
+                dce.disconnect()
                 return 64
 
-            dce.disconnect()
-        except Exception, e:
+        except Exception as e:
             logging.debug('Error retrieving os arch of {}: {}'.format(self.host, str(e)))
 
         return 0
@@ -423,6 +424,16 @@ class smb(connection):
                 permissions.append(share_info)
                 #self.db.add_share(hostid, share_name, share_remark, read, write)
 
+            self.logger.success('Enumerated shares')
+            self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
+            self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
+            for share in permissions:
+                name   = share['name']
+                remark = share['remark']
+                perms  = share['access']
+
+                self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
 
@@ -474,13 +485,15 @@ class smb(connection):
 
                 for group in groups:
                     if group.name:
-                        self.logger.highlight('{:<40} membercount: {}'.format(group.name, group.membercount))
                         if not self.args.local_groups:
+                            self.logger.highlight('{:<40} membercount: {}'.format(group.name, group.membercount))
                             self.db.add_group(self.hostname, group.name)
                         else:
                             domain, name = group.name.split('/')
-                            group_id = self.db.get_groups(groupName=self.args.local_groups, groupDomain=domain)
-                            if not group_id:
+                            self.logger.highlight('{}\\{}'.format(domain.upper(), name))
+                            try:
+                                group_id = self.db.get_groups(groupName=self.args.local_groups, groupDomain=domain)[0][0]
+                            except IndexError:
                                 group_id = self.db.add_group(domain, self.args.local_groups)
 
                             # yo dawg, I hear you like groups. So I put a domain group as a member of a local group which is also a member of another local group.
@@ -502,41 +515,45 @@ class smb(connection):
             return
 
         for dc_ip in dc_ips:
-            try:
-                if self.args.groups:
-                    groups = get_netgroupmember(dc_ip, '', self.username, password=self.password,
-                                                lmhash=self.lmhash, nthash=self.nthash, queried_groupname=self.args.groups, queried_sid=str(),
-                                                queried_domain=str(), ads_path=str(), recurse=False, use_matching_rule=False,
-                                                full_data=False, custom_filter=str())
+            #try:
+            if self.args.groups:
+                groups = get_netgroupmember(dc_ip, '', self.username, password=self.password,
+                                            lmhash=self.lmhash, nthash=self.nthash, queried_groupname=self.args.groups, queried_sid=str(),
+                                            queried_domain=str(), ads_path=str(), recurse=False, use_matching_rule=False,
+                                            full_data=False, custom_filter=str())
 
-                    self.logger.success('Enumerated members of domain group')
-                    for group in groups:
-                        self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
+                self.logger.success('Enumerated members of domain group')
+                for group in groups:
+                    self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
 
-                        group_id = self.db.get_groups(groupName=self.args.groups, groupDomain=group.groupdomain)
-                        if not group_id:
-                            group_id = self.db.add_group(group.groupdomain, self.args.local_groups)
+                    try:
+                        group_id = self.db.get_groups(groupName=self.args.groups, groupDomain=group.groupdomain)[0][0]
+                    except IndexError:
+                        group_id = self.db.add_group(group.groupdomain, self.args.groups)
 
-                        if not group.isgroup:
-                            self.db.add_user(group.memberdomain, group.membername, group_id)
-                        elif group.isgroup:
-                            self.db.add_group(group.groupdomain, group.groupname)
+                    if not group.isgroup:
+                        self.db.add_user(group.memberdomain, group.membername, group_id)
+                    elif group.isgroup:
+                        self.db.add_group(group.groupdomain, group.groupname)
 
-                else:
-                    groups = get_netgroup(dc_ip, '', self.username, password=self.password,
-                                          lmhash=self.lmhash, nthash=self.nthash, queried_groupname=str(), queried_sid=str(),
-                                          queried_username=str(), queried_domain=str(), ads_path=str(),
-                                          admin_count=False, full_data=True, custom_filter=str())
+            else:
+                groups = get_netgroup(dc_ip, '', self.username, password=self.password,
+                                      lmhash=self.lmhash, nthash=self.nthash, queried_groupname=str(), queried_sid=str(),
+                                      queried_username=str(), queried_domain=str(), ads_path=str(),
+                                      admin_count=False, full_data=True, custom_filter=str())
 
-                    self.logger.success('Enumerated domain groups')
-                    for group in groups:
-                        if bool(group.isgroup) is True: 
-                            self.logger.highlight(group.samaccountname)
-                            self.db.add_group(self.domain, group.samaccountname)
+                self.logger.success('Enumerated domain group(s)')
+                for group in groups:
+                    self.logger.highlight('{:<40} membercount: {}'.format(group.samaccountname, len(group.member) if hasattr(group, 'member') else 0))
 
-                return groups
-            except Exception as e:
-                self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
+                    if bool(group.isgroup) is True:
+                        # Since there isn't a groupmemeber attribute on the returned object from get_netgroup we grab it from the distinguished name
+                        _,domain = group.distinguishedname.split(',')[-2].split('=')
+                        self.db.add_group(domain, group.samaccountname)
+
+            return groups
+            #except Exception as e:
+            #    self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
 
     def users(self):
         dc_ips = self.get_dc_ips()
@@ -551,9 +568,16 @@ class smb(connection):
                                     admin_count=False, spn=False, unconstrained=False, allow_delegation=False,
                                     custom_filter=str())
 
-                self.logger.success('Enumerated domain users')
+                self.logger.success('Enumerated domain user(s)')
                 for user in users:
-                    self.logger.highlight(user)
+                    if not self.args.users:
+                        _,domain = user.distinguishedname.split(',')[-2].split('=')
+                        self.logger.highlight('{}\\{:<40} badpwdcount: {} badpwdtime: {}'.format(domain, user.samaccountname, user.badpwdcount, user.badpasswordtime))
+                        self.db.add_user(domain, user.samaccountname)
+                    else:
+                        for k,v in vars(user).iteritems():
+                            self.logger.highlight('{:<40} {}'.format(k + ':',v))
+
                 return users
             except Exception as e:
                 logging.debug('Error executing users() using dc ip {}: {}'.format(dc_ip, e))
@@ -562,7 +586,7 @@ class smb(connection):
         loggedon = get_netloggedon(self.host, self.domain, self.username, self.password, lmhash=self.lmhash, nthash=self.nthash)
         self.logger.success('Enumerated loggedon users')
         for user in loggedon:
-            self.logger.highlight('{}\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username, 
+            self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username, 
                                                        'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
 
         return loggedon
@@ -671,10 +695,32 @@ class smb(connection):
         use_vss_method = False
         NTDSFileName   = None
 
-        def add_ntds_hash(ntds_hash):
+        host_id = self.db.get_computers(filterTerm=self.host)[0][0]
+
+        def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1
             self.logger.highlight(ntds_hash)
+            if ntds_hash.find('$') == -1:
+                if ntds_hash.find('\\') != -1:
+                    domain, hash = ntds_hash.split('\\')
+                else:
+                    domain = self.domain
+                    hash = ntds_hash
+
+                try:
+                    username,_,lmhash,nthash,_,_,_ = hash.split(':')
+                    parsed_hash = ':'.join((lmhash, nthash))
+                    if validate_ntlm(parsed_hash):
+                        self.db.add_credential('hash', domain, username, parsed_hash, pillaged_from=host_id)
+                        add_ntds_hash.added_to_db += 1
+                        return
+                    raise
+                except:
+                    logging.debug("Dumped hash is not NTLM, not adding to db for now ;)")
+            else:
+                logging.debug("Dumped hash is a computer account, not adding to db")
         add_ntds_hash.ntds_hashes = 0
+        add_ntds_hash.added_to_db = 0
 
         if self.remote_ops and self.bootkey:
             try:
@@ -686,12 +732,13 @@ class smb(connection):
                                  remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=False,
                                  pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename, 
                                  justUser=None, printUserStatus=False, 
-                                 perSecretCallback = lambda secretType, secret : add_ntds_hash(secret))
+                                 perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
 
                 self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
                 NTDS.dump()
 
-                self.logger.success('Dumped {} NTDS hashes to {}'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds'))
+                self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', 
+                                                                                                                highlight(add_ntds_hash.added_to_db)))
 
             except Exception as e:
                 #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:

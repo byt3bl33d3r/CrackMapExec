@@ -3,7 +3,7 @@ from cme.helpers.powershell import *
 class CMEModule:
 
     name = 'multirdp'
-    description = "Patches terminal services in memory to allow multiple RDP users (Parsed)"
+    description = "Patches terminal services in memory to allow multiple RDP users"
     supported_protocols = ['smb', 'mssql']
     opsec_safe = True
     multiple_hosts = True

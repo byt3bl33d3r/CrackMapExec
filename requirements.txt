@@ -2,8 +2,6 @@ pycrypto>=2.6
 pyasn1>=0.1.8
 gevent>=1.2.0
 netaddr
-pycrypto
-pyasn1
 termcolor
 requests
 pyOpenSSL

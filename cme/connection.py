@@ -1,3 +1,4 @@
+import logging
 from traceback import format_exc
 from gevent.lock import BoundedSemaphore
 from functools import wraps
@@ -120,24 +121,33 @@ class connection(object):
     def login(self):
         for cred_id in self.args.cred_id:
             with sem:
-                try:
-                    c_id, credtype, domain, username, password = self.db.get_credentials(filterTerm=int(cred_id))[0]
+                if cred_id.lower() == 'all':
+                    creds = self.db.get_credentials()
+                else:
+                    creds = self.db.get_credentials(filterTerm=int(cred_id))
 
-                    if not domain: domain = self.domain
+                for cred in creds:
+                    logging.debug(cred)
+                    try:
+                        c_id, domain, username, password, credtype, pillaged_from = cred
 
-                    if self.args.local_auth:
-                        domain = self.domain
-                    elif self.args.domain:
-                        domain = self.args.domain
+                        if credtype and password:
 
-                    if credtype == 'hash' and not self.over_fail_limit(username):
-                        if self.hash_login(domain, username, password): return True
+                            if not domain: domain = self.domain
 
-                    elif credtype == 'plaintext' and not self.over_fail_limit(username):
-                        if self.plaintext_login(domain, username, password): return True
+                            if self.args.local_auth:
+                                domain = self.domain
+                            elif self.args.domain:
+                                domain = self.args.domain
 
-                except IndexError:
-                    self.logger.error("Invalid database credential ID!")
+                            if credtype == 'hash' and not self.over_fail_limit(username):
+                                if self.hash_login(domain, username, password): return True
+
+                            elif credtype == 'plaintext' and not self.over_fail_limit(username):
+                                if self.plaintext_login(domain, username, password): return True
+
+                    except IndexError:
+                        self.logger.error("Invalid database credential ID!")
 
         for user in self.args.username:
             if type(user) is file:

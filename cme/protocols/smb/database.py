@@ -1,3 +1,5 @@
+import logging
+
 class database:
 
     def __init__(self, conn):
@@ -31,15 +33,6 @@ class database:
             "name" text
             )''')
 
-        db_conn.execute('''CREATE TABLE "ntds_dumps" (
-            "id" integer PRIMARY KEY,
-            "computerid", integer,
-            "domain" text,
-            "username" text,
-            "hash" text,
-            FOREIGN KEY(computerid) REFERENCES computers(id)
-            )''')
-
         #This table keeps track of which credential has admin access over which machine and vice-versa
         db_conn.execute('''CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
@@ -65,6 +58,15 @@ class database:
             FOREIGN KEY(groupid) REFERENCES groups(id)
             )''')
 
+        #db_conn.execute('''CREATE TABLE "ntds_dumps" (
+        #    "id" integer PRIMARY KEY,
+        #    "computerid", integer,
+        #    "domain" text,
+        #    "username" text,
+        #    "hash" text,
+        #    FOREIGN KEY(computerid) REFERENCES computers(id)
+        #    )''')
+
         #db_conn.execute('''CREATE TABLE "shares" (
         #    "id" integer PRIMARY KEY,
         #    "hostid" integer,
@@ -85,6 +87,7 @@ class database:
         """
         Check if this host has already been added to the database, if not add it in.
         """
+        domain = domain.split('.')[0].upper()
         cur = self.conn.cursor()
 
         cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [ip])
@@ -105,6 +108,7 @@ class database:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
+        domain = domain.split('.')[0].upper()
         user_rowid = None
         cur = self.conn.cursor()
 
@@ -116,7 +120,7 @@ class database:
             cur.close()
             return
 
-        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = cur.fetchall()
 
         if not len(results):
@@ -126,13 +130,16 @@ class database:
                 cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
         else:
             for user in results:
-                if (password != user[3]) and (credType != user[4]) and (pillaged_from != user[5]):
-                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credType, pillaged_from, user[0]])
+                if not user[3] and not user[4] and not user[5]:
+                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credtype, pillaged_from, user[0]])
                     user_rowid = cur.lastrowid
                     if groupid and not len(self.get_group_relations(user_rowid, groupid)):
                         cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
+
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password,
+                                                                                                                                    groupid, pillaged_from, user_rowid))
 
         return user_rowid
 
@@ -141,6 +148,7 @@ class database:
         if groupid and not self.is_group_valid(groupid):
             return
 
+        domain = domain.split('.')[0].upper()
         user_rowid = None
         cur = self.conn.cursor()
 
@@ -148,24 +156,27 @@ class database:
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, None, None, None])
+            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, '', '', ''])
             user_rowid = cur.lastrowid
             if groupid:
                 cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
-        else:
-            for user in results:
-                if (domain != user[1]) and (username != user[2]):
-                    cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
-                    user_rowid = cur.lastrowid
-                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        #else:
+        #    for user in results:
+        #        if (domain != user[1]) and (username != user[2]):
+        #            cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
+        #            user_rowid = cur.lastrowid
+        #            if groupid and not len(self.get_group_relations(user_rowid, groupid)):
+        #                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
+
+        logging.debug('add_user(domain={}, username={}, groupid={}) => {}'.format(domain, username, groupid, user_rowid))
 
         return user_rowid
 
     def add_group(self, domain, name):
 
+        domain = domain.split('.')[0].upper()
         cur = self.conn.cursor()
 
         cur.execute("SELECT * FROM groups WHERE LOWER(domain)=LOWER(?) AND LOWER(name)=LOWER(?)", [domain, name])
@@ -175,6 +186,8 @@ class database:
             cur.execute("INSERT INTO groups (domain, name) VALUES (?,?)", [domain, name])
 
         cur.close()
+
+        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, cur.lastrowid))
 
         return cur.lastrowid
     '''
@@ -189,6 +202,7 @@ class database:
     '''
     def add_admin_user(self, credtype, domain, username, password, host, userid=None):
 
+        domain = domain.split('.')[0].upper()
         cur = self.conn.cursor()
 
         if userid:
@@ -307,14 +321,14 @@ class database:
 
         # if we're returning a single credential by ID
         if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM users WHERE id=? AND password IS NOT NULL", [filterTerm])
+            cur.execute("SELECT * FROM users WHERE id=?", [filterTerm])
 
         elif credtype:
-            cur.execute("SELECT * FROM users WHERE credtype=? AND password IS NOT NULL", [credtype])
+            cur.execute("SELECT * FROM users WHERE credtype=?", [credtype])
 
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM users WHERE password IS NOT NULL")
+            cur.execute("SELECT * FROM users")
 
         results = cur.fetchall()
         cur.close()
@@ -399,27 +413,32 @@ class database:
         cur.execute('SELECT * FROM groups WHERE id=? LIMIT 1', [groupID])
         results = cur.fetchall()
         cur.close()
+
+        logging.debug('is_group_valid(groupID={}) => {}'.format(groupID, True if len(results) else False))
         return len(results) > 0
 
     def get_groups(self, filterTerm=None, groupName=None, groupDomain=None):
         """
         Return groups from the database
         """
+        if groupDomain:
+            groupDomain = groupDomain.split('.')[0].upper()
 
         cur = self.conn.cursor()
 
         if self.is_group_valid(filterTerm):
             cur.execute("SELECT * FROM groups WHERE id=? LIMIT 1", [filterTerm])
 
+        elif groupName and groupDomain:
+            cur.execute("SELECT * FROM groups WHERE LOWER(name)=LOWER(?) AND LOWER(domain)=LOWER(?)", [groupName, groupDomain])
+
         elif filterTerm and filterTerm !="":
             cur.execute("SELECT * FROM groups WHERE LOWER(name) LIKE LOWER(?)", ['%{}%'.format(filterTerm)])
-
-        elif groupName and groupDomain:
-            cur.execute("SELECT * FROM groups WHERE LOWER(name)=? AND LOWER(domain)=?", [groupName, groupDomain])
 
         else:
             cur.execute("SELECT * FROM groups")
 
         results = cur.fetchall()
         cur.close()
+        logging.debug('get_groups(filterTerm={}, groupName={}, groupDomain={}) => {}'.format(filterTerm, groupName, groupDomain, results))
         return results
