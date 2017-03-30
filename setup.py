@@ -24,8 +24,6 @@ setup(name='crackmapexec',
         'bs4',
         'netaddr',
         'pyOpenSSL',
-        'pycrypto',
-        'pyasn1',
         'termcolor',
         'requests',
         'msgpack-python'
