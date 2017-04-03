@@ -43,4 +43,5 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data):
-            context.log.success("Terminal Service patched successfully")
+            if data.find('"TermService" service patched') != -1:
+                context.log.success("Terminal Service patched successfully")

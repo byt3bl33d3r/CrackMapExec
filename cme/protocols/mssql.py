@@ -80,7 +80,7 @@ class mssql(connection):
 
     def create_conn_obj(self):
         try:
-            self.conn = tds.MSSQL(self.host, self.args.mssql_port, self.logger)
+            self.conn = tds.MSSQL(self.host, self.args.mssql_port, rowsPrinter=self.logger)
             self.conn.connect()
         except socket.error:
             return False
@@ -194,20 +194,8 @@ class mssql(connection):
 #We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
 #The whole tds library in impacket needs a good overhaul to preserve my sanity
 
-def printRowsCME(self):
-    if self.lastError is True:
-        return
-    out = ''
-    self.processColMeta()
-    #self.printColumnsHeader()
-    for row in self.rows:
-        for col in self.colMeta:
-            if row[col['Name']] != 'NULL':
-                out += col['Format'] % row[col['Name']] + self.COL_SEPARATOR + '\n'
-
-    return out
-
 def printRepliesCME(self):
+    print(self._MSSQL__rowsPrinter)
     for keys in self.replies.keys():
         for i, key in enumerate(self.replies[keys]):
             if key['TokenType'] == TDS_ERROR_TOKEN:
@@ -240,5 +228,4 @@ def printRepliesCME(self):
                         _type = "%d" % key['Type']
                     self._MSSQL__rowsPrinter.info("ENVCHANGE(%s): Old Value: %s, New Value: %s" % (_type,record['OldValue'].decode('utf-16le'), record['NewValue'].decode('utf-16le')))
 
-tds.MSSQL.printReplies = printRepliesCME
-tds.MSSQL.printRows = printRowsCME
+#tds.MSSQL.printReplies = printRepliesCME

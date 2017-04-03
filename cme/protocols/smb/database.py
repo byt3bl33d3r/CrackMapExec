@@ -160,13 +160,15 @@ class database:
             user_rowid = cur.lastrowid
             if groupid:
                 cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
-        #else:
-        #    for user in results:
-        #        if (domain != user[1]) and (username != user[2]):
-        #            cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
-        #            user_rowid = cur.lastrowid
-        #            if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-        #                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        else:
+            for user in results:
+                if (domain != user[1]) and (username != user[2]):
+                    cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
+                    user_rowid = cur.lastrowid
+                
+                if not user_rowid: user_rowid = user[0]
+                if groupid and not len(self.get_group_relations(user_rowid, groupid)):
+                    cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
 
