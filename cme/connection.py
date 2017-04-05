@@ -62,37 +62,40 @@ class connection(object):
             self.enum_host_info()
             self.proto_logger()
             self.print_host_info()
-            if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
+            self.login()
+            if hasattr(self.args, 'module') and self.args.module:
+                module_logger = CMEAdapter(extra={
+                                                  'module': self.module.name.upper(),
+                                                  'host': self.host,
+                                                  'port': self.args.smb_port,
+                                                  'hostname': self.hostname
+                                                 })
 
-                    module_logger = CMEAdapter(extra={
-                                                      'module': self.module.name.upper(),
-                                                      'host': self.host,
-                                                      'port': self.args.smb_port,
-                                                      'hostname': self.hostname
-                                                     })
+                context = Context(self.db, module_logger, self.args)
+                context.localip  = self.local_ip
 
-                    context = Context(self.db, module_logger, self.args)
-                    context.localip  = self.local_ip
+                if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
+                    self.server.connection = self
+                    self.server.context.localip = self.local_ip
 
-                    if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
-                        self.server.connection = self
-                        self.server.context.localip = self.local_ip
+                if hasattr(self.module, 'on_login'):
+                    self.module.on_login(context, self)
 
-                    if hasattr(self.module, 'on_login'):
-                        self.module.on_login(context, self)
+                if self.admin_privs and hasattr(self.module, 'on_admin_login'):
+                    self.module.on_admin_login(context, self)
 
-                    if self.admin_privs and hasattr(self.module, 'on_admin_login'):
-                        self.module.on_admin_login(context, self)
+                if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
+                    self.module.on_shutdown(context, self)
 
-                    if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
-                        self.module.on_shutdown(context, self)
+            else:
+                self.call_cmd_args()
 
-                else:
-                    for k, v in vars(self.args).iteritems():
-                        if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
-                            if v is not False and v is not None:
-                                getattr(self, k)()
+    def call_cmd_args(self):
+        for k, v in vars(self.args).iteritems():
+            if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
+                if v is not False and v is not None:
+                    logging.debug('Calling {}()'.format(k))
+                    getattr(self, k)()
 
     def inc_failed_login(self, username):
         global global_failed_logins

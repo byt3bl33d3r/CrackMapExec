@@ -4,13 +4,16 @@ import socket
 import os
 import ntpath
 from StringIO import StringIO
-#from gevent.lock import BoundedSemaphore
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
 from impacket.nmb import NetBIOSError
+from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
+from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
+from impacket.dcerpc.v5.samr import SID_NAME_USE
+from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.servers.smb import CMESMBServer
@@ -23,10 +26,11 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
+from pywerview.requester import RPCRequester
+from time import time
 from datetime import datetime
 from functools import wraps
 
-#smb_sem = BoundedSemaphore(1)
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
 
@@ -67,7 +71,7 @@ def requires_smb_server(func):
 
         if get_output or (methods and ('smbexec' in methods)):
             if not smb_server:
-                #with smb_sem:
+                #with sem:
                 logging.debug('Starting SMB server')
                 smb_server = CMESMBServer(self.logger, smb_share_name, verbose=self.args.verbose)
                 smb_server.start()
@@ -75,7 +79,7 @@ def requires_smb_server(func):
         output = func(self, *args, **kwargs)
 
         if smb_server is not None:
-            #with smb_sem:
+            #with sem:
             smb_server.shutdown()
             smb_server = None
 
@@ -95,6 +99,7 @@ class smb(connection):
         self.remote_ops = None
         self.bootkey = None
         self.output_filename = None
+        self.signing = False
         self.smb_share_name = smb_share_name
 
         connection.__init__(self, args, db, host)
@@ -104,11 +109,11 @@ class smb(connection):
         smb_parser = parser.add_parser('smb', help="own stuff using SMB and/or Active Directory", parents=[std_parser, module_parser])
         smb_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         dgroup = smb_parser.add_mutually_exclusive_group()
-        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="Domain to authenticate to")
-        dgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
+        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
+        dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         smb_parser.add_argument("--smb-port", type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
-        smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="Specify a share (default: C$)")
-        smb_parser.add_argument("--dc-ip", metavar='IP', help="Specify a Domain Controller IP (default: pulled from the database if available)")
+        smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
+        smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
 
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -127,25 +132,28 @@ class smb(connection):
         egroup.add_argument("--groups", nargs='?', const='', metavar='GROUP', help='enumerate domain groups, if a group is specified than its members are enumerated')
         egroup.add_argument("--local-groups", nargs='?', const='', metavar='GROUP', help='enumerate local groups, if a group is specified than its members are enumerated')
         egroup.add_argument("--pass-pol", action='store_true', help='dump password policy')
+        egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', help='enumerate users by bruteforcing RID\'s (default: 4000)')
         egroup.add_argument("--wmi", metavar='QUERY', type=str, help='issues the specified WMI query')
-        egroup.add_argument("--wmi-namespace", metavar='NAMESPACE', default='//./root/cimv2', help='WMI Namespace (default: //./root/cimv2)')
+        egroup.add_argument("--wmi-namespace", metavar='NAMESPACE', default='root\\cimv2', help='WMI Namespace (default: root\\cimv2)')
 
         sgroup = smb_parser.add_argument_group("Spidering", "Options for spidering shares")
-        sgroup.add_argument("--spider", metavar='FOLDER', nargs='?', const='.', type=str, help='folder to spider (default: root directory)')
+        sgroup.add_argument("--spider", metavar='SHARE', type=str, help='share to spider')
+        sgroup.add_argument("--spider-folder", metavar='FOLDER', default='.', type=str, help='folder to spider (default: root share directory)')
         sgroup.add_argument("--content", action='store_true', help='enable file content searching')
         sgroup.add_argument("--exclude-dirs", type=str, metavar='DIR_LIST', default='', help='directories to exclude from spidering')
         segroup = sgroup.add_mutually_exclusive_group()
-        segroup.add_argument("--pattern", nargs='+', help='Pattern(s) to search for in folders, filenames and file content')
-        segroup.add_argument("--regex", nargs='+', help='Regex(s) to search for in folders, filenames and file content')
-        sgroup.add_argument("--depth", type=int, default=10, help='Spider recursion depth (default: 10)')
+        segroup.add_argument("--pattern", nargs='+', help='pattern(s) to search for in folders, filenames and file content')
+        segroup.add_argument("--regex", nargs='+', help='regex(s) to search for in folders, filenames and file content')
+        sgroup.add_argument("--depth", type=int, default=None, help='max spider recursion depth (default: infinity & beyond)')
+        sgroup.add_argument("--only-files", action='store_true', help='only spider files')
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="Method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
-        cgroup.add_argument('--force-ps32', action='store_true', help='Force the PowerShell command to run in a 32-bit process')
-        cgroup.add_argument('--no-output', action='store_true', help='Do not retrieve command output')
+        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
+        cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
+        cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cegroup = cgroup.add_mutually_exclusive_group()
-        cegroup.add_argument("-x", metavar="COMMAND", dest='execute', help="Execute the specified command")
-        cegroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='Execute the specified PowerShell command')
+        cegroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
+        cegroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='execute the specified PowerShell command')
 
         return parser
 
@@ -195,6 +203,7 @@ class smb(connection):
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
         self.os_arch   = self.get_os_arch()
+        self.signing   = self.conn.isSigningRequired()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
 
@@ -222,10 +231,11 @@ class smb(connection):
         self.create_conn_obj()
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{})".format(self.server_os,
-                                                               ' x{}'.format(self.os_arch) if self.os_arch else '',
-                                                               self.hostname.decode('utf-8'),
-                                                               self.domain.decode('utf-8')))
+        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{})".format(self.server_os,
+                                                                           ' x{}'.format(self.os_arch) if self.os_arch else '',
+                                                                           self.hostname.decode('utf-8'),
+                                                                           self.domain.decode('utf-8'),
+                                                                           self.signing))
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -305,6 +315,9 @@ class smb(connection):
             self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port)
         except socket.error:
             return False
+        except Exception as e:
+            logging.debug('Error creating SMB connection: {}'.format(e))
+            return False
 
         return True
 
@@ -319,6 +332,13 @@ class smb(connection):
                 nthash = self.hash
 
         self.admin_privs = invoke_checklocaladminaccess(self.host, self.domain, self.username, self.password, lmhash, nthash)
+
+    def gen_relay_list(self):
+        if self.server_os.lower().find('windows') != -1 and self.signing is False:
+            with sem:
+                with open(self.args.gen_relay_list, 'a+') as relay_list:
+                    if self.host not in relay_list.read():
+                        relay_list.write(self.host + '\n')
 
     @requires_admin
     @requires_smb_server
@@ -433,6 +453,8 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+
+            return permissions
 
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
@@ -591,26 +613,144 @@ class smb(connection):
 
         return loggedon
 
-    #def pass_pol(self):
-    #    return PassPolDump(self).enum()
+    def pass_pol(self):
+        return PassPolDump(self).enum()
 
-    #@requires_admin
-    #def wmi(self, wmi_query=None, wmi_namespace='//./root/cimv2'):
+    @requires_admin
+    def wmi(self, wmi_query=None, namespace=None):
+        records = []
+        if not namespace:
+            namespace = self.args.wmi_namespace
 
-    #    if self.args.wmi_namespace:
-    #        wmi_namespace = self.args.wmi_namespace
+        try:
+            rpc = RPCRequester(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
+            rpc._create_wmi_connection(namespace=namespace)
 
-    #    if not wmi_query and self.args.wmi:
-    #        wmi_query = self.args.wmi
+            if wmi_query:
+                query = rpc._wmi_connection.ExecQuery(wmi_query, lFlags=WBEM_FLAG_FORWARD_ONLY)
+            else:
+                query = rpc._wmi_connection.ExecQuery(self.args.wmi, lFlags=WBEM_FLAG_FORWARD_ONLY)
+        except Exception as e:
+            self.logger.error('Error creating WMI connection: {}'.format(e))
+            return records
 
-    #    return WMIQUERY(self).query(wmi_query, wmi_namespace)
+        while True:
+            try:
+                wmi_results = query.Next(0xffffffff, 1)[0]
+                record = wmi_results.getProperties()
+                records.append(record)
+                for k,v in record.iteritems():
+                    self.logger.highlight('{} => {}'.format(k,v['value']))
+                print
+            except Exception as e:
+                if str(e).find('S_FALSE') < 0:
+                    raise e
+                else:
+                    break
 
-    #def spider(self):
-    #    spider = SMBSpider(self)
-    #    spider.spider(self.args.spider, self.args.depth)
-    #    spider.finish()
+        return records
 
-    #    return spider.results
+    def spider(self, share=None, folder='.', pattern=[], regex=[], exclude_dirs=[], depth=None, content=False, onlyfiles=True):
+        spider = SMBSpider(self.conn, self.logger)
+
+        self.logger.info('Started spidering')
+        start_time = time()
+        if not share:
+            spider.spider(self.args.spider, self.args.spider_folder, self.args.pattern, 
+                          self.args.regex, self.args.exclude_dirs, self.args.depth, 
+                          self.args.content, self.args.only_files)
+        else:
+            spider.spider(share, folder, pattern, regex, exclude_dirs, depth, content, onlyfiles)
+
+        self.logger.info("Done spidering (Completed in {})".format(time() - start_time))
+
+        return spider.results
+
+    def rid_brute(self, maxRid=None):
+        entries = []
+        if not maxRid:
+            maxRid = self.args.rid_brute
+
+        KNOWN_PROTOCOLS = {
+            135: {'bindstr': r'ncacn_ip_tcp:%s',           'set_host': False},
+            139: {'bindstr': r'ncacn_np:{}[\pipe\lsarpc]', 'set_host': True},
+            445: {'bindstr': r'ncacn_np:{}[\pipe\lsarpc]', 'set_host': True},
+            }
+
+        try:
+            stringbinding = KNOWN_PROTOCOLS[self.args.smb_port]['bindstr'].format(self.host)
+            logging.debug('StringBinding {}'.format(stringbinding))
+            rpctransport = transport.DCERPCTransportFactory(stringbinding)
+            rpctransport.set_dport(self.args.smb_port)
+
+            if KNOWN_PROTOCOLS[self.args.smb_port]['set_host']:
+                rpctransport.setRemoteHost(self.host)
+
+            if hasattr(rpctransport, 'set_credentials'):
+                # This method exists only for selected protocol sequences.
+                rpctransport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
+
+            dce = rpctransport.get_dce_rpc()
+            dce.connect()
+        except Exception as e:
+            self.logger.error('Error creating DCERPC connection: {}'.format(e))
+            return entries
+
+        # Want encryption? Uncomment next line
+        # But make SIMULTANEOUS variable <= 100
+        #dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
+
+        # Want fragmentation? Uncomment next line
+        #dce.set_max_fragment_size(32)
+
+        self.logger.success('Brute forcing RIDs')
+        dce.bind(lsat.MSRPC_UUID_LSAT)
+        resp = lsat.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
+        policyHandle = resp['PolicyHandle']
+
+        resp = lsad.hLsarQueryInformationPolicy2(dce, policyHandle, lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation)
+
+        domainSid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
+
+        soFar = 0
+        SIMULTANEOUS = 1000
+        for j in range(maxRid/SIMULTANEOUS+1):
+            if (maxRid - soFar) / SIMULTANEOUS == 0:
+                sidsToCheck = (maxRid - soFar) % SIMULTANEOUS
+            else: 
+                sidsToCheck = SIMULTANEOUS
+ 
+            if sidsToCheck == 0:
+                break
+
+            sids = list()
+            for i in xrange(soFar, soFar+sidsToCheck):
+                sids.append(domainSid + '-%d' % i)
+            try:
+                lsat.hLsarLookupSids(dce, policyHandle, sids,lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
+            except DCERPCException, e:
+                if str(e).find('STATUS_NONE_MAPPED') >= 0:
+                    soFar += SIMULTANEOUS
+                    continue
+                elif str(e).find('STATUS_SOME_NOT_MAPPED') >= 0:
+                    resp = e.get_packet()
+                else: 
+                    raise
+
+            for n, item in enumerate(resp['TranslatedNames']['Names']):
+                if item['Use'] != SID_NAME_USE.SidTypeUnknown:
+                    rid    = soFar + n
+                    domain = resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name']
+                    user   = item['Name']
+                    sid_type = SID_NAME_USE.enumItems(item['Use']).name
+                    self.logger.highlight("{}: {}\\{} ({})".format(rid, domain, user, sid_type))
+                    entries.append({'rid': rid, 'domain': domain, 'username': user, 'sidtype': sid_type})
+
+            soFar += SIMULTANEOUS
+
+        dce.disconnect()
+
+        return entries
 
     def enable_remoteops(self):
         if self.remote_ops is not None and self.bootkey is not None:

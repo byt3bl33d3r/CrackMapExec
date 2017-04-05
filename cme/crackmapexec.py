@@ -180,7 +180,7 @@ def main():
 
             if jitter:
                 value = random.choice(range(jitter[0], jitter[1]))
-                logging.debug("Doin' the Jitterbug for {} seconds'.format(value)")
+                logging.debug("Doin' the Jitterbug for {} seconds".format(value))
                 sleep(value)
 
         for job in jobs:
