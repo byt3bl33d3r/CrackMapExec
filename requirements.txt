@@ -1,8 +1,9 @@
 pycrypto>=2.6
 pyasn1>=0.1.8
 gevent>=1.2.0
+bs4
 netaddr
+pyOpenSSL
 termcolor
 requests
-pyOpenSSL
 msgpack-python
