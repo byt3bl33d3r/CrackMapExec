@@ -145,6 +145,10 @@ def main():
                     setattr(protocol_object, 'module', module)
                     break
 
+            if not module:
+                logger.error('Module not found')
+                exit(1)
+
             if getattr(module, 'opsec_safe') is False:
                 ans = raw_input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n]', 'red'))
                 if ans.lower() not in ['y', 'yes', '']:

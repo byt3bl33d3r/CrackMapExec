@@ -7,7 +7,7 @@ import os
 class CMEModule:
     '''
         Injects NetRipper in memory using PowerShell
-        Note: Apperently NetRipper doesn't support injecting into x64 processes yet, which very much limits its use case
+        Note: NetRipper doesn't support injecting into x64 processes yet, which very much limits its use case
 
         Module by @byt3bl33d3r
     '''

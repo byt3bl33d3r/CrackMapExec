@@ -83,7 +83,7 @@ class database:
 
     #    cur.close()
 
-    def add_computer(self, ip, hostname, domain, os, dc=False):
+    def add_computer(self, ip, hostname, domain, os, dc=None):
         """
         Check if this host has already been added to the database, if not add it in.
         """
@@ -99,6 +99,8 @@ class database:
             for host in results:
                 if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
                     cur.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
+                if dc != None and (dc != host[5]):
+                    cur.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
 
         cur.close()
 
@@ -327,6 +329,10 @@ class database:
 
         elif credtype:
             cur.execute("SELECT * FROM users WHERE credtype=?", [credtype])
+
+        # if we're filtering by username
+        elif filterTerm and filterTerm != '':
+            cur.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm)])
 
         # otherwise return all credentials
         else:

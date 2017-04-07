@@ -182,15 +182,17 @@ class navigator(cmd.Cmd):
                 self.display_groups(groups)
             elif len(groups) == 1:
                 print '\nGroup:\n'
-                print " GroupID Domain           Name "
-                print " -------  ------           ----"
+                print "  GroupID  Domain        Name"
+                print "  -------  ------        ----"
 
                 for group in groups:
                     groupID = group[0]
                     domain = group[1]
                     name = group[2]
 
-                    print u" {} {} {}".format('{:<8}'.format(groupID), '{:<15}'.format(domain), '{:<15}'.format(name))
+                    print u"  {}{}{}".format('{:<9}'.format(groupID), 
+                                            u'{:<14}'.format(domain.decode('utf-8')),
+                                            u'{}'.format(name.decode('utf-8')))
 
                 print ""
 
@@ -230,7 +232,6 @@ class navigator(cmd.Cmd):
         if filterTerm == "":
             hosts = self.db.get_computers()
             self.display_hosts(hosts)
-
         else:
             hosts = self.db.get_computers(filterTerm=filterTerm)
 
@@ -333,78 +334,82 @@ class navigator(cmd.Cmd):
 
         else:
             creds = self.db.get_credentials(filterTerm=filterTerm)
+            if len(creds) != 1: 
+                self.display_creds(creds)
+            elif len(creds) == 1:
+                print "\nCredential(s):\n"
+                print "  CredID  CredType    Pillaged From HostID  Domain           UserName             Password"
+                print "  ------  --------    --------------------  ------           --------             --------"
 
-            print "\nCredential(s):\n"
-            print "  CredID  CredType    Pillaged From HostID  Domain           UserName             Password"
-            print "  ------  --------    --------------------  ------           --------             --------"
+                credIDList = []
 
-            credIDList = []
+                for cred in creds:
+                    credID = cred[0]
+                    credIDList.append(credID)
 
-            for cred in creds:
-                credID = cred[0]
-                credIDList.append(credID)
+                    domain = cred[1]
+                    username = cred[2]
+                    password = cred[3]
+                    credtype = cred[4]
+                    pillaged_from = cred[5]
 
-                domain = cred[1]
-                username = cred[2]
-                password = cred[3]
-                credtype = cred[4]
-                pillaged_from = cred[5]
+                    print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
+                                                  '{:<12}'.format(credtype),
+                                                  '{:<22}'.format(pillaged_from),
+                                                 u'{:<17}'.format(domain.decode('utf-8')),
+                                                 u'{:<21}'.format(username.decode('utf-8')),
+                                                 u'{:<17}'.format(password.decode('utf-8'))
+                                                  )
 
-                print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                              '{:<12}'.format(credtype),
-                                              '{:<22}'.format(pillaged_from),
-                                              u'{:<17}'.format(domain.decode('utf-8')),
-                                              u'{:<21}'.format(username.decode('utf-8')),
-                                              u'{:<17}'.format(password.decode('utf-8'))
-                                              )
+                print ""
 
-            print ""
+                print "\nMember of Group(s):\n"
+                print "  GroupID  Domain        Name"
+                print "  -------  ------        ----"
 
-            print "\nMember of Group(s):\n"
-            print "  GroupID  Domain        Name"
-            print "  -------  ------        ----"
+                for credID in credIDList:
+                    links = self.db.get_group_relations(userID=credID)
 
-            for credID in credIDList:
-                links = self.db.get_group_relations(userID=credID)
+                    for link in links:
+                        linkID, userID, groupID = link
+                        groups = self.db.get_groups(groupID)
 
-                for link in links:
-                    linkID, userID, groupID = link
-                    groups = self.db.get_groups(groupID)
+                        for group in groups:
+                            groupID = group[0]
+                            domain  = group[1]
+                            name    = group[2]
 
-                    for group in groups:
-                        groupID = group[0]
-                        domain  = group[1]
-                        name    = group[2]
+                            print u"  {}{}{}".format('{:<9}'.format(groupID), 
+                                                    u'{:<14}'.format(domain.decode('utf-8')),
+                                                    u'{}'.format(name.decode('utf-8')))
 
-                        print u"{}{}{}".format(groupID, domain, name)
+                print ""
 
-            print ""
+                print "\nAdmin Access to Host(s):\n"
+                print "  HostID  IP               Hostname                 Domain           OS"
+                print "  ------  --               --------                 ------           --"
 
-            print "\nAdmin Access to Host(s):\n"
-            print "  HostID  IP               Hostname                 Domain           OS"
-            print "  ------  --               --------                 ------           --"
+                for credID in credIDList:
+                    links = self.db.get_admin_relations(userID=credID)
 
-            for credID in credIDList:
-                links = self.db.get_admin_relations(userID=credID)
+                    for link in links:
+                        linkID, credID, hostID =  link
+                        hosts = self.db.get_computers(hostID)
 
-                for link in links:
-                    linkID, credID, hostID =  link
-                    hosts = self.db.get_computers(hostID)
+                        for host in hosts:
+                            hostID = host[0]
+                            ip = host[1]
+                            hostname = host[2]
+                            domain = host[3]
+                            os = host[4]
 
-                    for host in hosts:
-                        hostID = host[0]
-                        ip = host[1]
-                        hostname = host[2]
-                        domain = host[3]
-                        os = host[4]
+                            print u"  {}{}{}{}{}".format('{:<8}'.format(hostID),
+                                                         '{:<17}'.format(ip),
+                                                         u'{:<25}'.format(hostname.decode('utf-8')),
+                                                         u'{:<17}'.format(domain.decode('utf-8')),
+                                                         '{:<17}'.format(os))
 
-                        print u"  {}{}{}{}{}".format('{:<8}'.format(hostID),
-                                                     '{:<17}'.format(ip),
-                                                     u'{:<25}'.format(hostname.decode('utf-8')),
-                                                     u'{:<17}'.format(domain.decode('utf-8')),
-                                                     '{:<17}'.format(os))
-
-            print ""
+                print ""
 
     def complete_import(self, text, line, begidx, endidx):
         "Tab-complete 'import' commands."

@@ -454,24 +454,19 @@ class smb(connection):
 
                 self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
 
-            return permissions
-
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
 
-    def get_dc_ips(self):
-        # I know this whole function is ugly af. Sue me.
-        dc_ips = []
-        if self.args.dc_ip:
-            dc_ips.append(self.args.dc_ip)
+        return permissions
 
-        elif not self.args.dc_ip:
-            for dc in self.db.get_domain_controllers(domain=self.domain):
-                dc_ips.append(dc[1])
+    def get_dc_ips(self):
+        dc_ips = []
+
+        for dc in self.db.get_domain_controllers(domain=self.domain):
+            dc_ips.append(dc[1])
 
         if not dc_ips:
-            logging.debug('No DC(s) specified and none in the database')
-            return ['']
+            dc_ips.append(self.host)
 
         return dc_ips
 
@@ -493,6 +488,7 @@ class smb(connection):
         return disks
 
     def local_groups(self):
+        groups = []
         #To enumerate local groups the DC IP is optional, if specified it will resolve the SIDs and names of any domain accounts in the local group
         for dc_ip in self.get_dc_ips():
             try:
@@ -525,65 +521,62 @@ class smb(connection):
                                 self.db.add_user(domain, name, group_id)
                             elif group.isgroup:
                                 self.db.add_group(domain, name)
-
-                return groups
+                break
             except Exception as e:
                 self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
 
+        return groups
+
     def groups(self):
-        dc_ips = self.get_dc_ips()
-        if len(dc_ips) == 1 and dc_ips[0] == '':
-            self.logger.error('A Domain Controller is required to enumerate domain groups, specify one using --dc-ip or run the get_netdomaincontroller module')
-            return
-
-        for dc_ip in dc_ips:
-            #try:
+        groups = []
+        for dc_ip in self.get_dc_ips():
             if self.args.groups:
-                groups = get_netgroupmember(dc_ip, '', self.username, password=self.password,
-                                            lmhash=self.lmhash, nthash=self.nthash, queried_groupname=self.args.groups, queried_sid=str(),
-                                            queried_domain=str(), ads_path=str(), recurse=False, use_matching_rule=False,
-                                            full_data=False, custom_filter=str())
+                try:
+                    groups = get_netgroupmember(dc_ip, '', self.username, password=self.password,
+                                                lmhash=self.lmhash, nthash=self.nthash, queried_groupname=self.args.groups, queried_sid=str(),
+                                                queried_domain=str(), ads_path=str(), recurse=False, use_matching_rule=False,
+                                                full_data=False, custom_filter=str())
 
-                self.logger.success('Enumerated members of domain group')
-                for group in groups:
-                    self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
+                    self.logger.success('Enumerated members of domain group')
+                    for group in groups:
+                        self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
 
-                    try:
-                        group_id = self.db.get_groups(groupName=self.args.groups, groupDomain=group.groupdomain)[0][0]
-                    except IndexError:
-                        group_id = self.db.add_group(group.groupdomain, self.args.groups)
+                        try:
+                            group_id = self.db.get_groups(groupName=self.args.groups, groupDomain=group.groupdomain)[0][0]
+                        except IndexError:
+                            group_id = self.db.add_group(group.groupdomain, self.args.groups)
 
-                    if not group.isgroup:
-                        self.db.add_user(group.memberdomain, group.membername, group_id)
-                    elif group.isgroup:
-                        self.db.add_group(group.groupdomain, group.groupname)
-
+                        if not group.isgroup:
+                            self.db.add_user(group.memberdomain, group.membername, group_id)
+                        elif group.isgroup:
+                            self.db.add_group(group.groupdomain, group.groupname)
+                    break
+                except Exception as e:
+                    self.logger.error('Error enumerating domain group members using dc ip {}: {}'.format(dc_ip, e))
             else:
-                groups = get_netgroup(dc_ip, '', self.username, password=self.password,
-                                      lmhash=self.lmhash, nthash=self.nthash, queried_groupname=str(), queried_sid=str(),
-                                      queried_username=str(), queried_domain=str(), ads_path=str(),
-                                      admin_count=False, full_data=True, custom_filter=str())
+                try:
+                    groups = get_netgroup(dc_ip, '', self.username, password=self.password,
+                                          lmhash=self.lmhash, nthash=self.nthash, queried_groupname=str(), queried_sid=str(),
+                                          queried_username=str(), queried_domain=str(), ads_path=str(),
+                                          admin_count=False, full_data=True, custom_filter=str())
 
-                self.logger.success('Enumerated domain group(s)')
-                for group in groups:
-                    self.logger.highlight('{:<40} membercount: {}'.format(group.samaccountname, len(group.member) if hasattr(group, 'member') else 0))
+                    self.logger.success('Enumerated domain group(s)')
+                    for group in groups:
+                        self.logger.highlight('{:<40} membercount: {}'.format(group.samaccountname, len(group.member) if hasattr(group, 'member') else 0))
 
-                    if bool(group.isgroup) is True:
-                        # Since there isn't a groupmemeber attribute on the returned object from get_netgroup we grab it from the distinguished name
-                        _,domain = group.distinguishedname.split(',')[-2].split('=')
-                        self.db.add_group(domain, group.samaccountname)
+                        if bool(group.isgroup) is True:
+                            # Since there isn't a groupmemeber attribute on the returned object from get_netgroup we grab it from the distinguished name
+                            _,domain = group.distinguishedname.split(',')[-2].split('=')
+                            self.db.add_group(domain, group.samaccountname)
+                    break
+                except Exception as e:
+                    self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
 
-            return groups
-            #except Exception as e:
-            #    self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
+        return groups
 
     def users(self):
-        dc_ips = self.get_dc_ips()
-        if len(dc_ips) == 1 and dc_ips[0] == '':
-            self.logger.error('A Domain Controller is required to enumerate domain users, specify one using --dc-ip or run the get_netdomaincontroller module')
-            return
-
-        for dc_ip in dc_ips:
+        users = []
+        for dc_ip in self.get_dc_ips():
             try:
                 users = get_netuser(dc_ip, '', self.username, password=self.password, lmhash=self.lmhash,
                                     nthash=self.nthash, queried_username=self.args.users, queried_domain='', ads_path=str(),
@@ -600,16 +593,22 @@ class smb(connection):
                         for k,v in vars(user).iteritems():
                             self.logger.highlight('{:<40} {}'.format(k + ':',v))
 
-                return users
+                break
             except Exception as e:
-                logging.debug('Error executing users() using dc ip {}: {}'.format(dc_ip, e))
+                logging.debug('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
+
+        return users
 
     def loggedon_users(self):
-        loggedon = get_netloggedon(self.host, self.domain, self.username, self.password, lmhash=self.lmhash, nthash=self.nthash)
-        self.logger.success('Enumerated loggedon users')
-        for user in loggedon:
-            self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username, 
-                                                       'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
+        loggedon = []
+        try:
+            loggedon = get_netloggedon(self.host, self.domain, self.username, self.password, lmhash=self.lmhash, nthash=self.nthash)
+            self.logger.success('Enumerated loggedon users')
+            for user in loggedon:
+                self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username, 
+                                                           'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
+        except Exception as e:
+            self.logger.error('Error enumerating logged on users: {}'.format(e))
 
         return loggedon
 
@@ -641,7 +640,7 @@ class smb(connection):
                 records.append(record)
                 for k,v in record.iteritems():
                     self.logger.highlight('{} => {}'.format(k,v['value']))
-                print
+                self.logger.highlight('')
             except Exception as e:
                 if str(e).find('S_FALSE') < 0:
                     raise e

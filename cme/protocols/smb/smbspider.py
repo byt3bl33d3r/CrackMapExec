@@ -41,7 +41,7 @@ class SMBSpider:
         '''
             Abondon all hope ye who enter here.
             You're now probably wondering if I was drunk and/or high when writing this.
-            Getting this work took a toll on my sanity. So yes. a lot.
+            Getting this to work took a toll on my sanity. So yes. a lot.
         '''
 
         # The following is some funky shit that deals with the way impacket treats file paths
@@ -53,6 +53,8 @@ class SMBSpider:
             subfolder = subfolder[2:] + '/*'
         else:
             subfolder = subfolder.replace('/*/', '/') + '/*'
+
+        # End of the funky shit... or is it? Surprise! This whole thing is funky
 
         filelist = None
         try:
