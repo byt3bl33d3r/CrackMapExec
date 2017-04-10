@@ -5,6 +5,7 @@ import os
 import ntpath
 from StringIO import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
+from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
 from impacket.nmb import NetBIOSError
 from impacket.dcerpc.v5 import transport, lsat, lsad
@@ -312,8 +313,9 @@ class smb(connection):
             return False
 
     def create_conn_obj(self):
+        #Seems like SMBv3 doesn't give us the 'pretty' OS banners, sticking to SMBv1 for now
         try:
-            self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port)
+            self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port, preferredDialect=SMB_DIALECT)
         except socket.error:
             return False
         except Exception as e:
