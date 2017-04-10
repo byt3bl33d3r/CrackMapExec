@@ -22,6 +22,7 @@ from cme.protocols.smb.atexec import TSCH_EXEC
 from cme.protocols.smb.smbexec import SMBEXEC
 from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
+from cme.protocols.smb.passpol import PassPolDump
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
@@ -613,7 +614,7 @@ class smb(connection):
         return loggedon
 
     def pass_pol(self):
-        return PassPolDump(self).enum()
+        return PassPolDump(self).dump()
 
     @requires_admin
     def wmi(self, wmi_query=None, namespace=None):

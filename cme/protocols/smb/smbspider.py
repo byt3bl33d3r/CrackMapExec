@@ -1,5 +1,6 @@
 from time import strftime, localtime
 from cme.protocols.smb.remotefile import RemoteFile
+from impacket.smb3structs import FILE_READ_DATA
 from impacket.smbconnection import SessionError
 import logging
 import re
@@ -129,7 +130,7 @@ class SMBSpider:
                     traceback.print_exc()
                     break
 
-                for pattern in self.args.pattern:
+                for pattern in self.pattern:
                     if contents.lower().find(pattern.lower()) != -1:
                         self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.share,
                                                                                                             path,
