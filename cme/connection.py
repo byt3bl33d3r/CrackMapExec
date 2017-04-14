@@ -1,7 +1,7 @@
 import logging
-from socket import gethostbyname
 from traceback import format_exc
 from gevent.lock import BoundedSemaphore
+from gevent.socket import gethostbyname
 from functools import wraps
 from cme.logger import CMEAdapter
 from cme.context import Context
