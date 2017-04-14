@@ -1,4 +1,5 @@
 import logging
+from socket import gethostbyname
 from traceback import format_exc
 from gevent.lock import BoundedSemaphore
 from functools import wraps
@@ -20,7 +21,6 @@ class connection(object):
     def __init__(self, args, db, host):
         self.args = args
         self.db = db
-        self.host = host
         self.conn = None
         self.admin_privs = False
         self.hostname = None
@@ -29,6 +29,12 @@ class connection(object):
         self.username = None
         self.failed_logins = 0
         self.local_ip = None
+
+        try:
+            self.host = gethostbyname(host)
+        except Exception as e:
+            logging.debug('Error resolving hostname {}: {}'.format(host, e))
+            return
 
         self.proto_flow()
 
