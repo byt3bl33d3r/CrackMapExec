@@ -69,11 +69,18 @@ class CMEModule:
             buf = StringIO(data).readlines()
             for line in buf:
                 if line != '\r\n' and not line.startswith('Name') and not line.startswith('---'):
-                    hostname, domain, ip = filter(None, line.strip().split(' '))
-                    hostname = hostname.split('.')[0].upper()
-                    domain   = domain.split('.')[0].upper()
-                    context.log.highlight('Hostname: {} Domain: {} IP: {}'.format(hostname, domain, ip))
-                    context.db.add_computer(ip, hostname, domain, '', dc=True)
-                    dc_count += 1
+                    try:
+                        hostname, domain, ip = filter(None, line.strip().split(' '))
+                        hostname = hostname.split('.')[0].upper()
+                        domain   = domain.split('.')[0].upper()
+                        context.log.highlight('Hostname: {} Domain: {} IP: {}'.format(hostname, domain, ip))
+                        context.db.add_computer(ip, hostname, domain, '', dc=True)
+                        dc_count += 1
+                    except Exception:
+                        context.log.error('Error parsing Domain Controller entry')
 
             context.log.success('Added {} Domain Controllers to the database'.format(highlight(dc_count)))
+
+            log_name = 'Get_NetDomainController-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            write_log(data, log_name)
+            context.log.info("Saved raw output to {}".format(log_name))

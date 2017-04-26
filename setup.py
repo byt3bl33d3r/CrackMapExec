@@ -25,7 +25,7 @@ setup(name='crackmapexec',
         'netaddr',
         'pyOpenSSL',
         'termcolor',
-        'requests',
+        'requests>=2.3.0',
         'msgpack-python'
     ],
     entry_points = {

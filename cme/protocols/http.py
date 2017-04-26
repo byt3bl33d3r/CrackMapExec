@@ -45,7 +45,7 @@ class http(connection):
             pass
         except Exception as e:
             if str(e).find('Read timed out') == -1:
-                self.logger.error('Error connecting to {}://{}:{} :{}'.format(transport, self.host, port, e))
+                logging.debug('Error connecting to {}://{}:{} :{}'.format(transport, self.host, port, e))
 
     def print_host_info(self):
         self.logger.info("Title: '{}'".format(self.page_title.strip()))
