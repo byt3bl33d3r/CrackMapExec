@@ -86,7 +86,7 @@ class http(connection):
         capabilities['phantomjs.page.settings.password'] = 'none'
 
         conn = Browser('phantomjs', service_args=['--ignore-ssl-errors=true', '--web-security=no', '--ssl-protocol=any'],
-                            service_log_path=os.path.expanduser('~/.cme/logs/ghostdriver.log'), desired_capabilities=capabilities)
+                       service_log_path=os.path.expanduser('~/.cme/logs/ghostdriver.log'), desired_capabilities=capabilities)
 
         conn.driver.set_window_size(1200, 675)
         conn.visit(url)
