@@ -22,3 +22,6 @@
 [submodule "cme/thirdparty/impacket_"]
 	path = cme/thirdparty/impacket
 	url = https://github.com/CoreSecurity/impacket
+[submodule "cme/data/cme_powershell_scripts"]
+	path = cme/data/cme_powershell_scripts
+	url = https://github.com/byt3bl33d3r/CME-PowerShell-Scripts

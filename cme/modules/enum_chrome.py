@@ -19,7 +19,7 @@ class CMEModule:
         '''
         '''
 
-        self.ps_script1 = obfs_ps_script('Invoke-PSInject.ps1')
+        self.ps_script1 = obfs_ps_script('cme_powershell_scripts/Invoke-PSInject.ps1')
         self.ps_script2 = obfs_ps_script('randomps-scripts/Get-ChromeDump.ps1')
 
     def on_admin_login(self, context, connection):

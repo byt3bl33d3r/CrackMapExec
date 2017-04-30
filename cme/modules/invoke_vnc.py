@@ -35,7 +35,7 @@ class CMEModule:
 
         self.password = module_options['PASSWORD']
 
-        self.ps_script1 = obfs_ps_script('Invoke-PSInject.ps1')
+        self.ps_script1 = obfs_ps_script('cme_powershell_scripts/Invoke-PSInject.ps1')
         self.ps_script2 = obfs_ps_script('invoke-vnc/Invoke-Vnc.ps1')
 
     def on_admin_login(self, context, connection):
