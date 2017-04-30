@@ -37,11 +37,11 @@ class CMEAdapter(logging.LoggerAdapter):
 
         #If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ('module' in self.extra.keys()):
-            return u'{:<61} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+            return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
 
         #If the logger is being called from CMEServer
         if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<24} {:<36} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+            return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
         #If the logger is being called from a protocol
         if 'module' in self.extra.keys():
