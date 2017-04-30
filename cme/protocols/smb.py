@@ -25,6 +25,7 @@ from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.helpers.logger import highlight
+#from cme.helpers.powershell import is_powershell_installed
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
@@ -35,6 +36,9 @@ from functools import wraps
 
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
+
+#if not is_powershell_installed(): 
+#    logger.error(highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!'))
 
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
@@ -164,7 +168,7 @@ class smb(connection):
                                         'protocol': 'SMB',
                                         'host': self.host,
                                         'port': self.args.smb_port,
-                                        'hostname': u'{}'.format(self.hostname)
+                                        'hostname': self.hostname
                                         })
 
     def get_os_arch(self):
@@ -190,9 +194,7 @@ class smb(connection):
         return 0
 
     def enum_host_info(self):
-        #Get the remote ip address (in case the target is a hostname)
         self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
-        remote_ip = self.conn.getRemoteHost()
 
         try:
             self.conn.login('' , '')
@@ -200,12 +202,11 @@ class smb(connection):
             if "STATUS_ACCESS_DENIED" in e.message:
                 pass
 
-        self.host = remote_ip
         self.domain    = self.conn.getServerDomain()
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
-        self.os_arch   = self.get_os_arch()
         self.signing   = self.conn.isSigningRequired()
+        self.os_arch   = self.get_os_arch()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
 

@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 import sys
 import os
 import cme

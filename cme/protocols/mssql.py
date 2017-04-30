@@ -29,7 +29,7 @@ class mssql(connection):
         mssql_parser.add_argument("-q", "--query", metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
         mssql_parser.add_argument("-a", "--auth-type", dest='mssql_auth', choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
 
-        cgroup = mssql_parser.add_argument_group("Command Execution", "Options for executing commands")
+        cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         xgroup = cgroup.add_mutually_exclusive_group()
@@ -43,7 +43,7 @@ class mssql(connection):
                                         'protocol': 'MSSQL',
                                         'host': self.host,
                                         'port': self.args.mssql_port,
-                                        'hostname': u'{}'.format(self.hostname)
+                                        'hostname': self.hostname
                                         })
 
     def enum_host_info(self):
@@ -228,4 +228,4 @@ def printRepliesCME(self):
                         _type = "%d" % key['Type']
                     self._MSSQL__rowsPrinter.info("ENVCHANGE(%s): Old Value: %s, New Value: %s" % (_type,record['OldValue'].decode('utf-16le'), record['NewValue'].decode('utf-16le')))
 
-#tds.MSSQL.printReplies = printRepliesCME
+tds.MSSQL.printReplies = printRepliesCME

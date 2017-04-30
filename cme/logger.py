@@ -49,7 +49,7 @@ class CMEAdapter(logging.LoggerAdapter):
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
-        return u'{:<24} {:<15} {} {:<16} {}'.format(module_name,
+        return u'{:<24} {:<15} {:<6} {:<16} {}'.format(module_name,
                                                     self.extra['host'],
                                                     self.extra['port'],
                                                     self.extra['hostname'].decode('utf-8') if self.extra['hostname'] else 'NONE',

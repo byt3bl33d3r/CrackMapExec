@@ -3,7 +3,6 @@ import sqlite3
 import shutil
 import cme
 from cme.helpers.logger import highlight
-#from cme.helpers.powershell import is_powershell_installed
 from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
 from sys import exit
@@ -76,5 +75,3 @@ def first_run_setup(logger):
                 exit(1)
 
         os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
-
-    #if not is_powershell_installed(): logger.error(highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!'))

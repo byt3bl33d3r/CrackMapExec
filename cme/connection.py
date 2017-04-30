@@ -21,9 +21,9 @@ class connection(object):
     def __init__(self, args, db, host):
         self.args = args
         self.db = db
+        self.hostname = host
         self.conn = None
         self.admin_privs = False
-        self.hostname = None
         self.logger = None
         self.password = None
         self.username = None
