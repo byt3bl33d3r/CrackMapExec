@@ -7,9 +7,17 @@ class database:
     def db_schema(db_conn):
         db_conn.execute('''CREATE TABLE "credentials" (
             "id" integer PRIMARY KEY,
-            "url" text,
             "username" text,
             "password" text
+            )''')
+
+        db_conn.execute('''CREATE TABLE "hosts" (
+            "id" integer PRIMARY KEY,
+            "ip" text,
+            "hostname" text,
+            "port" integer,
+            "title" text,
+            "login_url" text
             )''')
 
     def add_credential(self, url, username, password):
@@ -18,11 +26,22 @@ class database:
         """
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(url)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [url, username, password])
+        cur.execute("SELECT * FROM credentials WHERE LOWER(username)=LOWER(?) AND password=?", [url, username, password])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO credentials (url, username, password) VALUES (?,?,?)", [url, username, password] )
+            cur.execute("INSERT INTO credentials (username, password) VALUES (?,?)", [username, password] )
+
+        cur.close()
+
+    def add_host(self, ip, hostname, port, title=None, login_url=None):
+        cur = self.conn.cursor()
+
+        cur.execute("SELECT * FROM hosts WHERE LOWER(ip)=LOWER(?) AND LOWER(hostname)=LOWER(?) AND port=? AND LOWER(login_url)=LOWER(?)", [ip, hostname, port, login_url])
+        results = cur.fetchall()
+
+        if not len(results):
+            cur.execute("INSERT INTO hosts (ip, hostname, port, login_url) VALUES (?,?,?,?)", [ip, hostname, port, login_url])
 
         cur.close()
 
@@ -32,6 +51,16 @@ class database:
         """
         cur = self.conn.cursor()
         cur.execute('SELECT * FROM credentials WHERE id=? LIMIT 1', [credentialID])
+        results = cur.fetchall()
+        cur.close()
+        return len(results) > 0
+
+    def is_host_valid(self, hostID):
+        """
+        Check if this credential ID is valid.
+        """
+        cur = self.conn.cursor()
+        cur.execute('SELECT * FROM host WHERE id=? LIMIT 1', [hostID])
         results = cur.fetchall()
         cur.close()
         return len(results) > 0

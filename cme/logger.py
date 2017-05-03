@@ -23,6 +23,9 @@ logging.FileHandler.emit = antiansi_emit
 
 class CMEAdapter(logging.LoggerAdapter):
 
+    # For Impacket's TDS library
+    message = ''
+
     def __init__(self, logger_name='CME', extra=None):
         self.logger = logging.getLogger(logger_name)
         self.extra = extra
@@ -74,9 +77,14 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
-    #For impacket's tds library
-    def logMessage(self, message):
-        self.highlight(message)
+    # For Impacket's TDS library
+    def logMessage(self,message):
+        CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
+
+    def getMessage(self):
+        out = CMEAdapter.message
+        CMEAdapter.message = ''
+        return out
 
 def setup_debug_logger():
     debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))

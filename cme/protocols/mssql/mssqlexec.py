@@ -10,15 +10,18 @@ class MSSQLEXEC:
         try:
             self.enable_xp_cmdshell()
             self.mssql_conn.sql_query("exec master..xp_cmdshell '{}'".format(command))
-            
+
             if output:
                 self.mssql_conn.printReplies()
                 self.mssql_conn.colMeta[0]['TypeData'] = 80*2
-                self.outputBuffer = self.mssql_conn.printRows()
-            
+                self.mssql_conn.printRows()
+                self.outputBuffer = self.mssql_conn._MSSQL__rowsPrinter.getMessage()
+                if len(self.outputBuffer):
+                    self.outputBuffer = self.outputBuffer.split('\n', 2)[2]
+
             self.disable_xp_cmdshell()
             return self.outputBuffer
-        
+
         except Exception:
             traceback.print_exc()
 

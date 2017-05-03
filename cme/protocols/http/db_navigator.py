@@ -1,5 +1,6 @@
 import cmd
 from cme.protocols.http.database import database
+from cme.cmedb import UserExitedProto
 
 class navigator(cmd.Cmd):
     def __init__(self, main_menu):
@@ -11,7 +12,7 @@ class navigator(cmd.Cmd):
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, 'http')
 
     def do_back(self, line):
-        raise
+        raise UserExitedProto
 
     def display_creds(self, creds):
 
@@ -33,6 +34,11 @@ class navigator(cmd.Cmd):
                                            u'{:<17}'.format(password.decode('utf-8')))
 
         print ""
+
+    def display_hosts(self, hosts):
+        #print "\nHosts:\n"
+        #print "  HostID  IP        Hostname     Port   Title URL"
+        return
 
     def do_creds(self, line):
 
@@ -66,10 +72,53 @@ class navigator(cmd.Cmd):
 
         else:
             creds = self.db.get_credentials(filterTerm=filterTerm)
-            elf.display_credsI(creds)
+            self.display_creds(creds)
+
+    def do_hosts(self, line):
+
+        filterTerm = line.strip()
+
+        if filterTerm == "":
+            creds = self.db.get_hosts()
+            self.display_creds(creds)
+
+        elif filterTerm.split()[0].lower() == "add":
+
+            args = filterTerm.split()[1:]
+
+            if len(args) == 3:
+                return
+                #url, username, password = args
+                #self.db.add_host()
+
+            else:
+                print "[!] Format is 'add url ip hostname port"
+                return
+
+        elif filterTerm.split()[0].lower() == "remove":
+
+            args = filterTerm.split()[1:]
+            if len(args) != 1 :
+                print "[!] Format is 'remove <hostID>'"
+            
+            return
+            #self.db.remove_host()
+
+        else:
+            hosts = self.db.get_hosts(filterTerm=filterTerm)
+            self.display_hosts(hosts)
 
     def complete_creds(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
+
+        commands = [ "add", "remove"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
+    def complete_hosts(self, text, line, begidx, endidx):
+        "Tab-complete 'hosts' commands."
 
         commands = [ "add", "remove"]
 

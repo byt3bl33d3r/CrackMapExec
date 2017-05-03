@@ -31,9 +31,9 @@ class connection(object):
         self.local_ip = None
 
         try:
-            self.host = gethostbyname(host)
+            self.host = gethostbyname(self.hostname)
         except Exception as e:
-            logging.debug('Error resolving hostname {}: {}'.format(host, e))
+            logging.debug('Error resolving hostname {}: {}'.format(self.hostname, e))
             return
 
         self.proto_flow()
@@ -70,29 +70,7 @@ class connection(object):
             self.print_host_info()
             self.login()
             if hasattr(self.args, 'module') and self.args.module:
-                module_logger = CMEAdapter(extra={
-                                                  'module': self.module.name.upper(),
-                                                  'host': self.host,
-                                                  'port': self.args.smb_port,
-                                                  'hostname': self.hostname
-                                                 })
-
-                context = Context(self.db, module_logger, self.args)
-                context.localip  = self.local_ip
-
-                if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
-                    self.server.connection = self
-                    self.server.context.localip = self.local_ip
-
-                if hasattr(self.module, 'on_login'):
-                    self.module.on_login(context, self)
-
-                if self.admin_privs and hasattr(self.module, 'on_admin_login'):
-                    self.module.on_admin_login(context, self)
-
-                if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
-                    self.module.on_shutdown(context, self)
-
+                self.call_modules()
             else:
                 self.call_cmd_args()
 
@@ -102,6 +80,30 @@ class connection(object):
                 if v is not False and v is not None:
                     logging.debug('Calling {}()'.format(k))
                     getattr(self, k)()
+
+    def call_modules(self):
+        module_logger = CMEAdapter(extra={
+                                          'module': self.module.name.upper(),
+                                          'host': self.host,
+                                          'port': self.args.port,
+                                          'hostname': self.hostname
+                                         })
+
+        context = Context(self.db, module_logger, self.args)
+        context.localip  = self.local_ip
+
+        if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
+            self.server.connection = self
+            self.server.context.localip = self.local_ip
+
+        if hasattr(self.module, 'on_login'):
+            self.module.on_login(context, self)
+
+        if self.admin_privs and hasattr(self.module, 'on_admin_login'):
+            self.module.on_admin_login(context, self)
+
+        if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
+            self.module.on_shutdown(context, self)
 
     def inc_failed_login(self, username):
         global global_failed_logins

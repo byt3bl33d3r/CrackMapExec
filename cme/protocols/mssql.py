@@ -6,9 +6,14 @@ from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
+#from cme.helpers.powershell import is_powershell_installed
 from impacket import tds
+from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
+
+#if not is_powershell_installed(): 
+#    logger.error(highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!'))
 
 class mssql(connection):
     def __init__(self, args, db, host):
@@ -25,9 +30,9 @@ class mssql(connection):
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
-        mssql_parser.add_argument("--port", default=1433, type=int, dest='mssql_port', metavar='PORT', help='MSSQL port (default: 1433)')
+        mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
         mssql_parser.add_argument("-q", "--query", metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
-        mssql_parser.add_argument("-a", "--auth-type", dest='mssql_auth', choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
+        mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
@@ -38,15 +43,43 @@ class mssql(connection):
 
         return parser
 
+    def proto_flow(self):
+        self.proto_logger()
+        if self.create_conn_obj():
+            self.enum_host_info()
+            self.print_host_info()
+            self.login()
+            if hasattr(self.args, 'module') and self.args.module:
+                self.call_modules()
+            else:
+                self.call_cmd_args()
+
     def proto_logger(self):
         self.logger = CMEAdapter(extra={
                                         'protocol': 'MSSQL',
                                         'host': self.host,
-                                        'port': self.args.mssql_port,
-                                        'hostname': self.hostname
+                                        'port': self.args.port,
+                                        'hostname': 'None'
                                         })
 
     def enum_host_info(self):
+        if self.args.auth_type is 'windows' and not self.args.domain:
+            try:
+                smb_conn = SMBConnection(self.host, self.host, None)
+                smb_conn.login('', '')
+                self.domain = smb_conn.getServerDomain()
+                self.hostname = smb_conn.getServerName()
+                self.logger.extra['hostname'] = self.hostname
+            except SessionError as e:
+                if "STATUS_ACCESS_DENIED" in e.message:
+                    pass
+            except Exception as e:
+                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+
+            try:
+                smb_conn.logoff()
+            except:
+                pass
 
         self.mssql_instances = self.conn.getInstances(10)
 
@@ -80,7 +113,7 @@ class mssql(connection):
 
     def create_conn_obj(self):
         try:
-            self.conn = tds.MSSQL(self.host, self.args.mssql_port, rowsPrinter=self.logger)
+            self.conn = tds.MSSQL(self.host, self.args.port, rowsPrinter=self.logger)
             self.conn.connect()
         except socket.error:
             return False
@@ -93,16 +126,27 @@ class mssql(connection):
             #Currently we are just searching for our user in the sysadmin group
 
             self.conn.sql_query("EXEC sp_helpsrvrolemember 'sysadmin'")
-            query_output = self.conn.printRows()
-            if query_output.find('{}\\{}'.format(self.domain, self.username)) != -1:
+            self.conn.printRows()
+            query_output = self.conn._MSSQL__rowsPrinter.getMessage()
+            logging.debug("'sysadmin' group members:\n{}".format(query_output))
+            
+            if self.args.auth_type is 'windows':
+                search_string = '{}\\{}'.format(self.domain, self.username)
+            else:
+                search_string = self.username
+
+            if query_output.find(search_string) != -1:
                 self.admin_privs = True
-        except:
+            else:
+                return False
+        except Exception as e:
+            logging.debug('Error calling check_if_admin(): {}'.format(e))
             return False
 
         return True
 
     def plaintext_login(self, domain, username, password):
-        res = self.conn.login(None, username, password, domain, None, True if self.args.mssql_auth == 'windows' else False)
+        res = self.conn.login(None, username, password, domain, None, True if self.args.auth_type is 'windows' else False)
         if res is not True:
             self.conn.printReplies()
             return False
@@ -116,7 +160,7 @@ class mssql(connection):
         if self.admin_privs:
             self.db.link_cred_to_host('plaintext', domain, username, password, self.host)
 
-        out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
+        out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
                                      username.decode('utf-8'),
                                      password.decode('utf-8'),
                                      highlight('(Pwn3d!)') if self.admin_privs else '')
@@ -135,7 +179,7 @@ class mssql(connection):
         else:
             nthash = ntlm_hash
 
-        res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True if self.args.mssql_auth == 'windows' else False)
+        res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True)
         if res is not True:
             self.conn.printReplies()
             return False
@@ -160,7 +204,8 @@ class mssql(connection):
 
     def mssql_query(self):
         self.conn.sql_query(self.args.mssql_query)
-        return conn.printRows()
+        self.conn.printRows()
+        return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
     def execute(self, payload=None, get_output=False):
@@ -171,12 +216,13 @@ class mssql(connection):
         exec_method = MSSQLEXEC(self.conn)
         logging.debug('Executed command via mssqlexec')
 
-        if self.cmeserver: self.cmeserver.track_host(self.host)
+        if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8'))
+        output = u'{}'.format(exec_method.execute(payload, get_output).decode('utf-8'))
 
         if self.args.execute or self.args.ps_execute:
-            self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
+            #self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
+            self.logger.success('Executed command via mssqlexec')
             buf = StringIO(output).readlines()
             for line in buf:
                 self.logger.highlight(line.strip())
@@ -195,7 +241,6 @@ class mssql(connection):
 #The whole tds library in impacket needs a good overhaul to preserve my sanity
 
 def printRepliesCME(self):
-    print(self._MSSQL__rowsPrinter)
     for keys in self.replies.keys():
         for i, key in enumerate(self.replies[keys]):
             if key['TokenType'] == TDS_ERROR_TOKEN:

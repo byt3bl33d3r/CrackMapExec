@@ -117,7 +117,7 @@ class smb(connection):
         dgroup = smb_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
-        smb_parser.add_argument("--smb-port", type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
+        smb_parser.add_argument("--port", type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
         smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
 
@@ -167,7 +167,7 @@ class smb(connection):
         self.logger = CMEAdapter(extra={
                                         'protocol': 'SMB',
                                         'host': self.host,
-                                        'port': self.args.smb_port,
+                                        'port': self.args.port,
                                         'hostname': self.hostname
                                         })
 
@@ -316,7 +316,7 @@ class smb(connection):
     def create_conn_obj(self):
         #Seems like SMBv3 doesn't give us the 'pretty' OS banners, sticking to SMBv1 for now
         try:
-            self.conn = SMBConnection(self.host, self.host, None, self.args.smb_port, preferredDialect=SMB_DIALECT)
+            self.conn = SMBConnection(self.host, self.host, None, self.args.port, preferredDialect=SMB_DIALECT)
         except socket.error:
             return False
         except Exception as e:
@@ -389,7 +389,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.smb_port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
@@ -681,12 +681,12 @@ class smb(connection):
             }
 
         try:
-            stringbinding = KNOWN_PROTOCOLS[self.args.smb_port]['bindstr'].format(self.host)
+            stringbinding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host)
             logging.debug('StringBinding {}'.format(stringbinding))
             rpctransport = transport.DCERPCTransportFactory(stringbinding)
-            rpctransport.set_dport(self.args.smb_port)
+            rpctransport.set_dport(self.args.port)
 
-            if KNOWN_PROTOCOLS[self.args.smb_port]['set_host']:
+            if KNOWN_PROTOCOLS[self.args.port]['set_host']:
                 rpctransport.setRemoteHost(self.host)
 
             if hasattr(rpctransport, 'set_credentials'):

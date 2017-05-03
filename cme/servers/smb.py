@@ -1,6 +1,6 @@
 import threading
 import logging
-import sys
+from sys import exit
 from impacket import smbserver
 
 class CMESMBServer(threading.Thread):
@@ -20,6 +20,7 @@ class CMESMBServer(threading.Thread):
                 logger.error('Error starting SMB server on port 445: the port is already in use')
             else:
                 logger.error('Error starting SMB server on port 445: {}'.format(message))
+                exit(1)
 
     def addShare(self, share_name, share_path):
         self.server.addShare(share_name, share_path)
