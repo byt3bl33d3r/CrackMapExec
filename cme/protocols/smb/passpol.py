@@ -70,7 +70,7 @@ class PassPolDump:
     def __init__(self, connection):
         self.logger = connection.logger
         self.addr = connection.host
-        self.protocol = connection.args.smb_port
+        self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
         self.domain = connection.domain

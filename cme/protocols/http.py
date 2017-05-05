@@ -17,13 +17,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += ':ANY:ALL'
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-try:
-    from splinter import Browser
-    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-except ImportError:
-    print highlight('[!] HTTP protocol requires splinter and phantomjs', 'red')
-    exit(1)
-
 class http(connection):
 
     def __init__(self, args, db, host):
@@ -33,6 +26,13 @@ class http(connection):
         self.url = None
         self.transport = None
         self.port = None
+
+        try:
+            from splinter import Browser
+            from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+        except ImportError:
+            print highlight('[!] HTTP protocol requires splinter and phantomjs', 'red')
+            exit(1)
 
         if self.hostname.startswith('http://') or self.hostname.startswith('https://'):
             port_dict = {'http': 80, 'https': 443}
