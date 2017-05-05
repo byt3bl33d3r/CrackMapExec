@@ -26,7 +26,8 @@ setup(name='crackmapexec',
         'netaddr',
         'pyOpenSSL',
         'termcolor',
-        'msgpack-python'
+        'msgpack-python',
+        'pylnk'
     ],
     entry_points = {
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],

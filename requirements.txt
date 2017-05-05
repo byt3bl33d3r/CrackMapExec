@@ -7,3 +7,4 @@ netaddr
 pyOpenSSL
 termcolor
 msgpack-python
+pylnk
