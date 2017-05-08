@@ -178,8 +178,8 @@ else
 
     command = random.choice(obfs_ps_invokers) + encode_ps_command(command) + '"'
 
-    if len(command) > 8192: 
-        logger.error('Command exceeds maximum length of 8192 chars, exiting.')
+    if len(command) > 8191: 
+        logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
         exit(1)
 
     return command
