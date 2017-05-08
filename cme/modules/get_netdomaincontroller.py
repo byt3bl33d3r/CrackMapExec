@@ -13,11 +13,11 @@ class CMEModule:
 
     def  options(self, context, module_options):
         '''
-            INJECT    If set to true, this allows PowerView to work over 'stealthier' execution methods which have non-interactive contexts (e.g. WMI) (default: false)
+            INJECT    If set to true, this allows PowerView to work over 'stealthier' execution methods which have non-interactive contexts (e.g. WMI) (default: True)
         '''
 
         self.exec_methods = ['smbexec', 'atexec']
-        self.inject = False
+        self.inject = True
         if 'INJECT' in module_options:
             self.inject = bool(module_options['INJECT'])
 

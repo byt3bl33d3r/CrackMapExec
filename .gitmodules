@@ -25,3 +25,6 @@
 [submodule "cme/data/cme_powershell_scripts"]
 	path = cme/data/cme_powershell_scripts
 	url = https://github.com/byt3bl33d3r/CME-PowerShell-Scripts
+[submodule "cme/data/sessiongopher"]
+	path = cme/data/sessiongopher
+	url = https://github.com/fireeye/SessionGopher

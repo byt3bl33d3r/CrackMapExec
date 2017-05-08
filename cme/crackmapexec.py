@@ -121,23 +121,23 @@ def main():
         if args.list_modules:
             modules = loader.get_modules()
 
-            for m in modules:
-                logger.info('{:<25} {}'.format(m, modules[m]['description']))
+            for name, props in sorted(modules.items()):
+                logger.info('{:<25} {}'.format(name, props['description']))
             sys.exit(0)
 
         elif args.module and args.show_module_options:
 
             modules = loader.get_modules()
-            for m in modules.keys():
-                if args.module.lower() == m.lower():
-                    logger.info('{} module options:\n{}'.format(m, modules[m]['options']))
+            for name, props in modules.items():
+                if args.module.lower() == name.lower():
+                    logger.info('{} module options:\n{}'.format(name, props['options']))
             sys.exit(0)
 
         elif args.module:
             modules = loader.get_modules()
-            for m in modules.keys():
-                if args.module.lower() == m.lower():
-                    module = loader.init_module(modules[m]['path'])
+            for name, props in modules.items():
+                if args.module.lower() == name.lower():
+                    module = loader.init_module(props['path'])
                     setattr(protocol_object, 'module', module)
                     break
 
