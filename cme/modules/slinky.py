@@ -49,6 +49,7 @@ class CMEModule:
         shares = connection.shares()
         for share in shares:
             if 'WRITE' in share['access'] and share['name'] not in ['C$', 'ADMIN$']:
+                context.log.success('Found writable share: {}'.format(share['name']))
                 if not self.cleanup:
                     with open(self.lnk_path, 'rb') as lnk:
                         try:

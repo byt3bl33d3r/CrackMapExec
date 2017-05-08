@@ -76,7 +76,8 @@ class CMEModule:
                         user = buf[i+1].split(':', 1)[1].strip().replace('[STRING]', '')
                         passw = buf[i+4].split(':', 1)[1].strip().replace('[STRING]', '')
 
-                        creds.append({'url': url, 'user': user, 'passw': passw})
+                        if '[BYTE*]' not in passw:
+                            creds.append({'url': url, 'user': user, 'passw': passw})
 
                     i += 1
             except:

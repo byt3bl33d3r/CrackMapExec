@@ -102,7 +102,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
             self.write_configfile()
 
             self.workspace = line
-            self.prompt = 'cmedb ({}) >'.format(line)
+            self.prompt = 'cmedb ({}) > '.format(line)
 
     def do_exit(self, line):
         sys.exit(0)

@@ -1,4 +1,5 @@
 import requests
+import os
 from requests import ConnectionError
 #The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -25,6 +26,28 @@ class navigator(cmd.Cmd):
 
     def do_exit(self, line):
         exit(0)
+
+    def do_export(self, line):
+        if not line:
+            return
+
+        line = line.split()
+
+        if len(line) < 3:
+            return
+
+        if line[0].lower() == 'creds':
+            if line[1].lower() == 'plaintext':
+                creds = self.db.get_credentials(credtype="plaintext")
+            elif line[1].lower()== 'hashes':
+                creds = self.db.get_credentials(credtype="hash")
+            else:
+                return
+
+            with open(os.path.expanduser(line[2]), 'w') as export_file:
+                for cred in creds:
+                    _,_,_,password,_,_ = cred
+                    export_file.write('{}\n'.format(password))
 
     def do_import(self, line):
 
@@ -433,6 +456,15 @@ class navigator(cmd.Cmd):
         "Tab-complete 'creds' commands."
 
         commands = [ "add", "remove", "hash", "plaintext"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
+    def complete_export(self, text, line, begidx, endidx):
+        "Tab-complete 'creds' commands."
+
+        commands = [ "creds"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)

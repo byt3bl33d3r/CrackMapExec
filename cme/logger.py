@@ -1,6 +1,7 @@
 import logging
 import sys
 import re
+from cme.helpers.misc import called_from_cmd_args
 from termcolor import colored
 from datetime import datetime
 
@@ -59,6 +60,12 @@ class CMEAdapter(logging.LoggerAdapter):
                                                     msg), kwargs
 
     def info(self, msg, *args, **kwargs):
+        try:
+            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+                return
+        except AttributeError:
+            pass
+
         msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
@@ -70,10 +77,22 @@ class CMEAdapter(logging.LoggerAdapter):
         pass
 
     def success(self, msg, *args, **kwargs):
+        try:
+            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+                return
+        except AttributeError:
+            pass
+
         msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
     def highlight(self, msg, *args, **kwargs):
+        try:
+            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+                return
+        except AttributeError:
+            pass
+
         msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
