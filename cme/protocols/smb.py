@@ -105,6 +105,7 @@ class smb(connection):
         self.remote_ops = None
         self.bootkey = None
         self.output_filename = None
+        self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
 
@@ -234,11 +235,12 @@ class smb(connection):
         self.create_conn_obj()
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{})".format(self.server_os,
-                                                                           ' x{}'.format(self.os_arch) if self.os_arch else '',
-                                                                           self.hostname.decode('utf-8'),
-                                                                           self.domain.decode('utf-8'),
-                                                                           self.signing))
+        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
+                                                                                      ' x{}'.format(self.os_arch) if self.os_arch else '',
+                                                                                      self.hostname.decode('utf-8'),
+                                                                                      self.domain.decode('utf-8'),
+                                                                                      self.signing,
+                                                                                      self.smbv1))
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -313,17 +315,39 @@ class smb(connection):
 
             return False
 
-    def create_conn_obj(self):
-        #Seems like SMBv3 doesn't give us the 'pretty' OS banners, sticking to SMBv1 for now
+    def create_smbv1_conn(self):
         try:
             self.conn = SMBConnection(self.host, self.host, None, self.args.port, preferredDialect=SMB_DIALECT)
-        except socket.error:
+            self.smbv1 = True
+        except socket.error as e:
+            if str(e).find('Connection reset by peer') != -1:
+                logging.debug('SMBv1 might be disabled on {}'.format(self.host))
             return False
         except Exception as e:
-            logging.debug('Error creating SMB connection: {}'.format(e))
+            logging.debug('Error creating SMBv1 connection to {}: {}'.format(self.host, e))
             return False
 
         return True
+
+    def create_smbv3_conn(self):
+        try:
+            self.conn = SMBConnection(self.host, self.host, None, self.args.port)
+            self.smbv1 = False
+        except socket.error:
+            return False
+        except Exception as e:
+            logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
+            return False
+
+        return True
+
+    def create_conn_obj(self):
+        if self.create_smbv1_conn():
+            return True
+        elif self.create_smbv3_conn():
+            return True
+
+        return False
 
     def check_if_admin(self):
         lmhash = ''
