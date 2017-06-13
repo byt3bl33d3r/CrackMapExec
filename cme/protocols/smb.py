@@ -423,7 +423,7 @@ class smb(connection):
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8'))
+        output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8',errors='replace'))
 
         if self.args.execute or self.args.ps_execute:
             self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
