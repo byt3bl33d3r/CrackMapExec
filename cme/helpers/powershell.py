@@ -173,8 +173,7 @@ else
     IEX "$functions"
     Command-ToExecute
 }}
-""".format(command=amsi_bypass + ps_command,
-           ps_invoker=obfs_ps_invokers[0])
+""".format(command=amsi_bypass + ps_command)
 
     else:
         command = amsi_bypass + ps_command
