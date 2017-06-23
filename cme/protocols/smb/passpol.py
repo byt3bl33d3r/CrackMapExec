@@ -81,9 +81,12 @@ class PassPolDump:
         self.doKerberos = False
         self.protocols = PassPolDump.KNOWN_PROTOCOLS.keys()
         self.pass_pol = {}
-        
+
         if self.hash is not None:
-            self.lmhash, self.nthash = self.hash.split(':')
+            if self.hash.find(':') != -1:
+                self.lmhash, self.nthash = self.hash.split(':')
+            else:
+                self.nthash = self.hash
         
         if self.password is None:
             self.password = ''

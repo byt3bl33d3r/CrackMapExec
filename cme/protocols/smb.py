@@ -288,6 +288,9 @@ class smb(connection):
             self.conn.login(username, '', domain, lmhash, nthash)
 
             self.hash = ntlm_hash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+
             self.username = username
             self.domain = domain
             self.check_if_admin()
