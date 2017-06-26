@@ -6,20 +6,20 @@ from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
-#from cme.helpers.powershell import is_powershell_installed
+from cme.helpers.powershell import is_powershell_installed
 from impacket import tds
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
-
-#if not is_powershell_installed(): 
-#    logger.error(highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!'))
 
 class mssql(connection):
     def __init__(self, args, db, host):
         self.mssql_instances = None
         self.domain = None
         self.hash = None
+
+        if not is_powershell_installed():
+            print highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!', 'red')
 
         connection.__init__(self, args, db , host)
 

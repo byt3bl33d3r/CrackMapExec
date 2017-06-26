@@ -25,7 +25,7 @@ from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.helpers.logger import highlight
-#from cme.helpers.powershell import is_powershell_installed
+from cme.helpers.powershell import is_powershell_installed
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
@@ -36,9 +36,6 @@ from functools import wraps
 
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
-
-#if not is_powershell_installed(): 
-#    logger.error(highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!'))
 
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
@@ -108,6 +105,9 @@ class smb(connection):
         self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
+
+        if not is_powershell_installed(): 
+            print highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!', 'red')
 
         connection.__init__(self, args, db, host)
 
