@@ -14,7 +14,9 @@ from cme.context import Context
 from getpass import getuser
 from pprint import pformat
 from ConfigParser import ConfigParser
+import cme.helpers.powershell as powershell
 import cme
+import shutil
 import webbrowser
 import sqlite3
 import random
@@ -99,6 +101,15 @@ def main():
                         targets.extend(parse_targets(target_entry))
             else:
                 targets.extend(parse_targets(target))
+
+    # The following is a quick hack for the powershell obfuscation functionality, I know this is yucky
+    if hasattr(args, 'clear_obfscripts') and args.clear_obfscripts:
+        shutil.rmtree(os.path.expanduser('~/.cme/obfuscated_scripts/'))
+        os.mkdir(os.path.expanduser('~/.cme/obfuscated_scripts/'))
+        logger.success('Cleared cached obfuscated PowerShell scripts')
+
+    if hasattr(args, 'obfs') and args.obfs:
+        powershell.obfuscate_ps_scripts = True
 
     p_loader = protocol_loader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']

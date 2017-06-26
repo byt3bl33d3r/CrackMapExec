@@ -6,7 +6,6 @@ from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
-from cme.helpers.powershell import is_powershell_installed
 from impacket import tds
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
@@ -37,6 +36,10 @@ class mssql(connection):
         xgroup = cgroup.add_mutually_exclusive_group()
         xgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
         xgroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='execute the specified PowerShell command')
+
+        psgroup = mssql_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
+        psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
+        psgroup.add_argument('--clear-obfscripts', action='store_true', help='Clear all cached obfuscated PowerShell scripts')
 
         return parser
 

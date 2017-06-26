@@ -13,6 +13,8 @@ from base64 import b64encode
 
 logger = CMEAdapter()
 
+obfuscate_ps_scripts = False
+
 def get_ps_script(path):
     return os.path.join(os.path.dirname(cme.__file__), 'data', path)
 
@@ -29,42 +31,41 @@ def obfs_ps_script(path_to_script):
     obfs_script_dir = os.path.join(os.path.expanduser('~/.cme'), 'obfuscated_scripts')
     obfs_ps_script = os.path.join(obfs_script_dir, ps_script)
 
-    if os.path.exists(obfs_ps_script):
-        with open(obfs_ps_script, 'r') as script:
-            return script.read()
-    else:
-        if is_powershell_installed():
-            logger.info('Performing one-time script obfuscation, please wait as this can take a bit...')
+    if is_powershell_installed() and obfuscate_ps_scripts:
 
-            invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "TOKEN,ALL,1,OUT {}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
-                                                                                                                                                     get_ps_script(path_to_script),
-                                                                                                                                                     obfs_ps_script)
-            logging.debug(invoke_obfs_command)
-
-            with open(os.devnull, 'w') as devnull:
-                return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
-
-            logger.info('Script obfuscated successfully')
-
+        if os.path.exists(obfs_ps_script):
+            logger.info('Using cached obfuscated Powershell script')
             with open(obfs_ps_script, 'r') as script:
                 return script.read()
 
-        else:
-            with open(get_ps_script(path_to_script), 'r') as script:
-                """
-                Strip block comments, line comments, empty lines, verbose statements,
-                and debug statements from a PowerShell source file.
-                """
+        logger.info('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
 
-                # strip block comments
-                strippedCode = re.sub(re.compile('<#.*?#>', re.DOTALL), '', script.read())
-                # strip blank lines, lines starting with #, and verbose/debug statements
-                strippedCode = "\n".join([line for line in strippedCode.split('\n') if ((line.strip() != '') and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")) )])
+        invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "TOKEN,ALL,1,OUT {}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
+                                                                                                                                                 get_ps_script(path_to_script),
+                                                                                                                                                 obfs_ps_script)
+        logging.debug(invoke_obfs_command)
 
-                with open(obfs_ps_script, 'w') as script2:
-                    script2.write(strippedCode)
+        with open(os.devnull, 'w') as devnull:
+            return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
 
-                return strippedCode
+        logger.info('Script obfuscated successfully')
+
+        with open(obfs_ps_script, 'r') as script:
+            return script.read()
+
+    else:
+        with open(get_ps_script(path_to_script), 'r') as script:
+            """
+            Strip block comments, line comments, empty lines, verbose statements,
+            and debug statements from a PowerShell source file.
+            """
+
+            # strip block comments
+            strippedCode = re.sub(re.compile('<#.*?#>', re.DOTALL), '', script.read())
+            # strip blank lines, lines starting with #, and verbose/debug statements
+            strippedCode = "\n".join([line for line in strippedCode.split('\n') if ((line.strip() != '') and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")) )])
+
+            return strippedCode
 
 def create_ps_command(ps_command, force_ps32=False):
 
@@ -101,7 +102,7 @@ else
 
     # We could obfuscate the initial launcher using Invoke-Obfuscation but because this function gets executed concurrently
     # it would spawn a local powershell process per host which isn't ideal, until I figure out a good way of dealing with this 
-    # it will use the python implementation that I stole from GreatSCT (https://github.com/GreatSCT/GreatSCT) <3
+    # it will use the partial python implementation that I stole from GreatSCT (https://github.com/GreatSCT/GreatSCT) <3
 
     """
     if is_powershell_installed():
