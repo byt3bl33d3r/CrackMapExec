@@ -18,9 +18,6 @@ class mssql(connection):
         self.domain = None
         self.hash = None
 
-        if not is_powershell_installed():
-            print highlight('[!] PowerShell not found and/or not installed, advanced PowerShell script obfuscation will be disabled!', 'red')
-
         connection.__init__(self, args, db , host)
 
     @staticmethod
