@@ -48,7 +48,7 @@ def obfs_ps_script(path_to_script):
         with open(os.devnull, 'w') as devnull:
             return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
 
-        logger.info('Script obfuscated successfully')
+        logger.success('Script obfuscated successfully')
 
         with open(obfs_ps_script, 'r') as script:
             return script.read()
