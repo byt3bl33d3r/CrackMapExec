@@ -28,3 +28,6 @@
 [submodule "cme/data/sessiongopher"]
 	path = cme/data/sessiongopher
 	url = https://github.com/fireeye/SessionGopher
+[submodule "cme/data/mimipenguin"]
+	path = cme/data/mimipenguin
+	url = https://github.com/huntergregal/mimipenguin

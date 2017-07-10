@@ -4,13 +4,14 @@ from gevent.pool import Pool
 from gevent.socket import gethostbyname
 from urlparse import urlparse
 from datetime import datetime
-from sys import exit
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from cme.connection import *
 from cme.helpers.http import *
 from requests import ConnectionError, ConnectTimeout, ReadTimeout
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from splinter import Browser
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 # The following disables the warning on an invalid cert and allows any SSL/TLS cipher to be used
 # I'm basically guessing this is the way to specify to allow all ciphers since I can't find any docs about it, if it don't worky holla at me
@@ -26,13 +27,6 @@ class http(connection):
         self.url = None
         self.transport = None
         self.port = None
-
-        try:
-            from splinter import Browser
-            from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-        except ImportError:
-            print highlight('[!] HTTP protocol requires splinter and phantomjs', 'red')
-            exit(1)
 
         if self.hostname.startswith('http://') or self.hostname.startswith('https://'):
             port_dict = {'http': 80, 'https': 443}
@@ -86,6 +80,7 @@ class single_connection(connection):
         self.port = port
         self.transport = transport
         self.hostname  = http.hostname
+        self.server_headers = None
         self.conn = None
 
         self.proto_flow()
@@ -97,7 +92,9 @@ class single_connection(connection):
                                         'hostname': self.hostname})
 
     def print_host_info(self):
-        self.logger.info('{} (Title: {})'.format(self.conn.url, self.conn.title.strip()))
+        self.logger.info('{} (Server: {}) (Page Title: {})'.format(self.conn.url, 
+                                                                   self.server_headers['Server'] if 'Server' in self.server_headers.keys() else None, 
+                                                                   self.conn.title.strip() if self.conn.title else None))
 
     def create_conn_obj(self):
         user_agent = get_desktop_uagent()
@@ -108,6 +105,7 @@ class single_connection(connection):
 
         try:
             r = requests.get(url, timeout=10, headers={'User-Agent': user_agent})
+            self.server_headers = r.headers
         except ConnectTimeout, ReadTimeout:
             return False
         except Exception as e:

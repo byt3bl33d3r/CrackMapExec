@@ -16,7 +16,8 @@ class database:
             "ip" text,
             "hostname" text,
             "port" integer,
-            "title" text,
+            "server" text,
+            "page_title" text,
             "login_url" text
             )''')
 

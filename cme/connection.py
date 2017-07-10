@@ -190,7 +190,7 @@ class connection(object):
                                     password.seek(0)
 
             elif type(user) is not file:
-                    if self.args.hash:
+                    if hasattr(self.args, 'hash') and self.args.hash:
                         with sem:
                             for ntlm_hash in self.args.hash:
                                 if type(ntlm_hash) is not file:
@@ -208,10 +208,16 @@ class connection(object):
                             for password in self.args.password:
                                 if type(password) is not file:
                                     if not self.over_fail_limit(user):
-                                        if self.plaintext_login(self.domain, user, password): return True
+                                        if hasattr(self.args, 'domain'):
+                                            if self.plaintext_login(self.domain, user, password): return True
+                                        else:
+                                            if self.plaintext_login(user, password): return True
 
                                 elif type(password) is file:
                                     for f_pass in password:
                                         if not self.over_fail_limit(user):
-                                            if self.plaintext_login(self.domain, user, f_pass.strip()): return True
+                                            if hasattr(self.args, 'domain'):
+                                                if self.plaintext_login(self.domain, user, f_pass.strip()): return True
+                                            else:
+                                                if self.plaintext_login(user, f_pass.strip()): return True
                                     password.seek(0)
