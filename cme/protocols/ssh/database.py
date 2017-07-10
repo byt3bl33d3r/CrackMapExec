@@ -9,7 +9,7 @@ class database:
             "id" integer PRIMARY KEY,
             "username" text,
             "password" text,
-            "pkey" text,
+            "pkey" text
             )''')
 
         db_conn.execute('''CREATE TABLE "hosts" (

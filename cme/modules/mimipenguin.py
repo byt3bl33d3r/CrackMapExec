@@ -3,8 +3,8 @@ from sys import exit
 
 class CMEModule:
     '''
-        Example
-        Module by @yomama
+        Runs the Mimipenguin script to dump credentials from memory
+        Module by @byt3bl33d3r
 
     '''
     name = 'mimipenguin'
