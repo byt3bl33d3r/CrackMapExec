@@ -90,12 +90,15 @@ class SMBEXEC:
         logging.debug('Command to execute: ' + command)
 
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command)
+        logging.debug('Remote service {} created.'.format(self.__serviceName))
         service = resp['lpServiceHandle']
 
         try:
-           scmr.hRStartServiceW(self.__scmr, service)
+            logging.debug('Remote service {} started.'.format(self.__serviceName))
+            scmr.hRStartServiceW(self.__scmr, service)
         except:
            pass
+        logging.debug('Remote service {} deleted.'.format(self.__serviceName))
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
         self.get_output_fileless()
