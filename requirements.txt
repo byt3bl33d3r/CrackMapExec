@@ -1,9 +1,12 @@
-impacket>=0.9.15
+pycrypto>=2.6
+pyasn1>=0.1.8
 gevent>=1.2.0
+requests>=2.9.1
+bs4
 netaddr
-pycrypto
-pyasn1
-termcolor
-requests
 pyOpenSSL
+termcolor
 msgpack-python
+pylnk
+splinter
+paramiko

