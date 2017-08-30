@@ -6,7 +6,12 @@ from sys import exit
 class CMEModule:
     '''
         Executes the BloodHound recon script on the target and retreives the results onto the attackers' machine
-        Module by @WaffleWrath
+        2 supported modes :
+            CSV :           exports data into CSVs on the target file system before retreiving them (NOT opsec safe)
+            Neo4j API :     exports data directly to the Neo4j API (opsec safe)
+            
+        Module by Waffle-Wrath
+        Bloodhound.ps1 script base : https://github.com/BloodHoundAD/BloodHound
     '''
 
     name = 'bloodhound'
@@ -19,7 +24,7 @@ class CMEModule:
         '''
         THREADS             Max numbers of threads to execute on target (defaults to 20)
         COLLECTIONMETHOD    Method used by BloodHound ingestor to collect data (defaults to 'Default')
-        CSVPATH             (optional) Path where csv files will be written on target (defaults to %temp%)   
+        CSVPATH             (optional) Path where csv files will be written on target (defaults to C:\)   
         NEO4JURI            (optional) URI for direct Neo4j ingestion (defaults to blank)
         NEO4JUSER           (optional) Username for direct Neo4j ingestion 
         NEO4JPASS           (optional) Pass for direct Neo4j ingestion
@@ -28,7 +33,7 @@ class CMEModule:
         '''
 
         self.threads = 3
-        self.csv_path = '%temp%'
+        self.csv_path = 'C:\\'
         self.collection_method = 'Default'
         self.neo4j_URI = ""
         self.neo4j_user = ""
