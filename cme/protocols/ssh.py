@@ -1,4 +1,5 @@
 import paramiko
+import socket
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -41,6 +42,8 @@ class ssh(connection):
         except SSHException:
             return True
         except NoValidConnectionsError:
+            return False
+        except socket.error:
             return False
 
     def check_if_admin(self):
