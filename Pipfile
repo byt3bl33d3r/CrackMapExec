@@ -8,10 +8,10 @@ name = "pypi"
 [packages]
 
 pycrypto = ">=2.6"
-"pyasn1" = ">=0.1.8"
+pyasn1 = ">=0.1.8"
 gevent = ">=1.2.0"
 requests = ">=2.9.1"
-"bs4" = "*"
+bs4 = "*"
 netaddr = "*"
 pyOpenSSL = "*"
 termcolor = "*"
