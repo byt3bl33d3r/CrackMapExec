@@ -18,4 +18,7 @@ prune cme/data/netripper/DLL
 prune cme/data/netripper/Metasploit
 prune cme/data/netripper/NetRipper
 prune cme/data/netripper/Release
+prune cme/data/netripper/Win32
+prune cme/data/netripper/minhook
+prune cme/data/netripper/x64
 recursive-exclude cme/data/netripper *.pdf *.sln
