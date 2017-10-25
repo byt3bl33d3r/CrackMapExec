@@ -32,9 +32,7 @@ class CMEModule:
         if self.inject:
             launcher = gen_ps_inject(launcher, context, inject_once=True)
 
-        ps_command = create_ps_command(launcher)
-
-        connection.execute(ps_command, methods=self.exec_methods)
+        connection.ps_execute(launcher, methods=self.exec_methods)
 
         context.log.success('Executed launcher')
 

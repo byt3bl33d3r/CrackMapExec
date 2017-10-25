@@ -1,4 +1,5 @@
-import traceback
+import logging
+
 
 class MSSQLEXEC:
 
@@ -22,8 +23,8 @@ class MSSQLEXEC:
             self.disable_xp_cmdshell()
             return self.outputBuffer
 
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logging.debug('Error executing command via mssqlexec: {}'.format(e))
 
     def enable_xp_cmdshell(self):
         self.mssql_conn.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")

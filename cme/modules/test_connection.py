@@ -3,7 +3,7 @@ from sys import exit
 
 class CMEModule:
     '''
-        Executes the Test-Connection PowerShell cmdlet 
+        Executes the Test-Connection PowerShell cmdlet
         Module by @byt3bl33d3r
     '''
 
@@ -21,15 +21,14 @@ class CMEModule:
 
         if 'HOST' not in module_options:
             context.log.error('HOST option is required!')
-            sys.exit(1)
+            exit(1)
 
         self.host = module_options['HOST']
 
     def on_admin_login(self, context, connection):
         command = 'Test-Connection {} -quiet -count 1'.format(self.host)
-        ps_command = create_ps_command(command)
 
-        output = connection.execute(ps_command, get_output=True)
+        output = connection.ps_execute(command, get_output=True)
 
         if output:
             output = output.strip()

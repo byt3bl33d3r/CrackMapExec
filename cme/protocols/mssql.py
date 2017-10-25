@@ -11,13 +11,14 @@ from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
 
+
 class mssql(connection):
     def __init__(self, args, db, host):
         self.mssql_instances = None
         self.domain = None
         self.hash = None
 
-        connection.__init__(self, args, db , host)
+        connection.__init__(self, args, db, host)
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
@@ -63,6 +64,9 @@ class mssql(connection):
                                         })
 
     def enum_host_info(self):
+        # Probably a better way of doing this, grab our IP from the socket
+        self.local_ip = str(self.conn.socket).split()[2].split('=')[1].split(':')[0]
+
         if self.args.auth_type is 'windows':
             try:
                 smb_conn = SMBConnection(self.host, self.host, None)
@@ -91,7 +95,6 @@ class mssql(connection):
                 self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
         self.mssql_instances = self.conn.getInstances(10)
-
         if len(self.mssql_instances) > 0:
             for i, instance in enumerate(self.mssql_instances):
                 for key in instance.keys():
@@ -213,17 +216,19 @@ class mssql(connection):
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
-    def execute(self, payload=None, get_output=False):
+    def execute(self, payload=None, get_output=False, methods=None):
         if not payload and self.args.execute:
             payload = self.args.execute
             if not self.args.no_output: get_output = True
 
+        logging.debug('Command to execute:\n{}'.format(payload))
         exec_method = MSSQLEXEC(self.conn)
+        raw_output = exec_method.execute(payload, get_output)
         logging.debug('Executed command via mssqlexec')
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(exec_method.execute(payload, get_output).decode('utf-8'))
+        output = u'{}'.format(raw_output.decode('utf-8'))
 
         if self.args.execute or self.args.ps_execute:
             #self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
@@ -235,12 +240,14 @@ class mssql(connection):
         return output
 
     @requires_admin
-    def ps_execute(self, payload=None, get_output=False):
+    def ps_execute(self, payload=None, get_output=False, methods=None, force_ps32=False, dont_obfs=True):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
 
-        return self.execute(create_ps_command(payload), get_output)
+        # We're disabling PS obfuscation by default as it breaks the MSSQLEXEC execution method (probably an escaping issue)
+        ps_command = create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs)
+        return self.execute(ps_command, get_output)
 
 # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
 # The whole tds library in impacket needs a good overhaul to preserve my sanity

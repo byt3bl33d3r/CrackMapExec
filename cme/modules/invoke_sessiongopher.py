@@ -46,9 +46,7 @@ class CMEModule:
 
         launcher = gen_ps_iex_cradle(context, 'SessionGopher.ps1', command)
 
-        ps_command = create_ps_command(launcher)
-
-        connection.execute(ps_command)
+        connection.ps_execute(launcher)
 
         context.log.success('Executed launcher')
 

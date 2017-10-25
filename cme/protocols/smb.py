@@ -437,12 +437,12 @@ class smb(connection):
         return output
 
     @requires_admin
-    def ps_execute(self, payload=None, get_output=False, methods=None):
+    def ps_execute(self, payload=None, get_output=False, methods=None, force_ps32=False, dont_obfs=False):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
 
-        return self.execute(create_ps_command(payload), get_output, methods)
+        return self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())

