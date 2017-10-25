@@ -5,6 +5,7 @@ from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
 
+
 class ssh(connection):
 
     @staticmethod
@@ -56,14 +57,14 @@ class ssh(connection):
             self.conn.connect(self.host, port=self.args.port, username=username, password=password)
             self.check_if_admin()
 
-            self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'), 
-                                                   password.decode('utf-8'), 
+            self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
+                                                   password.decode('utf-8'),
                                                    highlight('(Pwn3d!)') if self.admin_privs else ''))
 
             return True
         except Exception as e:
-            self.logger.error(u'{}:{} {}'.format(username.decode('utf-8'), 
-                                                 password.decode('utf-8'), 
+            self.logger.error(u'{}:{} {}'.format(username.decode('utf-8'),
+                                                 password.decode('utf-8'),
                                                  e))
 
             return False

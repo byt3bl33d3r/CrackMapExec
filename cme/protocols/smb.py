@@ -109,12 +109,12 @@ class smb(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        smb_parser = parser.add_parser('smb', help="own stuff using SMB and/or Active Directory", parents=[std_parser, module_parser])
+        smb_parser = parser.add_parser('smb', help="own stuff using SMB", parents=[std_parser, module_parser])
         smb_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         dgroup = smb_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
-        smb_parser.add_argument("--port", type=int, choices={139, 445}, default=445, help="SMB port (default: 445)")
+        smb_parser.add_argument("--port", type=int, choices={445, 139}, default=445, help="SMB port (default: 445)")
         smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
 
@@ -524,7 +524,7 @@ class smb(connection):
         for dc_ip in self.get_dc_ips():
             try:
                 groups = get_netlocalgroup(self.host, dc_ip, '', self.username,
-                                           self.password, self.lmhash, self.nthash, queried_groupname=self.args.local_groups, 
+                                           self.password, self.lmhash, self.nthash, queried_groupname=self.args.local_groups,
                                            list_groups=True if not self.args.local_groups else False, recurse=False)
 
                 if self.args.local_groups:
@@ -636,7 +636,7 @@ class smb(connection):
             loggedon = get_netloggedon(self.host, self.domain, self.username, self.password, lmhash=self.lmhash, nthash=self.nthash)
             self.logger.success('Enumerated loggedon users')
             for user in loggedon:
-                self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username, 
+                self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username,
                                                            'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
         except Exception as e:
             self.logger.error('Error enumerating logged on users: {}'.format(e))
@@ -686,8 +686,8 @@ class smb(connection):
         self.logger.info('Started spidering')
         start_time = time()
         if not share:
-            spider.spider(self.args.spider, self.args.spider_folder, self.args.pattern, 
-                          self.args.regex, self.args.exclude_dirs, self.args.depth, 
+            spider.spider(self.args.spider, self.args.spider_folder, self.args.pattern,
+                          self.args.regex, self.args.exclude_dirs, self.args.depth,
                           self.args.content, self.args.only_files)
         else:
             spider.spider(share, folder, pattern, regex, exclude_dirs, depth, content, onlyfiles)
@@ -747,9 +747,9 @@ class smb(connection):
         for j in range(maxRid/SIMULTANEOUS+1):
             if (maxRid - soFar) / SIMULTANEOUS == 0:
                 sidsToCheck = (maxRid - soFar) % SIMULTANEOUS
-            else: 
+            else:
                 sidsToCheck = SIMULTANEOUS
- 
+
             if sidsToCheck == 0:
                 break
 
@@ -764,7 +764,7 @@ class smb(connection):
                     continue
                 elif str(e).find('STATUS_SOME_NOT_MAPPED') >= 0:
                     resp = e.get_packet()
-                else: 
+                else:
                     raise
 
             for n, item in enumerate(resp['TranslatedNames']['Names']):
@@ -840,7 +840,7 @@ class smb(connection):
 
             SECURITYFileName = self.remote_ops.saveSECURITY()
 
-            LSA = LSASecrets(SECURITYFileName, self.bootkey, self.remote_ops, isRemote=True, 
+            LSA = LSASecrets(SECURITYFileName, self.bootkey, self.remote_ops, isRemote=True,
                              perSecretCallback=lambda secretType, secret: add_lsa_secret(secret))
 
             self.logger.success('Dumping LSA secrets')
@@ -898,16 +898,16 @@ class smb(connection):
                     NTDSFileName = self.remote_ops.saveNTDS()
                     use_vss_method = True
 
-                NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True, 
+                NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
                                  remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=False,
-                                 pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename, 
-                                 justUser=None, printUserStatus=False, 
+                                 pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
+                                 justUser=None, printUserStatus=False,
                                  perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
 
                 self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
                 NTDS.dump()
 
-                self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', 
+                self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds',
                                                                                                                 highlight(add_ntds_hash.added_to_db)))
 
             except Exception as e:

@@ -31,3 +31,6 @@
 [submodule "cme/data/mimipenguin"]
 	path = cme/data/mimipenguin
 	url = https://github.com/huntergregal/mimipenguin
+[submodule "cme/thirdparty/pywinrm"]
+	path = cme/thirdparty/pywinrm
+	url = https://github.com/diyan/pywinrm

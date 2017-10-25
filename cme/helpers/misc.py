@@ -4,8 +4,22 @@ import re
 import inspect
 import os
 
+
+def identify_target_file(target_file):
+    with open(target_file, 'r') as target_file_handle:
+        for i, line in enumerate(target_file_handle):
+            if i == 1:
+                if line.startswith('<NessusClientData'):
+                    return 'nessus'
+                elif line.endswith('nmaprun>\n'):
+                    return 'nmap'
+
+    return 'unknown'
+
+
 def gen_random_string(length=10):
-	return ''.join(random.sample(string.ascii_letters, int(length)))
+    return ''.join(random.sample(string.ascii_letters, int(length)))
+
 
 def validate_ntlm(data):
     allowed = re.compile("^[0-9a-f]{32}", re.IGNORECASE)
@@ -13,6 +27,7 @@ def validate_ntlm(data):
         return True
     else:
         return False
+
 
 def called_from_cmd_args():
     for stack in inspect.stack():
@@ -23,6 +38,7 @@ def called_from_cmd_args():
         if stack[3] == 'call_cmd_args':
             return True
     return False
+
 
 # Stolen from https://github.com/pydanny/whichcraft/
 def which(cmd, mode=os.F_OK | os.X_OK, path=None):

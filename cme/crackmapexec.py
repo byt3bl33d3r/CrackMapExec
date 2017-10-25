@@ -4,14 +4,16 @@ from gevent.pool import Pool
 from gevent import sleep
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.logger import highlight
+from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
+from cme.parsers.nmap import parse_nmap_xml
+from cme.parsers.nessus import parse_nessus_file
 from cme.cli import gen_cli_args
 from cme.loaders.protocol_loader import protocol_loader
 from cme.loaders.module_loader import module_loader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
-from getpass import getuser
 from pprint import pformat
 from ConfigParser import ConfigParser
 import cme.helpers.powershell as powershell
@@ -23,6 +25,7 @@ import random
 import os
 import sys
 import logging
+
 
 def main():
 
@@ -96,9 +99,15 @@ def main():
     if hasattr(args, 'target') and args.target:
         for target in args.target:
             if os.path.exists(target):
-                with open(target, 'r') as target_file:
-                    for target_entry in target_file:
-                        targets.extend(parse_targets(target_entry))
+                target_file_type = identify_target_file(target)
+                if target_file_type == 'nmap':
+                    targets.extend(parse_nmap_xml(target, args.protocol))
+                elif target_file_type == 'nessus':
+                    targets.extend(parse_nessus_file(target, args.protocol))
+                else:
+                    with open(target, 'r') as target_file:
+                        for target_entry in target_file:
+                            targets.extend(parse_targets(target_entry))
             else:
                 targets.extend(parse_targets(target))
 
@@ -199,4 +208,5 @@ def main():
     except KeyboardInterrupt:
         pass
 
-    if module_server: module_server.shutdown()
+    if module_server:
+        module_server.shutdown()

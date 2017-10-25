@@ -1,9 +1,9 @@
 from cme.helpers.powershell import obfs_ps_script
 from cme.helpers.misc import validate_ntlm
 from cme.helpers.logger import write_log
-from StringIO import StringIO
 from datetime import datetime
 import re
+
 
 class CMEModule:
     '''

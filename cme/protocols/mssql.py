@@ -21,7 +21,7 @@ class mssql(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL and/or Active Directory", parents=[std_parser, module_parser])
+        mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL", parents=[std_parser, module_parser])
         dgroup = mssql_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -63,23 +63,32 @@ class mssql(connection):
                                         })
 
     def enum_host_info(self):
-        if self.args.auth_type is 'windows' and not self.args.domain:
+        if self.args.auth_type is 'windows':
             try:
                 smb_conn = SMBConnection(self.host, self.host, None)
-                smb_conn.login('', '')
+                try:
+                    smb_conn.login('', '')
+                except SessionError as e:
+                    if "STATUS_ACCESS_DENIED" in e.message:
+                        pass
+
                 self.domain = smb_conn.getServerDomain()
                 self.hostname = smb_conn.getServerName()
                 self.logger.extra['hostname'] = self.hostname
-            except SessionError as e:
-                if "STATUS_ACCESS_DENIED" in e.message:
+
+                try:
+                    smb_conn.logoff()
+                except:
                     pass
+
+                if self.args.domain:
+                    self.domain = self.args.domain
+
+                if self.args.local_auth:
+                    self.domain = self.hostname
+
             except Exception as e:
                 self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
-
-            try:
-                smb_conn.logoff()
-            except:
-                pass
 
         self.mssql_instances = self.conn.getInstances(10)
 
@@ -94,12 +103,6 @@ class mssql(connection):
             self.conn.disconnect()
         except:
             pass
-
-        if self.args.domain:
-            self.domain = self.args.domain
-
-        if self.args.local_auth:
-            self.domain = self.hostname
 
         self.create_conn_obj()
 
@@ -129,7 +132,7 @@ class mssql(connection):
             self.conn.printRows()
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
             logging.debug("'sysadmin' group members:\n{}".format(query_output))
-            
+
             if self.args.auth_type is 'windows':
                 search_string = '{}\\{}'.format(self.domain, self.username)
             else:
@@ -237,8 +240,9 @@ class mssql(connection):
 
         return self.execute(create_ps_command(payload), get_output)
 
-#We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
-#The whole tds library in impacket needs a good overhaul to preserve my sanity
+# We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
+# The whole tds library in impacket needs a good overhaul to preserve my sanity
+
 
 def printRepliesCME(self):
     for keys in self.replies.keys():

@@ -92,8 +92,8 @@ class single_connection(connection):
                                         'hostname': self.hostname})
 
     def print_host_info(self):
-        self.logger.info('{} (Server: {}) (Page Title: {})'.format(self.conn.url, 
-                                                                   self.server_headers['Server'] if 'Server' in self.server_headers.keys() else None, 
+        self.logger.info('{} (Server: {}) (Page Title: {})'.format(self.conn.url,
+                                                                   self.server_headers['Server'] if 'Server' in self.server_headers.keys() else None,
                                                                    self.conn.title.strip() if self.conn.title else None))
 
     def create_conn_obj(self):

@@ -6,8 +6,8 @@ from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    VERSION  = '4.0.0dev'
-    CODENAME = '\'Sercurty\''
+    VERSION  = '4.0.1dev'
+    CODENAME = 'Bug Pr0n'
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
@@ -32,7 +32,7 @@ def gen_cli_args():
 
                                     formatter_class=RawTextHelpFormatter,
                                     version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog="Serrrrrrcuuurrrty?")
+                                    epilog="Ya feelin' a bit buggy all of a sudden?")
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
@@ -43,7 +43,7 @@ def gen_cli_args():
     subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
 
     std_parser = argparse.ArgumentParser(add_help=False)
-    std_parser.add_argument("target", nargs='*', type=str, help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s) or file(s) containg a list of targets")
+    std_parser.add_argument("target", nargs='*', type=str, help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s), file(s) containing a list of targets, NMap XML or .Nessus file(s)")
     std_parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='database credential ID(s) to use for authentication')
     std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")

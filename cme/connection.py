@@ -1,5 +1,5 @@
 import logging
-from traceback import format_exc
+# from traceback import format_exc
 from gevent.lock import BoundedSemaphore
 from gevent.socket import gethostbyname
 from functools import wraps
@@ -10,11 +10,13 @@ sem = BoundedSemaphore(1)
 global_failed_logins = 0
 user_failed_logins = {}
 
+
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
         if self.admin_privs is False: return
         return func(self, *args, **kwargs)
     return wraps(func)(_decorator)
+
 
 class connection(object):
 
