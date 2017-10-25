@@ -47,7 +47,13 @@ class CMEModule:
 
             payload = {'StagerName': 'multi/launcher', 'Listener': module_options['LISTENER']}
             r = requests.post(base_url + '/api/stagers?token={}'.format(token), json=payload, headers=headers, verify=False)
-            self.empire_launcher = r.json()['multi/launcher']['Output']
+            
+            response = r.json()
+            if "error" in response:
+                context.log.error("Error from empire : {}".format(response["error"]))
+                sys.exit(1)
+
+            self.empire_launcher = response['multi/launcher']['Output']
 
             context.log.success("Successfully generated launcher for listener '{}'".format(module_options['LISTENER']))
 
