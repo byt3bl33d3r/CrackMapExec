@@ -20,9 +20,11 @@ Unintentional contributors:
 
 - The [Empire](https://github.com/PowerShellEmpire/Empire) project
 - @T-S-A's [smbspider](https://github.com/T-S-A/smbspider) script
+- @ConsciousHacker's partial Python port of Invoke-obfuscation from the [GreatSCT](https://github.com/GreatSCT/GreatSCT) project
 
 This repository contains the following repositories as submodules:
 - [Impacket](https://github.com/CoreSecurity/impacket)
+- [Pywinrm](https://github.com/diyan/pywinrm)
 - [Pywerview](https://github.com/the-useless-one/pywerview)
 - [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
 - [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)
@@ -30,6 +32,8 @@ This repository contains the following repositories as submodules:
 - [Mimikittenz](https://github.com/putterpanda/mimikittenz)
 - [NetRipper](https://github.com/NytroRST/NetRipper)
 - [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
+- [SessionGopher](https://github.com/fireeye/SessionGopher)
+- [Mimipenguin](https://github.com/huntergregal/mimipenguin)
 
 # Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
