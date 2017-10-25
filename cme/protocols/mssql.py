@@ -27,7 +27,7 @@ class mssql(connection):
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
-        mssql_parser.add_argument("-q", "--query", metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
+        mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
         mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
@@ -176,7 +176,7 @@ class mssql(connection):
         lmhash = ''
         nthash = ''
 
-        #This checks to see if we didn't provide the LM Hash
+        # This checks to see if we didn't provide the LM Hash
         if ntlm_hash.find(':') != -1:
             lmhash, nthash = ntlm_hash.split(':')
         else:
@@ -208,6 +208,8 @@ class mssql(connection):
     def mssql_query(self):
         self.conn.sql_query(self.args.mssql_query)
         self.conn.printRows()
+        for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
+            self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
