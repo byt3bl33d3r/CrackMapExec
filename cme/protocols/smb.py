@@ -135,7 +135,7 @@ class smb(connection):
         egroup.add_argument("--groups", nargs='?', const='', metavar='GROUP', help='enumerate domain groups, if a group is specified than its members are enumerated')
         egroup.add_argument("--local-groups", nargs='?', const='', metavar='GROUP', help='enumerate local groups, if a group is specified than its members are enumerated')
         egroup.add_argument("--pass-pol", action='store_true', help='dump password policy')
-        egroup.add_argument("--rid-brute", nargs='?', const=4000, metavar='MAX_RID', help='enumerate users by bruteforcing RID\'s (default: 4000)')
+        egroup.add_argument("--rid-brute", nargs='?', type=int, const=4000, metavar='MAX_RID', help='enumerate users by bruteforcing RID\'s (default: 4000)')
         egroup.add_argument("--wmi", metavar='QUERY', type=str, help='issues the specified WMI query')
         egroup.add_argument("--wmi-namespace", metavar='NAMESPACE', default='root\\cimv2', help='WMI Namespace (default: root\\cimv2)')
 
@@ -699,7 +699,7 @@ class smb(connection):
     def rid_brute(self, maxRid=None):
         entries = []
         if not maxRid:
-            maxRid = self.args.rid_brute
+            maxRid = int(self.args.rid_brute)
 
         KNOWN_PROTOCOLS = {
             135: {'bindstr': r'ncacn_ip_tcp:%s',           'set_host': False},
