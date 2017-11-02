@@ -3,13 +3,162 @@ import cmd
 import sqlite3
 import sys
 import os
+import requests
+from time import sleep
+from terminaltables import AsciiTable
+from cme.msfrpc import Msfrpc, MsfAuthError
 from ConfigParser import ConfigParser
 from cme.loaders.protocol_loader import protocol_loader
+from requests import ConnectionError
+
+# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 class UserExitedProto(Exception):
     pass
 
-class CMEDatabaseNavigator(cmd.Cmd):
+
+class DatabaseNavigator(cmd.Cmd):
+
+    def __init__(self, main_menu, database, proto):
+        cmd.Cmd.__init__(self)
+
+        self.main_menu = main_menu
+        self.config = main_menu.config
+        self.proto = proto
+        self.db = database
+        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
+
+    def do_back(self, line):
+        raise UserExitedProto
+
+    def do_exit(self, line):
+        sys.exit(0)
+
+    def print_table(self, data, title=None):
+        print ""
+        table = AsciiTable(data)
+        if title:
+            table.title = title
+        print table.table
+        print ""
+
+    def do_export(self, line):
+        if not line:
+            return
+
+        line = line.split()
+
+        if len(line) < 3:
+            return
+
+        if line[0].lower() == 'creds':
+            if line[1].lower() == 'plaintext':
+                creds = self.db.get_credentials(credtype="plaintext")
+            elif line[1].lower() == 'hashes':
+                creds = self.db.get_credentials(credtype="hash")
+
+            with open(os.path.expanduser(line[2]), 'w') as export_file:
+                for cred in creds:
+                    _, _, _, password, _, _ = cred
+                    export_file.write('{}\n'.format(password))
+
+    def do_import(self, line):
+        if not line:
+            return
+
+        if line == 'empire':
+            headers = {'Content-Type': 'application/json'}
+
+            # Pull the username and password from the config file
+            payload = {'username': self.config.get('Empire', 'username'),
+                       'password': self.config.get('Empire', 'password')}
+
+            # Pull the host and port from the config file
+            base_url = 'https://{}:{}'.format(self.config.get('Empire', 'api_host'), self.config.get('Empire', 'api_port'))
+
+            try:
+                r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+                if r.status_code == 200:
+                    token = r.json()['token']
+
+                    url_params = {'token': token}
+                    r = requests.get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
+                    creds = r.json()
+
+                    for cred in creds['creds']:
+                        if cred['credtype'] == 'token' or cred['credtype'] == 'krbtgt' or cred['username'].endswith('$'):
+                            continue
+
+                        self.db.add_credential(cred['credtype'], cred['domain'], cred['username'], cred['password'])
+
+                    print "[+] Empire credential import successful"
+                else:
+                    print "[-] Error authenticating to Empire's RESTful API server!"
+
+            except ConnectionError as e:
+                print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
+
+        elif line == 'metasploit':
+            msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'),
+                          'port': self.config.get('Metasploit', 'rpc_port')})
+
+            try:
+                msf.login('msf', self.config.get('Metasploit', 'password'))
+            except MsfAuthError:
+                print "[-] Error authenticating to Metasploit's MSGRPC server!"
+                return
+
+            console_id = str(msf.call('console.create')['id'])
+
+            msf.call('console.write', [console_id, 'creds\n'])
+
+            sleep(2)
+
+            creds = msf.call('console.read', [console_id])
+
+            for entry in creds['data'].split('\n'):
+                cred = entry.split()
+                try:
+                    # host = cred[0]
+                    # port = cred[2]
+                    proto = cred[3]
+                    username = cred[4]
+                    password = cred[5]
+                    cred_type = cred[6]
+
+                    if proto == '({})'.format(self.proto) and cred_type == 'Password':
+                        self.db.add_credential('plaintext', '', username, password)
+
+                except IndexError:
+                    continue
+
+            msf.call('console.destroy', [console_id])
+
+            print "[+] Metasploit credential import successful"
+
+    def complete_import(self, text, line, begidx, endidx):
+        "Tab-complete 'import' commands."
+
+        commands = ["empire", "metasploit"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
+    def complete_export(self, text, line, begidx, endidx):
+        "Tab-complete 'creds' commands."
+
+        commands = ["creds", "plaintext", "hashes"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
+
+
+class CMEDBMenu(cmd.Cmd):
 
     def __init__(self, config_path):
         cmd.Cmd.__init__(self)
@@ -36,7 +185,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
             self.do_proto(self.db)
 
     def open_proto_db(self, db_path):
-        #Set the database connection to autocommit w/ isolation level
+        # Set the database connection to autocommit w/ isolation level
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.text_factory = str
         self.conn.isolation_level = None
@@ -46,23 +195,26 @@ class CMEDatabaseNavigator(cmd.Cmd):
             self.config.write(configfile)
 
     def do_proto(self, proto):
-        if not proto: return
+        if not proto:
+            return
 
         proto_db_path = os.path.join(self.workspace_dir, self.workspace, proto + '.db')
         if os.path.exists(proto_db_path):
             self.open_proto_db(proto_db_path)
-            protocol_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
+            db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
+            db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
             self.config.set('CME', 'last_used_db', proto)
             self.write_configfile()
 
             try:
-                proto_menu = getattr(protocol_object, 'navigator')(self)
+                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn), proto)
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
 
     def do_workspace(self, line):
-        if not line: return
+        if not line:
+            return
 
         line = line.strip()
 
@@ -107,6 +259,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
     def do_exit(self, line):
         sys.exit(0)
 
+
 def main():
     config_path = os.path.expanduser('~/.cme/cme.conf')
 
@@ -115,7 +268,7 @@ def main():
         sys.exit(1)
 
     try:
-        cmedbnav = CMEDatabaseNavigator(config_path)
+        cmedbnav = CMEDBMenu(config_path)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass

@@ -32,7 +32,8 @@ setup(name='crackmapexec',
         'splinter',
         'paramiko',
         'xmltodict',
-        'six'
+        'six',
+        'terminaltables'
     ],
     entry_points={
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],

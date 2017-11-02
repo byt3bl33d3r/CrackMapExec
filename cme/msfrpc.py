@@ -21,28 +21,31 @@
 #
 
 import msgpack
-import logging
 import requests
+
+
+class MsfError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return repr(self.msg)
+
+
+class MsfAuthError(MsfError):
+    def __init__(self, msg):
+        self.msg = msg
+
 
 class Msfrpc:
 
-    class MsfError(Exception):
-        def __init__(self,msg):
-            self.msg = msg
-        def __str__(self):
-            return repr(self.msg)
-
-    class MsfAuthError(MsfError):
-        def __init__(self,msg):
-            self.msg = msg
-    
-    def __init__(self,opts=[]):
+    def __init__(self, opts=[]):
         self.host = opts.get('host') or "127.0.0.1"
         self.port = opts.get('port') or "55552"
         self.uri = opts.get('uri') or "/api/"
         self.ssl = opts.get('ssl') or False
         self.token = None
-        self.headers = {"Content-type" : "binary/message-pack"}
+        self.headers = {"Content-type": "binary/message-pack"}
 
     def encode(self, data):
         return msgpack.packb(data)
@@ -52,25 +55,24 @@ class Msfrpc:
 
     def call(self, method, opts=[]):
         if method != 'auth.login':
-            if self.token == None:
-                raise self.MsfAuthError("MsfRPC: Not Authenticated")
+            if self.token is None:
+                raise MsfAuthError("MsfRPC: Not Authenticated")
 
         if method != "auth.login":
             opts.insert(0, self.token)
 
-        if self.ssl == True:
+        if self.ssl is True:
             url = "https://%s:%s%s" % (self.host, self.port, self.uri)
         else:
             url = "http://%s:%s%s" % (self.host, self.port, self.uri)
-    
 
         opts.insert(0, method)
         payload = self.encode(opts)
 
         r = requests.post(url, data=payload, headers=self.headers)
 
-        opts[:] = [] #Clear opts list
-        
+        opts[:] = []  # Clear opts list
+
         return self.decode(r.content)
 
     def login(self, user, password):
@@ -80,4 +82,4 @@ class Msfrpc:
                 self.token = auth['token']
                 return True
         except:
-            raise self.MsfAuthError("MsfRPC: Authentication failed")
+            raise MsfAuthError("MsfRPC: Authentication failed")

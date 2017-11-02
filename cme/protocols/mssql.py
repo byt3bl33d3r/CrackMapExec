@@ -78,6 +78,7 @@ class mssql(connection):
 
                 self.domain = smb_conn.getServerDomain()
                 self.hostname = smb_conn.getServerName()
+                self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
 
                 try:
@@ -101,6 +102,8 @@ class mssql(connection):
                     if key.lower() == 'servername':
                         self.hostname = instance[key]
                         break
+
+            self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
 
         try:
             self.conn.disconnect()
@@ -128,8 +131,8 @@ class mssql(connection):
 
     def check_if_admin(self):
         try:
-            #I'm pretty sure there has to be a better way of doing this.
-            #Currently we are just searching for our user in the sysadmin group
+            # I'm pretty sure there has to be a better way of doing this.
+            # Currently we are just searching for our user in the sysadmin group
 
             self.conn.sql_query("EXEC sp_helpsrvrolemember 'sysadmin'")
             self.conn.printRows()
@@ -164,7 +167,7 @@ class mssql(connection):
         self.db.add_credential('plaintext', domain, username, password)
 
         if self.admin_privs:
-            self.db.link_cred_to_host('plaintext', domain, username, password, self.host)
+            self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
         out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
                                      username.decode('utf-8'),
@@ -197,7 +200,7 @@ class mssql(connection):
         self.db.add_credential('hash', domain, username, ntlm_hash)
 
         if self.admin_privs:
-            self.db.link_cred_to_host('hash', domain, username, ntlm_hash, self.host)
+            self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
         out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                      username.decode('utf-8'),

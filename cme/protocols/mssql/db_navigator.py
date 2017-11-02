@@ -1,87 +1,61 @@
-import cmd
-from cme.protocols.mssql.database import database
-from cme.cmedb import UserExitedProto
+from cme.helpers.misc import validate_ntlm
+from cme.cmedb import DatabaseNavigator
 
-class navigator(cmd.Cmd):
-    def __init__(self, main_menu):
-        cmd.Cmd.__init__(self)
 
-        self.main_menu = main_menu
-        self.config = main_menu.config
-        self.db = database(main_menu.conn)
-        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, 'mssql')
-
-    def do_back(self, line):
-        raise UserExitedProto
+class navigator(DatabaseNavigator):
 
     def display_creds(self, creds):
 
-        print "\nCredentials:\n"
-        print "  CredID  Admin On     CredType    Domain           UserName             Password"
-        print "  ------  --------     --------    ------           --------             --------"
+        data = [['CredID', 'Admin On', 'CredType', 'Domain', 'UserName', 'Password']]
 
         for cred in creds:
-            # (id, credtype, domain, username, password, host, notes, sid)
+
             credID = cred[0]
-            credType = cred[1]
-            domain = cred[2]
-            username = cred[3]
-            password = cred[4]
+            domain = cred[1]
+            username = cred[2]
+            password = cred[3]
+            credtype = cred[4]
+            # pillaged_from = cred[5]
 
-            links = self.db.get_links(credID=credID)
+            links = self.db.get_admin_relations(userID=credID)
 
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                           '{:<13}'.format(str(len(links)) + ' Host(s)'),
-                                           '{:<12}'.format(credType),
-                                           u'{:<17}'.format(domain.decode('utf-8')),
-                                           u'{:<21}'.format(username.decode('utf-8')),
-                                           u'{:<17}'.format(password.decode('utf-8')))
+            data.append([credID, str(len(links)) + ' Host(s)', credtype, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
 
-        print ""
+        self.print_table(data, title='Credentials')
 
     def display_hosts(self, hosts):
 
-        print "\nHosts:\n"
-        print "  HostID  Admins         IP               Hostname                 Domain           OS"
-        print "  ------  ------         --               --------                 ------           --"
+        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'DB Instances']]
 
         for host in hosts:
-            # (id, ip, hostname, domain, os)
+
             hostID = host[0]
             ip = host[1]
             hostname = host[2]
             domain = host[3]
             os = host[4]
+            instances = host[5]
 
-            links = self.db.get_links(hostID=hostID)
+            links = self.db.get_admin_relations(hostID=hostID)
 
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID),
-                                           '{:<15}'.format(str(len(links)) + ' Cred(s)'),
-                                           '{:<17}'.format(ip),
-                                           u'{:<25}'.format(hostname.decode('utf-8')),
-                                           u'{:<17}'.format(domain.decode('utf-8')),
-                                           '{:<17}'.format(os))
+            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname.decode('utf-8'), domain.decode('utf-8'), os, instances])
 
-        print ""
+        self.print_table(data, title='Hosts')
 
     def do_hosts(self, line):
 
         filterTerm = line.strip()
 
         if filterTerm == "":
-            hosts = self.db.get_hosts()
+            hosts = self.db.get_computers()
             self.display_hosts(hosts)
-
         else:
-            hosts = self.db.get_hosts(filterTerm=filterTerm)
+            hosts = self.db.get_computers(filterTerm=filterTerm)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
-                print "\nHost(s):\n"
-                print "  HostID  IP               Hostname                 Domain           OS"
-                print "  ------  --               --------                 ------           --"
-
+                data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
                 hostIDList = []
 
                 for host in hosts:
@@ -93,20 +67,13 @@ class navigator(cmd.Cmd):
                     domain = host[3]
                     os = host[4]
 
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID),
-                                                 '{:<17}'.format(ip),
-                                                 u'{:<25}'.format(hostname.decode('utf-8')),
-                                                 u'{:<17}'.format(domain.decode('utf-8')),
-                                                 '{:<17}'.format(os))
+                    data.append([hostID, ip, hostname.decode('utf-8'), domain.decode('utf-8'), os])
 
-                print ""
+                self.print_table(data, title='Host(s)')
 
-                print "\nCredential(s) with Admin Access:\n"
-                print "  CredID  CredType    Domain           UserName             Password"
-                print "  ------  --------    ------           --------             --------"
-
+                data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:
-                    links = self.db.get_links(hostID=hostID)
+                    links = self.db.get_admin_relations(hostID=hostID)
 
                     for link in links:
                         linkID, credID, hostID = link
@@ -114,18 +81,15 @@ class navigator(cmd.Cmd):
 
                         for cred in creds:
                             credID = cred[0]
-                            credType = cred[1]
-                            domain = cred[2]
-                            username = cred[3]
-                            password = cred[4]
+                            domain = cred[1]
+                            username = cred[2]
+                            password = cred[3]
+                            credtype = cred[4]
+                            # pillaged_from = cred[5]
 
-                            print u"  {}{}{}{}{}".format('{:<8}'.format(credID),
-                                                        '{:<12}'.format(credType),
-                                                        u'{:<17}'.format(domain.decode('utf-8')),
-                                                        u'{:<21}'.format(username.decode('utf-8')),
-                                                        u'{:<17}'.format(password.decode('utf-8')))
+                            data.append([credID, credtype, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
 
-                print ""
+                self.print_table(data, title='Credential(s) with Admin Access')
 
     def do_creds(self, line):
 
@@ -136,8 +100,6 @@ class navigator(cmd.Cmd):
             self.display_creds(creds)
 
         elif filterTerm.split()[0].lower() == "add":
-
-            # add format: "domain username password <notes> <credType> <sid>
             args = filterTerm.split()[1:]
 
             if len(args) == 3:
@@ -154,7 +116,7 @@ class navigator(cmd.Cmd):
         elif filterTerm.split()[0].lower() == "remove":
 
             args = filterTerm.split()[1:]
-            if len(args) != 1 :
+            if len(args) != 1:
                 print "[!] Format is 'remove <credID>'"
                 return
             else:
@@ -172,10 +134,7 @@ class navigator(cmd.Cmd):
         else:
             creds = self.db.get_credentials(filterTerm=filterTerm)
 
-            print "\nCredential(s):\n"
-            print "  CredID  CredType    Domain           UserName             Password"
-            print "  ------  --------    ------           --------             --------"
-
+            data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
             credIDList = []
 
             for cred in creds:
@@ -187,25 +146,17 @@ class navigator(cmd.Cmd):
                 username = cred[3]
                 password = cred[4]
 
-                print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                              '{:<12}'.format(credType),
-                                              u'{:<22}'.format(domain.decode('utf-8')),
-                                              u'{:<21}'.format(username.decode('utf-8')),
-                                              u'{:<17}'.format(password.decode('utf-8'))
-                                              )
+                data.append([credID, credType, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
 
-            print ""
+            self.print_table(data, title='Credential(s)')
 
-            print "\nAdmin Access to Host(s):\n"
-            print "  HostID  IP               Hostname                 Domain           OS"
-            print "  ------  --               --------                 ------           --"
-
+            data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
             for credID in credIDList:
-                links = self.db.get_links(credID=credID)
+                links = self.db.get_admin_relations(userID=credID)
 
                 for link in links:
-                    linkID, credID, hostID =  link
-                    hosts = self.db.get_hosts(hostID)
+                    linkID, credID, hostID = link
+                    hosts = self.db.get_computers(hostID)
 
                     for host in hosts:
                         hostID = host[0]
@@ -214,18 +165,23 @@ class navigator(cmd.Cmd):
                         domain = host[3]
                         os = host[4]
 
-                        print u"  {}{}{}{}{}".format('{:<8}'.format(hostID),
-                                                     '{:<17}'.format(ip),
-                                                     u'{:<25}'.format(hostname.decode('utf-8')),
-                                                     u'{:<17}'.format(domain.decode('utf-8')),
-                                                     '{:<17}'.format(os))
+                        data.append([hostID, ip, hostname.decode('utf-8'), domain.decode('utf-8'), os])
 
-            print ""
+            self.print_table(data, title='Admin Access to Host(s)')
+
+    def complete_hosts(self, text, line, begidx, endidx):
+        "Tab-complete 'creds' commands."
+
+        commands = ["add", "remove"]
+
+        mline = line.partition(' ')[2]
+        offs = len(mline) - len(text)
+        return [s[offs:] for s in commands if s.startswith(mline)]
 
     def complete_creds(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
 
-        commands = [ "add", "remove", "hash", "plaintext"]
+        commands = ["add", "remove", "hash", "plaintext"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)

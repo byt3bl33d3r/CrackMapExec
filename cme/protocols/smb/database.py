@@ -34,7 +34,7 @@ class database:
             "name" text
             )''')
 
-        #This table keeps track of which credential has admin access over which machine and vice-versa
+        # This table keeps track of which credential has admin access over which machine and vice-versa
         db_conn.execute('''CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,

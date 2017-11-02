@@ -5,23 +5,26 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "hosts" (
+        db_conn.execute('''CREATE TABLE "computers" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
             "domain" text,
-            "os" text
+            "os" text,
+            "instances" integer
             )''')
 
-        #This table keeps track of which credential has admin access over which machine and vice-versa
-        db_conn.execute('''CREATE TABLE "links" (
+        # This table keeps track of which credential has admin access over which machine and vice-versa
+        db_conn.execute('''CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
-            "credid" integer,
-            "hostid" integer
+            "userid" integer,
+            "computerid" integer,
+            FOREIGN KEY(userid) REFERENCES users(id),
+            FOREIGN KEY(computerid) REFERENCES computers(id)
             )''')
 
         # type = hash, plaintext
-        db_conn.execute('''CREATE TABLE "credentials" (
+        db_conn.execute('''CREATE TABLE "users" (
             "id" integer PRIMARY KEY,
             "credtype" text,
             "domain" text,
@@ -29,17 +32,17 @@ class database:
             "password" text
             )''')
 
-    def add_host(self, ip, hostname, domain, os):
+    def add_computer(self, ip, hostname, domain, os, instances):
         """
         Check if this host has already been added to the database, if not add it in.
         """
         cur = self.conn.cursor()
 
-        cur.execute('SELECT * FROM hosts WHERE ip LIKE ?', [ip])
+        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [ip])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO hosts (ip, hostname, domain, os) VALUES (?,?,?,?)", [ip, hostname, domain, os])
+            cur.execute("INSERT INTO computers (ip, hostname, domain, os, instances) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, instances])
 
         cur.close()
 
@@ -49,11 +52,11 @@ class database:
         """
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
+        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO credentials (credtype, domain, username, password) VALUES (?,?,?,?)", [credtype, domain, username, password] )
+            cur.execute("INSERT INTO users (credtype, domain, username, password) VALUES (?,?,?,?)", [credtype, domain, username, password])
 
         cur.close()
 
@@ -63,58 +66,58 @@ class database:
         """
         for credID in credIDs:
             cur = self.conn.cursor()
-            cur.execute("DELETE FROM credentials WHERE id=?", [credID])
+            cur.execute("DELETE FROM users WHERE id=?", [credID])
             cur.close()
 
-    def link_cred_to_host(self, credtype, domain, username, password, host):
+    def add_admin_user(self, credtype, domain, username, password, host):
 
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM credentials WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
+        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
         creds = cur.fetchall()
 
-        cur.execute('SELECT * FROM hosts WHERE ip LIKE ?', [host])
+        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [host])
         hosts = cur.fetchall()
 
         if len(creds) and len(hosts):
             for cred, host in zip(creds, hosts):
-                credid = cred[0]
-                hostid = host[0]
+                userid = cred[0]
+                computerid = host[0]
 
-                #Check to see if we already added this link
-                cur.execute("SELECT * FROM links WHERE credid=? AND hostid=?", [credid, hostid])
+                # Check to see if we already added this link
+                cur.execute("SELECT * FROM admin_relations WHERE userid=? AND computerid=?", [userid, computerid])
                 links = cur.fetchall()
 
                 if not len(links):
-                    cur.execute("INSERT INTO links (credid, hostid) VALUES (?,?)", [credid, hostid])
+                    cur.execute("INSERT INTO admin_relations (userid, computerid) VALUES (?,?)", [userid, computerid])
 
         cur.close()
 
-    def get_links(self, credID=None, hostID=None):
+    def get_admin_relations(self, userID=None, hostID=None):
 
         cur = self.conn.cursor()
 
-        if credID:
-            cur.execute("SELECT * from links WHERE credid=?", [credID])
+        if userID:
+            cur.execute("SELECT * from admin_relations WHERE userid=?", [userID])
 
         elif hostID:
-            cur.execute("SELECT * from links WHERE hostid=?", [hostID])
+            cur.execute("SELECT * from admin_relations WHERE computerid=?", [hostID])
 
         results = cur.fetchall()
         cur.close()
         return results
 
-    def remove_links(self, credIDs=None, hostIDs=None):
+    def remove_admin_relation(self, userIDs=None, hostIDs=None):
 
         cur = self.conn.cursor()
 
-        if credIDs:
-            for credID in credIDs:
-                cur.execute("DELETE FROM links WHERE credid=?", [credID])
+        if userIDs:
+            for userID in userIDs:
+                cur.execute("DELETE FROM admin_relations WHERE userid=?", [userID])
 
         elif hostIDs:
             for hostID in hostIDs:
-                cur.execute("DELETE FROM links WHERE hostid=?", [hostID])
+                cur.execute("DELETE FROM admin_relations WHERE computerid=?", [hostID])
 
         cur.close()
 
@@ -123,7 +126,7 @@ class database:
         Check if this credential ID is valid.
         """
         cur = self.conn.cursor()
-        cur.execute('SELECT * FROM credentials WHERE id=? LIMIT 1', [credentialID])
+        cur.execute('SELECT * FROM users WHERE id=? LIMIT 1', [credentialID])
         results = cur.fetchall()
         cur.close()
         return len(results) > 0
@@ -137,52 +140,52 @@ class database:
 
         # if we're returning a single credential by ID
         if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM credentials WHERE id=? LIMIT 1", [filterTerm])
+            cur.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filterTerm])
 
         # if we're filtering by credtype
         elif credtype:
-            cur.execute("SELECT * FROM credentials WHERE credtype=?", [credtype])
+            cur.execute("SELECT * FROM users WHERE credtype=?", [credtype])
 
         # if we're filtering by username
         elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM credentials WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower())])
+            cur.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower())])
 
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM credentials")
+            cur.execute("SELECT * FROM users")
 
         results = cur.fetchall()
         cur.close()
         return results
 
-    def is_host_valid(self, hostID):
+    def is_computer_valid(self, hostID):
         """
-        Check if this host ID is valid.
+        Check if this computer ID is valid.
         """
         cur = self.conn.cursor()
-        cur.execute('SELECT * FROM hosts WHERE id=? LIMIT 1', [hostID])
+        cur.execute('SELECT * FROM computers WHERE id=? LIMIT 1', [hostID])
         results = cur.fetchall()
         cur.close()
         return len(results) > 0
 
-    def get_hosts(self, filterTerm=None):
+    def get_computers(self, filterTerm=None):
         """
-        Return hosts from the database.
+        Return computers from the database.
         """
 
         cur = self.conn.cursor()
 
         # if we're returning a single host by ID
-        if self.is_host_valid(filterTerm):
-            cur.execute("SELECT * FROM hosts WHERE id=? LIMIT 1", [filterTerm])
+        if self.is_computer_valid(filterTerm):
+            cur.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
 
         # if we're filtering by ip/hostname
         elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM hosts WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower()), '%{}%'.format(filterTerm.lower())])
+            cur.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower()), '%{}%'.format(filterTerm.lower())])
 
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM hosts")
+            cur.execute("SELECT * FROM computers")
 
         results = cur.fetchall()
         cur.close()

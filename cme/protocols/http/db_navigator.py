@@ -1,43 +1,25 @@
-import cmd
-from cme.protocols.http.database import database
-from cme.cmedb import UserExitedProto
+from cme.cmedb import DatabaseNavigator
 
-class navigator(cmd.Cmd):
-    def __init__(self, main_menu):
-        cmd.Cmd.__init__(self)
 
-        self.main_menu = main_menu
-        self.config = main_menu.config
-        self.db = database(main_menu.conn)
-        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, 'http')
-
-    def do_back(self, line):
-        raise UserExitedProto
+class navigator(DatabaseNavigator):
 
     def display_creds(self, creds):
-
-        print "\nCredentials:\n"
-        print "  CredID  URL              UserName             Password"
-        print "  ------  ---              --------             --------"
-
+        data = [['CredID', 'URL', 'UserName', 'Password']]
         for cred in creds:
             credID = cred[0]
             url = cred[2]
             username = cred[3]
             password = cred[4]
 
-            links = self.db.get_links(credID=credID)
+            # links = self.db.get_links(credID=credID)
 
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID),
-                                           u'{:<17}'.format(url.decode('utf-8')),
-                                           u'{:<21}'.format(username.decode('utf-8')),
-                                           u'{:<17}'.format(password.decode('utf-8')))
+            data.append([credID, url.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
 
-        print ""
+        self.print_table(data, title='Credential(s)')
 
     def display_hosts(self, hosts):
-        #print "\nHosts:\n"
-        #print "  HostID  IP        Hostname     Port   Title URL"
+        # print "\nHosts:\n"
+        # print "  HostID  IP        Hostname     Port   Title URL"
         return
 
     def do_creds(self, line):
@@ -88,8 +70,8 @@ class navigator(cmd.Cmd):
 
             if len(args) == 3:
                 return
-                #url, username, password = args
-                #self.db.add_host()
+                # url, username, password = args
+                # self.db.add_host()
 
             else:
                 print "[!] Format is 'add url ip hostname port"
@@ -100,9 +82,9 @@ class navigator(cmd.Cmd):
             args = filterTerm.split()[1:]
             if len(args) != 1 :
                 print "[!] Format is 'remove <hostID>'"
-            
+
             return
-            #self.db.remove_host()
+            # self.db.remove_host()
 
         else:
             hosts = self.db.get_hosts(filterTerm=filterTerm)
@@ -111,7 +93,7 @@ class navigator(cmd.Cmd):
     def complete_creds(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
 
-        commands = [ "add", "remove"]
+        commands = ["add", "remove"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
@@ -120,7 +102,7 @@ class navigator(cmd.Cmd):
     def complete_hosts(self, text, line, begidx, endidx):
         "Tab-complete 'hosts' commands."
 
-        commands = [ "add", "remove"]
+        commands = ["add", "remove"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
