@@ -41,6 +41,14 @@ See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for d
 # Installation
 Please see the installation wiki page [here](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation).
 
+# How to fund my tea & sushi reserve
+
+BTC: 1ER8rRE6NTZ7RHN88zc6JY87LvtyuRUJGU
+
+ETH: 0x91d9aDCf8B91f55BCBF0841616A01BeE551E90ee
+
+LTC: LLMa2bsvXbgBGnnBwiXYazsj7Uz6zRe4fr
+
 # To do
 - Kerberos support
 - ~~0wn everything~~
