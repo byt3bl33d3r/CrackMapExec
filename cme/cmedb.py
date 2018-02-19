@@ -47,23 +47,45 @@ class DatabaseNavigator(cmd.Cmd):
 
     def do_export(self, line):
         if not line:
+            print "[-] not enough arguments"
             return
 
         line = line.split()
 
-        if len(line) < 3:
-            return
-
         if line[0].lower() == 'creds':
+            if len(line) < 3:
+                print "[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>"
+                return
             if line[1].lower() == 'plaintext':
                 creds = self.db.get_credentials(credtype="plaintext")
             elif line[1].lower() == 'hashes':
                 creds = self.db.get_credentials(credtype="hash")
+            else:
+                creds = self.db.get_credentials()
 
             with open(os.path.expanduser(line[2]), 'w') as export_file:
                 for cred in creds:
-                    _, _, _, password, _, _ = cred
-                    export_file.write('{}\n'.format(password))
+                    credid, domain, user, password, credtype, fromhost = cred
+                    if line[1].lower() == 'csv':
+                        export_file.write('{},{},{},{},{},{}\n'.format(credid,domain,user,password,credtype,fromhost))
+                    else:
+                        export_file.write('{}\n'.format(password))
+            print '[+] creds exported'
+
+        elif line[0].lower() == 'hosts':
+            if len(line) < 2:
+                print "[-] invalid arguments, export hosts <filename>"
+                return
+            hosts = self.db.get_computers()
+            with open(os.path.expanduser(line[1]), 'w') as export_file:
+                for host in hosts:
+                    hostid,ipaddress,hostname,domain,opsys,dc = host
+                    export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
+            print '[+] hosts exported'
+
+        else:
+            print '[-] invalid argument, specify creds or hosts'
+
 
     def do_import(self, line):
         if not line:
