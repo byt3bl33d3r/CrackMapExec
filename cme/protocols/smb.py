@@ -558,6 +558,18 @@ class smb(connection):
 
         return groups
 
+    def domainfromdsn(self, dsn):
+        dsnparts = dsn.split(',')
+        domain = ""
+        for part in dsnparts:
+            k,v = part.split("=")
+            if k == "DC":
+                if domain=="":
+                    domain = v
+                else:
+                    domain = domain+"."+v
+        return domain
+
     def groups(self):
         groups = []
         for dc_ip in self.get_dc_ips():
@@ -597,7 +609,7 @@ class smb(connection):
 
                         if bool(group.isgroup) is True:
                             # Since there isn't a groupmemeber attribute on the returned object from get_netgroup we grab it from the distinguished name
-                            _,domain = group.distinguishedname.split(',')[-2].split('=')
+                            domain = self.domainfromdsn(group.distinguishedname)
                             self.db.add_group(domain, group.samaccountname)
                     break
                 except Exception as e:
@@ -616,13 +628,9 @@ class smb(connection):
 
                 self.logger.success('Enumerated domain user(s)')
                 for user in users:
-                    if not self.args.users:
-                        _,domain = user.distinguishedname.split(',')[-2].split('=')
-                        self.logger.highlight('{}\\{:<40} badpwdcount: {} badpwdtime: {}'.format(domain, user.samaccountname, user.badpwdcount, user.badpasswordtime))
-                        self.db.add_user(domain, user.samaccountname)
-                    else:
-                        for k,v in vars(user).iteritems():
-                            self.logger.highlight('{:<40} {}'.format(k + ':',v))
+                    domain = self.domainfromdsn(user.distinguishedname)
+                    self.logger.highlight('{}\\{:<30} badpwdcount: {} baddpwdtime: {}'.format(domain,user.samaccountname,getattr(user,'badpwdcount',0),getattr(user, 'badpasswordtime','')))
+                    self.db.add_user(domain, user.samaccountname)
 
                 break
             except Exception as e:
