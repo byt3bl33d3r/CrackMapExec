@@ -20,7 +20,7 @@ class winrm(connection):
         self.domain = None
 
         cme_path = os.path.expanduser('~/.cme')
-        config = ConfigParser({'pwn3d_label': 'Pwned!'})
+        config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
         config.read(os.path.join(cme_path, 'cme.conf'))
         self.pwn3d = config.get('CME','pwn3d_label')
 
