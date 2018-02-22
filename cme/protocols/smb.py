@@ -27,6 +27,7 @@ from cme.protocols.smb.passpol import PassPolDump
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
+from ConfigParser import ConfigParser
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
@@ -104,6 +105,11 @@ class smb(connection):
         self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
+
+        cme_path = os.path.expanduser('~/.cme')
+        config = ConfigParser({'pwn3d_label': 'Pwned!'})
+        config.read(os.path.join(cme_path, 'cme.conf'))
+        self.pwn3d = config.get('CME','pwn3d_label')
 
         connection.__init__(self, args, db, host)
 
@@ -258,7 +264,7 @@ class smb(connection):
             out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
                                          password.decode('utf-8'),
-                                         highlight('(Pwn3d!)') if self.admin_privs else '')
+                                         highlight('('+self.pwn3d+')') if self.admin_privs else '')
 
             self.logger.success(out)
             return True
@@ -302,7 +308,7 @@ class smb(connection):
             out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
                                          ntlm_hash,
-                                         highlight('(Pwn3d!)') if self.admin_privs else '')
+                                         highlight('('+self.pwn3d+')') if self.admin_privs else '')
 
             self.logger.success(out)
             return True
