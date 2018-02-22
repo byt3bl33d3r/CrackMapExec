@@ -4,9 +4,16 @@ from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
+from ConfigParser import ConfigParser
 
 
 class ssh(connection):
+
+    def __init__(self, args, db, host):
+        cme_path = os.path.expanduser('~/.cme')
+        config = ConfigParser({'pwn3d_label': 'Pwned!'})
+        config.read(os.path.join(cme_path, 'cme.conf'))
+        self.pwn3d = config.get('CME','pwn3d_label')
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
@@ -59,7 +66,7 @@ class ssh(connection):
 
             self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
                                                    password.decode('utf-8'),
-                                                   highlight('(Pwn3d!)') if self.admin_privs else ''))
+                                                   highlight('('+self.pwn3d+')') if self.admin_privs else ''))
 
             return True
         except Exception as e:
