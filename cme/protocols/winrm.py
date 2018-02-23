@@ -19,11 +19,6 @@ class winrm(connection):
     def __init__(self, args, db, host):
         self.domain = None
 
-        cme_path = os.path.expanduser('~/.cme')
-        config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
-        config.read(os.path.join(cme_path, 'cme.conf'))
-        self.pwn3d = config.get('CME','pwn3d_label')
-
         connection.__init__(self, args, db, host)
 
     @staticmethod
@@ -125,7 +120,7 @@ class winrm(connection):
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
                                                        username.decode('utf-8'),
                                                        password.decode('utf-8'),
-                                                       highlight('('+self.pwn3d+')')))
+                                                       highlight('('+self.config.get('CME','pwn3d_label')+')')))
 
             return True
 

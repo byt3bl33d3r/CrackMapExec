@@ -9,12 +9,6 @@ from ConfigParser import ConfigParser
 
 class ssh(connection):
 
-    def __init__(self, args, db, host):
-        cme_path = os.path.expanduser('~/.cme')
-        config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
-        config.read(os.path.join(cme_path, 'cme.conf'))
-        self.pwn3d = config.get('CME','pwn3d_label')
-
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         ssh_parser = parser.add_parser('ssh', help="own stuff using SSH", parents=[std_parser, module_parser])
@@ -66,7 +60,7 @@ class ssh(connection):
 
             self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
                                                    password.decode('utf-8'),
-                                                   highlight('('+self.pwn3d+')') if self.admin_privs else ''))
+                                                   highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else ''))
 
             return True
         except Exception as e:

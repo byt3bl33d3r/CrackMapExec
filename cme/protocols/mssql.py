@@ -19,11 +19,6 @@ class mssql(connection):
         self.domain = None
         self.hash = None
 
-        cme_path = os.path.expanduser('~/.cme')
-        config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
-        config.read(os.path.join(cme_path, 'cme.conf'))
-        self.pwn3d = config.get('CME','pwn3d_label')
-
         connection.__init__(self, args, db, host)
 
     @staticmethod
@@ -178,7 +173,8 @@ class mssql(connection):
         out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
                                      username.decode('utf-8'),
                                      password.decode('utf-8'),
-                                     highlight('('+self.pwn3d+')') if self.admin_privs else '')
+                                     highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else '')
+
 
         self.logger.success(out)
 
@@ -211,7 +207,7 @@ class mssql(connection):
         out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                      username.decode('utf-8'),
                                      ntlm_hash,
-                                     highlight('('+self.pwn3d+')') if self.admin_privs else '')
+                                     highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else '')
 
         self.logger.success(out)
 
