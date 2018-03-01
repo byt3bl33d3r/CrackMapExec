@@ -44,10 +44,10 @@ def main():
 
     cme_path = os.path.expanduser('~/.cme')
 
-    config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
+    config = ConfigParser()
     config.read(os.path.join(cme_path, 'cme.conf'))
 
-    module  = None
+    module = None
     module_server = None
     targets = []
     jitter = None

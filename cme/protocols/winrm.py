@@ -120,7 +120,7 @@ class winrm(connection):
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
                                                        username.decode('utf-8'),
                                                        password.decode('utf-8'),
-                                                       highlight('('+self.config.get('CME','pwn3d_label')+')')))
+                                                       highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
 

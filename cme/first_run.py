@@ -2,17 +2,17 @@ import os
 import sqlite3
 import shutil
 import cme
-from ConfigParser import ConfigParser, NoSectionError
-from cme.helpers.logger import highlight
+from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
 from sys import exit
 
-CME_PATH  = os.path.expanduser('~/.cme')
-TMP_PATH  = os.path.join('/tmp', 'cme_hosted')
-WS_PATH   = os.path.join(CME_PATH, 'workspaces')
+CME_PATH = os.path.expanduser('~/.cme')
+TMP_PATH = os.path.join('/tmp', 'cme_hosted')
+WS_PATH = os.path.join(CME_PATH, 'workspaces')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
+
 
 def first_run_setup(logger):
 
@@ -27,13 +27,13 @@ def first_run_setup(logger):
     folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
-            os.mkdir(os.path.join(CME_PATH,folder))
+            os.mkdir(os.path.join(CME_PATH, folder))
 
     if not os.path.exists(os.path.join(WS_PATH, 'default')):
         logger.info('Creating default workspace')
         os.mkdir(os.path.join(WS_PATH, 'default'))
 
-    p_loader =  protocol_loader()
+    p_loader = protocol_loader()
     protocols = p_loader.get_protocols()
     for protocol in protocols.keys():
         try:
@@ -67,16 +67,17 @@ def first_run_setup(logger):
         try:
             config = ConfigParser()
             config.read(CONFIG_PATH)
-            current_workspace = config.get('CME', 'workspace')
-        except NoSectionError:
-            logger.info('v3.x configuration file detected, replacing with new version')
+            config.get('CME', 'workspace')
+            config.get('CME', 'pwn3d_label')
+        except (NoSectionError, NoOptionError):
+            logger.info('Old configuration file detected, replacing with new version')
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
             shutil.copy(default_path, CME_PATH)
 
     if not os.path.exists(CERT_PATH):
         logger.info('Generating SSL certificate')
         try:
-            out = check_output(['openssl', 'help'], stderr=PIPE)
+            check_output(['openssl', 'help'], stderr=PIPE)
         except OSError as e:
             if e.errno == os.errno.ENOENT:
                 logger.error('OpenSSL command line utility is not installed, could not generate certificate')

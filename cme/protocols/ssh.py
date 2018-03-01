@@ -60,7 +60,7 @@ class ssh(connection):
 
             self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
                                                    password.decode('utf-8'),
-                                                   highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else ''))
+                                                   highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
         except Exception as e:
