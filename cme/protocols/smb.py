@@ -32,6 +32,7 @@ from pywerview.requester import RPCRequester
 from time import time
 from datetime import datetime
 from functools import wraps
+from traceback import format_exc
 
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
