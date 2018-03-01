@@ -1,6 +1,36 @@
-[submodule "cme/data/PowerSploit"]
-	path = cme/data/PowerSploit
-	url = https://github.com/PowerShellMafia/PowerSploit
+[submodule "cme/data/invoke-vnc"]
+	path = cme/data/invoke-vnc
+	url = https://github.com/artkond/Invoke-Vnc
 [submodule "cme/data/mimikittenz"]
 	path = cme/data/mimikittenz
 	url = https://github.com/putterpanda/mimikittenz
+[submodule "cme/data/powersploit"]
+	path = cme/data/powersploit
+	url = https://github.com/PowerShellMafia/PowerSploit
+[submodule "cme/data/invoke-obfuscation"]
+	path = cme/data/invoke-obfuscation
+	url = https://github.com/danielbohannon/Invoke-Obfuscation
+[submodule "cme/data/netripper"]
+	path = cme/data/netripper
+	url = https://github.com/NytroRST/NetRipper
+[submodule "cme/data/randomps-scripts"]
+	path = cme/data/randomps-scripts
+	url = https://github.com/xorrior/RandomPS-Scripts
+[submodule "cme/thirdparty/pywerview_"]
+	path = cme/thirdparty/pywerview
+	url = https://github.com/the-useless-one/pywerview
+[submodule "cme/thirdparty/impacket_"]
+	path = cme/thirdparty/impacket
+	url = https://github.com/CoreSecurity/impacket
+[submodule "cme/data/cme_powershell_scripts"]
+	path = cme/data/cme_powershell_scripts
+	url = https://github.com/byt3bl33d3r/CME-PowerShell-Scripts
+[submodule "cme/data/sessiongopher"]
+	path = cme/data/sessiongopher
+	url = https://github.com/fireeye/SessionGopher
+[submodule "cme/data/mimipenguin"]
+	path = cme/data/mimipenguin
+	url = https://github.com/huntergregal/mimipenguin
+[submodule "cme/thirdparty/pywinrm"]
+	path = cme/thirdparty/pywinrm
+	url = https://github.com/diyan/pywinrm

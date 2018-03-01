@@ -4,10 +4,11 @@ class CMEModule:
         Module by @yomama
 
     '''
-
     name = 'example module'
-
-    description = 'Something Something'
+    description = 'I do something'
+    supported_protocols = []
+    opsec_safe= True #Does the module touch disk?
+    multiple_hosts = True #Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         '''Required. Module options get parsed here. Additionally, put the modules usage here as well'''
@@ -27,4 +28,8 @@ class CMEModule:
 
     def on_response(self, context, response):
         '''Optional. If the payload sends back its output to our server, add this function to the module to handle its output'''
+        pass
+
+    def on_shutdown(self, context, connection):
+        '''Optional. Do something on shutdown'''
         pass

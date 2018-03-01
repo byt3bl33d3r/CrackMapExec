@@ -1,110 +1,104 @@
 #!/usr/bin/env python2
-
-import requests
-from requests import ConnectionError
-#The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
 import cmd
 import sqlite3
 import sys
 import os
-import argparse
+import requests
 from time import sleep
+from terminaltables import AsciiTable
+from cme.msfrpc import Msfrpc, MsfAuthError
 from ConfigParser import ConfigParser
-from cme.msfrpc import Msfrpc
-from cme.database import CMEDatabase
-from cme.helpers import validate_ntlm
+from cme.loaders.protocol_loader import protocol_loader
+from requests import ConnectionError
 
-class CMEDatabaseNavigator(cmd.Cmd):
+# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-    def __init__(self, db_path, config_path):
+
+class UserExitedProto(Exception):
+    pass
+
+
+class DatabaseNavigator(cmd.Cmd):
+
+    def __init__(self, main_menu, database, proto):
         cmd.Cmd.__init__(self)
-        self.prompt = 'cmedb > '
-        try:
-            # set the database connection to autocommit w/ isolation level
-            conn = sqlite3.connect(db_path, check_same_thread=False)
-            conn.text_factory = str
-            conn.isolation_level = None
-            self.db = CMEDatabase(conn)
-        except Exception as e:
-            print "[-] Could not connect to database: {}".format(e)
-            sys.exit(1)
 
-        try:
-            self.config = ConfigParser()
-            self.config.read(config_path)
-        except Exception as e:
-            print "[-] Error reading cme.conf: {}".format(e)
-            sys.exit(1)
+        self.main_menu = main_menu
+        self.config = main_menu.config
+        self.proto = proto
+        self.db = database
+        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
 
-    def display_creds(self, creds):
-
-        print "\nCredentials:\n"
-        print "  CredID  Admin On     CredType    Domain           UserName             Password"
-        print "  ------  --------     --------    ------           --------             --------"
-
-        for cred in creds:
-            # (id, credtype, domain, username, password, host, notes, sid)
-            credID = cred[0]
-            credType = cred[1]
-            domain = cred[2]
-            username = cred[3]
-            password = cred[4]
-
-            links = self.db.get_links(credID=credID)
-
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID), 
-                                           '{:<13}'.format(str(len(links)) + ' Host(s)'), 
-                                           '{:<12}'.format(credType), 
-                                           u'{:<17}'.format(domain.decode('utf-8')), 
-                                           u'{:<21}'.format(username.decode('utf-8')), 
-                                           u'{:<17}'.format(password.decode('utf-8')))
-
-        print ""
-
-    def display_hosts(self, hosts):
-
-        print "\nHosts:\n"
-        print "  HostID  Admins         IP               Hostname                 Domain           OS"
-        print "  ------  ------         --               --------                 ------           --"
-
-        for host in hosts:
-            # (id, ip, hostname, domain, os)
-            hostID = host[0]
-            ip = host[1]
-            hostname = host[2]
-            domain = host[3]
-            os = host[4]
-
-            links = self.db.get_links(hostID=hostID)
-
-            print u"  {}{}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                           '{:<15}'.format(str(len(links)) + ' Cred(s)'), 
-                                           '{:<17}'.format(ip), 
-                                           u'{:<25}'.format(hostname.decode('utf-8')), 
-                                           u'{:<17}'.format(domain.decode('utf-8')), 
-                                           '{:<17}'.format(os))
-
-        print ""
+    def do_back(self, line):
+        raise UserExitedProto
 
     def do_exit(self, line):
         sys.exit(0)
 
-    def do_import(self, line):
+    def print_table(self, data, title=None):
+        print ""
+        table = AsciiTable(data)
+        if title:
+            table.title = title
+        print table.table
+        print ""
 
+    def do_export(self, line):
+        if not line:
+            print "[-] not enough arguments"
+            return
+
+        line = line.split()
+
+        if line[0].lower() == 'creds':
+            if len(line) < 3:
+                print "[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>"
+                return
+            if line[1].lower() == 'plaintext':
+                creds = self.db.get_credentials(credtype="plaintext")
+            elif line[1].lower() == 'hashes':
+                creds = self.db.get_credentials(credtype="hash")
+            else:
+                creds = self.db.get_credentials()
+
+            with open(os.path.expanduser(line[2]), 'w') as export_file:
+                for cred in creds:
+                    credid, domain, user, password, credtype, fromhost = cred
+                    if line[1].lower() == 'csv':
+                        export_file.write('{},{},{},{},{},{}\n'.format(credid,domain,user,password,credtype,fromhost))
+                    else:
+                        export_file.write('{}\n'.format(password))
+            print '[+] creds exported'
+
+        elif line[0].lower() == 'hosts':
+            if len(line) < 2:
+                print "[-] invalid arguments, export hosts <filename>"
+                return
+            hosts = self.db.get_computers()
+            with open(os.path.expanduser(line[1]), 'w') as export_file:
+                for host in hosts:
+                    hostid,ipaddress,hostname,domain,opsys,dc = host
+                    export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
+            print '[+] hosts exported'
+
+        else:
+            print '[-] invalid argument, specify creds or hosts'
+
+
+    def do_import(self, line):
         if not line:
             return
 
         if line == 'empire':
             headers = {'Content-Type': 'application/json'}
 
-            #Pull the username and password from the config file
-            payload = {'username': self.config.get('Empire', 'username'), 
+            # Pull the username and password from the config file
+            payload = {'username': self.config.get('Empire', 'username'),
                        'password': self.config.get('Empire', 'password')}
 
-            #Pull the host and port from the config file
+            # Pull the host and port from the config file
             base_url = 'https://{}:{}'.format(self.config.get('Empire', 'api_host'), self.config.get('Empire', 'api_port'))
 
             try:
@@ -130,7 +124,7 @@ class CMEDatabaseNavigator(cmd.Cmd):
                 print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
 
         elif line == 'metasploit':
-            msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'), 
+            msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'),
                           'port': self.config.get('Metasploit', 'rpc_port')})
 
             try:
@@ -150,14 +144,14 @@ class CMEDatabaseNavigator(cmd.Cmd):
             for entry in creds['data'].split('\n'):
                 cred = entry.split()
                 try:
-                    host = cred[0]
-                    port = cred[2]
+                    # host = cred[0]
+                    # port = cred[2]
                     proto = cred[3]
                     username = cred[4]
                     password = cred[5]
                     cred_type = cred[6]
 
-                    if proto == '(smb)' and cred_type == 'Password':
+                    if proto == '({})'.format(self.proto) and cred_type == 'Password':
                         self.db.add_credential('plaintext', '', username, password)
 
                 except IndexError:
@@ -169,202 +163,134 @@ class CMEDatabaseNavigator(cmd.Cmd):
 
     def complete_import(self, text, line, begidx, endidx):
         "Tab-complete 'import' commands."
-        
+
         commands = ["empire", "metasploit"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
-    def do_hosts(self, line):
-
-        filterTerm = line.strip()
-
-        if filterTerm == "":
-            hosts = self.db.get_hosts()
-            self.display_hosts(hosts)
-
-        else:
-            hosts = self.db.get_hosts(filterTerm=filterTerm)
-
-            if len(hosts) > 1:
-                self.display_hosts(hosts)
-            elif len(hosts) == 1:
-                print "\nHost(s):\n"
-                print "  HostID  IP               Hostname                 Domain           OS"
-                print "  ------  --               --------                 ------           --"
-
-                hostIDList = []
-
-                for host in hosts:
-                    hostID = host[0]
-                    hostIDList.append(hostID)
-
-                    ip = host[1]
-                    hostname = host[2]
-                    domain = host[3]
-                    os = host[4]
-
-                    print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                                 '{:<17}'.format(ip), 
-                                                 u'{:<25}'.format(hostname.decode('utf-8')), 
-                                                 u'{:<17}'.format(domain.decode('utf-8')),
-                                                 '{:<17}'.format(os))
-
-                print ""
-
-                print "\nCredential(s) with Admin Access:\n"
-                print "  CredID  CredType    Domain           UserName             Password"
-                print "  ------  --------    ------           --------             --------"
-
-                for hostID in hostIDList: 
-                    links = self.db.get_links(hostID=hostID)
-
-                    for link in links:
-                        linkID, credID, hostID = link
-                        creds = self.db.get_credentials(filterTerm=credID)
-
-                        for cred in creds:
-                            credID = cred[0]
-                            credType = cred[1]
-                            domain = cred[2]
-                            username = cred[3]
-                            password = cred[4]
-
-                            print u"  {}{}{}{}{}".format('{:<8}'.format(credID), 
-                                                        '{:<12}'.format(credType), 
-                                                        u'{:<17}'.format(domain.decode('utf-8')), 
-                                                        u'{:<21}'.format(username.decode('utf-8')), 
-                                                        u'{:<17}'.format(password.decode('utf-8')))
-
-                print ""
-
-    def do_creds(self, line):
-
-        filterTerm = line.strip()
-
-        if filterTerm == "":
-            creds = self.db.get_credentials()
-            self.display_creds(creds)
-
-        elif filterTerm.split()[0].lower() == "add":
-            
-            # add format: "domain username password <notes> <credType> <sid>
-            args = filterTerm.split()[1:]
-
-            if len(args) == 3:
-                domain, username, password = args
-                if validate_ntlm(password):
-                    self.db.add_credential("hash", domain, username, password)
-                else:
-                    self.db.add_credential("plaintext", domain, username, password)
-
-            else:
-                print "[!] Format is 'add domain username password"
-                return
-
-        elif filterTerm.split()[0].lower() == "remove":
-
-            args = filterTerm.split()[1:]
-            if len(args) != 1 :
-                print "[!] Format is 'remove <credID>'"
-                return
-            else:
-                self.db.remove_credentials(args)
-                self.db.remove_links(credIDs=args)
-
-        elif filterTerm.split()[0].lower() == "plaintext":
-            creds = self.db.get_credentials(credtype="plaintext")
-            self.display_creds(creds)
-
-        elif filterTerm.split()[0].lower() == "hash":
-            creds = self.db.get_credentials(credtype="hash")
-            self.display_creds(creds)
-        
-        else:
-            creds = self.db.get_credentials(filterTerm=filterTerm)
-
-            print "\nCredential(s):\n"
-            print "  CredID  CredType    Pillaged From HostID  Domain           UserName             Password"
-            print "  ------  --------    --------------------  ------           --------             --------"
-
-            credIDList = []
-
-            for cred in creds:
-                credID = cred[0]
-                credIDList.append(credID)
-
-                credType = cred[1]
-                domain = cred[2]
-                username = cred[3]
-                password = cred[4]
-                pillaged_from = cred[5]
-
-                print u"  {}{}{}{}{}{}".format('{:<8}'.format(credID), 
-                                              '{:<12}'.format(credType),
-                                              '{:<22}'.format(pillaged_from),
-                                              u'{:<17}'.format(domain.decode('utf-8')), 
-                                              u'{:<21}'.format(username.decode('utf-8')), 
-                                              u'{:<17}'.format(password.decode('utf-8'))
-                                              )
-
-            print ""
-
-            print "\nAdmin Access to Host(s):\n"
-            print "  HostID  IP               Hostname                 Domain           OS"
-            print "  ------  --               --------                 ------           --"
-
-            for credID in credIDList:
-                links = self.db.get_links(credID=credID)
-
-                for link in links:
-                    linkID, credID, hostID =  link
-                    hosts = self.db.get_hosts(hostID)
-
-                    for host in hosts:
-                        hostID = host[0]
-                        ip = host[1]
-                        hostname = host[2]
-                        domain = host[3]
-                        os = host[4]
-
-                        print u"  {}{}{}{}{}".format('{:<8}'.format(hostID), 
-                                                     '{:<17}'.format(ip), 
-                                                     u'{:<25}'.format(hostname.decode('utf-8')), 
-                                                     u'{:<17}'.format(domain.decode('utf-8')), 
-                                                     '{:<17}'.format(os))
-
-            print ""
-
-    def complete_creds(self, text, line, begidx, endidx):
+    def complete_export(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
-        
-        commands = [ "add", "remove", "hash", "plaintext"]
+
+        commands = ["creds", "plaintext", "hashes"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
+
+class CMEDBMenu(cmd.Cmd):
+
+    def __init__(self, config_path):
+        cmd.Cmd.__init__(self)
+
+        self.config_path = config_path
+
+        try:
+            self.config = ConfigParser()
+            self.config.read(self.config_path)
+        except Exception as e:
+            print "[-] Error reading cme.conf: {}".format(e)
+            sys.exit(1)
+
+        self.workspace_dir = os.path.expanduser('~/.cme/workspaces')
+        self.conn = None
+        self.p_loader = protocol_loader()
+        self.protocols = self.p_loader.get_protocols()
+
+        self.workspace = self.config.get('CME', 'workspace')
+        self.do_workspace(self.workspace)
+
+        self.db = self.config.get('CME', 'last_used_db')
+        if self.db:
+            self.do_proto(self.db)
+
+    def open_proto_db(self, db_path):
+        # Set the database connection to autocommit w/ isolation level
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self.conn.text_factory = str
+        self.conn.isolation_level = None
+
+    def write_configfile(self):
+        with open(self.config_path, 'wb') as configfile:
+            self.config.write(configfile)
+
+    def do_proto(self, proto):
+        if not proto:
+            return
+
+        proto_db_path = os.path.join(self.workspace_dir, self.workspace, proto + '.db')
+        if os.path.exists(proto_db_path):
+            self.open_proto_db(proto_db_path)
+            db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
+            db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
+            self.config.set('CME', 'last_used_db', proto)
+            self.write_configfile()
+
+            try:
+                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn), proto)
+                proto_menu.cmdloop()
+            except UserExitedProto:
+                pass
+
+    def do_workspace(self, line):
+        if not line:
+            return
+
+        line = line.strip()
+
+        if line.split()[0] == 'create':
+            new_workspace = line.split()[1].strip()
+
+            print "[*] Creating workspace '{}'".format(new_workspace)
+            os.mkdir(os.path.join(self.workspace_dir, new_workspace))
+
+            for protocol in self.protocols.keys():
+                try:
+                    protocol_object = self.p_loader.load_protocol(self.protocols[protocol]['dbpath'])
+                except KeyError:
+                    continue
+
+                proto_db_path = os.path.join(self.workspace_dir, new_workspace, protocol + '.db')
+
+                if not os.path.exists(proto_db_path):
+                    print '[*] Initializing {} protocol database'.format(protocol.upper())
+                    conn = sqlite3.connect(proto_db_path)
+                    c = conn.cursor()
+
+                    # try to prevent some of the weird sqlite I/O errors
+                    c.execute('PRAGMA journal_mode = OFF')
+                    c.execute('PRAGMA foreign_keys = 1')
+
+                    getattr(protocol_object, 'database').db_schema(c)
+
+                    # commit the changes and close everything off
+                    conn.commit()
+                    conn.close()
+
+            self.do_workspace(new_workspace)
+
+        elif os.path.exists(os.path.join(self.workspace_dir, line)):
+            self.config.set('CME', 'workspace', line)
+            self.write_configfile()
+
+            self.workspace = line
+            self.prompt = 'cmedb ({}) > '.format(line)
+
+    def do_exit(self, line):
+        sys.exit(0)
+
+
 def main():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--db-path", type=str, default='~/.cme/cme.db', help="Path to CME database (default: ~/.cme/cme.db)")
-    parser.add_argument("--config-path", type=str, default='~/.cme/cme.conf', help='Path to the CME configuration file (default: ~/.cme/cme.conf)')
-    args = parser.parse_args()
-
-    db_path = os.path.expanduser(args.db_path)
-    config_path = os.path.expanduser(args.config_path)
-
-    if not os.path.exists(db_path):
-        print '[-] Path to database invalid!'
-        sys.exit(1)
+    config_path = os.path.expanduser('~/.cme/cme.conf')
 
     if not os.path.exists(config_path):
-        print "[-] Path to config file invalid!"
+        print "[-] Unable to find config file"
         sys.exit(1)
 
     try:
-        cmedbnav = CMEDatabaseNavigator(db_path, config_path)
+        cmedbnav = CMEDBMenu(config_path)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass

@@ -7,6 +7,8 @@
 
 ## CME verbose output (using the --verbose flag)
 
+## CME Version (cme --version)
+
 ## OS
 
 ## Target OS

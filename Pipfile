@@ -1,0 +1,34 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+pycrypto = ">=2.6"
+"pyasn1" = ">=0.1.8"
+gevent = ">=1.2.0"
+requests = ">=2.9.1"
+"bs4" = "*"
+netaddr = "*"
+pyopenssl = "*"
+termcolor = "*"
+msgpack-python = "*"
+pylnk = "*"
+splinter = "*"
+paramiko = "*"
+xmltodict = "*"
+six = "*"
+requests-ntlm = ">=0.3.0"
+terminaltables = "*"
+
+
+[dev-packages]
+
+
+
+[requires]
+
+python_version = "2.7"

