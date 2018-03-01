@@ -44,7 +44,7 @@ def main():
 
     cme_path = os.path.expanduser('~/.cme')
 
-    config = ConfigParser()
+    config = ConfigParser({'pwn3d_label': 'Pwn3d!'})
     config.read(os.path.join(cme_path, 'cme.conf'))
 
     module  = None
@@ -133,6 +133,8 @@ def main():
     db_connection.text_factory = str
     db_connection.isolation_level = None
     db = protocol_db_object(db_connection)
+
+    setattr(protocol_object, 'config', config)
 
     if hasattr(args, 'module'):
 

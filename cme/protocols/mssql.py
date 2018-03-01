@@ -7,6 +7,7 @@ from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
+from ConfigParser import ConfigParser
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
@@ -172,7 +173,8 @@ class mssql(connection):
         out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
                                      username.decode('utf-8'),
                                      password.decode('utf-8'),
-                                     highlight('(Pwn3d!)') if self.admin_privs else '')
+                                     highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else '')
+
 
         self.logger.success(out)
 
@@ -205,7 +207,7 @@ class mssql(connection):
         out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                      username.decode('utf-8'),
                                      ntlm_hash,
-                                     highlight('(Pwn3d!)') if self.admin_privs else '')
+                                     highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else '')
 
         self.logger.success(out)
 

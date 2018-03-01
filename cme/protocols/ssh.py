@@ -4,6 +4,7 @@ from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
+from ConfigParser import ConfigParser
 
 
 class ssh(connection):
@@ -59,7 +60,7 @@ class ssh(connection):
 
             self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
                                                    password.decode('utf-8'),
-                                                   highlight('(Pwn3d!)') if self.admin_privs else ''))
+                                                   highlight('('+self.config.get('CME','pwn3d_label')+')') if self.admin_privs else ''))
 
             return True
         except Exception as e:

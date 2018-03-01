@@ -7,6 +7,7 @@ from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
+from ConfigParser import ConfigParser
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -119,7 +120,7 @@ class winrm(connection):
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
                                                        username.decode('utf-8'),
                                                        password.decode('utf-8'),
-                                                       highlight('(Pwn3d!)')))
+                                                       highlight('('+self.config.get('CME','pwn3d_label')+')')))
 
             return True
 
