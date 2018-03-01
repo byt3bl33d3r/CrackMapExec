@@ -259,7 +259,7 @@ class smb(connection):
             out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
                                          password.decode('utf-8'),
-                                         highlight('(Pwn3d!)') if self.admin_privs else '')
+                                         highlight('(Administrator!)') if self.admin_privs else '')
 
             self.logger.success(out)
             return True
@@ -303,7 +303,7 @@ class smb(connection):
             out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                          username.decode('utf-8'),
                                          ntlm_hash,
-                                         highlight('(Pwn3d!)') if self.admin_privs else '')
+                                         highlight('(Administrator!)') if self.admin_privs else '')
 
             self.logger.success(out)
             return True

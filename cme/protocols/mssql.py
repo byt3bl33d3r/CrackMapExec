@@ -172,7 +172,7 @@ class mssql(connection):
         out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
                                      username.decode('utf-8'),
                                      password.decode('utf-8'),
-                                     highlight('(Pwn3d!)') if self.admin_privs else '')
+                                     highlight('(Administrator!)') if self.admin_privs else '')
 
         self.logger.success(out)
 
@@ -205,7 +205,7 @@ class mssql(connection):
         out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
                                      username.decode('utf-8'),
                                      ntlm_hash,
-                                     highlight('(Pwn3d!)') if self.admin_privs else '')
+                                     highlight('(Administrator!)') if self.admin_privs else '')
 
         self.logger.success(out)
 

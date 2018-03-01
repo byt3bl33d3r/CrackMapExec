@@ -59,7 +59,7 @@ class ssh(connection):
 
             self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
                                                    password.decode('utf-8'),
-                                                   highlight('(Pwn3d!)') if self.admin_privs else ''))
+                                                   highlight('(Administrator!)') if self.admin_privs else ''))
 
             return True
         except Exception as e:

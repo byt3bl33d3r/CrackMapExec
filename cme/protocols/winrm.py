@@ -119,7 +119,7 @@ class winrm(connection):
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
                                                        username.decode('utf-8'),
                                                        password.decode('utf-8'),
-                                                       highlight('(Pwn3d!)')))
+                                                       highlight('(Administrator!)')))
 
             return True
 
