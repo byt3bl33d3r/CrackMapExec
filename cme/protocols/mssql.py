@@ -30,7 +30,7 @@ class mssql(connection):
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
-        mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
+        mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use')
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')

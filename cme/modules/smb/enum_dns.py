@@ -1,4 +1,6 @@
 from cme.helpers.logger import write_log
+from datetime import datetime
+
 
 class CMEModule:
     '''
@@ -9,8 +11,7 @@ class CMEModule:
 
     name = 'enum_dns'
     description = 'Uses WMI to dump DNS from an AD DNS Server'
-    supported_protocols = ['smb']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -37,7 +38,7 @@ class CMEModule:
         data = ""
         for domain in domains:
             output = connection.wmi('Select TextRepresentation FROM MicrosoftDNS_ResourceRecord WHERE DomainName = "{}"'.format(domain), 'root\\microsoftdns')
-            
+
             if output:
                 domain_data = {}
                 context.log.highlight("Results for {}".format(domain))
@@ -56,10 +57,9 @@ class CMEModule:
                     context.log.highlight("Record Type: {}".format(k))
                     data += "Record Type: {}\n".format(k)
                     for d in sorted(v):
-                        context.log.highlight("\t"+d)
+                        context.log.highlight("\t" + d)
                         data += "\t" + d + "\n"
 
         log_name = 'DNS-Enum-{}-{}.log'.format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(data, log_name)
         context.log.info("Saved raw output to {}".format(log_name))
-

@@ -6,7 +6,6 @@ class CMEModule:
 
     name = 'uac'
     description = "Checks UAC status"
-    supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
 

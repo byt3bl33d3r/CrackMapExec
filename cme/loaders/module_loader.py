@@ -1,9 +1,9 @@
 import imp
 import os
-import sys
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
+
 
 class module_loader:
 
@@ -24,14 +24,6 @@ class module_loader:
             self.logger.error('{} missing the description variable'.format(module_path))
             module_error = True
 
-        #elif not hasattr(module, 'chain_support'):
-        #    self.logger.error('{} missing the chain_support variable'.format(module_path))
-        #    module_error = True
-
-        elif not hasattr(module, 'supported_protocols'):
-            self.logger.error('{} missing the supported_protocols variable'.format(module_path))
-            module_error = True
-
         elif not hasattr(module, 'opsec_safe'):
             self.logger.error('{} missing the opsec_safe variable'.format(module_path))
             module_error = True
@@ -48,7 +40,8 @@ class module_loader:
             self.logger.error('{} missing the on_login/on_admin_login function(s)'.format(module_path))
             module_error = True
 
-        if module_error: return False
+        if module_error:
+            return False
 
         return True
 
@@ -68,18 +61,19 @@ class module_loader:
         modules_paths = [os.path.join(os.path.dirname(cme.__file__), 'modules'), os.path.join(self.cme_path, 'modules')]
 
         for path in modules_paths:
-            for module in os.listdir(path):
-                if module[-3:] == '.py' and module != 'example_module.py':
-                    module_path = os.path.join(path, module)
-                    m = self.load_module(os.path.join(path, module))
-                    if m and (self.args.protocol in m.supported_protocols):
-                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__}#'chain_support': m.chain_support}
+            for module_dir in os.listdir(path):
+                if self.args.protocol == module_dir:
+                    for module in os.listdir(os.path.join(path, module_dir)):
+                        if module[-3:] == '.py':
+                            module_path = os.path.join(path, module_dir, module)
+                            m = self.load_module(module_path)
+                            modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}  # 'chain_support': m.chain_support}
 
         return modules
 
     def init_module(self, module_path):
 
-        module  = None
+        module = None
 
         module = self.load_module(module_path)
 

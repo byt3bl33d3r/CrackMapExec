@@ -7,7 +7,6 @@ class CMEModule:
 
     name = 'wdigest'
     description = "Creates/Deletes the 'UseLogonCredential' registry key enabling WDigest cred dumping on Windows >= 8.1"
-    supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
 

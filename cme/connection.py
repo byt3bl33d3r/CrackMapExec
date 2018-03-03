@@ -13,7 +13,8 @@ user_failed_logins = {}
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
-        if self.admin_privs is False: return
+        if self.admin_privs is False:
+            return
         return func(self, *args, **kwargs)
     return wraps(func)(_decorator)
 
@@ -85,18 +86,14 @@ class connection(object):
 
     def call_modules(self):
         module_logger = CMEAdapter(extra={
-                                          'module': self.module.name.upper(),
-                                          'host': self.host,
-                                          'port': self.args.port,
-                                          'hostname': self.hostname
-                                         })
+            'module': self.module.name.upper(),
+            'host': self.host,
+            'port': self.args.port,
+            'hostname': self.hostname
+        })
 
         context = Context(self.db, module_logger, self.args)
-        context.localip  = self.local_ip
-
-        if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
-            self.server.connection = self
-            self.server.context.localip = self.local_ip
+        context.target = self.host
 
         if hasattr(self.module, 'on_login'):
             self.module.on_login(context, self)
@@ -104,7 +101,7 @@ class connection(object):
         if self.admin_privs and hasattr(self.module, 'on_admin_login'):
             self.module.on_admin_login(context, self)
 
-        if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
+        if hasattr(self.module, 'on_shutdown'):
             self.module.on_shutdown(context, self)
 
     def inc_failed_login(self, username):

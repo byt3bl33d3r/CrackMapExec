@@ -50,8 +50,8 @@ class http(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         http_parser = parser.add_parser('http', help="own stuff using HTTP", parents=[std_parser, module_parser])
-        http_parser.add_argument('--port', nargs='*', default=[80, 443, 8443, 8008, 8080, 8081], help='http ports to connect to (default: 80, 443, 8443, 8008, 8080, 8081)')
-        http_parser.add_argument('--transports', choices=['http', 'https'], default=['http', 'https'], help='force connection over http or https (default: all)')
+        http_parser.add_argument('--port', nargs='*', default=[80, 443, 8443, 8008, 8080, 8081], help='http ports to connect to')
+        http_parser.add_argument('--transports', choices=['http', 'https'], default=['http', 'https'], help='force connection over http or https')
         http_parser.add_argument('--screenshot', action='store_true', help='take a screenshot of the loaded webpage')
 
         return parser

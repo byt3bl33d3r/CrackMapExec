@@ -12,7 +12,6 @@ class CMEModule:
 
     name = 'gpp_password'
     description = 'Retrieves the plaintext password and other information for accounts pushed through Group Policy Preferences.'
-    supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
 
@@ -77,7 +76,7 @@ class CMEModule:
 
     def decrypt_cpassword(self, cpassword):
 
-        #Stolen from https://github.com/leonteale/pentestpackage/blob/master/Gpprefdecrypt.py
+        # Stolen from https://github.com/leonteale/pentestpackage/blob/master/Gpprefdecrypt.py
 
         # From MSDN: http://msdn.microsoft.com/en-us/library/2c15cbf0-f086-4c74-8b70-1f2fa45dd4be%28v=PROT.13%29#endNote2
         key = unhexlify('4e9906e8fcb66cc9faf49310620ffee8f496e806cc057990209b09a433b66c1b')

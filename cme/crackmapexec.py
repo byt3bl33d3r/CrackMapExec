@@ -11,14 +11,12 @@ from cme.parsers.nessus import parse_nessus_file
 from cme.cli import gen_cli_args
 from cme.loaders.protocol_loader import protocol_loader
 from cme.loaders.module_loader import module_loader
-from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
-from cme.context import Context
 from pprint import pformat
 from ConfigParser import ConfigParser
-import cme.helpers.powershell as powershell
+#import cme.helpers.powershell as powershell
 import cme
-import shutil
+#import shutil
 import webbrowser
 import sqlite3
 import random
@@ -48,10 +46,8 @@ def main():
     config.read(os.path.join(cme_path, 'cme.conf'))
 
     module = None
-    module_server = None
     targets = []
     jitter = None
-    server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
     current_workspace = config.get('CME', 'workspace')
 
     if args.verbose:
@@ -112,13 +108,13 @@ def main():
                 targets.extend(parse_targets(target))
 
     # The following is a quick hack for the powershell obfuscation functionality, I know this is yucky
-    if hasattr(args, 'clear_obfscripts') and args.clear_obfscripts:
-        shutil.rmtree(os.path.expanduser('~/.cme/obfuscated_scripts/'))
-        os.mkdir(os.path.expanduser('~/.cme/obfuscated_scripts/'))
-        logger.success('Cleared cached obfuscated PowerShell scripts')
+    #if hasattr(args, 'clear_obfscripts') and args.clear_obfscripts:
+    #    shutil.rmtree(os.path.expanduser('~/.cme/obfuscated_scripts/'))
+    #    os.mkdir(os.path.expanduser('~/.cme/obfuscated_scripts/'))
+    #    logger.success('Cleared cached obfuscated PowerShell scripts')
 
-    if hasattr(args, 'obfs') and args.obfs:
-        powershell.obfuscate_ps_scripts = True
+    #if hasattr(args, 'obfs') and args.obfs:
+    #    powershell.obfuscate_ps_scripts = True
 
     p_loader = protocol_loader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
@@ -177,19 +173,6 @@ def main():
                 if ans.lower() not in ['y', 'yes', '']:
                     sys.exit(1)
 
-            if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
-
-                if hasattr(module, 'required_server'):
-                    args.server = getattr(module, 'required_server')
-
-                if not args.server_port:
-                    args.server_port = server_port_dict[args.server]
-
-                context = Context(db, logger, args)
-                module_server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
-                module_server.start()
-                setattr(protocol_object, 'server', module_server.server)
-
     try:
         '''
             Open all the greenlet (as supposed to redlet??) threads
@@ -209,6 +192,3 @@ def main():
             job.join(timeout=args.timeout)
     except KeyboardInterrupt:
         pass
-
-    if module_server:
-        module_server.shutdown()

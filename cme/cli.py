@@ -1,18 +1,27 @@
-import argparse
 import sys
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 from cme.loaders.protocol_loader import protocol_loader
 from cme.helpers.logger import highlight
 
+
+class MyArgumentParser(ArgumentParser):
+    def convert_arg_line_to_args(self, arg_line):
+        return arg_line.split()
+
+
+class MyFormatter(ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter):
+    pass
+
+
 def gen_cli_args():
 
-    VERSION  = '4.0.1dev'
+    VERSION = '4.1.0dev'
     CODENAME = 'Bug Pr0n'
 
-    p_loader =  protocol_loader()
+    p_loader = protocol_loader()
     protocols = p_loader.get_protocols()
 
-    parser = argparse.ArgumentParser(description="""
+    parser = MyArgumentParser(description="""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
      /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
     |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
@@ -30,19 +39,20 @@ def gen_cli_args():
            highlight('Codename', 'red'),
            highlight(CODENAME)),
 
-                                    formatter_class=RawTextHelpFormatter,
+                                    formatter_class=MyFormatter,
                                     version='{} - {}'.format(VERSION, CODENAME),
+                                    fromfile_prefix_chars='@',
                                     epilog="Ya feelin' a bit buggy all of a sudden?")
 
-    parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
-    parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
-    parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='sets a random delay between each connection (default: None)')
+    parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use")
+    parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread')
+    parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='sets a random delay between each connection')
     parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
 
     subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
 
-    std_parser = argparse.ArgumentParser(add_help=False)
+    std_parser = MyArgumentParser(add_help=False, fromfile_prefix_chars='@', formatter_class=MyFormatter)
     std_parser.add_argument("target", nargs='*', type=str, help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s), file(s) containing a list of targets, NMap XML or .Nessus file(s)")
     std_parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='database credential ID(s) to use for authentication')
     std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
@@ -52,16 +62,12 @@ def gen_cli_args():
     fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='max number of failed login attempts per username')
     fail_group.add_argument("--fail-limit", metavar='LIMIT', type=int, help='max number of failed login attempts per host')
 
-    module_parser = argparse.ArgumentParser(add_help=False)
+    module_parser = MyArgumentParser(add_help=False, fromfile_prefix_chars='@', formatter_class=MyFormatter)
     mgroup = module_parser.add_mutually_exclusive_group()
     mgroup.add_argument("-M", "--module", metavar='MODULE', help='module to use')
-    #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='module options')
     module_parser.add_argument('-L', '--list-modules', action='store_true', help='list available modules')
     module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='display module options')
-    module_parser.add_argument("--server", choices={'http', 'https'}, default='https', help='use the selected server (default: https)')
-    module_parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
-    module_parser.add_argument("--server-port", metavar='PORT', type=int, help='start the server on the specified port')
 
     for protocol in protocols.keys():
         protocol_object = p_loader.load_protocol(protocols[protocol]['path'])

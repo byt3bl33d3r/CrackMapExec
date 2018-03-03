@@ -7,7 +7,6 @@ class CMEModule:
 
     name = 'rdp'
     description = 'Enables/Disables RDP'
-    supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
 
