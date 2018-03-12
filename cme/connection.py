@@ -143,7 +143,8 @@ class connection(object):
 
                         if credtype and password:
 
-                            if not domain: domain = self.domain
+                            if not domain:
+                                domain = self.domain
 
                             if self.args.local_auth:
                                 domain = self.domain

@@ -16,13 +16,11 @@ from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from cme.connection import *
 from cme.logger import CMEAdapter
-from cme.protocols.smb.exec_methods import *
-from cme.protocols.smb.c2s import *
+from cme.protocols.smb.c2 import WMI, Registry
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
-from cme.helpers.powershell import create_ps_payload, create_ps_command
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
@@ -93,7 +91,7 @@ class smb(connection):
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "shellbrwexec", "smbexec", "atexec"}, default=None, help="method to execute the command")
-        cgroup.add_argument('--c2-method', choices={"wmi", "registry", "ad_property"}, default="wmi", help="C2 method to send commands and retrieve output")
+        cgroup.add_argument('--c2-method', choices={"wmi", "registry"}, default="wmi", help="C2 method to send commands and retrieve output")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -310,61 +308,56 @@ class smb(connection):
                         relay_list.write(self.host + '\n')
 
     @requires_admin
-    def execute(self, payload=None, get_output=True, methods=None, force_ps32=False, dont_obfs=False):
+    def execute(self, payload=None, get_output=True, methods=None, c2s=None, force_ps32=False, dont_obfs=False):
 
-        if self.args.exec_method:
-            methods = [self.args.exec_method]
+        exec_methods = [
+            "wmiexec",
+            "mmcexec",
+            "shellbrwexec",
+            "smbexec",
+            "atexec"
+        ]
 
-        if not methods:
-            methods = ['wmiexec', 'mmcexec', 'atexec', 'smbexec']
+        c2_methods = [
+            "wmi",
+            "registry"
+        ]
+
+        available_c2s = {
+            "wmi": WMI,
+            "registry": Registry
+        }
+
+        if methods:
+            exec_methods = list(methods)
+        elif self.args.exec_method:
+            exec_methods = list(self.args.exec_method)
+
+        if c2s:
+            c2_methods = list(c2s)
+        elif self.args.c2_method:
+            c2_methods = list(self.args.c2_method)
 
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output:
-                get_output = True
 
-        command = create_ps_command(get_output, force_ps32)
-        payload = create_ps_payload(payload)
+        for method in c2_methods:
+            for name, cl in available_c2s.iteritems():
+                if method == name:
+                    try:
+                        c2 = cl(self.args, self.conn, payload, exec_methods)
+                        output = c2.run()
 
-        def make_with_mixin(execm, c2):
-            execm_dict = {
-                "wmiexec": WMIEXEC,
-                "smbexec": SMBEXEC,
-                "atexec": TSCH_EXEC,
-                "mmcexec": MMCEXEC,
-                "shellbrwexec": SHELLBRWEXEC
-            }
+                        if self.args.execute:
+                            self.logger.success('Executed command using {} C2'.format(method))
+                            buf = StringIO(output).readlines()
+                            for line in buf:
+                                self.logger.highlight(line.strip())
 
-            c2_dict = {
-                "wmi": WMI,
-                "registry": Registry,
-                "ad_property": ADProperty
-            }
-
-            class ExecWithC2(execm_dict[execm], c2_dict[c2]):
-                pass
-
-            return ExecWithC2
-
-        for method in methods:
-                try:
-                    mixin = make_with_mixin(method, self.args.c2_method)
-                    exec_method = mixin(command, payload, self.host, self.username, self.password, self.domain, self.hash, get_output)
-                    break
-                except:
-                    logging.debug('Error executing command via {}, traceback:'.format(method))
-                    logging.debug(format_exc())
-                    continue
-
-        output = u'{}'.format(exec_method.run().strip().decode('utf-8', errors='replace'))
-
-        if self.args.execute:
-            self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
-            buf = StringIO(output).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-        return output
+                        return output
+                    except Exception as e:
+                        logging.debug('Error executing payload over C2 {}: {}'.format(name, e))
+                        logging.debug(format_exc())
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())

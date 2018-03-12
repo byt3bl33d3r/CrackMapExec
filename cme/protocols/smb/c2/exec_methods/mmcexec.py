@@ -11,7 +11,8 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class MMCEXEC(object):
-    def __init__(self, command, payload, target, username, password, domain, hashes=None, retOutput=True):
+    def __init__(self, connection, command, payload, target, username, password, domain, hashes=None, retOutput=True):
+        self.connection = connection
         self.command = command
         self.payload = payload
         self.target = target
@@ -72,7 +73,7 @@ class MMCEXEC(object):
 
                     elif cls.__name__ == 'Registry':
                         logging.debug('Using Registry C2')
-                        Registry.__init__(self)
+                        Registry.__init__(self, self.connection)
 
                     elif cls.__name__ == 'ADProperty':
                         logging.debug('Using ADProperty C2')

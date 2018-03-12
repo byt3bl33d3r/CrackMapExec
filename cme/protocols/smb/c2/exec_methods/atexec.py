@@ -8,7 +8,8 @@ from cme.helpers.misc import gen_random_string
 
 
 class TSCH_EXEC(object):
-    def __init__(self, command, payload, target, username, password, domain, hashes=None, retOutput=True):
+    def __init__(self, connection, command, payload, target, username, password, domain, hashes=None, retOutput=True):
+        self.connection = connection
         self.command = command
         self.payload = payload
         self.target = target
@@ -35,10 +36,12 @@ class TSCH_EXEC(object):
         stringbinding = r'ncacn_np:%s[\pipe\atsvc]' % self.target
         self.rpctransport = transport.DCERPCTransportFactory(stringbinding)
 
+        if hasattr(self.rpctransport, 'setRemoteHost'):
+            self.rpctransport.setRemoteHost(self.target)
         if hasattr(self.rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             self.rpctransport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
-            #rpctransport.set_kerberos(self.doKerberos)
+        #rpctransport.set_kerberos(self.doKerberos, self.kdcHost)
 
         # https://stackoverflow.com/questions/44352/iterate-over-subclasses-of-a-given-class-in-a-given-module
         for k, obj in inspect.getmembers(self):
@@ -50,7 +53,7 @@ class TSCH_EXEC(object):
 
                     elif cls.__name__ == 'Registry':
                         logging.debug('Using Registry C2')
-                        Registry.__init__(self)
+                        Registry.__init__(self, self.connection)
 
                     elif cls.__name__ == 'ADProperty':
                         logging.debug('Using ADProperty C2')

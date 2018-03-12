@@ -7,7 +7,8 @@ from impacket.dcerpc.v5 import transport, scmr
 
 
 class SMBEXEC(object):
-    def __init__(self, command, payload, target, username, password, domain, hashes=None, retOutput=True, port=445):
+    def __init__(self, connection, command, payload, target, username, password, domain, hashes=None, retOutput=True, port=445):
+        self.connection = connection
         self.command = command
         self.payload = payload
         self.target = target
@@ -67,7 +68,7 @@ class SMBEXEC(object):
 
                     elif cls.__name__ == 'Registry':
                         logging.debug('Using Registry C2')
-                        Registry.__init__(self)
+                        Registry.__init__(self, self.connection)
 
                     elif cls.__name__ == 'ADProperty':
                         logging.debug('Using ADProperty C2')
