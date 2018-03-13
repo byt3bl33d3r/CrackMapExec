@@ -1,2 +1,0 @@
-class ADProperty(object):
-    pass

@@ -5,32 +5,17 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class WMIEXEC(object):
-    def __init__(self, connection, command, payload, target, username, password, domain, hashes=None, retOutput=True):
+    def __init__(self, target, username, password, domain, lmhash, nthash, connection=None):
         self.connection = connection
-        self.command = command
-        self.payload = payload
         self.target = target
         self.username = username
         self.password = password
         self.domain = domain
-        self.lmhash = ''
-        self.nthash = ''
-        self.outputBuffer = ''
-        #self.shell = 'cmd.exe /Q /C '
-        self.pwd = 'C:\\'
+        self.lmhash = lmhash
+        self.nthash = nthash
         self.aesKey = None
         self.doKerberos = False
-        self.retOutput = retOutput
-
-        if hashes is not None:
-            # This checks to see if we didn't provide the LM Hash
-            if hashes.find(':') != -1:
-                self.lmhash, self.nthash = hashes.split(':')
-            else:
-                self.nthash = hashes
-
-        if self.password is None:
-            self.password = ''
+        self.pwd = 'C:\\'
 
         self.dcom = DCOMConnection(
             self.target, self.username, self.password,
@@ -43,9 +28,7 @@ class WMIEXEC(object):
         self.iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
         iWbemLevel1Login.RemRelease()
 
-    def execute_command(self, data):
-        command = self.shell + data
-
+    def execute_command(self, command):
         logging.debug('Command to execute: {}'.format(command))
 
         win32Process, _ = self.iWbemServices.GetObject('Win32_Process')

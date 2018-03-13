@@ -1,32 +1,46 @@
 import logging
 from traceback import format_exc
 from cme.helpers.powershell import strip_ps_code, encode_ps_command
-from cme.protocols.smb.c2s.exec_methods import *
+from cme.protocols.smb.c2.exec_methods import *
 
 
 class C2(object):
-    def __init__(self, args, connection, payload, exec_methods):
-        self.args = args
-        self.connection = connection
+    def __init__(self, proto, payload, exec_methods, force_ps32, ret_output):
+        self.proto = proto
+        self.connection = proto.conn
+        self.target = proto.host
+        self.domain = proto.domain
+        self.username = proto.username
+        self.password = proto.password
+        self.nthash = proto.nthash
+        self.lmhash = proto.lmhash
+        self.aesKey = None
+        self.doKerberos = False
         self.payload = payload
         self.exec_methods = exec_methods
+        self.force_ps32 = force_ps32
+        self.ret_output = ret_output
         self.available_exec_methods = {
             "wmiexec": WMIEXEC,
             "smbexec": SMBEXEC,
             "atexec": TSCH_EXEC,
             "mmcexec": MMCEXEC,
-            "shellbrwexec": SHELLBRWEXEC
+            "shellbrwwinexec": SHELLBRWWINEXEC,
+            "shellwinexec": SHELLWINEXEC
         }
 
     def run(self):
         pass
 
     def execute_command(self, command):
+        command = self.create_ps_command(self.build_ps_command(command, self.ret_output), self.force_ps32)
         for method in self.exec_methods:
             try:
-                m = self.available_exec_methods[method]()
+                logging.debug('Executing command via {} exec method'.format(method))
+                m = self.available_exec_methods[method](self.target, self.username, self.password, self.domain, self.lmhash, self.nthash)
                 m.execute_command(command)
-            except Exception as e:
+                break
+            except Exception:
                 logging.debug('Error executing command via {} execution method, traceback:'.format(method))
                 logging.debug(format_exc())
 
@@ -101,9 +115,9 @@ function Invoke-Decompress
 
     def create_ps_command(self, command, force_ps32=False):
         if force_ps32:
-            command = "C:\\Windows\\syswow64\\WindowsPowerShell\\v1.0\\powershell.exe -noni -nop -w 1 -enc {}".format(encode_ps_command(strip_ps_code(ps)))
+            command = "C:\\Windows\\syswow64\\WindowsPowerShell\\v1.0\\powershell.exe -noni -nop -w 1 -enc {}".format(encode_ps_command(strip_ps_code(command)))
         else:
-            command = "powershell.exe -noni -nop -w 1 -enc {}".format(encode_ps_command(strip_ps_code(ps)))
+            command = "powershell.exe -noni -nop -w 1 -enc {}".format(encode_ps_command(strip_ps_code(command)))
 
         return command
 

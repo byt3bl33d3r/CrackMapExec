@@ -5,7 +5,6 @@ from StringIO import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
-from cme.helpers.powershell import create_ps_command
 from impacket import tds
 from ConfigParser import ConfigParser
 from impacket.smbconnection import SMBConnection, SessionError

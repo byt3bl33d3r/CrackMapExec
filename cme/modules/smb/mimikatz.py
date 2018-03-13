@@ -31,7 +31,7 @@ class CMEModule:
 
         output = connection.execute(payload)
         context.log.success('Executed payload')
-        if len(output):
+        if output:
             if self.command.find('sekurlsa::logonpasswords') != -1:
                 creds = parse_mimikatz(output)
                 if len(creds):

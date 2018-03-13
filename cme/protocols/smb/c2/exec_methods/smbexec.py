@@ -1,48 +1,30 @@
 import logging
-import inspect
 from gevent import sleep
-from cme.protocols.smb.c2s import *
 from cme.helpers.misc import gen_random_string
 from impacket.dcerpc.v5 import transport, scmr
 
 
 class SMBEXEC(object):
-    def __init__(self, connection, command, payload, target, username, password, domain, hashes=None, retOutput=True, port=445):
+    def __init__(self, target, username, password, domain, lmhash, nthash, connection=None):
         self.connection = connection
-        self.command = command
-        self.payload = payload
         self.target = target
-        self.port = port
         self.username = username
         self.password = password
-        self.serviceName = gen_random_string()
         self.domain = domain
-        self.lmhash = ''
-        self.nthash = ''
-        self.retOutput = retOutput
-        self.outputBuffer = ''
+        self.lmhash = lmhash
+        self.nthash = nthash
+        self.serviceName = gen_random_string(8)
+        self.aesKey = None
+        self.doKerberos = False
         self.shell = '%COMSPEC% /Q /C '
         self.rpctransport = None
         self.scmr = None
         self.conn = None
-        #self.mode  = mode
-        self.aesKey = None
-        self.doKerberos = False
-
-        if hashes is not None:
-        #This checks to see if we didn't provide the LM Hash
-            if hashes.find(':') != -1:
-                self.lmhash, self.nthash = hashes.split(':')
-            else:
-                self.nthash = hashes
-
-        if self.password is None:
-            self.password = ''
 
         stringbinding = 'ncacn_np:%s[\pipe\svcctl]' % self.target
         logging.debug('StringBinding {}'.format(stringbinding))
         self.rpctransport = transport.DCERPCTransportFactory(stringbinding)
-        self.rpctransport.set_dport(self.port)
+        self.rpctransport.set_dport(445)
 
         if hasattr(self.rpctransport, 'setRemoteHost'):
             self.rpctransport.setRemoteHost(self.target)
@@ -57,22 +39,6 @@ class SMBEXEC(object):
         self.scmr.bind(scmr.MSRPC_UUID_SCMR)
         resp = scmr.hROpenSCManagerW(self.scmr)
         self.scHandle = resp['lpScHandle']
-
-        # https://stackoverflow.com/questions/44352/iterate-over-subclasses-of-a-given-class-in-a-given-module
-        for k, obj in inspect.getmembers(self):
-            if hasattr(obj, "__bases__"):
-                for cls in obj.__bases__:
-                    if cls.__name__ == 'WMI':
-                        logging.debug('Using WMI C2')
-                        WMI.__init__(self)
-
-                    elif cls.__name__ == 'Registry':
-                        logging.debug('Using Registry C2')
-                        Registry.__init__(self, self.connection)
-
-                    elif cls.__name__ == 'ADProperty':
-                        logging.debug('Using ADProperty C2')
-                        ADProperty.__init__(self)
 
     def execute_command(self, data):
 

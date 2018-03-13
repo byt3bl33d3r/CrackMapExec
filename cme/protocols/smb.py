@@ -90,7 +90,7 @@ class smb(connection):
         sgroup.add_argument("--only-files", action='store_true', help='only spider files')
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "shellbrwexec", "smbexec", "atexec"}, default=None, help="method to execute the command")
+        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "shellbrwwinexec", "shellwinexec", "smbexec", "atexec"}, default=None, help="method to execute the command")
         cgroup.add_argument('--c2-method', choices={"wmi", "registry"}, default="wmi", help="C2 method to send commands and retrieve output")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
@@ -308,12 +308,13 @@ class smb(connection):
                         relay_list.write(self.host + '\n')
 
     @requires_admin
-    def execute(self, payload=None, get_output=True, methods=None, c2s=None, force_ps32=False, dont_obfs=False):
+    def execute(self, payload=None, get_output=None, methods=None, c2s=None, force_ps32=None, dont_obfs=None):
 
         exec_methods = [
             "wmiexec",
             "mmcexec",
-            "shellbrwexec",
+            "shellbrwwinexec",
+            "shellwinexec",
             "smbexec",
             "atexec"
         ]
@@ -328,15 +329,21 @@ class smb(connection):
             "registry": Registry
         }
 
+        if force_ps32 is None:
+            force_ps32 = self.args.force_ps32
+
+        if get_output is None:
+            get_output = not self.args.no_output
+
         if methods:
             exec_methods = list(methods)
         elif self.args.exec_method:
-            exec_methods = list(self.args.exec_method)
+            exec_methods = [self.args.exec_method]
 
         if c2s:
             c2_methods = list(c2s)
         elif self.args.c2_method:
-            c2_methods = list(self.args.c2_method)
+            c2_methods = [self.args.c2_method]
 
         if not payload and self.args.execute:
             payload = self.args.execute
@@ -345,14 +352,16 @@ class smb(connection):
             for name, cl in available_c2s.iteritems():
                 if method == name:
                     try:
-                        c2 = cl(self.args, self.conn, payload, exec_methods)
+                        logging.debug('Attempting to execute command using {} c2'.format(method))
+                        c2 = cl(self, payload, exec_methods, force_ps32, get_output)
                         output = c2.run()
 
                         if self.args.execute:
                             self.logger.success('Executed command using {} C2'.format(method))
-                            buf = StringIO(output).readlines()
-                            for line in buf:
-                                self.logger.highlight(line.strip())
+                            if output is not None:
+                                buf = StringIO(output).readlines()
+                                for line in buf:
+                                    self.logger.highlight(line.strip())
 
                         return output
                     except Exception as e:
