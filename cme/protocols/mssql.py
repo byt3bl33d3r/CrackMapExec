@@ -2,7 +2,7 @@ import socket
 import logging
 from cme.logger import CMEAdapter
 from StringIO import StringIO
-from cme.protocols.mssql.mssqlexec import MSSQLEXEC
+from cme.loaders.c2_loader import c2_loader
 from cme.connection import *
 from cme.helpers.logger import highlight
 from impacket import tds
@@ -57,11 +57,11 @@ class mssql(connection):
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={
-                                        'protocol': 'MSSQL',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': 'None'
-                                        })
+            'protocol': 'MSSQL',
+            'host': self.host,
+            'port': self.args.port,
+            'hostname': 'None'
+        })
 
     def enum_host_info(self):
         # Probably a better way of doing this, grab our IP from the socket

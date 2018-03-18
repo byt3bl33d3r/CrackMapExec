@@ -16,7 +16,7 @@ class protocol_loader:
     def get_protocols(self):
         protocols = {}
 
-        protocol_paths = [os.path.join(os.path.dirname(cme.__file__), 'protocols'), os.path.join(self.cme_path, 'protocols')]
+        protocol_paths = [os.path.join(os.path.dirname(cme.__file__), 'protocols')]
 
         for path in protocol_paths:
             for protocol in os.listdir(path):
@@ -24,7 +24,7 @@ class protocol_loader:
                     protocol_path = os.path.join(path, protocol)
                     protocol_name = protocol[:-3]
 
-                    protocols[protocol_name] = {'path' : protocol_path}
+                    protocols[protocol_name] = {'path': protocol_path}
 
                     db_file_path = os.path.join(path, protocol_name, 'database.py')
                     db_nav_path = os.path.join(path, protocol_name, 'db_navigator.py')

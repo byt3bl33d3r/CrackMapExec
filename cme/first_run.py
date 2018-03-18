@@ -10,7 +10,6 @@ from sys import exit
 CME_PATH = os.path.expanduser('~/.cme')
 TMP_PATH = os.path.join('/tmp', 'cme_hosted')
 WS_PATH = os.path.join(CME_PATH, 'workspaces')
-CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
 
 
@@ -24,7 +23,7 @@ def first_run_setup(logger):
         logger.info('Creating home directory structure')
         os.mkdir(CME_PATH)
 
-    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts']
+    folders = ['logs', 'modules', 'workspaces', 'obfuscated_scripts']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
             os.mkdir(os.path.join(CME_PATH, folder))
@@ -48,8 +47,7 @@ def first_run_setup(logger):
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
 
-            # try to prevent some of the weird sqlite I/O errors
-            c.execute('PRAGMA journal_mode = OFF')
+            c.execute('PRAGMA journal_mode = OFF')  # try to prevent some of the weird sqlite I/O errors
             c.execute('PRAGMA foreign_keys = 1')
 
             getattr(protocol_object, 'database').db_schema(c)
@@ -73,17 +71,3 @@ def first_run_setup(logger):
             logger.info('Old configuration file detected, replacing with new version')
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
             shutil.copy(default_path, CME_PATH)
-
-    if not os.path.exists(CERT_PATH):
-        logger.info('Generating SSL certificate')
-        try:
-            check_output(['openssl', 'help'], stderr=PIPE)
-        except OSError as e:
-            if e.errno == os.errno.ENOENT:
-                logger.error('OpenSSL command line utility is not installed, could not generate certificate')
-                exit(1)
-            else:
-                logger.error('Error while generating SSL certificate: {}'.format(e))
-                exit(1)
-
-        os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))

@@ -23,6 +23,7 @@ xmltodict = "*"
 six = "*"
 requests-ntlm = ">=0.3.0"
 terminaltables = "*"
+flask = "*"
 
 
 [dev-packages]

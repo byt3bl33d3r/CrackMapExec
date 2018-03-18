@@ -67,7 +67,7 @@ class module_loader:
                         if module[-3:] == '.py':
                             module_path = os.path.join(path, module_dir, module)
                             m = self.load_module(module_path)
-                            modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}  # 'chain_support': m.chain_support}
+                            modules[m.name] = {'path': module_path, 'description': m.description, 'options': m.options.__doc__}
 
         return modules
 

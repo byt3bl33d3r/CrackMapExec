@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import sys
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 from cme.loaders.protocol_loader import protocol_loader
@@ -16,12 +18,12 @@ class MyFormatter(ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter):
 def gen_cli_args():
 
     VERSION = '4.1.0dev'
-    CODENAME = 'Bug Pr0n'
+    CODENAME = u'ҪФԠЯДDЄ ԐDЇҐЇФЍ'
 
     p_loader = protocol_loader()
     protocols = p_loader.get_protocols()
 
-    parser = MyArgumentParser(description="""
+    parser = MyArgumentParser(description=u"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
      /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
     |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
@@ -33,16 +35,16 @@ def gen_cli_args():
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
                                                       {}: {}
-                                                     {}: {}
+                                                  {}: {}
 """.format(highlight('Version', 'red'),
            highlight(VERSION),
            highlight('Codename', 'red'),
            highlight(CODENAME)),
 
                                     formatter_class=MyFormatter,
-                                    version='{} - {}'.format(VERSION, CODENAME),
+                                    version=u'{} - {}'.format(VERSION, CODENAME),
                                     fromfile_prefix_chars='@',
-                                    epilog="Ya feelin' a bit buggy all of a sudden?")
+                                    epilog=u"ЇЍ SФVЇԐҬ ЯЦSSЇД, ҪЯДҪҚԠДPЭӾЭҪ ԠЇԠЇҠДҬZ'S ҰФЏ!")
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread')

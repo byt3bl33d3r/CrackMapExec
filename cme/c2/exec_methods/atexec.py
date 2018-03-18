@@ -5,7 +5,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 from cme.helpers.misc import gen_random_string
 
 
-class TSCH_EXEC(object):
+class ATEXEC(object):
     def __init__(self, target, username, password, domain, lmhash, nthash, connection=None):
         self.connection = connection
         self.target = target

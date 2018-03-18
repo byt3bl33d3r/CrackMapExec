@@ -1,16 +1,15 @@
 import logging
 from gevent import sleep
-from cme.protocols.smb.c2 import C2
+from cme.c2 import C2
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
 from cme.helpers.powershell import ps_deflate_and_encode, ps_decode_and_inflate
 
 
-class WMI(C2):
+class Wmi(C2):
     '''
-    Uses WMI itself as a C2 channel by storing payloads
-    and outputs in WMI class(es) properties
+    Uses WMI itself as a C2 channel by storing payloads and outputs in WMI class(es) properties
     '''
 
     def __init__(self, proto, payload, exec_methods, force_ps32, ret_output):

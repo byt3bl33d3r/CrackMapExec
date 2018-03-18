@@ -16,9 +16,9 @@ from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from cme.connection import *
 from cme.logger import CMEAdapter
-from cme.protocols.smb.c2 import WMI, Registry
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
+from cme.loaders.c2_loader import c2_loader
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from pywerview.cli.helpers import *
@@ -90,8 +90,8 @@ class smb(connection):
         sgroup.add_argument("--only-files", action='store_true', help='only spider files')
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "shellbrwwinexec", "shellwinexec", "smbexec", "atexec"}, default=None, help="method to execute the command")
-        cgroup.add_argument('--c2-method', choices={"wmi", "registry"}, default="wmi", help="C2 method to send commands and retrieve output")
+        cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "shellbrwexec", "shellwinexec", "smbexec", "atexec"}, default="wmiexec", help="method to execute commands")
+        cgroup.add_argument('--c2-method', choices={"wmi", "registry", "https", "file"}, default="https", help="C2 method to send payloads to execute and retrieve output")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -101,11 +101,11 @@ class smb(connection):
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={
-                                        'protocol': 'SMB',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': self.hostname
-                                        })
+            'protocol': 'SMB',
+            'host': self.host,
+            'port': self.args.port,
+            'hostname': self.hostname
+        })
 
     def get_os_arch(self):
         try:
@@ -309,25 +309,8 @@ class smb(connection):
 
     @requires_admin
     def execute(self, payload=None, get_output=None, methods=None, c2s=None, force_ps32=None, dont_obfs=None):
-
-        exec_methods = [
-            "wmiexec",
-            "mmcexec",
-            "shellbrwwinexec",
-            "shellwinexec",
-            "smbexec",
-            "atexec"
-        ]
-
-        c2_methods = [
-            "wmi",
-            "registry"
-        ]
-
-        available_c2s = {
-            "wmi": WMI,
-            "registry": Registry
-        }
+        c2_ld = c2_loader()
+        available_c2s = c2_ld.get_c2s()
 
         if force_ps32 is None:
             force_ps32 = self.args.force_ps32
@@ -349,24 +332,21 @@ class smb(connection):
             payload = self.args.execute
 
         for method in c2_methods:
-            for name, cl in available_c2s.iteritems():
-                if method == name:
-                    try:
-                        logging.debug('Attempting to execute command using {} c2'.format(method))
-                        c2 = cl(self, payload, exec_methods, force_ps32, get_output)
-                        output = c2.run()
+            try:
+                logging.debug('Attempting to execute command using {} c2'.format(method))
+                c2 = getattr(c2_ld.load_c2(available_c2s[method]), method.title())(self, payload, exec_methods, force_ps32, get_output)
+                output = c2.run()
+                if self.args.execute:
+                    self.logger.success('Executed command using {} C2'.format(method))
+                    if output is not None:
+                        buf = StringIO(output).readlines()
+                        for line in buf:
+                            self.logger.highlight(line.strip())
 
-                        if self.args.execute:
-                            self.logger.success('Executed command using {} C2'.format(method))
-                            if output is not None:
-                                buf = StringIO(output).readlines()
-                                for line in buf:
-                                    self.logger.highlight(line.strip())
-
-                        return output
-                    except Exception as e:
-                        logging.debug('Error executing payload over C2 {}: {}'.format(name, e))
-                        logging.debug(format_exc())
+                return output
+            except Exception as e:
+                logging.debug('Error executing payload over C2 {}: {}'.format(method, e))
+                logging.debug(format_exc())
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
