@@ -436,7 +436,7 @@ class smb(connection):
                     self.db.add_computer(hostname, name, domain, os, dc=True)
                 break
             except Exception as e:
-                self.logger.error('Error enumerating domain controllers: {}'.format(e))
+               self.logger.error('Error enumerating domain controllers: {}'.format(e))
 
         self.logger.success('Added {} Domain Controllers to the database'.format(highlight(len(dcs))))
 

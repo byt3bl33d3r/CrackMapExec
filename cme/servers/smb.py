@@ -99,3 +99,4 @@ class CMESMBServer(threading.Thread):
         #connData['MS15011']['StopConnection'] = True
         #smbServer.setConnectionData(connId, connData)
         return self.origsmb2Write(connId, smbServer, recvPacket)
+
