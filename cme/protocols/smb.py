@@ -119,7 +119,8 @@ class smb(connection):
         smb_parser.add_argument("--port", type=int, choices={445, 139}, default=445, help="SMB port (default: 445)")
         smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
-
+        smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
@@ -263,7 +264,8 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
-            return True
+            if not self.args.continue_on_success:
+                return True
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain.decode('utf-8'),
@@ -307,7 +309,8 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
-            return True
+            if not self.args.continue_on_success:
+                return True
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{} {} {} {}'.format(domain.decode('utf-8'),
