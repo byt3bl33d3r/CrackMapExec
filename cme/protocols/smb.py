@@ -34,7 +34,7 @@ from datetime import datetime
 from functools import wraps
 from traceback import format_exc
 
-smb_share_name = gen_random_string(5).upper()
+smb_share_name = gen_random_string(gen_random_int()).upper()
 smb_server = None
 
 def requires_smb_server(func):
@@ -76,7 +76,7 @@ def requires_smb_server(func):
             if not smb_server:
                 #with sem:
                 logging.debug('Starting SMB server')
-                smb_server = CMESMBServer(self.logger, smb_share_name, verbose=self.args.verbose)
+                smb_server = CMESMBServer(self.logger, self.args.local_share, verbose=self.args.verbose)
                 smb_server.start()
 
         output = func(self, *args, **kwargs)
@@ -117,8 +117,10 @@ class smb(connection):
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         smb_parser.add_argument("--port", type=int, choices={445, 139}, default=445, help="SMB port (default: 445)")
-        smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
+        smb_parser.add_argument("--remote-share", metavar="REMOTE_SHARE", default="C$", help="specify a share (default: C$)")
+        smb_parser.add_argument("--local-share", metavar="LOCAL_SHARE", default=smb_share_name, help="specify a local share (default: random_string)")
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
+        #smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
 
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -388,7 +390,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host, self.args.local_share, self.username, self.password, self.domain, self.conn, self.hash, self.args.remote_share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -398,7 +400,7 @@ class smb(connection):
 
             elif method == 'mmcexec':
                 try:
-                    exec_method = MMCEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash)
+                    exec_method = MMCEXEC(self.host, self.args.local_share, self.username, self.password, self.domain, self.conn, self.hash)
                     logging.debug('Executed command via mmcexec')
                     break
                 except:
@@ -408,7 +410,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host, self.args.local_share, self.username, self.password, self.domain, self.hash) #self.args.remote_share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -418,7 +420,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.args.local_share, self.args.port, self.username, self.password, self.domain, self.hash, self.args.remote_share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
