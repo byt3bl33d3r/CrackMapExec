@@ -20,6 +20,8 @@ def identify_target_file(target_file):
 def gen_random_string(length=10):
     return ''.join(random.sample(string.ascii_letters, int(length)))
 
+def gen_random_int(min=5, max=8):
+    return random.randint(min,max)
 
 def validate_ntlm(data):
     allowed = re.compile("^[0-9a-f]{32}", re.IGNORECASE)
