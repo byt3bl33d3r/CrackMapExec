@@ -92,7 +92,10 @@ class connection(object):
                                          })
 
         context = Context(self.db, module_logger, self.args)
-        context.localip  = self.local_ip
+        if 'CHOST' in module_options:
+           context.localip  = module_options['CHOST']
+        else:
+           context.localip  = self.local_ip
 
         if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
             self.server.connection = self
