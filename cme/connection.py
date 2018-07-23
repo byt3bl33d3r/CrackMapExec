@@ -92,8 +92,8 @@ class connection(object):
                                          })
 
         context = Context(self.db, module_logger, self.args)
-        if 'CHOST' in module_options:
-           context.localip  = module_options['CHOST']
+        if self.args.connectback_host:
+           context.localip  = self.args.connectback_host
         else:
            context.localip  = self.local_ip
 
