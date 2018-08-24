@@ -21,6 +21,9 @@ class UserExitedProto(Exception):
 
 
 class DatabaseNavigator(cmd.Cmd):
+    MSF_PASSWORD_TYPE = 'Metasploit::Credential::Password'
+    MSF_NTLM_HASH_TYPE = 'Metasploit::Credential::NTLMHash'
+    MSF_REALM_ACTIVE_DIRECTORY_DOMAIN = 'Active Directory Domain'
 
     def __init__(self, main_menu, database, proto):
         cmd.Cmd.__init__(self)
@@ -193,10 +196,6 @@ class DatabaseNavigator(cmd.Cmd):
         print '[+] Metasploit credential import successful'
 
     def metasploit_api_import(self):
-        MSF_PASSWORD_TYPE = 'Metasploit::Credential::Password'
-        MSF_NTLM_HASH_TYPE = 'Metasploit::Credential::NTLMHash'
-        MSF_REALM_ACTIVE_DIRECTORY_DOMAIN = 'Active Directory Domain'
-
         # get workspace name from the config file, otherwise use CME workspace name
         if self.config.has_option('Metasploit', 'workspace'):
             workspace = self.config.get('Metasploit', 'workspace')
@@ -245,7 +244,7 @@ class DatabaseNavigator(cmd.Cmd):
             # get credentials
             cred_query = {
                 'workspace': workspace,
-                'type[]': [MSF_PASSWORD_TYPE, MSF_NTLM_HASH_TYPE]
+                'type[]': [self.MSF_PASSWORD_TYPE, self.MSF_NTLM_HASH_TYPE]
             }
             r = requests.get(base_url + '/api/v1/credentials', params=cred_query,
                              headers=headers, verify=False)
@@ -259,9 +258,9 @@ class DatabaseNavigator(cmd.Cmd):
                 for cred in creds['data']:
                     # map Metasploit cred type to CME
                     if self.keys_exist(cred, 'private', 'type'):
-                        if cred['private']['type'] == MSF_PASSWORD_TYPE:
+                        if cred['private']['type'] == self.MSF_PASSWORD_TYPE:
                             cred_type = 'plaintext'
-                        elif cred['private']['type'] == MSF_NTLM_HASH_TYPE:
+                        elif cred['private']['type'] == self.MSF_NTLM_HASH_TYPE:
                             cred_type = 'hash'
                         else:
                             # skip credential
@@ -272,7 +271,7 @@ class DatabaseNavigator(cmd.Cmd):
 
                     # get domain
                     if (self.keys_exist(cred, 'realm', 'key') and
-                            cred['realm']['key'] == MSF_REALM_ACTIVE_DIRECTORY_DOMAIN and
+                            cred['realm']['key'] == self.MSF_REALM_ACTIVE_DIRECTORY_DOMAIN and
                             self.keys_exist(cred, 'realm', 'value')):
                         domain = cred['realm']['value']
                     else:
