@@ -312,9 +312,9 @@ class DatabaseNavigator(cmd.Cmd):
 
         d = dictionary
         for key in keys:
-            try:
+            if key in d:
                 d = d[key]
-            except KeyError:
+            else:
                 return False
         return True
 
