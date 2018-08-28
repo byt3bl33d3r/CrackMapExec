@@ -27,14 +27,32 @@ class SMBSpider:
             except Exception as e:
                 self.logger.error('Regex compilation error: {}'.format(e))
 
-        self.share = share
         self.folder = folder
         self.pattern = pattern
         self.exclude_dirs = exclude_dirs
         self.content = content
         self.onlyfiles = onlyfiles
-        
-        self._spider(folder, depth)
+
+        if share == "*":
+            self.logger.info("Enumerating shares for spidering")
+            permissions = []
+            try:
+                for share in self.smbconnection.listShares():
+                    share_name = share['shi1_netname'][:-1]
+                    share_remark = share['shi1_remark'][:-1]
+                    try:
+                        self.smbconnection.listPath(share_name, '*')
+                        self.share = share_name
+                        self.logger.info("Spidering share: {0}".format(share_name))
+                        self._spider(folder, depth)
+                    except SessionError:
+                        pass
+            except Exception as e:
+                self.logger.error('Error enumerating shares: {}'.format(e))
+        else:
+            self.share = share
+            self.logger.info("Spidering {0}".format(folder))
+            self._spider(folder, depth)
 
         return self.results
 
