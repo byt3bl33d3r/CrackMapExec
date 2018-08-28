@@ -101,9 +101,11 @@ class SMBSpider:
             for pattern in self.pattern:
                 if result.get_longname().lower().find(pattern.lower()) != -1:
                     if not self.onlyfiles and result.is_directory():
-                        self.logger.highlight(u"//{}/{}{} [dir]".format(self.share, path, result.get_longname()))
+                        self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, 
+                                                                           path, 
+                                                                           result.get_longname()))
                     else:
-                        self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.share,
+                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
                                                                                        path,
                                                                                        result.get_longname(),
                                                                                        'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
@@ -113,9 +115,9 @@ class SMBSpider:
             for regex in self.regex:
                 if regex.findall(result.get_longname()):
                     if not self.onlyfiles and result.is_directory():
-                        self.logger.highlight(u"//{}/{}{} [dir]".format(self.share, path, result.get_longname()))
+                        self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, path, result.get_longname()))
                     else:
-                        self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{}]".format(self.share,
+                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
                                                                                        path,
                                                                                        result.get_longname(),
                                                                                        'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
@@ -150,7 +152,8 @@ class SMBSpider:
 
                 for pattern in self.pattern:
                     if contents.lower().find(pattern.lower()) != -1:
-                        self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.share,
+                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.smbconnection.getRemoteHost(), 
+                                                                                                            self.share,
                                                                                                             path,
                                                                                                             result.get_longname(),
                                                                                                             'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
@@ -161,7 +164,8 @@ class SMBSpider:
 
                 for regex in self.regex:
                     if regex.findall(contents):
-                        self.logger.highlight(u"//{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.share,
+                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.smbconnection.getRemoteHost(),
+                                                                                                          self.share,
                                                                                                           path,
                                                                                                           result.get_longname(),
                                                                                                           'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
