@@ -1,6 +1,4 @@
 ![Supported Python versions](https://img.shields.io/badge/python-2.7-blue.svg)
-![Arsenal_2016](https://cdn.rawgit.com/toolswatch/badges/master/arsenal/2016.svg)
-![Arsenal_2017](https://cdn.rawgit.com/toolswatch/badges/master/arsenal/2017.svg)
 
 # CrackMapExec
 
