@@ -56,7 +56,7 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data):
-            log_name = '{}-{}-{}.log'.format(self.process, response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            log_name = '{}-{}-{}.dmp'.format(self.process, response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
             with open(log_name, 'wb') as key_file:
                 key_file.write(base64.b64decode(data))
                 context.log.info("Saved Out-Minidump output to {}".format(log_name))
