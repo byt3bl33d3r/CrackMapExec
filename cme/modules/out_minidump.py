@@ -3,7 +3,7 @@ import base64
 class CMEModule:
     '''
         Uploads the procdump executable, dumps the memory of the specified process and downloads the memory dump.
-        Module by @mnadeau
+        Module by @m_nad0 - All of the sweet magic behind this module comes from Out-Minidump by Matthew Graeber (@mattifestation)
     '''
     name = 'out_minidump'
     description = 'Executes the PowerSploit Out-Minidump script and downloads the result'
