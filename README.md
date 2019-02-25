@@ -32,7 +32,7 @@ This repository contains the following repositories as submodules:
 - [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
 - [SessionGopher](https://github.com/fireeye/SessionGopher)
 - [Mimipenguin](https://github.com/huntergregal/mimipenguin)
-
+- [RID-Hijacking](https://github.com/r4wd3r/RID-Hijacking)
 # Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
 
