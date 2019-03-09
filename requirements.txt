@@ -19,6 +19,7 @@ paramiko==2.4.1
 pyasn1==0.4.4
 pycparser==2.18
 pycrypto==2.6.1
+pycryptodomex==3.7.3
 pylnk==0.2
 pynacl==1.2.1
 pyopenssl==18.0.0
