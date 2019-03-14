@@ -20,7 +20,7 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'pycrypto>=2.6',
+        'pycryptodomex',
         'pyasn1>=0.1.8',
         'gevent>=1.2.0',
         'requests>=2.9.1',

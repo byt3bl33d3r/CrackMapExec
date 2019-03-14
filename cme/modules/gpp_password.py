@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from Crypto.Cipher import AES
+from Cryptodome.Cipher import AES
 from base64 import b64decode
 from binascii import unhexlify
 from StringIO import StringIO
