@@ -141,8 +141,8 @@ class database:
 
         cur.close()
 
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password,
-                                                                                                                                    groupid, pillaged_from, user_rowid))
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.encode().format(credtype, domain, username, password,
+                                                                                                                                             groupid, pillaged_from, user_rowid))
 
         return user_rowid
 
