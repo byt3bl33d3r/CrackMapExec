@@ -488,7 +488,8 @@ class smb(connection):
                 remark = share['remark']
                 perms  = share['access']
 
-                self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+                #self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+		self.logger.highlight('{:<15} {:<15} {}'.format(name.encode('utf-8').decode('ascii', 'ignore'), ','.join(perms), remark.encode('utf-8').decode('ascii', 'ignore')))
 
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
