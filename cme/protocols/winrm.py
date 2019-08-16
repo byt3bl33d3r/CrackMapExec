@@ -24,6 +24,7 @@ class winrm(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         winrm_parser = parser.add_parser('winrm', help="own stuff using WINRM", parents=[std_parser, module_parser])
+        winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
