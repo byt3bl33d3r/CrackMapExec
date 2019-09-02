@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import socket
 import os
@@ -552,7 +551,6 @@ class smb(connection):
                                 group_id = self.db.add_group(domain, self.args.local_groups)
 
                             # yo dawg, I hear you like groups. So I put a domain group as a member of a local group which is also a member of another local group.
-                            # (╯°□°）╯︵ ┻━┻
 
                             if not group.isgroup:
                                 self.db.add_user(domain, name, group_id)

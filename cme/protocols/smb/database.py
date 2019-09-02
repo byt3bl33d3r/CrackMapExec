@@ -1,4 +1,6 @@
+
 import logging
+
 
 
 class database:
@@ -141,8 +143,19 @@ class database:
 
         cur.close()
 
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.encode().format(credtype, domain, username, password,
-                                                                                                                                             groupid, pillaged_from, user_rowid))
+        if domain != None:
+            domain = domain.encode('utf-8')
+        if username != None:
+            a = ''
+            try:
+                a = username.encode('utf-8')
+            except UnicodeDecodeError:
+                a = username
+            username = a
+        if password != None:
+            password = password.encode('utf-8')
+
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.encode().format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
 
         return user_rowid
 
