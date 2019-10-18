@@ -1,21 +1,20 @@
--i https://pypi.org/simple
-asn1crypto==0.24.0
+-i https://pypi.org/simple/
 backports.functools-lru-cache==1.5 ; python_version < '3'
-bcrypt==3.1.6
-beautifulsoup4==4.7.1
+bcrypt==3.1.7
+beautifulsoup4==4.8.1
 bs4==0.0.1
-certifi==2019.3.9
-cffi==1.12.2
+certifi==2019.9.11
+cffi==1.13.0
 chardet==3.0.4
-cryptography==2.6.1
+cryptography==2.8
 enum34==1.1.6 ; python_version < '3'
 gevent==1.4.0
 greenlet==0.4.15 ; platform_python_implementation == 'CPython'
 idna==2.8
-ipaddress==1.0.22 ; python_version < '3'
+ipaddress==1.0.23 ; python_version < '3'
 msgpack-python==0.5.6
 netaddr==0.7.19
-ntlm-auth==1.2.0
+ntlm-auth==1.4.0
 paramiko==2.4.2
 pyasn1==0.4.5
 pycparser==2.19
@@ -27,9 +26,9 @@ requests-ntlm==1.1.0
 requests==2.21.0
 selenium==3.141.0
 six==1.12.0
-soupsieve==1.8
+soupsieve==1.9.4
 splinter==0.10.0
 termcolor==1.1.0
 terminaltables==3.1.0
-urllib3==1.24.1
+urllib3==1.24.2
 xmltodict==0.12.0
