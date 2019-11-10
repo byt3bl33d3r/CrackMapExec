@@ -118,17 +118,17 @@ class winrm(connection):
             # we could just authenticate without running a command :) (probably)
             self.conn.run_cmd('hostname')
             self.admin_privs = True
-            self.logger.success(u'{}\\{}:{} {}'.format(self.domain.decode('utf-8'),
-                                                       username.decode('utf-8'),
-                                                       password.decode('utf-8'),
+            self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
+                                                       username,
+                                                       password,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
 
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain.decode('utf-8'),
-                                                       username.decode('utf-8'),
-                                                       password.decode('utf-8'),
+            self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+                                                       username,
+                                                       password,
                                                        e))
 
             return False
@@ -137,14 +137,14 @@ class winrm(connection):
         if response_obj.status_code == 0:
             buf = StringIO(response_obj.std_out).readlines()
             for line in buf:
-                self.logger.highlight(line.decode('utf-8').strip())
+                self.logger.highlight(line.strip())
 
             return response_obj.std_out
 
         else:
             buf = StringIO(response_obj.std_err).readlines()
             for line in buf:
-                self.logger.highlight(line.decode('utf-8').strip())
+                self.logger.highlight(line.strip())
 
             return response_obj.std_err
 

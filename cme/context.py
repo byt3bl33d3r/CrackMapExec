@@ -14,5 +14,5 @@ class Context:
         self.conf = configparser.ConfigParser()
         self.conf.read(os.path.expanduser('~/.cme/cme.conf'))
 
-        for key, value in vars(args).iteritems():
+        for key, value in vars(args).items():
             setattr(self, key, value)

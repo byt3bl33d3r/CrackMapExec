@@ -68,7 +68,7 @@ class CMEModule:
 
                             context.log.success('Found credentials in {}'.format(path))
                             context.log.highlight('Password: {}'.format(password))
-                            for k,v in props.iteritems():
+                            for k,v in props.items():
                                 if k != 'cpassword':
                                     context.log.highlight('{}: {}'.format(k, v))
 

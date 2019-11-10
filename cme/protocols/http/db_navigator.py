@@ -13,7 +13,7 @@ class navigator(DatabaseNavigator):
 
             # links = self.db.get_links(credID=credID)
 
-            data.append([credID, url.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
+            data.append([credID, url, username, password])
 
         self.print_table(data, title='Credential(s)')
 

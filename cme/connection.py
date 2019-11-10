@@ -1,4 +1,5 @@
 import logging
+from os.path import isfile
 # from traceback import format_exc
 from gevent.lock import BoundedSemaphore
 from gevent.socket import gethostbyname
@@ -77,7 +78,7 @@ class connection(object):
                 self.call_cmd_args()
 
     def call_cmd_args(self):
-        for k, v in vars(self.args).iteritems():
+        for k, v in vars(self.args).items():
             if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                 if v is not False and v is not None:
                     logging.debug('Calling {}()'.format(k))
@@ -163,7 +164,7 @@ class connection(object):
                         self.logger.error("Invalid database credential ID!")
 
         for user in self.args.username:
-            if type(user) is file:
+            if isfile(user):
                 for usr in user:
                     if self.args.hash:
                         with sem:
@@ -191,7 +192,7 @@ class connection(object):
                                             if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
                                     password.seek(0)
 
-            elif type(user) is not file:
+            elif isfile(user) == False:
                     if hasattr(self.args, 'hash') and self.args.hash:
                         with sem:
                             for ntlm_hash in self.args.hash:
@@ -208,14 +209,14 @@ class connection(object):
                     elif self.args.password:
                         with sem:
                             for password in self.args.password:
-                                if type(password) is not file:
+                                if isfile(password) == False:
                                     if not self.over_fail_limit(user):
                                         if hasattr(self.args, 'domain'):
                                             if self.plaintext_login(self.domain, user, password): return True
                                         else:
                                             if self.plaintext_login(user, password): return True
 
-                                elif type(password) is file:
+                                elif isfile(password) is file:
                                     for f_pass in password:
                                         if not self.over_fail_limit(user):
                                             if hasattr(self.args, 'domain'):

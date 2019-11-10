@@ -60,13 +60,13 @@ def requires_smb_server(func):
         except IndexError:
             pass
 
-        if kwargs.has_key('payload'):
+        if 'payload' in kwargs:
             payload = kwargs['payload']
 
-        if kwargs.has_key('get_output'):
+        if 'get_output' in kwargs:
             get_output = kwargs['get_output']
 
-        if kwargs.has_key('methods'):
+        if 'methods' in kwargs:
             methods = kwargs['methods']
 
         if not payload and self.args.execute:
@@ -202,9 +202,9 @@ class smb(connection):
 
         try:
             self.conn.login('' , '')
-        except SessionError as e:
-            if "STATUS_ACCESS_DENIED" in e.message:
-                pass
+        except:
+            #if "STATUS_ACCESS_DENIED" in e:
+            pass
 
         self.domain    = self.conn.getServerDomain()
         self.hostname  = self.conn.getServerName()
@@ -240,8 +240,8 @@ class smb(connection):
     def print_host_info(self):
         self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
                                                                                       ' x{}'.format(self.os_arch) if self.os_arch else '',
-                                                                                      self.hostname.decode('utf-8'),
-                                                                                      self.domain.decode('utf-8'),
+                                                                                      self.hostname,
+                                                                                      self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
 
@@ -258,9 +258,9 @@ class smb(connection):
             if self.admin_privs:
                 self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-            out = u'{}\\{}:{} {}'.format(domain.decode('utf-8'),
-                                         username.decode('utf-8'),
-                                         password.decode('utf-8'),
+            out = u'{}\\{}:{} {}'.format(domain,
+                                         username,
+                                         password,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
@@ -268,9 +268,9 @@ class smb(connection):
                 return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(domain.decode('utf-8'),
-                                                        username.decode('utf-8'),
-                                                        password.decode('utf-8'),
+            self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
+                                                        username,
+                                                        password,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
 
@@ -303,8 +303,8 @@ class smb(connection):
             if self.admin_privs:
                 self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
-                                         username.decode('utf-8'),
+            out = u'{}\\{} {} {}'.format(domain,
+                                         username,
                                          ntlm_hash,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
@@ -313,8 +313,8 @@ class smb(connection):
                 return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {} {}'.format(domain.decode('utf-8'),
-                                                        username.decode('utf-8'),
+            self.logger.error(u'{}\\{} {} {} {}'.format(domain,
+                                                        username,
                                                         ntlm_hash,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
@@ -431,7 +431,7 @@ class smb(connection):
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(exec_method.execute(payload, get_output).strip().decode('utf-8',errors='replace'))
+        output = u'{}'.format(exec_method.execute(payload, get_output).strip())
 
         if self.args.execute or self.args.ps_execute:
             self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
@@ -683,7 +683,7 @@ class smb(connection):
                 wmi_results = query.Next(0xffffffff, 1)[0]
                 record = wmi_results.getProperties()
                 records.append(record)
-                for k,v in record.iteritems():
+                for k,v in record.items():
                     self.logger.highlight('{} => {}'.format(k,v['value']))
                 self.logger.highlight('')
             except Exception as e:

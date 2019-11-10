@@ -32,7 +32,7 @@ class CMESMBServer(threading.Thread):
             pass
 
     def shutdown(self):
-        self._Thread__stop()
+        #self._Thread__stop()
         # make sure all the threads are killed
         for thread in threading.enumerate():
             if thread.isAlive():
