@@ -2,7 +2,7 @@ import requests
 import os
 from gevent.pool import Pool
 from gevent.socket import gethostbyname
-from urlparse import urlparse
+from urllib.parse import urlparse
 from datetime import datetime
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -106,7 +106,7 @@ class single_connection(connection):
         try:
             r = requests.get(url, timeout=10, headers={'User-Agent': user_agent})
             self.server_headers = r.headers
-        except ConnectTimeout, ReadTimeout:
+        except (ConnectTimeout, ReadTimeout):
             return False
         except Exception as e:
             if str(e).find('Read timed out') == -1:

@@ -1,13 +1,13 @@
 import socket
 import logging
 from cme.logger import CMEAdapter
-from StringIO import StringIO
+from io import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
-from ConfigParser import ConfigParser
+import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE

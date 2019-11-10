@@ -4,7 +4,7 @@ from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
-from ConfigParser import ConfigParser
+import configparser
 
 
 class ssh(connection):

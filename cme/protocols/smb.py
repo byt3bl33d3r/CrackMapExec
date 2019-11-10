@@ -3,7 +3,7 @@
 import socket
 import os
 import ntpath
-from StringIO import StringIO
+from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
@@ -184,7 +184,7 @@ class smb(connection):
             dce.connect()
             try:
                 dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
-            except DCERPCException, e:
+            except (DCERPCException, e):
                 if str(e).find('syntaxes_not_supported') >= 0:
                     dce.disconnect()
                     return 32
@@ -489,7 +489,7 @@ class smb(connection):
                 perms  = share['access']
 
                 #self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-		self.logger.highlight('{:<15} {:<15} {}'.format(name.encode('utf-8').decode('ascii', 'ignore'), ','.join(perms), remark.encode('utf-8').decode('ascii', 'ignore')))
+            self.logger.highlight('{:<15} {:<15} {}'.format(name.encode('utf-8').decode('ascii', 'ignore'), ','.join(perms), remark.encode('utf-8').decode('ascii', 'ignore')))
 
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
@@ -772,7 +772,7 @@ class smb(connection):
                 sids.append(domainSid + '-%d' % i)
             try:
                 lsat.hLsarLookupSids(dce, policyHandle, sids,lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
-            except DCERPCException, e:
+            except (DCERPCException, e):
                 if str(e).find('STATUS_NONE_MAPPED') >= 0:
                     soFar += SIMULTANEOUS
                     continue

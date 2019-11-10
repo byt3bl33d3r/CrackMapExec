@@ -56,7 +56,7 @@ class WMIEXEC:
     def cd(self, s):
         self.execute_remote('cd ' + s)
         if len(self.__outputBuffer.strip('\r\n')) > 0:
-            print self.__outputBuffer
+            print(self.__outputBuffer)
             self.__outputBuffer = ''
         else:
             self.__pwd = ntpath.normpath(ntpath.join(self.__pwd, s))

@@ -1,13 +1,13 @@
 import winrm as pywinrm
 import requests
 import logging
-from StringIO import StringIO
+from io import StringIO
 # from winrm.exceptions import InvalidCredentialsError
 from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-from ConfigParser import ConfigParser
+import configparser
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning

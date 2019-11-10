@@ -1,10 +1,10 @@
-import BaseHTTPServer
+import http.server
 import threading
 import ssl
 import os
 import sys
 import logging
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 from gevent import sleep
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter

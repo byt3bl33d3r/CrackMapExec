@@ -7,7 +7,7 @@ import requests
 from time import sleep
 from terminaltables import AsciiTable
 from cme.msfrpc import Msfrpc, MsfAuthError
-from ConfigParser import ConfigParser
+import configparser
 from cme.loaders.protocol_loader import protocol_loader
 from requests import ConnectionError
 
@@ -188,7 +188,7 @@ class CMEDBMenu(cmd.Cmd):
         self.config_path = config_path
 
         try:
-            self.config = ConfigParser()
+            self.config = configparser.ConfigParser()
             self.config.read(self.config_path)
         except Exception as e:
             print "[-] Error reading cme.conf: {}".format(e)

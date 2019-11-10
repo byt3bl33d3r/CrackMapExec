@@ -15,7 +15,7 @@ from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
 from pprint import pformat
-from ConfigParser import ConfigParser
+import configparser
 import cme.helpers.powershell as powershell
 import cme
 import shutil
@@ -44,7 +44,7 @@ def main():
 
     cme_path = os.path.expanduser('~/.cme')
 
-    config = ConfigParser()
+    config = configparser.ConfigParser()
     config.read(os.path.join(cme_path, 'cme.conf'))
 
     module = None
