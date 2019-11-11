@@ -128,7 +128,7 @@ class CMEModule:
         if len(creds) == 0:
             # check if we have lsadump output to check for krbtgt
             #   happens on domain controller hashdumps
-            for x in xrange(8,13):
+            for x in range(8,13):
                 if lines[x].startswith("Domain :"):
 
                     domain, sid, krbtgtHash = "", "", ""
@@ -143,7 +143,7 @@ class CMEModule:
                             domain = hostDomain
                             sid = domainSid
 
-                        for x in xrange(0, len(lines)):
+                        for x in range(0, len(lines)):
                             if lines[x].startswith("User : krbtgt"):
                                 krbtgtHash = lines[x+2].split(":")[1].strip()
                                 break
