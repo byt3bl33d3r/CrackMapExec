@@ -488,8 +488,7 @@ class smb(connection):
                 remark = share['remark']
                 perms  = share['access']
 
-                #self.logger.highlight('{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-            self.logger.highlight('{:<15} {:<15} {}'.format(name.encode('utf-8').decode('ascii', 'ignore'), ','.join(perms), remark.encode('utf-8').decode('ascii', 'ignore')))
+                self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
 
         except Exception as e:
             self.logger.error('Error enumerating shares: {}'.format(e))
@@ -749,7 +748,7 @@ class smb(connection):
 
         self.logger.success('Brute forcing RIDs')
         dce.bind(lsat.MSRPC_UUID_LSAT)
-        resp = lsat.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
+        resp = lsad.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
         policyHandle = resp['PolicyHandle']
 
         resp = lsad.hLsarQueryInformationPolicy2(dce, policyHandle, lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation)
@@ -758,8 +757,8 @@ class smb(connection):
 
         soFar = 0
         SIMULTANEOUS = 1000
-        for j in range(maxRid/SIMULTANEOUS+1):
-            if (maxRid - soFar) / SIMULTANEOUS == 0:
+        for j in range(maxRid//SIMULTANEOUS+1):
+            if (maxRid - soFar) // SIMULTANEOUS == 0:
                 sidsToCheck = (maxRid - soFar) % SIMULTANEOUS
             else:
                 sidsToCheck = SIMULTANEOUS
@@ -768,11 +767,11 @@ class smb(connection):
                 break
 
             sids = list()
-            for i in xrange(soFar, soFar+sidsToCheck):
+            for i in range(soFar, soFar+sidsToCheck):
                 sids.append(domainSid + '-%d' % i)
             try:
                 lsat.hLsarLookupSids(dce, policyHandle, sids,lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
-            except (DCERPCException, e):
+            except DCERPCException as e:
                 if str(e).find('STATUS_NONE_MAPPED') >= 0:
                     soFar += SIMULTANEOUS
                     continue

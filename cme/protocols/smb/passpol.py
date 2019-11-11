@@ -13,7 +13,7 @@ def d2b(a):
 
     t2bin = tbin[::-1]
     if len(t2bin) != 8:
-        for x in xrange(6 - len(t2bin)):
+        for x in range(6 - len(t2bin)):
             t2bin.insert(0, 0)
     return ''.join([str(g) for g in t2bin])
 
@@ -100,11 +100,9 @@ class PassPolDump:
                 port = protodef[1]
             except KeyError:
                 self.logger.debug("Invalid Protocol '{}'".format(protocol))
-
             self.logger.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
-
             try:
                 self.fetchList(rpctransport)
             except Exception as e:

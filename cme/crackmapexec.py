@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from gevent.pool import Pool
 from gevent import sleep
