@@ -164,16 +164,16 @@ class connection(object):
                         self.logger.error("Invalid database credential ID!")
 
         for user in self.args.username:
-            if isfile(user):
+            if not isinstance(user, str) and isfile(user.name):
                 for usr in user:
                     if self.args.hash:
                         with sem:
                             for ntlm_hash in self.args.hash:
-                                if type(ntlm_hash) is not file:
+                                if isinstance(ntlm_hash, str):
                                     if not self.over_fail_limit(usr.strip()):
                                         if self.hash_login(self.domain, usr.strip(), ntlm_hash): return True
 
-                                elif type(ntlm_hash) is file:
+                                elif not isinstance(ntlm_hash, str) and isfile(ntlm_hash.name):
                                     for f_hash in ntlm_hash:
                                         if not self.over_fail_limit(usr.strip()):
                                             if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
@@ -182,25 +182,25 @@ class connection(object):
                     elif self.args.password:
                         with sem:
                             for password in self.args.password:
-                                if type(password) is not file:
+                                if isinstance(password, str):
                                     if not self.over_fail_limit(usr.strip()):
                                         if self.plaintext_login(self.domain, usr.strip(), password): return True
 
-                                elif type(password) is file:
+                                elif not isinstance(password, str) and isfile(password.name):
                                     for f_pass in password:
                                         if not self.over_fail_limit(usr.strip()):
                                             if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
                                     password.seek(0)
 
-            elif isfile(user) == False:
+            elif isinstance(user, str):
                     if hasattr(self.args, 'hash') and self.args.hash:
                         with sem:
                             for ntlm_hash in self.args.hash:
-                                if type(ntlm_hash) is not file:
+                                if isinstance(ntlm_hash, str):
                                     if not self.over_fail_limit(user):
                                         if self.hash_login(self.domain, user, ntlm_hash): return True
 
-                                elif type(ntlm_hash) is file:
+                                elif not isinstance(ntlm_hash, str) and  isfile(ntlm_hash.name):
                                     for f_hash in ntlm_hash:
                                         if not self.over_fail_limit(user):
                                             if self.hash_login(self.domain, user, f_hash.strip()): return True
@@ -209,14 +209,14 @@ class connection(object):
                     elif self.args.password:
                         with sem:
                             for password in self.args.password:
-                                if isfile(password) == False:
+                                if isinstance(password, str):
                                     if not self.over_fail_limit(user):
                                         if hasattr(self.args, 'domain'):
                                             if self.plaintext_login(self.domain, user, password): return True
                                         else:
                                             if self.plaintext_login(user, password): return True
 
-                                elif isfile(password) is file:
+                                elif not isinstance(password, str) and  isfile(password.name):
                                     for f_pass in password:
                                         if not self.over_fail_limit(user):
                                             if hasattr(self.args, 'domain'):
