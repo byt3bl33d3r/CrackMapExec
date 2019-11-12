@@ -45,7 +45,7 @@ class CMEServer(threading.Thread):
         try:
             threading.Thread.__init__(self)
 
-            self.server = BaseHTTPServer.HTTPServer((srv_host, int(port)), RequestHandler)
+            self.server = http.server.HTTPServer((srv_host, int(port)), RequestHandler)
             self.server.hosts   = []
             self.server.module  = module
             self.server.context = context

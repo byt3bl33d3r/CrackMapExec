@@ -1,6 +1,6 @@
 from cme.helpers.powershell import *
 from cme.helpers.logger import write_log
-from StringIO import StringIO
+from io import StringIO
 from datetime import datetime
 
 class CMEModule:
