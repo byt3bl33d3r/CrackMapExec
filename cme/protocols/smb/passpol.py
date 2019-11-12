@@ -9,7 +9,7 @@ def d2b(a):
     tbin = []
     while a:
         tbin.append(a % 2)
-        a /= 2
+        a //= 2
 
     t2bin = tbin[::-1]
     if len(t2bin) != 8:
