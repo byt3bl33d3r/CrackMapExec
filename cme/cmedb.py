@@ -38,23 +38,23 @@ class DatabaseNavigator(cmd.Cmd):
         sys.exit(0)
 
     def print_table(self, data, title=None):
-        print ""
+        print("")
         table = AsciiTable(data)
         if title:
             table.title = title
-        print table.table
-        print ""
+        print(table.table)
+        print("")
 
     def do_export(self, line):
         if not line:
-            print "[-] not enough arguments"
+            print("[-] not enough arguments")
             return
 
         line = line.split()
 
         if line[0].lower() == 'creds':
             if len(line) < 3:
-                print "[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>"
+                print("[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>")
                 return
             if line[1].lower() == 'plaintext':
                 creds = self.db.get_credentials(credtype="plaintext")
@@ -70,21 +70,21 @@ class DatabaseNavigator(cmd.Cmd):
                         export_file.write('{},{},{},{},{},{}\n'.format(credid,domain,user,password,credtype,fromhost))
                     else:
                         export_file.write('{}\n'.format(password))
-            print '[+] creds exported'
+            print('[+] creds exported')
 
         elif line[0].lower() == 'hosts':
             if len(line) < 2:
-                print "[-] invalid arguments, export hosts <filename>"
+                print("[-] invalid arguments, export hosts <filename>")
                 return
             hosts = self.db.get_computers()
             with open(os.path.expanduser(line[1]), 'w') as export_file:
                 for host in hosts:
                     hostid,ipaddress,hostname,domain,opsys,dc = host
                     export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
-            print '[+] hosts exported'
+            print('[+] hosts exported')
 
         else:
-            print '[-] invalid argument, specify creds or hosts'
+            print('[-] invalid argument, specify creds or hosts')
 
 
     def do_import(self, line):
@@ -116,12 +116,12 @@ class DatabaseNavigator(cmd.Cmd):
 
                         self.db.add_credential(cred['credtype'], cred['domain'], cred['username'], cred['password'])
 
-                    print "[+] Empire credential import successful"
+                    print("[+] Empire credential import successful")
                 else:
-                    print "[-] Error authenticating to Empire's RESTful API server!"
+                    print("[-] Error authenticating to Empire's RESTful API server!")
 
             except ConnectionError as e:
-                print "[-] Unable to connect to Empire's RESTful API server: {}".format(e)
+                print("[-] Unable to connect to Empire's RESTful API server: {}".format(e))
 
         elif line == 'metasploit':
             msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'),
@@ -130,7 +130,7 @@ class DatabaseNavigator(cmd.Cmd):
             try:
                 msf.login('msf', self.config.get('Metasploit', 'password'))
             except MsfAuthError:
-                print "[-] Error authenticating to Metasploit's MSGRPC server!"
+                print("[-] Error authenticating to Metasploit's MSGRPC server!")
                 return
 
             console_id = str(msf.call('console.create')['id'])
@@ -159,7 +159,7 @@ class DatabaseNavigator(cmd.Cmd):
 
             msf.call('console.destroy', [console_id])
 
-            print "[+] Metasploit credential import successful"
+            print("[+] Metasploit credential import successful")
 
     def complete_import(self, text, line, begidx, endidx):
         "Tab-complete 'import' commands."
@@ -191,7 +191,7 @@ class CMEDBMenu(cmd.Cmd):
             self.config = configparser.ConfigParser()
             self.config.read(self.config_path)
         except Exception as e:
-            print "[-] Error reading cme.conf: {}".format(e)
+            print("[-] Error reading cme.conf: {}".format(e))
             sys.exit(1)
 
         self.workspace_dir = os.path.expanduser('~/.cme/workspaces')
@@ -213,7 +213,7 @@ class CMEDBMenu(cmd.Cmd):
         self.conn.isolation_level = None
 
     def write_configfile(self):
-        with open(self.config_path, 'wb') as configfile:
+        with open(self.config_path, 'w') as configfile:
             self.config.write(configfile)
 
     def do_proto(self, proto):
@@ -243,7 +243,7 @@ class CMEDBMenu(cmd.Cmd):
         if line.split()[0] == 'create':
             new_workspace = line.split()[1].strip()
 
-            print "[*] Creating workspace '{}'".format(new_workspace)
+            print("[*] Creating workspace '{}'".format(new_workspace))
             os.mkdir(os.path.join(self.workspace_dir, new_workspace))
 
             for protocol in self.protocols.keys():
@@ -255,7 +255,7 @@ class CMEDBMenu(cmd.Cmd):
                 proto_db_path = os.path.join(self.workspace_dir, new_workspace, protocol + '.db')
 
                 if not os.path.exists(proto_db_path):
-                    print '[*] Initializing {} protocol database'.format(protocol.upper())
+                    print('[*] Initializing {} protocol database'.format(protocol.upper()))
                     conn = sqlite3.connect(proto_db_path)
                     c = conn.cursor()
 
@@ -286,7 +286,7 @@ def main():
     config_path = os.path.expanduser('~/.cme/cme.conf')
 
     if not os.path.exists(config_path):
-        print "[-] Unable to find config file"
+        print("[-] Unable to find config file")
         sys.exit(1)
 
     try:

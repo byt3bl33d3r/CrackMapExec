@@ -110,14 +110,14 @@ class navigator(DatabaseNavigator):
                     self.db.add_credential("plaintext", domain, username, password)
 
             else:
-                print "[!] Format is 'add domain username password"
+                print("[!] Format is 'add domain username password")
                 return
 
         elif filterTerm.split()[0].lower() == "remove":
 
             args = filterTerm.split()[1:]
             if len(args) != 1:
-                print "[!] Format is 'remove <credID>'"
+                print("[!] Format is 'remove <credID>'")
                 return
             else:
                 self.db.remove_credentials(args)
