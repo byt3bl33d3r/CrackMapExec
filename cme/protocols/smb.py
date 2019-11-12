@@ -95,6 +95,7 @@ class smb(connection):
 
     def __init__(self, args, db, host):
         self.domain = None
+        self.domainFullname = None
         self.server_os = None
         self.os_arch = 0
         self.hash = None
@@ -206,16 +207,18 @@ class smb(connection):
             if "STATUS_ACCESS_DENIED" in e.message:
                 pass
 
-        self.domain    = self.conn.getServerDomain()
-        self.hostname  = self.conn.getServerName()
-        self.server_os = self.conn.getServerOS()
-        self.signing   = self.conn.isSigningRequired()
-        self.os_arch   = self.get_os_arch()
+        self.domain         = self.conn.getServerDomain()
+        self.domainFullname = self.conn.getServerDNSDomainName()
+        self.hostname       = self.conn.getServerName()
+        self.server_os      = self.conn.getServerOS()
+        self.signing        = self.conn.isSigningRequired()
+        self.os_arch        = self.get_os_arch()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
 
         if not self.domain:
             self.domain = self.hostname
+            self.domainFullname = self.hostname
 
         self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
@@ -238,10 +241,11 @@ class smb(connection):
         self.create_conn_obj()
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
+        self.logger.info(u"{}{} (name:{}) (domain:{}) (domainFullname:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
                                                                                       ' x{}'.format(self.os_arch) if self.os_arch else '',
                                                                                       self.hostname.decode('utf-8'),
                                                                                       self.domain.decode('utf-8'),
+                                                                                      self.domainFullname.decode('utf-8'),
                                                                                       self.signing,
                                                                                       self.smbv1))
 
