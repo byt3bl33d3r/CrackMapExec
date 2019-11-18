@@ -13,7 +13,7 @@ class ssh(connection):
     def proto_args(parser, std_parser, module_parser):
         ssh_parser = parser.add_parser('ssh', help="own stuff using SSH", parents=[std_parser, module_parser])
         ssh_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        #ssh_parser.add_argument("--key-file", type=str, help="Authenticate using the specified private key")
+        ssh_parser.add_argument("--key-file", type=str, help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.")
         ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
 
         cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
@@ -59,11 +59,16 @@ class ssh(connection):
 
     def plaintext_login(self, username, password):
         try:
-            self.conn.connect(self.host, port=self.args.port, username=username, password=password)
-            self.check_if_admin()
+            if self.args.key_file:
+                passwd = password
+                password = u'{} (keyfile: {})'.format(passwd, self.args.key_file)
+                self.conn.connect(self.host, port=self.args.port, username=username, passphrase=passwd, key_filename=self.args.key_file, look_for_keys=False, allow_agent=False)
+            else:
+                self.conn.connect(self.host, port=self.args.port, username=username, password=password, look_for_keys=False, allow_agent=False)
 
-            self.logger.success(u'{}:{} {}'.format(username,
-                                                   password,
+            self.check_if_admin()
+            self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
+                                                   password.decode('utf-8'),
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
