@@ -864,7 +864,7 @@ class smb(connection):
             LSA.exportSecrets(self.output_filename)
 
             self.logger.success('Dumped {} LSA secrets to {} and {}'.format(highlight(add_lsa_secret.secrets),
-                                                                            self.output_filename + '.lsa', self.output_filename + '.cached'))
+                                                                            self.output_filename + '.secrets', self.output_filename + '.cached'))
 
             try:
                 self.remote_ops.finish()
