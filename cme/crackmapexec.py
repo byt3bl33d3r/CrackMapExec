@@ -168,12 +168,12 @@ def main():
                 exit(1)
 
             if getattr(module, 'opsec_safe') is False:
-                ans = raw_input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
+                ans = input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
                 if ans.lower() not in ['y', 'yes', '']:
                     sys.exit(1)
 
             if getattr(module, 'multiple_hosts') is False and len(targets) > 1:
-                ans = raw_input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
+                ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
                 if ans.lower() not in ['y', 'yes', '']:
                     sys.exit(1)
 

@@ -35,7 +35,7 @@ class CMEModule:
 
             #with open(get_ps_script('mimikittenz/Invoke-mimikittenz.ps1'), 'r') as ps_script:
             #    ps_script = obfs_ps_script(ps_script.read(), function_name=self.obfs_name)
-            request.wfile.write(self.ps_script)
+            request.wfile.write(self.ps_script.encode())
 
         else:
             request.send_response(404)
@@ -44,8 +44,8 @@ class CMEModule:
     def on_response(self, context, response):
         response.send_response(200)
         response.end_headers()
-        length = int(response.headers.getheader('content-length'))
-        data = response.rfile.read(length)
+        length = int(response.headers.get('content-length'))
+        data = response.rfile.read(length).decode()
 
         #We've received the response, stop tracking this host
         response.stop_tracking_host()

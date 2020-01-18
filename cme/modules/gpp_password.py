@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 from Cryptodome.Cipher import AES
 from base64 import b64decode
 from binascii import unhexlify
-from StringIO import StringIO
+from io import StringIO
 
 class CMEModule:
     '''
