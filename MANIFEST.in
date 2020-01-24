@@ -4,10 +4,6 @@ include LICENSE
 recursive-include cme/data *
 recursive-include cme/modules *
 recursive-include cme/thirdparty *
-prune cme/thirdparty/impacket/impacket/testcases
-prune cme/thirdparty/impacket/examples
-prune cme/thirdparty/pywinrm/winrm/tests
-prune cme/thirdparty/pywinrm/scripts
 prune cme/data/powersploit/Tests
 prune cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources
 prune cme/data/powersploit/Exfiltration/LogonUser
