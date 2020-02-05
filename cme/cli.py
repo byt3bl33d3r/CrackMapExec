@@ -1,12 +1,13 @@
 import argparse
 import sys
+import pkg_resources
 from argparse import RawTextHelpFormatter
 from cme.loaders.protocol_loader import protocol_loader
 from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    VERSION  = '4.0.1dev'
+    VERSION = pkg_resources.get_distribution('crackmapexec').version
     CODENAME = 'Bug Pr0n'
 
     p_loader =  protocol_loader()

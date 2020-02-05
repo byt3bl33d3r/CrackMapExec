@@ -1,9 +1,29 @@
 #!/usr/bin/env python2
 
+import os
 from setuptools import setup, find_packages
+from subprocess import *
+
+VER_MAJOR = 4
+VER_MINOR = 0
+VER_MAINT = 1
+VER_PREREL = "dev1"
+if call(["git", "branch"], stderr=STDOUT, stdout=open(os.devnull, 'w')) == 0:
+    p = Popen("git log -1 --format=%cd --date=format:%Y%m%d.%H%M%S", shell=True, stdin=PIPE, stderr=PIPE, stdout=PIPE)
+    (outstr, errstr) = p.communicate()
+    (VER_CDATE,VER_CTIME) = outstr.strip().decode("utf-8").split('.')
+
+    p = Popen("git rev-parse --short HEAD", shell=True, stdin=PIPE, stderr=PIPE, stdout=PIPE)
+    (outstr, errstr) = p.communicate()
+    VER_CHASH = outstr.strip().decode("utf-8")
+    
+    VER_LOCAL = "+{}.{}.{}".format(VER_CDATE, VER_CTIME, VER_CHASH)
+
+else:
+    VER_LOCAL = ""
 
 setup(name='crackmapexec',
-    version='4.0.1dev',
+    version = "{}.{}.{}.{}{}".format(VER_MAJOR,VER_MINOR,VER_MAINT,VER_PREREL,VER_LOCAL),
     description='A swiss army knife for pentesting networks',
     classifiers=[
         'Environment :: Console',
