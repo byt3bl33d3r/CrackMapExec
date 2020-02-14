@@ -1,13 +1,13 @@
 import socket
 import logging
 from cme.logger import CMEAdapter
-from StringIO import StringIO
+from io import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
-from ConfigParser import ConfigParser
+import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
@@ -170,9 +170,9 @@ class mssql(connection):
         if self.admin_privs:
             self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-        out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
-                                   username.decode('utf-8'),
-                                   password.decode('utf-8'),
+        out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type is 'windows' else '',
+                                   username,
+                                   password,
                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
         self.logger.success(out)
         return True
@@ -201,8 +201,8 @@ class mssql(connection):
         if self.admin_privs:
             self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
-        out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
-                                     username.decode('utf-8'),
+        out = u'{}\\{} {} {}'.format(domain,
+                                     username,
                                      ntlm_hash,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
@@ -230,7 +230,7 @@ class mssql(connection):
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(raw_output.decode('utf-8'))
+        output = u'{}'.format(raw_output)
 
         if self.args.execute or self.args.ps_execute:
             #self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))

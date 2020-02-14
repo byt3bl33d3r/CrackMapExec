@@ -70,7 +70,7 @@ class CMEModule:
         if 'BloodHound-modified.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
-            request.wfile.write(self.ps_script)
+            request.wfile.write(self.ps_script.encode())
             context.log.success('Executing payload... this can take a few minutes...')
         else:
             request.send_response(404)
@@ -79,8 +79,8 @@ class CMEModule:
     def on_response(self, context, response):
         response.send_response(200)
         response.end_headers()
-        length = int(response.headers.getheader('content-length'))
-        data = response.rfile.read(length)
+        length = int(response.headers.get('content-length'))
+        data = response.rfile.read(length).decode()
         response.stop_tracking_host()
         if self.neo4j_URI == "" and self.neo4j_user == "" and self.neo4j_pass == "" :
             self.parse_ouput(data, context, response)

@@ -43,7 +43,7 @@ class TSCH_EXEC:
         return self.__outputBuffer
 
     def output_callback(self, data):
-        self.__outputBuffer = data
+        self.__outputBuffer = data.decode("utf-8") 
 
     def execute_handler(self, data):
         if self.__retOutput:

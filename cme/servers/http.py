@@ -1,10 +1,10 @@
-import BaseHTTPServer
+import http.server
 import threading
 import ssl
 import os
 import sys
 import logging
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 from gevent import sleep
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -45,7 +45,7 @@ class CMEServer(threading.Thread):
         try:
             threading.Thread.__init__(self)
 
-            self.server = BaseHTTPServer.HTTPServer((srv_host, int(port)), RequestHandler)
+            self.server = http.server.HTTPServer((srv_host, int(port)), RequestHandler)
             self.server.hosts   = []
             self.server.module  = module
             self.server.context = context
@@ -90,12 +90,12 @@ class CMEServer(threading.Thread):
         self.server.shutdown()
         self.server.socket.close()
         self.server.server_close()
-        self._Thread__stop()
+        self._stop()
 
         # make sure all the threads are killed
         for thread in threading.enumerate():
             if thread.isAlive():
                 try:
-                    thread._Thread__stop()
+                    thread._stop()
                 except:
                     pass

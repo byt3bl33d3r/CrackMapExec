@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from gevent.pool import Pool
 from gevent import sleep
@@ -15,7 +15,7 @@ from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
 from pprint import pformat
-from ConfigParser import ConfigParser
+import configparser
 import cme.helpers.powershell as powershell
 import cme
 import shutil
@@ -44,7 +44,7 @@ def main():
 
     cme_path = os.path.expanduser('~/.cme')
 
-    config = ConfigParser()
+    config = configparser.ConfigParser()
     config.read(os.path.join(cme_path, 'cme.conf'))
 
     module = None
@@ -168,12 +168,12 @@ def main():
                 exit(1)
 
             if getattr(module, 'opsec_safe') is False:
-                ans = raw_input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
+                ans = input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
                 if ans.lower() not in ['y', 'yes', '']:
                     sys.exit(1)
 
             if getattr(module, 'multiple_hosts') is False and len(targets) > 1:
-                ans = raw_input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
+                ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
                 if ans.lower() not in ['y', 'yes', '']:
                     sys.exit(1)
 

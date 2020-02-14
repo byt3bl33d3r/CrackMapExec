@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python3
 
 # MSF-RPC - A  Python library to facilitate MSG-RPC communication with Metasploit
 
