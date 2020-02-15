@@ -35,7 +35,8 @@ setup(name='crackmapexec',
         'paramiko',
         'xmltodict',
         'six',
-        'terminaltables'
+        'terminaltables',
+        'pywinrm'
     ],
     entry_points={
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],

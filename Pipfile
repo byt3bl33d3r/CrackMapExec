@@ -23,6 +23,7 @@ paramiko = "*"
 xmltodict = "*"
 six = "*"
 terminaltables = "*"
+pywinrm = "*"
 
 [requires]
 python_version = "3.7"
