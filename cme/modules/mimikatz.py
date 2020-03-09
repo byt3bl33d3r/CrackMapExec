@@ -179,7 +179,7 @@ class CMEModule:
     def on_response(self, context, response):
         response.send_response(200)
         response.end_headers()
-        length = int(rresponse.headers.get('content-length'))
+        length = int(response.headers.get('content-length'))
         data = response.rfile.read(length).decode().decode()
 
         # We've received the response, stop tracking this host
