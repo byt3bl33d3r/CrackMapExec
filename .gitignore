@@ -1,4 +1,5 @@
 data/cme.db
+*.bak
 *.log
 .venv
 # Byte-compiled / optimized / DLL files

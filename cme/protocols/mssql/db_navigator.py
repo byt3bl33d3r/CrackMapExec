@@ -19,7 +19,7 @@ class navigator(DatabaseNavigator):
 
             links = self.db.get_admin_relations(userID=credID)
 
-            data.append([credID, str(len(links)) + ' Host(s)', credtype, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
+            data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
 
         self.print_table(data, title='Credentials')
 
@@ -38,7 +38,7 @@ class navigator(DatabaseNavigator):
 
             links = self.db.get_admin_relations(hostID=hostID)
 
-            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname.decode('utf-8'), domain.decode('utf-8'), os, instances])
+            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, instances])
 
         self.print_table(data, title='Hosts')
 
@@ -67,7 +67,7 @@ class navigator(DatabaseNavigator):
                     domain = host[3]
                     os = host[4]
 
-                    data.append([hostID, ip, hostname.decode('utf-8'), domain.decode('utf-8'), os])
+                    data.append([hostID, ip, hostname, domain, os])
 
                 self.print_table(data, title='Host(s)')
 
@@ -87,7 +87,7 @@ class navigator(DatabaseNavigator):
                             credtype = cred[4]
                             # pillaged_from = cred[5]
 
-                            data.append([credID, credtype, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
+                            data.append([credID, credtype, domain, username, password])
 
                 self.print_table(data, title='Credential(s) with Admin Access')
 
@@ -110,14 +110,14 @@ class navigator(DatabaseNavigator):
                     self.db.add_credential("plaintext", domain, username, password)
 
             else:
-                print "[!] Format is 'add domain username password"
+                print("[!] Format is 'add domain username password")
                 return
 
         elif filterTerm.split()[0].lower() == "remove":
 
             args = filterTerm.split()[1:]
             if len(args) != 1:
-                print "[!] Format is 'remove <credID>'"
+                print("[!] Format is 'remove <credID>'")
                 return
             else:
                 self.db.remove_credentials(args)
@@ -146,7 +146,7 @@ class navigator(DatabaseNavigator):
                 username = cred[3]
                 password = cred[4]
 
-                data.append([credID, credType, domain.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
+                data.append([credID, credType, domain, username, password])
 
             self.print_table(data, title='Credential(s)')
 
@@ -165,7 +165,7 @@ class navigator(DatabaseNavigator):
                         domain = host[3]
                         os = host[4]
 
-                        data.append([hostID, ip, hostname.decode('utf-8'), domain.decode('utf-8'), os])
+                        data.append([hostID, ip, hostname, domain, os])
 
             self.print_table(data, title='Admin Access to Host(s)')
 

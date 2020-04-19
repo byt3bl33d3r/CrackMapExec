@@ -13,7 +13,7 @@ class navigator(DatabaseNavigator):
 
             # links = self.db.get_links(credID=credID)
 
-            data.append([credID, url.decode('utf-8'), username.decode('utf-8'), password.decode('utf-8')])
+            data.append([credID, url, username, password])
 
         self.print_table(data, title='Credential(s)')
 
@@ -39,14 +39,14 @@ class navigator(DatabaseNavigator):
                 self.db.add_credential(url, username, password)
 
             else:
-                print "[!] Format is 'add url username password"
+                print("[!] Format is 'add url username password")
                 return
 
         elif filterTerm.split()[0].lower() == "remove":
 
             args = filterTerm.split()[1:]
             if len(args) != 1 :
-                print "[!] Format is 'remove <credID>'"
+                print("[!] Format is 'remove <credID>'")
                 return
             else:
                 self.db.remove_credentials(args)
@@ -74,14 +74,14 @@ class navigator(DatabaseNavigator):
                 # self.db.add_host()
 
             else:
-                print "[!] Format is 'add url ip hostname port"
+                print("[!] Format is 'add url ip hostname port")
                 return
 
         elif filterTerm.split()[0].lower() == "remove":
 
             args = filterTerm.split()[1:]
             if len(args) != 1 :
-                print "[!] Format is 'remove <hostID>'"
+                print("[!] Format is 'remove <hostID>'")
 
             return
             # self.db.remove_host()

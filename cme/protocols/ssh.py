@@ -4,7 +4,7 @@ from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
-from ConfigParser import ConfigParser
+import configparser
 
 
 class ssh(connection):
@@ -58,14 +58,14 @@ class ssh(connection):
             self.conn.connect(self.host, port=self.args.port, username=username, password=password)
             self.check_if_admin()
 
-            self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
-                                                   password.decode('utf-8'),
+            self.logger.success(u'{}:{} {}'.format(username,
+                                                   password,
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
         except Exception as e:
-            self.logger.error(u'{}:{} {}'.format(username.decode('utf-8'),
-                                                 password.decode('utf-8'),
+            self.logger.error(u'{}:{} {}'.format(username,
+                                                 password,
                                                  e))
 
             return False
@@ -74,6 +74,6 @@ class ssh(connection):
         stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
         self.logger.success('Executed command')
         for line in stdout:
-            self.logger.highlight(line.decode('utf-8').strip())
+            self.logger.highlight(line.strip())
 
         return stdout
