@@ -19,12 +19,12 @@ class CMEModule:
         if output:
             context.log.success('Found Anti-Spyware product:')
             for entry in output:
-                for k,v in entry.iteritems():
+                for k,v in entry.items():
                     context.log.highlight('{} => {}'.format(k,v['value']))
 
         output = connection.wmi('Select * from AntiVirusProduct', 'root\\SecurityCenter2')
         if output:
             context.log.success('Found Anti-Virus product:')
             for entry in output:
-                for k,v in entry.iteritems():
+                for k,v in entry.items():
                     context.log.highlight('{} => {}'.format(k,v['value']))

@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from StringIO import StringIO
+from io import StringIO
 
 class CMEModule:
     '''

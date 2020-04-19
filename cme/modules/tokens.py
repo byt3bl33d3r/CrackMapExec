@@ -1,6 +1,6 @@
 from cme.helpers.powershell import *
 from datetime import datetime
-from StringIO import StringIO
+from io import StringIO
 import os
 import sys
 
@@ -55,7 +55,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            request.wfile.write(self.ps_script)
+            request.wfile.write(self.ps_script.encode())
 
         else:
             request.send_response(404)
@@ -64,8 +64,8 @@ class CMEModule:
     def on_response(self, context, response):
         response.send_response(200)
         response.end_headers()
-        length = int(response.headers.getheader('content-length'))
-        data = response.rfile.read(length)
+        length = int(response.headers.get('content-length'))
+        data = response.rfile.read(length).decode()
 
         #We've received the response, stop tracking this host
         response.stop_tracking_host()

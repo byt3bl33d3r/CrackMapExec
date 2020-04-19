@@ -66,7 +66,7 @@ class CMEModule:
             request.send_response(200)
             request.end_headers()
 
-            request.wfile.write(self.ps_script)
+            request.wfile.write(self.ps_script.encode())
 
         elif os.path.basename(self.payload_path) == request.path[1:]:
             request.send_response(200)

@@ -25,12 +25,6 @@
 [submodule "cme/data/mimipenguin"]
 	path = cme/data/mimipenguin
 	url = https://github.com/huntergregal/mimipenguin
-[submodule "cme/thirdparty/pywinrm"]
-	path = cme/thirdparty/pywinrm
-	url = https://github.com/diyan/pywinrm
-[submodule "cme/thirdparty/impacket"]
-	path = cme/thirdparty/impacket
-	url = https://github.com/SecureAuthCorp/impacket
 [submodule "cme/thirdparty/pywerview"]
 	path = cme/thirdparty/pywerview
 	url = https://github.com/the-useless-one/pywerview
