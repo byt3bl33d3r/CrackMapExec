@@ -32,7 +32,8 @@ This repository contains the following repositories as submodules: -
 - `Invoke-Vnc <https://github.com/artkond/Invoke-Vnc>`__ -
 `Mimikittenz <https://github.com/putterpanda/mimikittenz>`__ -
 `NetRipper <https://github.com/NytroRST/NetRipper>`__ -
-`RandomPS-Scripts <https://github.com/xorrior/RandomPS-Scripts>`__
+`RandomPS-Scripts <https://github.com/xorrior/RandomPS-Scripts>`__ -
+`RID-Hijacking <https://github.com/r4wd3r/RID-Hijacking>`
 
 Documentation, Tutorials, Examples
 ==================================

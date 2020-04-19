@@ -12,6 +12,8 @@ prune cme/data/powersploit/Recon/Dictionaries
 prune cme/data/invoke-vnc/vncdll
 prune cme/data/invoke-vnc/winvnc
 prune cme/data/invoke-vnc/ReflectiveDLLInjection
+prune cme/data/RID-Hijacking/modules
+prune cme/data/RID-Hijacking/slides
 recursive-exclude cme/data/invoke-vnc *.py *.bat *.msbuild *.sln pebytes.ps1
 prune cme/data/netripper/DLL
 prune cme/data/netripper/Metasploit
