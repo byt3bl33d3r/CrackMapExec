@@ -1,4 +1,4 @@
-import pylnk
+import pylnk3
 import os
 import ntpath
 from sys import exit

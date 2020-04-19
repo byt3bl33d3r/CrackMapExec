@@ -5,7 +5,6 @@
 #  https://en.hackndo.com [EN]
 
 import json
-import subprocess
 import sys
 
 from lsassy import Lsassy, Logger, Dumper, Parser, Writer
@@ -73,13 +72,6 @@ class CMEModule:
         if self.bloodhound:
             self.set_as_owned(context, connection)
 
-        """
-        Since lsassy is py3.6+ and CME is still py2, lsassy cannot be
-        imported. For this reason, connection information must be sent to lsassy
-        so it can create a new connection.
-
-        When CME is py3.6 compatible, CME connection object will be reused.
-        """
         domain_name = connection.domain
         username = connection.username
         password = getattr(connection, "password", "")
