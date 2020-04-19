@@ -209,7 +209,7 @@ class smb(connection):
         self.domain    = self.conn.getServerDomain()
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
-        self.signing   = self.conn.isSigningRequired()
+        self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
         self.os_arch   = self.get_os_arch()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
