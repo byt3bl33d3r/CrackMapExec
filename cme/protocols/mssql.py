@@ -68,7 +68,7 @@ class mssql(connection):
         # Probably a better way of doing this, grab our IP from the socket
         self.local_ip = str(self.conn.socket).split()[2].split('=')[1].split(':')[0]
 
-        if self.args.auth_type is 'windows':
+        if self.args.auth_type == 'windows':
             try:
                 smb_conn = SMBConnection(self.host, self.host, None)
                 try:
@@ -140,7 +140,7 @@ class mssql(connection):
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
             logging.debug("'sysadmin' group members:\n{}".format(query_output))
 
-            if self.args.auth_type is 'windows':
+            if self.args.auth_type == 'windows':
                 search_string = '{}\\{}'.format(self.domain, self.username)
             else:
                 search_string = self.username
@@ -156,7 +156,7 @@ class mssql(connection):
         return True
 
     def plaintext_login(self, domain, username, password):
-        res = self.conn.login(None, username, password, domain, None, True if self.args.auth_type is 'windows' else False)
+        res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
         if res is not True:
             self.conn.printReplies()
             return False
@@ -170,7 +170,7 @@ class mssql(connection):
         if self.admin_privs:
             self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-        out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type is 'windows' else '',
+        out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type == 'windows' else '',
                                    username,
                                    password,
                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))

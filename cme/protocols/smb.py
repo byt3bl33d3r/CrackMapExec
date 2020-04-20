@@ -907,7 +907,7 @@ class smb(connection):
 
         if self.remote_ops and self.bootkey:
             try:
-                if self.args.ntds is 'vss':
+                if self.args.ntds == 'vss':
                     NTDSFileName = self.remote_ops.saveNTDS()
                     use_vss_method = True
 
