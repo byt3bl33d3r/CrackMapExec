@@ -3,12 +3,12 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='5.0.0dev',
+    version='5.0.1dev',
     description='A swiss army knife for pentesting networks',
     classifiers=[
         'Environment :: Console',
         'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Security',
     ],
     keywords='pentesting security windows active-directory networks',
@@ -20,23 +20,18 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'pycryptodomex',
-        'pyasn1>=0.1.8',
         'gevent>=1.2.0',
         'requests>=2.9.1',
         'requests-ntlm>=0.3.0',
         'bs4',
-        'netaddr',
-        'pyOpenSSL',
         'termcolor',
-        'msgpack-python',
-        'pylnk3>=0.3',
-        'splinter',
+        'msgpack',
+        'pylnk3',
+        'pywinrm',
         'paramiko',
+        'impacket',
         'xmltodict',
-        'six',
-        'terminaltables',
-        'pywinrm'
+        'terminaltables'
     ],
     entry_points={
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],

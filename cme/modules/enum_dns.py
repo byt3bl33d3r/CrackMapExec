@@ -1,3 +1,4 @@
+from datetime import datetime
 from cme.helpers.logger import write_log
 
 class CMEModule:

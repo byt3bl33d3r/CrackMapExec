@@ -5,25 +5,19 @@ verify_ssl = true
 
 [dev-packages]
 ipython = "*"
+flake8 = "*"
+shiv = "*"
 
 [packages]
-pycryptodomex = "*"
-pyasn1 = "*"
 gevent = "*"
 requests = "*"
 requests-ntlm = "*"
 bs4 = "*"
-netaddr = "*"
-pyopenssl = "*"
 termcolor = "*"
-msgpack-python = "*"
+msgpack = "*"
 pylnk3 = "*"
-splinter = "*"
 paramiko = "*"
-xmltodict = "*"
-six = "*"
-terminaltables = "*"
 pywinrm = "*"
-
-[requires]
-python_version = "3.7"
+xmltodict = "*"
+terminaltables = "*"
+impacket = "*"

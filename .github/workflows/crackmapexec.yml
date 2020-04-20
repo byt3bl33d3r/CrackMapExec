@@ -1,0 +1,41 @@
+name: CrackMapExec Tests & Build
+
+on: [push]
+
+jobs:
+  test:
+    name: CrackMapExec Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 4
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: CrackMapExec tests on ${{ matrix.os }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run Tests
+      run: |
+        pip install flake8
+        make tests
+    - name: Build binaries with Shiv
+      run: |
+        pip install shiv
+        make build
+    - name: Upload cme binary
+      uses: actions/upload-artifact@master
+      with:
+        name: cme-${{ matrix.os }}
+        path: bin/cme
+    - name: Upload cmedb binary
+      uses: actions/upload-artifact@master
+      with:
+        name: cmedb-${{ matrix.os }}
+        path: bin/cmedb
