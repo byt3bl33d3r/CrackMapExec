@@ -69,7 +69,7 @@ class SMBEXEC:
         return self.__outputBuffer
 
     def output_callback(self, data):
-        self.__outputBuffer += data.decode("utf-8") 
+        self.__outputBuffer += data
 
     def execute_fileless(self, data):
         self.__output = gen_random_string(6)
