@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from io import StringIO
+from io import BytesIO
 
 class CMEModule:
     '''
@@ -30,7 +30,7 @@ class CMEModule:
                 for path in paths:
                     context.log.info('Found {}'.format(path))
 
-                    buf = StringIO()
+                    buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)
                     xml = ET.fromstring(buf.getvalue())
 
