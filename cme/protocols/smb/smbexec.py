@@ -20,7 +20,7 @@ class SMBEXEC:
         self.__share = share
         self.__output = None
         self.__batchFile = None
-        self.__outputBuffer = ''
+        self.__outputBuffer = b''
         self.__shell = '%COMSPEC% /Q /c '
         self.__retOutput = False
         self.__rpctransport = None
@@ -64,9 +64,19 @@ class SMBEXEC:
 
     def execute(self, command, output=False):
         self.__retOutput = output
-        self.execute_fileless(command)
+        if os.path.isfile(command):
+            with open(command) as commands:
+                for c in commands:
+                    self.execute_fileless(c.strip())
+        else:
+            self.execute_handler(command)
         self.finish()
-        return self.__outputBuffer
+        try:
+            return self.__outputBuffer.decode()
+        except UnicodeDecodeError:
+            logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+            return self.__outputBuffer.decode('cp437')
+        
 
     def output_callback(self, data):
         self.__outputBuffer += data
@@ -108,7 +118,7 @@ class SMBEXEC:
 
         while True:
             try:
-                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'r') as output:
+                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'rb') as output:
                     self.output_callback(output.read())
                 break
             except IOError:

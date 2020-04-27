@@ -80,7 +80,6 @@ def requires_smb_server(func):
                 smb_server.start()
 
         output = func(self, *args, **kwargs)
-
         if smb_server is not None:
             #with sem:
             smb_server.shutdown()
@@ -447,7 +446,13 @@ class smb(connection):
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
 
-        return self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        if os.path.isfile(payload):
+            with open(payload) as commands:
+                for c in commands:
+                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        else:
+            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        return ''
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())

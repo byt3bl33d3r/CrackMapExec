@@ -14,7 +14,7 @@ class TSCH_EXEC:
         self.__share_name = share_name
         self.__lmhash = ''
         self.__nthash = ''
-        self.__outputBuffer = ''
+        self.__outputBuffer = b''
         self.__retOutput = False
         #self.__aesKey = aesKey
         #self.__doKerberos = doKerberos
@@ -40,10 +40,14 @@ class TSCH_EXEC:
     def execute(self, command, output=False):
         self.__retOutput = output
         self.execute_handler(command)
-        return self.__outputBuffer
+        try:
+            return self.__outputBuffer.decode()
+        except UnicodeDecodeError:
+            logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+            return self.__outputBuffer.decode('cp437')
 
     def output_callback(self, data):
-        self.__outputBuffer = data.decode("utf-8") 
+        self.__outputBuffer = data
 
     def execute_handler(self, data):
         if self.__retOutput:
