@@ -214,7 +214,8 @@ class mssql(connection):
         self.conn.sql_query(self.args.mssql_query)
         self.conn.printRows()
         for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
-            self.logger.highlight(line.strip())
+            if line.strip() != '':
+                self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
@@ -237,7 +238,8 @@ class mssql(connection):
             self.logger.success('Executed command via mssqlexec')
             buf = StringIO(output).readlines()
             for line in buf:
-                self.logger.highlight(line.strip())
+                if line.strip() != '':
+                    self.logger.highlight(line.strip())
 
         return output
 
