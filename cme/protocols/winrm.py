@@ -1,13 +1,13 @@
-import winrm as pywinrm
+
 import requests
 import logging
-from io import StringIO
-# from winrm.exceptions import InvalidCredentialsError
+import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-import configparser
+from io import StringIO
+from pypsrp.client import Client
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -115,14 +115,15 @@ class winrm(connection):
         try:
             from urllib3.connectionpool import log
             log.addFilter(SuppressFilter())
-            self.conn = pywinrm.Session(self.host,
-                                        auth=('{}\\{}'.format(domain, username), password),
-                                        transport='ntlm',
-                                        server_cert_validation='ignore')
+            self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=username,
+                                        password=password,
+                                        ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
             # we could just authenticate without running a command :) (probably)
-            self.conn.run_cmd('hostname')
+            self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                        username,
@@ -139,35 +140,16 @@ class winrm(connection):
 
             return False
 
-    def parse_output(self, response_obj):
-        if response_obj.status_code == 0:
-            try:
-                buf = StringIO(response_obj.std_out.decode('utf-8')).readlines()
-            except UnicodeDecodeError:
-                logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
-                buf = StringIO(response_obj.std_out.decode('cp437')).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-            return response_obj.std_out
-
-        else:
-            try:
-                buf = StringIO(response_obj.std_out.decode('utf-8')).readlines()
-            except UnicodeDecodeError:
-                logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
-                buf = StringIO(response_obj.std_out.decode('cp437')).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-            return response_obj.std_err
-
     def execute(self, payload=None, get_output=False):
-        r = self.conn.run_cmd(self.args.execute)
+        try:
+            r = self.conn.execute_cmd(self.args.execute)
+        except:
+            self.logger.debug('Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !')
+            r = self.conn.execute_ps(self.args.execute)
         self.logger.success('Executed command')
-        self.parse_output(r)
+        self.logger.highlight(r[0])
 
     def ps_execute(self, payload=None, get_output=False):
-        r = self.conn.run_ps(self.args.ps_execute)
+        r = self.conn.execute_ps(self.args.ps_execute)
         self.logger.success('Executed command')
-        self.parse_output(r)
+        self.logger.highlight(r[0])
