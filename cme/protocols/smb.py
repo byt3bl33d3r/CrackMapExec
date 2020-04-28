@@ -810,7 +810,7 @@ class smb(connection):
         with open(self.args.put_file[0], 'rb') as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
-                self.logger.success('Created file {} on the \\\\{}{}'.format(self.args.put_file[0], self.args.share, self.args.put_file[1]))
+                self.logger.success('Created file {} on \\\\{}{}'.format(self.args.put_file[0], self.args.share, self.args.put_file[1]))
             except Exception as e:
                 self.logger.error('Error writing file to share {}: {}'.format(self.args.share, e))
 
