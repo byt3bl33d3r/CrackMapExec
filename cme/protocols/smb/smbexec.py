@@ -69,7 +69,7 @@ class SMBEXEC:
                 for c in commands:
                     self.execute_fileless(c.strip())
         else:
-            self.execute_handler(command)
+            self.execute_fileless(command)
         self.finish()
         try:
             return self.__outputBuffer.decode()
