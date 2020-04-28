@@ -152,6 +152,10 @@ class smb(connection):
         sgroup.add_argument("--depth", type=int, default=None, help='max spider recursion depth (default: infinity & beyond)')
         sgroup.add_argument("--only-files", action='store_true', help='only spider files')
 
+        tgroup = smb_parser.add_argument_group("Files", "Options for put and get remote files")
+        tgroup.add_argument("--put-file", nargs=2, metavar="FILE", help='Put a local file into remote target, ex: whoami.txt \\\\Windows\\\\Temp\\\\whoami.txt')
+        tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: \\\\Windows\\\\Temp\\\\whoami.txt whoami.txt')
+
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
@@ -799,6 +803,26 @@ class smb(connection):
         dce.disconnect()
 
         return entries
+
+    @requires_admin
+    def put_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
+        with open(self.args.put_file[0], 'rb') as file:
+            try:
+                self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
+                self.logger.success('Created file {} on the \\\\{}{}'.format(self.args.put_file[0], self.args.share, self.args.put_file[1]))
+            except Exception as e:
+                self.logger.error('Error writing file to share {}: {}'.format(self.args.share, e))
+
+    @requires_admin
+    def get_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        with open(self.args.get_file[1], 'wb+') as file:
+            try:
+                self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
+                self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+            except Exception as e:
+                self.logger.error('Error reading file {}: {}'.format(self.args.share, e))
 
     def enable_remoteops(self):
         if self.remote_ops is not None and self.bootkey is not None:
