@@ -48,9 +48,12 @@ class ssh(connection):
         except socket.error:
             return False
 
+    def client_close(self):
+        self.conn.close()
+
     def check_if_admin(self):
         stdin, stdout, stderr = self.conn.exec_command('id')
-        if stdout.read().find('uid=0(root)') != -1:
+        if stdout.read().decode('utf-8').find('uid=0(root)') != -1:
             self.admin_privs = True
 
     def plaintext_login(self, username, password):
@@ -67,11 +70,14 @@ class ssh(connection):
             self.logger.error(u'{}:{} {}'.format(username,
                                                  password,
                                                  e))
-
+            self.client_close()
             return False
 
     def execute(self, payload=None, get_output=False):
-        stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
+        try:
+            stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
+        except AttributeError:
+            return ''
         self.logger.success('Executed command')
         for line in stdout:
             self.logger.highlight(line.strip())
