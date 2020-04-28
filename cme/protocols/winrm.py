@@ -13,6 +13,10 @@ import configparser
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+class SuppressFilter(logging.Filter):
+    # remove warning https://github.com/diyan/pywinrm/issues/269
+    def filter(self, record):
+        return 'wsman' not in record.getMessage()
 
 class winrm(connection):
 
@@ -109,6 +113,8 @@ class winrm(connection):
 
     def plaintext_login(self, domain, username, password):
         try:
+            from urllib3.connectionpool import log
+            log.addFilter(SuppressFilter())
             self.conn = pywinrm.Session(self.host,
                                         auth=('{}\\{}'.format(domain, username), password),
                                         transport='ntlm',
@@ -135,14 +141,22 @@ class winrm(connection):
 
     def parse_output(self, response_obj):
         if response_obj.status_code == 0:
-            buf = StringIO(response_obj.std_out).readlines()
+            try:
+                buf = StringIO(response_obj.std_out.decode('utf-8')).readlines()
+            except UnicodeDecodeError:
+                logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+                buf = StringIO(response_obj.std_out.decode('cp437')).readlines()
             for line in buf:
                 self.logger.highlight(line.strip())
 
             return response_obj.std_out
 
         else:
-            buf = StringIO(response_obj.std_err).readlines()
+            try:
+                buf = StringIO(response_obj.std_out.decode('utf-8')).readlines()
+            except UnicodeDecodeError:
+                logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+                buf = StringIO(response_obj.std_out.decode('cp437')).readlines()
             for line in buf:
                 self.logger.highlight(line.strip())
 
