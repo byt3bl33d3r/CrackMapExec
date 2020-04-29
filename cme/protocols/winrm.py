@@ -57,32 +57,36 @@ class winrm(connection):
                                         'hostname': 'NONE'})
 
     def enum_host_info(self):
-        try:
-            smb_conn = SMBConnection(self.host, self.host, None)
-            try:
-                smb_conn.login('', '')
-            except SessionError as e:
-                if "STATUS_ACCESS_DENIED" in e.message:
-                    pass
-
-            self.domain = smb_conn.getServerDomain()
-            self.hostname = smb_conn.getServerName()
-
-            self.logger.extra['hostname'] = self.hostname
-
-            try:
-                smb_conn.logoff()
-            except:
-                pass
-
-        except Exception as e:
-            logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
-
         if self.args.domain:
             self.domain = self.args.domain
+            self.logger.extra['hostname'] = self.hostname
+        else:
+            try:
+                smb_conn = SMBConnection(self.host, self.host, None)
+                try:
+                    smb_conn.login('', '')
+                except SessionError as e:
+                    if "STATUS_ACCESS_DENIED" in e.message:
+                        pass
 
-        if self.args.local_auth:
-            self.domain = self.hostname
+                self.domain = smb_conn.getServerDomain()
+                self.hostname = smb_conn.getServerName()
+
+                self.logger.extra['hostname'] = self.hostname
+
+                try:
+                    smb_conn.logoff()
+                except:
+                    pass
+
+            except Exception as e:
+                logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+
+            if self.args.domain:
+                self.domain = self.args.domain
+
+            if self.args.local_auth:
+                self.domain = self.hostname
 
     def print_host_info(self):
         self.logger.info(self.endpoint)
