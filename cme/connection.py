@@ -166,6 +166,10 @@ class connection(object):
         for user in self.args.username:
             if not isinstance(user, str) and isfile(user.name):
                 for usr in user:
+                    if "\\" in usr:
+                        tmp = usr
+                        usr = tmp.split('\\')[1].strip()
+                        self.domain = tmp.split('\\')[0]
                     if self.args.hash:
                         with sem:
                             for ntlm_hash in self.args.hash:
