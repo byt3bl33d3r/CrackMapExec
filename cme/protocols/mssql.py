@@ -69,32 +69,35 @@ class mssql(connection):
         self.local_ip = str(self.conn.socket).split()[2].split('=')[1].split(':')[0]
 
         if self.args.auth_type == 'windows':
-            try:
-                smb_conn = SMBConnection(self.host, self.host, None)
+            if self.args.domain:
+                self.domain = self.args.domain
+            else:
                 try:
-                    smb_conn.login('', '')
-                except SessionError as e:
-                    if "STATUS_ACCESS_DENIED" in e.message:
+                    smb_conn = SMBConnection(self.host, self.host, None)
+                    try:
+                        smb_conn.login('', '')
+                    except SessionError as e:
+                        if "STATUS_ACCESS_DENIED" in e.message:
+                            pass
+
+                    self.domain = smb_conn.getServerDomain()
+                    self.hostname = smb_conn.getServerName()
+                    self.server_os = smb_conn.getServerOS()
+                    self.logger.extra['hostname'] = self.hostname
+
+                    try:
+                        smb_conn.logoff()
+                    except:
                         pass
 
-                self.domain = smb_conn.getServerDomain()
-                self.hostname = smb_conn.getServerName()
-                self.server_os = smb_conn.getServerOS()
-                self.logger.extra['hostname'] = self.hostname
+                    if self.args.domain:
+                        self.domain = self.args.domain
 
-                try:
-                    smb_conn.logoff()
-                except:
-                    pass
+                    if self.args.local_auth:
+                        self.domain = self.hostname
 
-                if self.args.domain:
-                    self.domain = self.args.domain
-
-                if self.args.local_auth:
-                    self.domain = self.hostname
-
-            except Exception as e:
-                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+                except Exception as e:
+                    self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
         self.mssql_instances = self.conn.getInstances(10)
         if len(self.mssql_instances) > 0:
@@ -214,7 +217,8 @@ class mssql(connection):
         self.conn.sql_query(self.args.mssql_query)
         self.conn.printRows()
         for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
-            self.logger.highlight(line.strip())
+            if line.strip() != '':
+                self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
@@ -237,7 +241,8 @@ class mssql(connection):
             self.logger.success('Executed command via mssqlexec')
             buf = StringIO(output).readlines()
             for line in buf:
-                self.logger.highlight(line.strip())
+                if line.strip() != '':
+                    self.logger.highlight(line.strip())
 
         return output
 
