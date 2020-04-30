@@ -29,9 +29,12 @@ class winrm(connection):
     def proto_args(parser, std_parser, module_parser):
         winrm_parser = parser.add_parser('winrm', help="own stuff using WINRM", parents=[std_parser, module_parser])
         winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+        winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
+        winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+
         cgroup = winrm_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
@@ -133,8 +136,8 @@ class winrm(connection):
                                                        username,
                                                        password,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-
-            return True
+            if not self.args.continue_on_success:
+                return True
 
         except Exception as e:
             self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,

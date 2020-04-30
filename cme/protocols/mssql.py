@@ -31,6 +31,8 @@ class mssql(connection):
         mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
         mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
+        mssql_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
+        mssql_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
@@ -162,6 +164,9 @@ class mssql(connection):
         res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
         if res is not True:
             self.conn.printReplies()
+            if self.args.no_bruteforce:
+                self.conn.disconnect()
+                self.create_conn_obj()
             return False
 
         self.password = password
@@ -178,7 +183,11 @@ class mssql(connection):
                                    password,
                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
         self.logger.success(out)
-        return True
+        if not self.args.continue_on_success:
+            return True
+
+        self.conn.disconnect()
+        self.create_conn_obj()
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -193,6 +202,9 @@ class mssql(connection):
         res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True)
         if res is not True:
             self.conn.printReplies()
+            if self.args.no_bruteforce:
+                self.conn.disconnect()
+                self.create_conn_obj()
             return False
 
         self.hash = ntlm_hash
@@ -208,10 +220,12 @@ class mssql(connection):
                                      username,
                                      ntlm_hash,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
-
         self.logger.success(out)
+        if not self.args.continue_on_success:
+            return True
 
-        return True
+        self.conn.disconnect()
+        self.create_conn_obj()
 
     def mssql_query(self):
         self.conn.sql_query(self.args.mssql_query)

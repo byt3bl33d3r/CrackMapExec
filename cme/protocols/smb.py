@@ -112,6 +112,7 @@ class smb(connection):
     def proto_args(parser, std_parser, module_parser):
         smb_parser = parser.add_parser('smb', help="own stuff using SMB", parents=[std_parser, module_parser])
         smb_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+        smb_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         dgroup = smb_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
