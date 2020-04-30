@@ -41,6 +41,8 @@ class TSCH_EXEC:
         self.__retOutput = output
         self.execute_handler(command)
         try:
+            if isinstance(self.__outputBuffer, str):
+                return self.__outputBuffer
             return self.__outputBuffer.decode()
         except UnicodeDecodeError:
             logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
