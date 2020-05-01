@@ -17,6 +17,7 @@ class mssql(connection):
     def __init__(self, args, db, host):
         self.mssql_instances = None
         self.domain = None
+        self.server_os = None
         self.hash = None
 
         connection.__init__(self, args, db, host)
