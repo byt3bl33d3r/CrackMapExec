@@ -121,8 +121,6 @@ class mssql(connection):
         except:
             pass
 
-        self.create_conn_obj()
-
     def print_host_info(self):
         if len(self.mssql_instances) > 0:
             self.logger.info("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
@@ -166,6 +164,11 @@ class mssql(connection):
         return True
 
     def plaintext_login(self, domain, username, password):
+        try:
+            self.conn.disconnect()
+        except:
+            pass
+        self.create_conn_obj()
 
         try:
             res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
@@ -199,9 +202,6 @@ class mssql(connection):
                                                         e))
             return False
 
-        self.conn.disconnect()
-        self.create_conn_obj()
-
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
         nthash = ''
@@ -212,33 +212,43 @@ class mssql(connection):
         else:
             nthash = ntlm_hash
 
-        res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True)
-        if res is not True:
-            self.conn.printReplies()
-            if self.args.no_bruteforce:
-                self.conn.disconnect()
-                self.create_conn_obj()
-            return False
-
-        self.hash = ntlm_hash
-        self.username = username
-        self.domain = domain
-        self.check_if_admin()
-        self.db.add_credential('hash', domain, username, ntlm_hash)
-
-        if self.admin_privs:
-            self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
-
-        out = u'{}\\{} {} {}'.format(domain,
-                                     username,
-                                     ntlm_hash,
-                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
-        self.logger.success(out)
-        if not self.args.continue_on_success:
-            return True
-
-        self.conn.disconnect()
+        try:
+            self.conn.disconnect()
+        except:
+            pass
         self.create_conn_obj()
+
+        try:
+            res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True)
+            if res is not True:
+                self.conn.printReplies()
+                if self.args.no_bruteforce:
+                    self.conn.disconnect()
+                    self.create_conn_obj()
+                return False
+
+            self.hash = ntlm_hash
+            self.username = username
+            self.domain = domain
+            self.check_if_admin()
+            self.db.add_credential('hash', domain, username, ntlm_hash)
+
+            if self.admin_privs:
+                self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
+
+            out = u'{}\\{} {} {}'.format(domain,
+                                        username,
+                                        ntlm_hash,
+                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.success(out)
+            if not self.args.continue_on_success:
+                return True
+        except Exception as e:
+            self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        ntlm_hash,
+                                                        e))
+            return False
 
     def mssql_query(self):
         self.conn.sql_query(self.args.mssql_query)
