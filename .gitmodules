@@ -31,3 +31,6 @@
 [submodule "cme/data/RID-Hijacking"]
 	path = cme/data/RID-Hijacking
 	url = https://github.com/r4wd3r/RID-Hijacking.git
+[submodule "cme/data/Invoke-MetasploitPayload"]
+	path = cme/data/Invoke-MetasploitPayload
+	url = https://github.com/jaredhaight/Invoke-MetasploitPayload
