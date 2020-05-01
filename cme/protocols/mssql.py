@@ -166,30 +166,38 @@ class mssql(connection):
         return True
 
     def plaintext_login(self, domain, username, password):
-        res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
-        if res is not True:
-            self.conn.printReplies()
-            if self.args.no_bruteforce:
-                self.conn.disconnect()
-                self.create_conn_obj()
+
+        try:
+            res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
+            if res is not True:
+                self.conn.printReplies()
+                if self.args.no_bruteforce:
+                    self.conn.disconnect()
+                    self.create_conn_obj()
+                return False
+
+            self.password = password
+            self.username = username
+            self.domain = domain
+            self.check_if_admin()
+            self.db.add_credential('plaintext', domain, username, password)
+
+            if self.admin_privs:
+                self.db.add_admin_user('plaintext', domain, username, password, self.host)
+
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type == 'windows' else '',
+                                    username,
+                                    password,
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.success(out)
+            if not self.args.continue_on_success:
+                return True
+        except Exception as e:
+            self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        password,
+                                                        e))
             return False
-
-        self.password = password
-        self.username = username
-        self.domain = domain
-        self.check_if_admin()
-        self.db.add_credential('plaintext', domain, username, password)
-
-        if self.admin_privs:
-            self.db.add_admin_user('plaintext', domain, username, password, self.host)
-
-        out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type == 'windows' else '',
-                                   username,
-                                   password,
-                                   highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
-        self.logger.success(out)
-        if not self.args.continue_on_success:
-            return True
 
         self.conn.disconnect()
         self.create_conn_obj()
