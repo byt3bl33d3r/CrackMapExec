@@ -174,9 +174,6 @@ class mssql(connection):
             res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
             if res is not True:
                 self.conn.printReplies()
-                if self.args.no_bruteforce:
-                    self.conn.disconnect()
-                    self.create_conn_obj()
                 return False
 
             self.password = password
@@ -222,9 +219,6 @@ class mssql(connection):
             res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, True)
             if res is not True:
                 self.conn.printReplies()
-                if self.args.no_bruteforce:
-                    self.conn.disconnect()
-                    self.create_conn_obj()
                 return False
 
             self.hash = ntlm_hash
