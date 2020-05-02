@@ -69,7 +69,7 @@ class CMEModule:
         if 'Invoke-Shellcode.ps1' == request.path[1:]:
             request.send_response(200)
             request.end_headers()
-            request.wfile.write(self.ps_script)
+            request.wfile.write(self.ps_script.encode())
             request.stop_tracking_host()
         else:
             request.send_response(404)

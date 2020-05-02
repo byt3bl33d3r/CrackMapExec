@@ -1,30 +1,23 @@
-from netaddr import IPAddress, IPRange, IPNetwork, AddrFormatError
+from ipaddress import ip_address, ip_network, summarize_address_range
 
 def parse_targets(target):
-    if '-' in target:
-        ip_range = target.split('-')
-        try:
-            hosts = IPRange(ip_range[0], ip_range[1])
-        except AddrFormatError:
+    try:
+        if '-' in target:
+            start_ip, end_ip = target.split('-')
             try:
-                start_ip = IPAddress(ip_range[0])
+                end_ip = ip_address(end_ip)
+            except ValueError:
+                first_three_octets = start_ip.split(".")[:-1]
+                first_three_octets.append(end_ip)
+                end_ip = ip_address(
+                            ".".join(first_three_octets)
+                        )
 
-                start_ip_words = list(start_ip.words)
-                start_ip_words[-1] = ip_range[1]
-                start_ip_words = [str(v) for v in start_ip_words]
-
-                end_ip = IPAddress('.'.join(start_ip_words))
-
-                t = IPRange(start_ip, end_ip)
-            except AddrFormatError:
-                t = target
-    else:
-        try:
-            t = IPNetwork(target)
-        except AddrFormatError:
-            t = target
-
-    if type(t) == IPNetwork or type(t) == IPRange:
-        return list(t)
-    else:
-        return [t.strip()]
+            for ip_range in summarize_address_range(ip_address(start_ip), end_ip):
+                for ip in ip_range:
+                    yield str(ip)
+        else:
+            for ip in ip_network(target, strict=False):
+                yield str(ip)
+    except ValueError:
+        yield str(target)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from cme.helpers.logger import write_log
 
 class CMEModule:
@@ -52,7 +53,7 @@ class CMEModule:
                     else:
                         domain_data[rtype] = ["{}: {}".format(rname, rvalue)]
 
-                for k, v in sorted(domain_data.iteritems()):
+                for k, v in sorted(domain_data.items()):
                     context.log.highlight("Record Type: {}".format(k))
                     data += "Record Type: {}\n".format(k)
                     for d in sorted(v):

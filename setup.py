@@ -1,10 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import os
 from setuptools import setup, find_packages
 from subprocess import *
 
-VER_MAJOR = 4
+VER_MAJOR = 5
 VER_MINOR = 0
 VER_MAINT = 1
 VER_PREREL = "dev1"
@@ -28,7 +28,7 @@ setup(name='crackmapexec',
     classifiers=[
         'Environment :: Console',
         'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Topic :: Security',
     ],
     keywords='pentesting security windows active-directory networks',
@@ -40,21 +40,17 @@ setup(name='crackmapexec',
         "cme", "cme.*"
     ]),
     install_requires=[
-        'pycryptodomex',
-        'pyasn1>=0.1.8',
         'gevent>=1.2.0',
         'requests>=2.9.1',
         'requests-ntlm>=0.3.0',
         'bs4',
-        'netaddr',
-        'pyOpenSSL',
         'termcolor',
-        'msgpack-python',
-        'pylnk',
-        'splinter',
+        'msgpack',
+        'pylnk3',
+        'pywinrm',
         'paramiko',
+        'impacket',
         'xmltodict',
-        'six',
         'terminaltables'
     ],
     entry_points={

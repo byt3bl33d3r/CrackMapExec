@@ -1,4 +1,4 @@
-import pylnk
+import pylnk3
 import os
 import ntpath
 from sys import exit
@@ -41,7 +41,7 @@ class CMEModule:
 
         if not self.cleanup:
             self.server = module_options['SERVER']
-            link = pylnk.create(self.lnk_path)
+            link = pylnk3.create(self.lnk_path)
             link.icon = '\\\\{}\\icons\\icon.ico'.format(self.server)
             link.save()
 

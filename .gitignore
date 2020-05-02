@@ -1,6 +1,8 @@
 data/cme.db
+*.bak
 *.log
 .venv
+.vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

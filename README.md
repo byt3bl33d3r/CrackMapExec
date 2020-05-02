@@ -1,4 +1,4 @@
-![Supported Python versions](https://img.shields.io/badge/python-2.7-blue.svg)
+![Supported Python versions](https://img.shields.io/badge/python-3.6+-blue.svg)
 
 # CrackMapExec
 
@@ -32,7 +32,7 @@ This repository contains the following repositories as submodules:
 - [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
 - [SessionGopher](https://github.com/fireeye/SessionGopher)
 - [Mimipenguin](https://github.com/huntergregal/mimipenguin)
-
+- [RID-Hijacking](https://github.com/r4wd3r/RID-Hijacking)
 # Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
 
@@ -41,11 +41,9 @@ Please see the installation wiki page [here](https://github.com/byt3bl33d3r/Crac
 
 # How to fund my tea & sushi reserve
 
-BTC: `1ER8rRE6NTZ7RHN88zc6JY87LvtyuRUJGU`
+If you use CrackMapExec a lot (especially if it's used commercially), please consider donating as a lot of time & effort went into building & maintaining this.
 
-ETH: `0x91d9aDCf8B91f55BCBF0841616A01BeE551E90ee`
-
-LTC: `LLMa2bsvXbgBGnnBwiXYazsj7Uz6zRe4fr`
+Press the "Sponsor" button on the top of this page to see ways of donating/sponsoring this project.
 
 # To do
 - Kerberos support

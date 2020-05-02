@@ -1,7 +1,7 @@
 from cme.helpers.powershell import *
 from cme.helpers.logger import write_log
 from datetime import datetime
-from StringIO import StringIO
+from io import StringIO
 
 class CMEModule:
     '''
@@ -52,8 +52,8 @@ class CMEModule:
     def on_response(self, context, response):
         response.send_response(200)
         response.end_headers()
-        length = int(response.headers.getheader('content-length'))
-        data = response.rfile.read(length)
+        length = int(response.headers.get('content-length'))
+        data = response.rfile.read(length).decode()
 
         #We've received the response, stop tracking this host
         response.stop_tracking_host()

@@ -1,13 +1,13 @@
 import socket
 import logging
 from cme.logger import CMEAdapter
-from StringIO import StringIO
+from io import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
-from ConfigParser import ConfigParser
+import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
@@ -68,7 +68,7 @@ class mssql(connection):
         # Probably a better way of doing this, grab our IP from the socket
         self.local_ip = str(self.conn.socket).split()[2].split('=')[1].split(':')[0]
 
-        if self.args.auth_type is 'windows':
+        if self.args.auth_type == 'windows':
             try:
                 smb_conn = SMBConnection(self.host, self.host, None)
                 try:
@@ -140,7 +140,7 @@ class mssql(connection):
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
             logging.debug("'sysadmin' group members:\n{}".format(query_output))
 
-            if self.args.auth_type is 'windows':
+            if self.args.auth_type == 'windows':
                 search_string = '{}\\{}'.format(self.domain, self.username)
             else:
                 search_string = self.username
@@ -156,7 +156,7 @@ class mssql(connection):
         return True
 
     def plaintext_login(self, domain, username, password):
-        res = self.conn.login(None, username, password, domain, None, True if self.args.auth_type is 'windows' else False)
+        res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
         if res is not True:
             self.conn.printReplies()
             return False
@@ -170,9 +170,9 @@ class mssql(connection):
         if self.admin_privs:
             self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-        out = u'{}{}:{} {}'.format('{}\\'.format(domain.decode('utf-8')) if self.args.auth_type is 'windows' else '',
-                                   username.decode('utf-8'),
-                                   password.decode('utf-8'),
+        out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type == 'windows' else '',
+                                   username,
+                                   password,
                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
         self.logger.success(out)
         return True
@@ -201,8 +201,8 @@ class mssql(connection):
         if self.admin_privs:
             self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
-        out = u'{}\\{} {} {}'.format(domain.decode('utf-8'),
-                                     username.decode('utf-8'),
+        out = u'{}\\{} {} {}'.format(domain,
+                                     username,
                                      ntlm_hash,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
@@ -214,7 +214,8 @@ class mssql(connection):
         self.conn.sql_query(self.args.mssql_query)
         self.conn.printRows()
         for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
-            self.logger.highlight(line.strip())
+            if line.strip() != '':
+                self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
@@ -230,14 +231,15 @@ class mssql(connection):
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(raw_output.decode('utf-8'))
+        output = u'{}'.format(raw_output)
 
         if self.args.execute or self.args.ps_execute:
             #self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
             self.logger.success('Executed command via mssqlexec')
             buf = StringIO(output).readlines()
             for line in buf:
-                self.logger.highlight(line.strip())
+                if line.strip() != '':
+                    self.logger.highlight(line.strip())
 
         return output
 
