@@ -1,6 +1,7 @@
 from ipaddress import ip_address, ip_network, summarize_address_range
 
 def parse_targets(target):
+    target = str(target).strip()
     try:
         if '-' in target:
             start_ip, end_ip = target.split('-')
