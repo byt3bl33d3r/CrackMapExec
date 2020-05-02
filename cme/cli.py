@@ -7,7 +7,6 @@ from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    #VERSION  = '5.0.1dev'
     VERSION = pkg_resources.get_distribution('crackmapexec').version
     CODENAME = 'P3l1as'
 
