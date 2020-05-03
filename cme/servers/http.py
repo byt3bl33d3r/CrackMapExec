@@ -90,7 +90,6 @@ class CMEServer(threading.Thread):
         self.server.shutdown()
         self.server.socket.close()
         self.server.server_close()
-        self._stop()
 
         # make sure all the threads are killed
         for thread in threading.enumerate():
