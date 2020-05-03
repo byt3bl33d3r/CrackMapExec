@@ -8,7 +8,7 @@ from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
 
 class WMIEXEC:
-    def __init__(self, target, share_name, username, password, domain, smbconnection, hashes=None, share=None):
+    def __init__(self, target, share_name, username, password, domain, smbconnection, doKerberos=False, hashes=None, share=None):
         self.__target = target
         self.__username = username
         self.__password = password
@@ -23,7 +23,7 @@ class WMIEXEC:
         self.__shell = 'cmd.exe /Q /c '
         self.__pwd = 'C:\\'
         self.__aesKey = None
-        self.__doKerberos = False
+        self.__doKerberos = doKerberos
         self.__retOutput = True
 
         if hashes is not None:
@@ -35,8 +35,7 @@ class WMIEXEC:
 
         if self.__password is None:
             self.__password = ''
-
-        self.__dcom = DCOMConnection(self.__target, self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, oxidResolver = True, doKerberos=self.__doKerberos)
+        self.__dcom = DCOMConnection(self.__target, self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, oxidResolver=True, doKerberos=self.__doKerberos)
         iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login,wmi.IID_IWbemLevel1Login)
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices= iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)

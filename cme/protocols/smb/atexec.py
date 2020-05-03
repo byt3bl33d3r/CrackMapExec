@@ -2,11 +2,12 @@ import os
 import logging
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from cme.helpers.misc import gen_random_string
 from gevent import sleep
 
 class TSCH_EXEC:
-    def __init__(self, target, share_name, username, password, domain, hashes=None):
+    def __init__(self, target, share_name, username, password, domain, doKerberos=False, hashes=None):
         self.__target = target
         self.__username = username
         self.__password = password
@@ -16,8 +17,9 @@ class TSCH_EXEC:
         self.__nthash = ''
         self.__outputBuffer = b''
         self.__retOutput = False
-        #self.__aesKey = aesKey
-        #self.__doKerberos = doKerberos
+        # self.__aesKey = aesKey
+        self.__doKerberos = doKerberos
+        self.__kdcHost = None
 
         if hashes is not None:
         #This checks to see if we didn't provide the LM Hash
@@ -35,7 +37,7 @@ class TSCH_EXEC:
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-            #rpctransport.set_kerberos(self.__doKerberos)
+            self.__rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
     def execute(self, command, output=False):
         self.__retOutput = output
@@ -124,6 +126,8 @@ class TSCH_EXEC:
     def doStuff(self, command, fileless=False):
 
         dce = self.__rpctransport.get_dce_rpc()
+        if self.__doKerberos:
+            dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
         dce.set_credentials(*self.__rpctransport.get_credentials())
         dce.connect()

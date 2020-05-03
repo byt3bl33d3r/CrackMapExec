@@ -11,6 +11,7 @@ from impacket.nmb import NetBIOSError
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
 from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
@@ -185,6 +186,8 @@ class smb(connection):
             transport = DCERPCTransportFactory(stringBinding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
+            if self._conn.kerberos:
+                dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:
                 dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
@@ -221,6 +224,9 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
+        if self.args.kerberos:
+            self.domain = self.conn.getServerDNSDomainName()
+
         self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
         try:
@@ -248,6 +254,15 @@ class smb(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
+    def kerberos_login(self):
+        self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, self.aesKey, self.dc_ip)
+        # self.check_if_admin() # currently not working with kerberos so we set admin_privs to True
+        self.admin_privs = True
+        out = u'{}\\{} {}'.format(self.domain,
+                                self.conn.getCredentials()[0],
+                                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+        self.logger.success(out)
+        return True
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -395,7 +410,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.hash, self.args.share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -415,7 +430,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.hash) #self.args.share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -425,7 +440,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.kerberos, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:

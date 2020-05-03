@@ -47,6 +47,7 @@ def gen_cli_args():
     std_parser.add_argument('-id', metavar="CRED_ID", nargs='+', default=[], type=str, dest='cred_id', help='database credential ID(s) to use for authentication')
     std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
+    std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
     fail_group = std_parser.add_mutually_exclusive_group()
     fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='max number of global failed login attempts')
     fail_group.add_argument("--ufail-limit", metavar='LIMIT', type=int, help='max number of failed login attempts per username')
