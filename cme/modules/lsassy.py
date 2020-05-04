@@ -120,14 +120,15 @@ class CMEModule:
             context.log.error(credentials['error_msg'])
             if context.verbose and credentials['error_exception']:
                 context.log.error(credentials['error_exception'])
-        elif json.loads(credentials['credentials']).items():
-            self.process_credentials(context, connection, credentials["credentials"])
         else:
-            context.log.highlight("No credential found :'(")
+            self.process_credentials(context, connection, credentials["credentials"])
 
 
     def process_credentials(self, context, connection, credentials):
-        for domain, creds in json.loads(credentials).items():
+        credentials = json.loads(credentials)
+        if len(credentials) == 0:
+            context.log.info("No credentials found")
+        for domain, creds in credentials.items():
             for username, passwords in creds.items():
                 for password in passwords:
                     plain = password["password"]
