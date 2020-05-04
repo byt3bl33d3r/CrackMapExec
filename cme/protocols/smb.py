@@ -213,7 +213,7 @@ class smb(connection):
             #if "STATUS_ACCESS_DENIED" in e:
             pass
 
-        self.domain    = self.conn.getServerDomain()
+        self.domain    = self.conn.getServerDNSDomainName()
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
         self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
@@ -223,9 +223,6 @@ class smb(connection):
 
         if not self.domain:
             self.domain = self.hostname
-
-        if self.args.kerberos:
-            self.domain = self.conn.getServerDNSDomainName()
 
         self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
