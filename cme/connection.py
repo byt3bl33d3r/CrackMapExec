@@ -31,8 +31,8 @@ class connection(object):
         self.password = ''
         self.username = ''
         self.kerberos = True if self.args.kerberos else False
-        self.aesKey = None
-        self.dc_ip = None
+        self.aesKey = None if not self.args.aesKey else self.args.aesKey
+        self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
         self.failed_logins = 0
         self.local_ip = None
 
@@ -142,7 +142,7 @@ class connection(object):
 
     def login(self):
         if self.args.kerberos:
-            if self.kerberos_login(): return True
+            if self.kerberos_login(self.aesKey, self.kdcHost): return True
         else:
             for cred_id in self.args.cred_id:
                 with sem:

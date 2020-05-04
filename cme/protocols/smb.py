@@ -254,15 +254,22 @@ class smb(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
-    def kerberos_login(self):
-        self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, self.aesKey, self.dc_ip)
-        # self.check_if_admin() # currently not working with kerberos so we set admin_privs to True
-        self.admin_privs = True
-        out = u'{}\\{} {}'.format(self.domain,
-                                self.conn.getCredentials()[0],
-                                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
-        self.logger.success(out)
-        return True
+    def kerberos_login(self, aesKey, kdcHost):
+        try:
+            self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, aesKey, kdcHost)
+            # self.check_if_admin() # currently not working with kerberos so we set admin_privs to True
+            self.admin_privs = True
+            out = u'{}\\{} {}'.format(self.domain,
+                                    self.conn.getCredentials()[0],
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.success(out)
+            return True
+        except SessionError as e:
+            error, desc = e.getErrorString()
+            self.logger.error(u'{} {} {}'.format(self.domain, 
+                                                 error, 
+                                                 '({})'.format(desc) if self.args.verbose else ''))
+            return False
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -410,7 +417,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -430,7 +437,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -440,7 +447,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.kerberos, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:

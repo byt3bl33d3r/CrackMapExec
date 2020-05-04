@@ -7,7 +7,7 @@ from cme.helpers.misc import gen_random_string
 from gevent import sleep
 
 class TSCH_EXEC:
-    def __init__(self, target, share_name, username, password, domain, doKerberos=False, hashes=None):
+    def __init__(self, target, share_name, username, password, domain, doKerberos=False, aesKey=None, kdcHost=None, hashes=None):
         self.__target = target
         self.__username = username
         self.__password = password
@@ -17,9 +17,9 @@ class TSCH_EXEC:
         self.__nthash = ''
         self.__outputBuffer = b''
         self.__retOutput = False
-        # self.__aesKey = aesKey
+        self.__aesKey = aesKey
         self.__doKerberos = doKerberos
-        self.__kdcHost = None
+        self.__kdcHost = kdcHost
 
         if hashes is not None:
         #This checks to see if we didn't provide the LM Hash
@@ -36,7 +36,7 @@ class TSCH_EXEC:
 
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
-            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
+            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey)
             self.__rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
     def execute(self, command, output=False):

@@ -77,6 +77,7 @@ class CMEModule:
         password = getattr(connection, "password", "")
         lmhash = getattr(connection, "lmhash", "")
         nthash = getattr(connection, "nthash", "")
+        kerberos = getattr(connection, "kerberos", "")
 
         password = "" if password is None else password
         lmhash = "" if lmhash is None else lmhash
@@ -102,6 +103,7 @@ class CMEModule:
             dump_options.dumpert_path = self.dumpert_path
 
         lsassy = Lsassy(
+            kerberos=kerberos,
             hostname=host,
             username=username,
             domain=domain_name,
@@ -114,13 +116,14 @@ class CMEModule:
             write_options=write_option
         )
         credentials = lsassy.get_credentials()
-
         if not credentials['success']:
             context.log.error(credentials['error_msg'])
             if context.verbose and credentials['error_exception']:
                 context.log.error(credentials['error_exception'])
-        else:
+        elif json.loads(credentials['credentials']).items():
             self.process_credentials(context, connection, credentials["credentials"])
+        else:
+            context.log.highlight("No credential found :'(")
 
 
     def process_credentials(self, context, connection, credentials):
