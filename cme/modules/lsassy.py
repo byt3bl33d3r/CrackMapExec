@@ -124,7 +124,9 @@ class CMEModule:
 
 
     def process_credentials(self, context, connection, credentials):
-        for domain, creds in json.loads(credentials).items():
+        if len(credentials) == 0:
+            context.log.info("No credentials found")
+        for domain, creds in credentials.items():
             for username, passwords in creds.items():
                 for password in passwords:
                     plain = password["password"]
