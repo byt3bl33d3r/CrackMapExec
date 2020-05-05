@@ -25,7 +25,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Crackmapexec info**
  - OS: [e.g. Kali]
- - Version of CME [e.g. v5.0.1]
+ - Version of CME [e.g. v5.0.2]
 
 **Additional context**
 Add any other context about the problem here.
