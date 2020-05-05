@@ -21,6 +21,7 @@ ldapdomaindump==0.9.2
 lsassy==2.1.2
 markupsafe==1.1.1
 msgpack==1.0.0
+neo4j==1.7.6
 ntlm-auth==1.4.0
 paramiko==2.7.1
 pyasn1==0.4.8
