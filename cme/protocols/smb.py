@@ -224,9 +224,6 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
-        if self.args.kerberos:
-            self.domain = self.conn.getServerDNSDomainName()
-
         self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
         try:
@@ -241,8 +238,9 @@ class smb(connection):
         if self.args.domain:
             self.domain = self.args.domain
 
-        if self.args.local_auth:
-            self.domain = self.hostname
+        # always print FQDN even if local auth
+        # if self.args.local_auth:
+        #     self.domain = self.hostname
 
         #Re-connect since we logged off
         self.create_conn_obj()
