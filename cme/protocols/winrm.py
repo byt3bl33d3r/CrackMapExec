@@ -1,18 +1,22 @@
-import winrm as pywinrm
+
 import requests
 import logging
-from io import StringIO
-# from winrm.exceptions import InvalidCredentialsError
+import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-import configparser
+from io import StringIO
+from pypsrp.client import Client
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+class SuppressFilter(logging.Filter):
+    # remove warning https://github.com/diyan/pywinrm/issues/269
+    def filter(self, record):
+        return 'wsman' not in record.getMessage()
 
 class winrm(connection):
 
@@ -25,9 +29,12 @@ class winrm(connection):
     def proto_args(parser, std_parser, module_parser):
         winrm_parser = parser.add_parser('winrm', help="own stuff using WINRM", parents=[std_parser, module_parser])
         winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+        winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
+        winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+
         cgroup = winrm_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
@@ -53,32 +60,36 @@ class winrm(connection):
                                         'hostname': 'NONE'})
 
     def enum_host_info(self):
-        try:
-            smb_conn = SMBConnection(self.host, self.host, None)
-            try:
-                smb_conn.login('', '')
-            except SessionError as e:
-                if "STATUS_ACCESS_DENIED" in e.message:
-                    pass
-
-            self.domain = smb_conn.getServerDomain()
-            self.hostname = smb_conn.getServerName()
-
-            self.logger.extra['hostname'] = self.hostname
-
-            try:
-                smb_conn.logoff()
-            except:
-                pass
-
-        except Exception as e:
-            logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
-
         if self.args.domain:
             self.domain = self.args.domain
+            self.logger.extra['hostname'] = self.hostname
+        else:
+            try:
+                smb_conn = SMBConnection(self.host, self.host, None)
+                try:
+                    smb_conn.login('', '')
+                except SessionError as e:
+                    if "STATUS_ACCESS_DENIED" in e.message:
+                        pass
 
-        if self.args.local_auth:
-            self.domain = self.hostname
+                self.domain = smb_conn.getServerDomain()
+                self.hostname = smb_conn.getServerName()
+
+                self.logger.extra['hostname'] = self.hostname
+
+                try:
+                    smb_conn.logoff()
+                except:
+                    pass
+
+            except Exception as e:
+                logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+
+            if self.args.domain:
+                self.domain = self.args.domain
+
+            if self.args.local_auth:
+                self.domain = self.hostname
 
     def print_host_info(self):
         self.logger.info(self.endpoint)
@@ -109,21 +120,24 @@ class winrm(connection):
 
     def plaintext_login(self, domain, username, password):
         try:
-            self.conn = pywinrm.Session(self.host,
-                                        auth=('{}\\{}'.format(domain, username), password),
-                                        transport='ntlm',
-                                        server_cert_validation='ignore')
+            from urllib3.connectionpool import log
+            log.addFilter(SuppressFilter())
+            self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=username,
+                                        password=password,
+                                        ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
             # we could just authenticate without running a command :) (probably)
-            self.conn.run_cmd('hostname')
+            self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                        username,
                                                        password,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-
-            return True
+            if not self.args.continue_on_success:
+                return True
 
         except Exception as e:
             self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
@@ -133,27 +147,16 @@ class winrm(connection):
 
             return False
 
-    def parse_output(self, response_obj):
-        if response_obj.status_code == 0:
-            buf = StringIO(response_obj.std_out).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-            return response_obj.std_out
-
-        else:
-            buf = StringIO(response_obj.std_err).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-            return response_obj.std_err
-
     def execute(self, payload=None, get_output=False):
-        r = self.conn.run_cmd(self.args.execute)
+        try:
+            r = self.conn.execute_cmd(self.args.execute)
+        except:
+            self.logger.debug('Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !')
+            r = self.conn.execute_ps(self.args.execute)
         self.logger.success('Executed command')
-        self.parse_output(r)
+        self.logger.highlight(r[0])
 
     def ps_execute(self, payload=None, get_output=False):
-        r = self.conn.run_ps(self.args.ps_execute)
+        r = self.conn.execute_ps(self.args.ps_execute)
         self.logger.success('Executed command')
-        self.parse_output(r)
+        self.logger.highlight(r[0])

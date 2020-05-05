@@ -22,7 +22,7 @@ Unintentional contributors:
 
 This repository contains the following repositories as submodules:
 - [Impacket](https://github.com/CoreSecurity/impacket)
-- [Pywinrm](https://github.com/diyan/pywinrm)
+- [Pypsrp](https://github.com/jborean93/pypsrp)
 - [Pywerview](https://github.com/the-useless-one/pywerview)
 - [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
 - [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)

@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='5.0.1dev',
+    version='5.0.2dev',
     description='A swiss army knife for pentesting networks',
     classifiers=[
         'Environment :: Console',
@@ -24,10 +24,12 @@ setup(name='crackmapexec',
         'requests>=2.9.1',
         'requests-ntlm>=0.3.0',
         'bs4',
+        'lsassy',
         'termcolor',
         'msgpack',
+        'neo4j',
         'pylnk3',
-        'pywinrm',
+        'pypsrp',
         'paramiko',
         'impacket',
         'xmltodict',

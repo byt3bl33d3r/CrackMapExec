@@ -4,10 +4,11 @@ from gevent import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
 from cme.helpers.misc import gen_random_string
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
 class SMBEXEC:
 
-    def __init__(self, host, share_name, protocol, username = '', password = '', domain = '', hashes = None, share = None, port=445):
+    def __init__(self, host, share_name, protocol, username = '', password = '', domain = '', doKerberos=False, aesKey=None, kdcHost=None, hashes = None, share = None, port=445):
         self.__host = host
         self.__share_name = share_name
         self.__port = port
@@ -20,15 +21,16 @@ class SMBEXEC:
         self.__share = share
         self.__output = None
         self.__batchFile = None
-        self.__outputBuffer = ''
+        self.__outputBuffer = b''
         self.__shell = '%COMSPEC% /Q /c '
         self.__retOutput = False
         self.__rpctransport = None
         self.__scmr = None
         self.__conn = None
-        #self.__mode  = mode
-        #self.__aesKey = aesKey
-        #self.__doKerberos = doKerberos
+        # self.__mode  = mode
+        self.__aesKey = aesKey
+        self.__doKerberos = doKerberos
+        self.__kdcHost = kdcHost
 
         if hashes is not None:
         #This checks to see if we didn't provide the LM Hash
@@ -49,10 +51,12 @@ class SMBEXEC:
             self.__rpctransport.setRemoteHost(self.__host)
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
-            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-        #rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
+            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash,self.__aesKey)
+            self.__rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
         self.__scmr = self.__rpctransport.get_dce_rpc()
+        if self.__doKerberos:
+            self.__scmr.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
         self.__scmr.connect()
         s = self.__rpctransport.get_smb_connection()
         # We don't wanna deal with timeouts from now on.
@@ -64,9 +68,21 @@ class SMBEXEC:
 
     def execute(self, command, output=False):
         self.__retOutput = output
-        self.execute_fileless(command)
+        if os.path.isfile(command):
+            with open(command) as commands:
+                for c in commands:
+                    self.execute_fileless(c.strip())
+        else:
+            self.execute_fileless(command)
         self.finish()
-        return self.__outputBuffer
+        try:
+            if isinstance(self.__outputBuffer, str):
+                return self.__outputBuffer
+            return self.__outputBuffer.decode()
+        except UnicodeDecodeError:
+            logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+            return self.__outputBuffer.decode('cp437')
+        
 
     def output_callback(self, data):
         self.__outputBuffer += data
@@ -108,7 +124,7 @@ class SMBEXEC:
 
         while True:
             try:
-                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'r') as output:
+                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'rb') as output:
                     self.output_callback(output.read())
                 break
             except IOError:

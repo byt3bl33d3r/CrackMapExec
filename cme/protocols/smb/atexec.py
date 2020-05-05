@@ -2,11 +2,12 @@ import os
 import logging
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from cme.helpers.misc import gen_random_string
 from gevent import sleep
 
 class TSCH_EXEC:
-    def __init__(self, target, share_name, username, password, domain, hashes=None):
+    def __init__(self, target, share_name, username, password, domain, doKerberos=False, aesKey=None, kdcHost=None, hashes=None):
         self.__target = target
         self.__username = username
         self.__password = password
@@ -14,10 +15,11 @@ class TSCH_EXEC:
         self.__share_name = share_name
         self.__lmhash = ''
         self.__nthash = ''
-        self.__outputBuffer = ''
+        self.__outputBuffer = b''
         self.__retOutput = False
-        #self.__aesKey = aesKey
-        #self.__doKerberos = doKerberos
+        self.__aesKey = aesKey
+        self.__doKerberos = doKerberos
+        self.__kdcHost = kdcHost
 
         if hashes is not None:
         #This checks to see if we didn't provide the LM Hash
@@ -34,16 +36,22 @@ class TSCH_EXEC:
 
         if hasattr(self.__rpctransport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
-            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash)
-            #rpctransport.set_kerberos(self.__doKerberos)
+            self.__rpctransport.set_credentials(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey)
+            self.__rpctransport.set_kerberos(self.__doKerberos, self.__kdcHost)
 
     def execute(self, command, output=False):
         self.__retOutput = output
         self.execute_handler(command)
-        return self.__outputBuffer
+        try:
+            if isinstance(self.__outputBuffer, str):
+                return self.__outputBuffer
+            return self.__outputBuffer.decode()
+        except UnicodeDecodeError:
+            logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+            return self.__outputBuffer.decode('cp437')
 
     def output_callback(self, data):
-        self.__outputBuffer = data.decode("utf-8") 
+        self.__outputBuffer = data
 
     def execute_handler(self, data):
         if self.__retOutput:
@@ -118,6 +126,8 @@ class TSCH_EXEC:
     def doStuff(self, command, fileless=False):
 
         dce = self.__rpctransport.get_dce_rpc()
+        if self.__doKerberos:
+            dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
         dce.set_credentials(*self.__rpctransport.get_credentials())
         dce.connect()

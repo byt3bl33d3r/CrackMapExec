@@ -107,7 +107,7 @@ def main():
                 else:
                     with open(target, 'r') as target_file:
                         for target_entry in target_file:
-                            targets.extend(parse_targets(target_entry))
+                            targets.extend(parse_targets(target_entry.strip()))
             else:
                 targets.extend(parse_targets(target))
 

