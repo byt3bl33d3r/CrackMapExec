@@ -224,6 +224,9 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
+        if self.args.kerberos:
+            self.domain = self.conn.getServerDNSDomainName()
+
         self.db.add_computer(self.host, self.hostname, self.domain, self.server_os)
 
         try:
@@ -252,17 +255,25 @@ class smb(connection):
                                                                                       self.signing,
                                                                                       self.smbv1))
     def kerberos_login(self, aesKey, kdcHost):
+        # dirty code to check if user is admin but pywerview does not support kerberos auth ...
+        error = ''
         try:
             self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, aesKey, kdcHost)
-            # self.check_if_admin() # currently not working with kerberos so we set admin_privs to True
+            # self.check_if_admin() # currently pywerview does not support kerberos auth
+        except SessionError as e:
+            error = e
+        try:
+            self.conn.connectTree("C$")
             self.admin_privs = True
+        except SessionError as e:
+            pass
+        if not error:
             out = u'{}\\{} {}'.format(self.domain,
                                     self.conn.getCredentials()[0],
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             return True
-        except SessionError as e:
-            error, desc = e.getErrorString()
+        else:
             self.logger.error(u'{} {} {}'.format(self.domain, 
                                                  error, 
                                                  '({})'.format(desc) if self.args.verbose else ''))
@@ -389,7 +400,6 @@ class smb(connection):
                 lmhash, nthash = self.hash.split(':')
             else:
                 nthash = self.hash
-
         self.admin_privs = invoke_checklocaladminaccess(self.host, self.domain, self.username, self.password, lmhash, nthash)
 
     def gen_relay_list(self):
