@@ -26,6 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **Crackmapexec info**
  - OS: [e.g. Kali]
  - Version of CME [e.g. v5.0.2]
+ - Installed from apt or using latest release ? Please try with latest release before openning an issue
 
 **Additional context**
 Add any other context about the problem here.
