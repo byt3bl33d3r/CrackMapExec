@@ -181,7 +181,7 @@ class connection(object):
                             tmp = usr
                             usr = tmp.split('\\')[1].strip()
                             self.domain = tmp.split('\\')[0]
-                        if self.args.hash:
+                        if hasattr(self.args, 'hash') and self.args.hash:
                             with sem:
                                 for ntlm_hash in self.args.hash:
                                     if isinstance(ntlm_hash, str):
@@ -205,19 +205,28 @@ class connection(object):
                                 for password in self.args.password:
                                     if isinstance(password, str):
                                         if not self.over_fail_limit(usr.strip()):
-                                            if self.plaintext_login(self.domain, usr.strip(), password): return True
+                                            if hasattr(self.args, 'domain'):
+                                                if self.plaintext_login(self.domain, usr.strip(), password): return True
+                                            else:
+                                                if self.plaintext_login(usr.strip(), password): return True
 
                                     elif not isinstance(password, str) and isfile(password.name) and self.args.no_bruteforce == False:
                                         for f_pass in password:
                                             if not self.over_fail_limit(usr.strip()):
-                                                if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                if hasattr(self.args, 'domain'):
+                                                    if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                else:
+                                                    if self.plaintext_login(usr.strip(), f_pass.strip()): return True
                                         password.seek(0)
 
                                     elif not isinstance(password, str) and isfile(password.name) and self.args.no_bruteforce == True:
                                         user.seek(0)
                                         for usr, f_pass in zip(user, password):
                                             if not self.over_fail_limit(usr.strip()):
-                                                if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                if hasattr(self.args, 'domain'):
+                                                    if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                else:
+                                                    if self.plaintext_login(usr.strip(), f_pass.strip()): return True
 
                 elif isinstance(user, str):
                         if hasattr(self.args, 'hash') and self.args.hash:

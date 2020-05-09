@@ -237,10 +237,9 @@ class smb(connection):
 
         if self.args.domain:
             self.domain = self.args.domain
-
-        # always print FQDN even if local auth
-        # if self.args.local_auth:
-        #     self.domain = self.hostname
+        
+        if self.args.local_auth:
+            self.domain = self.hostname
 
         #Re-connect since we logged off
         self.create_conn_obj()

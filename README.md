@@ -1,4 +1,4 @@
-![Supported Python versions](https://img.shields.io/badge/python-3.6+-blue.svg)
+![Supported Python versions](https://img.shields.io/badge/python-3.8+-blue.svg)
 
 # CrackMapExec
 
@@ -46,5 +46,4 @@ If you use CrackMapExec a lot (especially if it's used commercially), please con
 Press the "Sponsor" button on the top of this page to see ways of donating/sponsoring this project.
 
 # To do
-- Kerberos support
 - ~~0wn everything~~
