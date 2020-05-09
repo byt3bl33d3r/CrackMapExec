@@ -276,6 +276,14 @@ class smb(connection):
                                                  '({})'.format(desc) if self.args.verbose else ''))
             return False
 
+        # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+        if self.signing:
+            try:
+                self.conn.logoff()
+            except:
+                pass
+            self.create_conn_obj()
+
     def plaintext_login(self, domain, username, password):
         try:
             self.conn.login(username, password, domain)
@@ -297,6 +305,13 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.continue_on_success:
                 return True
+            elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
+
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
@@ -342,6 +357,13 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.continue_on_success:
                 return True
+            # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+            if self.signing:
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{} {} {} {}'.format(domain,
