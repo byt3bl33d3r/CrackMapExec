@@ -10,6 +10,8 @@ from sys import exit
 
 CME_PATH = os.path.expanduser('~/.cme')
 TMP_PATH = os.path.join('/tmp', 'cme_hosted')
+if os.name == 'nt':
+    TMP_PATH = os.getenv('LOCALAPPDATA') + '\\Temp\\cme_hosted'
 WS_PATH = os.path.join(CME_PATH, 'workspaces')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')

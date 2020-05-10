@@ -212,3 +212,6 @@ def main():
 
     if module_server:
         module_server.shutdown()
+
+if __name__ == '__main__':
+    main()
