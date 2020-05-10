@@ -5,6 +5,7 @@ from gevent.lock import BoundedSemaphore
 from gevent.socket import gethostbyname
 from functools import wraps
 from cme.logger import CMEAdapter
+from cme.context import Context
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
