@@ -3,10 +3,10 @@
 block_cipher = None
 
 
-a = Analysis(['.\\cme\\crackmapexec.py'],
-             pathex=['.\\cme','.\\cme\\thirdparty\\pywerview'],
+a = Analysis(['./cme/crackmapexec.py'],
+             pathex=['./cme','./cme/thirdparty/pywerview'],
              binaries=[],
-             datas=[('.\\cme\\protocols', 'cme\\protocols'),('.\\cme\\thirdparty', 'cme\\thirdparty'),('.\\cme\\data', 'cme\\data')],
+             datas=[('./cme/protocols', 'cme/protocols'),('./cme/thirdparty', 'cme/thirdparty'),('./cme/data', 'cme/data')],
              hiddenimports=['cme.protocols.mssql.mssqlexec', 'cme.connection', 'impacket.examples.secretsdump', 'impacket.dcerpc.v5.lsat', 'impacket.dcerpc.v5.transport', 'impacket.dcerpc.v5.lsad', 'cme.servers.smb', 'cme.protocols.smb.wmiexec', 'cme.protocols.smb.atexec', 'cme.protocols.smb.smbexec', 'cme.protocols.smb.mmcexec', 'cme.protocols.smb.smbspider', 'cme.protocols.smb.passpol', 'paramiko', 'pypsrp.client', 'pywerview.cli.helpers', 'impacket.tds', 'impacket.version'],
              hookspath=[],
              runtime_hooks=[],
