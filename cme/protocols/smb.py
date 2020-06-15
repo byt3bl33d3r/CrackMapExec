@@ -275,7 +275,6 @@ class smb(connection):
                                                  error, 
                                                  '({})'.format(desc) if self.args.verbose else ''))
             return False
-
     def plaintext_login(self, domain, username, password):
         try:
             self.conn.login(username, password, domain)
@@ -299,7 +298,15 @@ class smb(connection):
                 return True
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
+            if error == "STATUS_PASSWORD_MUST_CHANGE":
+                self.logger.success(u'{}\\{}:{} {} {}'.format(domain,
+                                                        username,
+                                                        password,
+                                                        error,
+                                                        '({})'.format(desc) if self.args.verbose else ''))
+                #return True
+            else:
+               self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
                                                         password,
                                                         error,
@@ -308,6 +315,7 @@ class smb(connection):
             if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
 
             return False
+
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
