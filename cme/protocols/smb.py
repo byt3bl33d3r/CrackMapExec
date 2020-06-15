@@ -304,7 +304,8 @@ class smb(connection):
                                                         password,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''))
-                #return True
+                if not self.args.continue_on_success:
+                    return True
             else:
                self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
