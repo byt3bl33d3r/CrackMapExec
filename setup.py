@@ -33,7 +33,8 @@ setup(name='crackmapexec',
         'paramiko',
         'impacket',
         'xmltodict',
-        'terminaltables'
+        'terminaltables',
+        'lsassy'
     ],
     entry_points={
         'console_scripts': ['crackmapexec=cme.crackmapexec:main', 'cme=cme.crackmapexec:main', 'cmedb=cme.cmedb:main'],
