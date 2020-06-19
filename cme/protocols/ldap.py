@@ -200,8 +200,17 @@ class ldap(connection):
                                     password)
             self.logger.success(out)
         except ldap_impacket.LDAPSearchError as e:
-            if self.password != '':
-                self.logger.error("Authentication failed")
+            if self.password == '':
+                hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
+                if hash_TGT:
+                    self.logger.highlight(u'{}'.format(hash_TGT))
+                    with open(self.args.asreproast, 'a+') as hash_asreproast:
+                        hash_asreproast.write(hash_TGT + '\n')
+            else:
+                self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password))
+
             return False
 
         return True
@@ -246,11 +255,7 @@ class ldap(connection):
         return t
 
     def asreproast(self):
-        if self.kerberos is False and self.password == '' and self.args.asreproast:
-            hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
-            self.logger.highlight(u'{}'.format(hash_TGT))
-            with open(self.args.asreproast, 'a+') as hash_asreproast:
-                hash_asreproast.write(hash_TGT + '\n')
+        if self.password == '':
             return False
         # Building the search filter
         searchFilter = "(&(UserAccountControl:1.2.840.113556.1.4.803:=%d)" \

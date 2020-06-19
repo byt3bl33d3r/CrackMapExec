@@ -1,5 +1,6 @@
 import logging
 import random
+import os
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type.univ import noValue
 from impacket.krb5.asn1 import TGS_REP, AS_REQ, KERB_PA_PAC_REQUEST, KRB_ERROR, AS_REP, seq_set, seq_set_iter
