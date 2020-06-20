@@ -60,6 +60,7 @@ class winrm(connection):
                                         'hostname': 'NONE'})
 
     def enum_host_info(self):
+        # smb no open, specify the domain
         if self.args.domain:
             self.domain = self.args.domain
             self.logger.extra['hostname'] = self.hostname
@@ -74,7 +75,7 @@ class winrm(connection):
 
                 self.domain = smb_conn.getServerDomain()
                 self.hostname = smb_conn.getServerName()
-
+                self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
 
                 try:
@@ -92,7 +93,14 @@ class winrm(connection):
                 self.domain = self.hostname
 
     def print_host_info(self):
-        self.logger.info(self.endpoint)
+        if self.args.domain:
+            self.logger.info(self.endpoint)
+        else:    
+            self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
+                                                                    self.hostname,
+                                                                    self.domain))
+            self.logger.info(self.endpoint)
+        
 
     def create_conn_obj(self):
         endpoints = [
