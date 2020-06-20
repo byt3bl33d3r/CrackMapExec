@@ -38,6 +38,17 @@ from traceback import format_exc
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
 
+smb_error_status = [
+    "STATUS_ACCOUNT_DISABLED",
+    "STATUS_ACCOUNT_EXPIRED",
+    "STATUS_ACCOUNT_RESTRICTION",
+    "STATUS_INVALID_LOGON_HOURS",
+    "STATUS_INVALID_WORKSTATION",
+    "STATUS_LOGON_TYPE_NOT_GRANTED",
+    "STATUS_PASSWORD_EXPIRED",
+    "STATUS_PASSWORD_MUST_CHANGE"
+]
+
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
         global smb_server
@@ -89,7 +100,6 @@ def requires_smb_server(func):
         return output
 
     return wraps(func)(_decorator)
-
 
 class smb(connection):
 
@@ -318,7 +328,8 @@ class smb(connection):
                                                         username,
                                                         password,
                                                         error,
-                                                        '({})'.format(desc) if self.args.verbose else ''))
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')
 
             if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
 
@@ -366,11 +377,12 @@ class smb(connection):
                 self.create_conn_obj()
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {} {}'.format(domain,
+            self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
                                                         ntlm_hash,
                                                         error,
-                                                        '({})'.format(desc) if self.args.verbose else ''))
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')
 
             if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
 

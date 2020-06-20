@@ -69,8 +69,8 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         self.logger.info(msg, *args, **kwargs)
 
-    def error(self, msg, *args, **kwargs):
-        msg, kwargs = self.process(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
+    def error(self, msg, color='red', *args, **kwargs):
+        msg, kwargs = self.process(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
         self.logger.error(msg, *args, **kwargs)
 
     def debug(self, msg, *args, **kwargs):
