@@ -148,10 +148,15 @@ class winrm(connection):
                 return True
 
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
-                                                       username,
-                                                       password,
-                                                       e))
+            if "with ntlm" in str(e): 
+                self.logger.error(u'{}\\{}:{}'.format(self.domain,
+                                                        username,
+                                                        password))
+            else:
+                self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+                                                        username,
+                                                        password,
+                                                        e))
 
             return False
 
