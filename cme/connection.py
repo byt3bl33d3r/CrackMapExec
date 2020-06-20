@@ -79,11 +79,11 @@ class connection(object):
             self.enum_host_info()
             self.proto_logger()
             self.print_host_info()
-            self.login()
-            if hasattr(self.args, 'module') and self.args.module:
-                self.call_modules()
-            else:
-                self.call_cmd_args()
+            if self.login():
+                if hasattr(self.args, 'module') and self.args.module:
+                    self.call_modules()
+                else:
+                    self.call_cmd_args()
 
     def call_cmd_args(self):
         for k, v in vars(self.args).items():

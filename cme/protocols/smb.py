@@ -46,7 +46,8 @@ smb_error_status = [
     "STATUS_INVALID_WORKSTATION",
     "STATUS_LOGON_TYPE_NOT_GRANTED",
     "STATUS_PASSWORD_EXPIRED",
-    "STATUS_PASSWORD_MUST_CHANGE"
+    "STATUS_PASSWORD_MUST_CHANGE",
+    "STATUS_ACCESS_DENIED"
 ]
 
 def requires_smb_server(func):
@@ -296,11 +297,11 @@ class smb(connection):
 
     def plaintext_login(self, domain, username, password):
         try:
-            self.conn.login(username, password, domain)
-
             self.password = password
             self.username = username
             self.domain = domain
+            self.conn.login(username, password, domain)
+
             self.check_if_admin()
             self.db.add_credential('plaintext', domain, username, password)
 
@@ -329,11 +330,12 @@ class smb(connection):
                                                         password,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
-                                                        color='magenta' if error in smb_error_status else 'red')
-
-            if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
-
-            return False
+                                                        color='magenta' if error in smb_error_status else 'red')          
+            if error == 'STATUS_LOGON_FAILURE': 
+                self.inc_failed_login(username)
+                return False
+            if not self.args.continue_on_success:
+                return True  
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -346,14 +348,14 @@ class smb(connection):
             nthash = ntlm_hash
 
         try:
-            self.conn.login(username, '', domain, lmhash, nthash)
-
             self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
 
             self.username = username
             self.domain = domain
+            self.conn.login(username, '', domain, lmhash, nthash)
+
             self.check_if_admin()
             self.db.add_credential('hash', domain, username, ntlm_hash)
 
@@ -384,9 +386,11 @@ class smb(connection):
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
 
-            if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
-
-            return False
+            if error == 'STATUS_LOGON_FAILURE': 
+                self.inc_failed_login(username)
+                return False
+            if not self.args.continue_on_success:
+                return True 
 
     def create_smbv1_conn(self):
         try:
@@ -561,7 +565,9 @@ class smb(connection):
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
 
         except Exception as e:
-            self.logger.error('Error enumerating shares: {}'.format(e))
+            error, desc = e.getErrorString()
+            self.logger.error('Error enumerating shares: {}'.format(error),
+                            color='magenta' if error in smb_error_status else 'red')
 
         return permissions
 
@@ -586,10 +592,16 @@ class smb(connection):
         return sessions
 
     def disks(self):
-        disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-        self.logger.success('Enumerated disks')
-        for disk in disks:
-            self.logger.highlight(disk.disk)
+        disks = []
+        try:
+            disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
+            self.logger.success('Enumerated disks')
+            for disk in disks:
+                self.logger.highlight(disk.disk)
+        except Exception as e:
+            error, desc = e.getErrorString()
+            self.logger.error('Error enumerating disks: {}'.format(error),
+                            color='magenta' if error in smb_error_status else 'red')
 
         return disks
 

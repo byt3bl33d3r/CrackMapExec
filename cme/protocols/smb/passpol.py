@@ -1,7 +1,10 @@
 #Stolen from https://github.com/Wh1t3Fox/polenum
 
+import logging
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
-from impacket.dcerpc.v5 import transport, samr
+from impacket.dcerpc.v5 import transport, samr 
+from impacket.dcerpc.v5.samr import DCERPCSessionError
+from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket import ntlm
 from time import strftime, gmtime
 
@@ -99,14 +102,14 @@ class PassPolDump:
                 protodef = PassPolDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError:
-                self.logger.debug("Invalid Protocol '{}'".format(protocol))
-            self.logger.debug("Trying protocol {}".format(protocol))
+                logging.debug("Invalid Protocol '{}'".format(protocol))
+            logging.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
             try:
                 self.fetchList(rpctransport)
             except Exception as e:
-                self.logger.debug('Protocol failed: {}'.format(e))
+                logging.debug('Protocol failed: {}'.format(e))
             else:
                 # Got a response. No need for further iterations.
                 self.pretty_print()
@@ -180,9 +183,9 @@ class PassPolDump:
             0: 'Domain Refuse Password Change:'
         }
 
-        self.logger.debug('Found domain(s):')
+        logging.debug('Found domain(s):')
         for domain in self.__domains:
-            self.logger.debug('{}'.format(domain['Name']))
+            logging.debug('{}'.format(domain['Name']))
 
         self.logger.success("Dumping password info for domain: {}".format(self.__domains[0]['Name']))
 

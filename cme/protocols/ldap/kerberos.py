@@ -192,7 +192,7 @@ class KerberosAttacks:
                 message = encoder.encode(asReq)
                 r = sendReceive(message, domain, self.kdcHost)
             else:
-                logger.debug(e)
+                logging.debug(e)
 
         # This should be the PREAUTH_FAILED packet or the actual TGT if the target principal has the
         # 'Do not require Kerberos preauthentication' set
