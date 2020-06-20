@@ -1,6 +1,6 @@
 import logging
 import random
-import os
+from os import getenv
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type.univ import noValue
 from impacket.krb5.asn1 import TGS_REP, AS_REQ, KERB_PA_PAC_REQUEST, KRB_ERROR, AS_REP, seq_set, seq_set_iter
@@ -81,7 +81,7 @@ class KerberosAttacks:
 
     def getTGT_kerberoasting(self):
         try:
-            ccache = CCache.loadFile(os.getenv('KRB5CCNAME'))
+            ccache = CCache.loadFile(getenv('KRB5CCNAME'))
         except:
             # No cache present
             pass
@@ -91,7 +91,7 @@ class KerberosAttacks:
                 domain = ccache.principal.realm['data']
             else:
                 domain = self.domain
-            logging.debug("Using Kerberos Cache: %s" % os.getenv('KRB5CCNAME'))
+            logging.debug("Using Kerberos Cache: %s" % getenv('KRB5CCNAME'))
             principal = 'krbtgt/%s@%s' % (domain.upper(), domain.upper())
             creds = ccache.getCredential(principal)
             if creds is not None:
