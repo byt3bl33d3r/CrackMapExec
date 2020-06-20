@@ -54,7 +54,7 @@ class ldap(connection):
         egroup.add_argument("--kerberoasting", help='Get TGS ticket ready to crack with hashcat')
         
         vgroup = ldap_parser.add_argument_group("Retrieve useful information on the domain", "Options to to play with Kerberos")
-        vgroup.add_argument("--trusted-for-auth", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
+        vgroup.add_argument("--trusted-for-delegation", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
 
         return parser
@@ -416,7 +416,7 @@ class ldap(connection):
         else:
             self.logger.error("No entries found!")
 
-    def trusted_for_auth(self):
+    def trusted_for_delegation(self):
         # Building the search filter
         searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=524288)"
         try:

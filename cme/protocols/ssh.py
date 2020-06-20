@@ -67,8 +67,8 @@ class ssh(connection):
                 self.conn.connect(self.host, port=self.args.port, username=username, password=password, look_for_keys=False, allow_agent=False)
 
             self.check_if_admin()
-            self.logger.success(u'{}:{} {}'.format(username.decode('utf-8'),
-                                                   password.decode('utf-8'),
+            self.logger.success(u'{}:{} {}'.format(username,
+                                                   password,
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
 
             return True
