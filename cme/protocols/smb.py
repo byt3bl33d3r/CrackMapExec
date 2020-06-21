@@ -331,7 +331,7 @@ class smb(connection):
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')          
-            if error == 'STATUS_LOGON_FAILURE': 
+            if error not in smb_error_status: 
                 self.inc_failed_login(username)
                 return False
             if not self.args.continue_on_success:
@@ -386,7 +386,7 @@ class smb(connection):
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
 
-            if error == 'STATUS_LOGON_FAILURE': 
+            if error not in smb_error_status: 
                 self.inc_failed_login(username)
                 return False
             if not self.args.continue_on_success:
