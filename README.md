@@ -1,4 +1,4 @@
-![Supported Python versions](https://img.shields.io/badge/python-3.8+-blue.svg)
+![Supported Python versions](https://img.shields.io/badge/python-3.7+-blue.svg)
 
 # CrackMapExec
 
