@@ -138,9 +138,6 @@ class ldap(connection):
                                                                                       self.smbv1))
 
     def kerberos_login(self, aesKey, kdcHost):
-        self.username = username
-        self.password = password
-        self.domain = domain
         # Create the baseDN
         domainParts = self.domain.split('.')
         for i in domainParts:
@@ -151,20 +148,18 @@ class ldap(connection):
         if self.kdcHost is not None:
             target = self.kdcHost
         else:
-            target = domain
+            target = self.domain
 
         try:
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=self.kdcHost)
-            self.ldapConnection.kerberosLogin(self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash,
-                                             self.__aesKey, kdcHost=self.__kdcHost)                                  
+                                                self.aesKey, kdcHost=self.kdcHost)                                
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
-        self.search_as_rep(self.ldapConnection)
+
         return True
 
 
@@ -215,6 +210,58 @@ class ldap(connection):
 
         return True
 
+    def hash_login(self, domain, username, ntlm_hash):
+        lmhash = ''
+        nthash = ''
+
+        #This checks to see if we didn't provide the LM Hash
+        if ntlm_hash.find(':') != -1:
+            lmhash, nthash = ntlm_hash.split(':')
+        else:
+            nthash = ntlm_hash
+
+        self.hash = ntlm_hash
+        if lmhash: self.lmhash = lmhash
+        if nthash: self.nthash = nthash
+
+        self.username = username
+        self.domain = domain
+        # Create the baseDN
+        domainParts = self.domain.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
+
+        if self.kdcHost is not None:
+            target = self.kdcHost
+        else:
+            target = domain
+
+        # Connect to LDAP
+        try:
+            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
+            self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+        except ldap_impacket.LDAPSessionError as e:
+            if str(e).find('strongerAuthRequired') >= 0:
+                # We need to try SSL
+                self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
+                self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+        try:
+            self.ldapConnection.search(searchFilter='(objectCategory=nop)')
+            out = u'{}{}:{}'.format('{}\\'.format(domain),
+                                    username,
+                                    nthash)
+            self.logger.success(out)
+        except ldap_impacket.LDAPSearchError as e:
+            self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.nthash))
+
+            return False
+
+        return True
+
     def create_smbv1_conn(self):
         try:
             self.conn = SMBConnection(self.host, self.host, None, 445, preferredDialect=SMB_DIALECT)
@@ -255,7 +302,7 @@ class ldap(connection):
         return t
 
     def asreproast(self):
-        if self.password == '':
+        if self.password == '' and self.nthash != '' and self.kerberos != False:
             return False
         # Building the search filter
         searchFilter = "(&(UserAccountControl:1.2.840.113556.1.4.803:=%d)" \
