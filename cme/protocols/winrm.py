@@ -160,6 +160,53 @@ class winrm(connection):
 
             return False
 
+    def hash_login(self, domain, username, ntlm_hash):
+        try:
+            from urllib3.connectionpool import log
+            log.addFilter(SuppressFilter())
+            lmhash = '00000000000000000000000000000000:'
+            nthash = ''
+
+            #This checks to see if we didn't provide the LM Hash
+            if ntlm_hash.find(':') != -1:
+                lmhash, nthash = ntlm_hash.split(':')
+            else:
+                nthash = ntlm_hash
+                ntlm_hash = lmhash + nthash
+
+            self.hash = nthash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+            self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=username,
+                                        password=ntlm_hash,
+                                        ssl=False)
+
+            # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
+            # we could just authenticate without running a command :) (probably)
+            self.conn.execute_ps("hostname")
+            self.admin_privs = True
+            self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
+                                                       username,
+                                                       self.hash,
+                                                       highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            if not self.args.continue_on_success:
+                return True
+
+        except Exception as e:
+            if "with ntlm" in str(e): 
+                self.logger.error(u'{}\\{}:{}'.format(self.domain,
+                                                        username,
+                                                        self.hash))
+            else:
+                self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+                                                        username,
+                                                        self.hash,
+                                                        e))
+
+            return False
+
     def execute(self, payload=None, get_output=False):
         try:
             r = self.conn.execute_cmd(self.args.execute)
