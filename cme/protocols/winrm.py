@@ -60,6 +60,7 @@ class winrm(connection):
                                         'hostname': 'NONE'})
 
     def enum_host_info(self):
+        # smb no open, specify the domain
         if self.args.domain:
             self.domain = self.args.domain
             self.logger.extra['hostname'] = self.hostname
@@ -74,7 +75,7 @@ class winrm(connection):
 
                 self.domain = smb_conn.getServerDomain()
                 self.hostname = smb_conn.getServerName()
-
+                self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
 
                 try:
@@ -92,7 +93,14 @@ class winrm(connection):
                 self.domain = self.hostname
 
     def print_host_info(self):
-        self.logger.info(self.endpoint)
+        if self.args.domain:
+            self.logger.info(self.endpoint)
+        else:    
+            self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
+                                                                    self.hostname,
+                                                                    self.domain))
+            self.logger.info(self.endpoint)
+        
 
     def create_conn_obj(self):
         endpoints = [
@@ -140,10 +148,62 @@ class winrm(connection):
                 return True
 
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+            if "with ntlm" in str(e): 
+                self.logger.error(u'{}\\{}:{}'.format(self.domain,
+                                                        username,
+                                                        password))
+            else:
+                self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+                                                        username,
+                                                        password,
+                                                        e))
+
+            return False
+
+    def hash_login(self, domain, username, ntlm_hash):
+        try:
+            from urllib3.connectionpool import log
+            log.addFilter(SuppressFilter())
+            lmhash = '00000000000000000000000000000000:'
+            nthash = ''
+
+            #This checks to see if we didn't provide the LM Hash
+            if ntlm_hash.find(':') != -1:
+                lmhash, nthash = ntlm_hash.split(':')
+            else:
+                nthash = ntlm_hash
+                ntlm_hash = lmhash + nthash
+
+            self.hash = nthash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+            self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=username,
+                                        password=ntlm_hash,
+                                        ssl=False)
+
+            # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
+            # we could just authenticate without running a command :) (probably)
+            self.conn.execute_ps("hostname")
+            self.admin_privs = True
+            self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                        username,
-                                                       password,
-                                                       e))
+                                                       self.hash,
+                                                       highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            if not self.args.continue_on_success:
+                return True
+
+        except Exception as e:
+            if "with ntlm" in str(e): 
+                self.logger.error(u'{}\\{}:{}'.format(self.domain,
+                                                        username,
+                                                        self.hash))
+            else:
+                self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
+                                                        username,
+                                                        self.hash,
+                                                        e))
 
             return False
 

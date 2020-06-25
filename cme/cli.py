@@ -6,8 +6,8 @@ from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    VERSION  = '5.0.2dev'
-    CODENAME = 'P3l1as'
+    VERSION  = '5.1.0dev'
+    CODENAME = '3TH@n'
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
@@ -48,8 +48,8 @@ def gen_cli_args():
     std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
-    std_parser.add_argument("--aesKey", action='store_true', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
-    std_parser.add_argument("--kdcHost", action='store_true', help="IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
+    std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
+    std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
 
     fail_group = std_parser.add_mutually_exclusive_group()
     fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='max number of global failed login attempts')

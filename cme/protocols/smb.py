@@ -38,6 +38,18 @@ from traceback import format_exc
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
 
+smb_error_status = [
+    "STATUS_ACCOUNT_DISABLED",
+    "STATUS_ACCOUNT_EXPIRED",
+    "STATUS_ACCOUNT_RESTRICTION",
+    "STATUS_INVALID_LOGON_HOURS",
+    "STATUS_INVALID_WORKSTATION",
+    "STATUS_LOGON_TYPE_NOT_GRANTED",
+    "STATUS_PASSWORD_EXPIRED",
+    "STATUS_PASSWORD_MUST_CHANGE",
+    "STATUS_ACCESS_DENIED"
+]
+
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
         global smb_server
@@ -89,7 +101,6 @@ def requires_smb_server(func):
         return output
 
     return wraps(func)(_decorator)
-
 
 class smb(connection):
 
@@ -186,7 +197,7 @@ class smb(connection):
             transport = DCERPCTransportFactory(stringBinding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
-            if self._conn.kerberos:
+            if self.args.kerberos:
                 dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:
@@ -276,13 +287,21 @@ class smb(connection):
                                                  '({})'.format(desc) if self.args.verbose else ''))
             return False
 
+        # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+        if self.signing:
+            try:
+                self.conn.logoff()
+            except:
+                pass
+            self.create_conn_obj()
+
     def plaintext_login(self, domain, username, password):
         try:
-            self.conn.login(username, password, domain)
-
             self.password = password
             self.username = username
             self.domain = domain
+            self.conn.login(username, password, domain)
+
             self.check_if_admin()
             self.db.add_credential('plaintext', domain, username, password)
 
@@ -297,17 +316,26 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.continue_on_success:
                 return True
+            elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
+
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
                                                         password,
                                                         error,
-                                                        '({})'.format(desc) if self.args.verbose else ''))
-
-            if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
-
-            return False
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')          
+            if error not in smb_error_status: 
+                self.inc_failed_login(username)
+                return False
+            if not self.args.continue_on_success:
+                return True  
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -320,14 +348,14 @@ class smb(connection):
             nthash = ntlm_hash
 
         try:
-            self.conn.login(username, '', domain, lmhash, nthash)
-
             self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
 
             self.username = username
             self.domain = domain
+            self.conn.login(username, '', domain, lmhash, nthash)
+
             self.check_if_admin()
             self.db.add_credential('hash', domain, username, ntlm_hash)
 
@@ -342,17 +370,27 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.continue_on_success:
                 return True
+            # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+            if self.signing:
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{} {} {} {}'.format(domain,
+            self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
                                                         ntlm_hash,
                                                         error,
-                                                        '({})'.format(desc) if self.args.verbose else ''))
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')
 
-            if error == 'STATUS_LOGON_FAILURE': self.inc_failed_login(username)
-
-            return False
+            if error not in smb_error_status: 
+                self.inc_failed_login(username)
+                return False
+            if not self.args.continue_on_success:
+                return True 
 
     def create_smbv1_conn(self):
         try:
@@ -527,7 +565,9 @@ class smb(connection):
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
 
         except Exception as e:
-            self.logger.error('Error enumerating shares: {}'.format(e))
+            error, desc = e.getErrorString()
+            self.logger.error('Error enumerating shares: {}'.format(error),
+                            color='magenta' if error in smb_error_status else 'red')
 
         return permissions
 
@@ -552,10 +592,16 @@ class smb(connection):
         return sessions
 
     def disks(self):
-        disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-        self.logger.success('Enumerated disks')
-        for disk in disks:
-            self.logger.highlight(disk.disk)
+        disks = []
+        try:
+            disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
+            self.logger.success('Enumerated disks')
+            for disk in disks:
+                self.logger.highlight(disk.disk)
+        except Exception as e:
+            error, desc = e.getErrorString()
+            self.logger.error('Error enumerating disks: {}'.format(error),
+                            color='magenta' if error in smb_error_status else 'red')
 
         return disks
 

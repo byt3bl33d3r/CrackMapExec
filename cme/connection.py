@@ -79,11 +79,11 @@ class connection(object):
             self.enum_host_info()
             self.proto_logger()
             self.print_host_info()
-            self.login()
-            if hasattr(self.args, 'module') and self.args.module:
-                self.call_modules()
-            else:
-                self.call_cmd_args()
+            if self.login():
+                if hasattr(self.args, 'module') and self.args.module:
+                    self.call_modules()
+                else:
+                    self.call_cmd_args()
 
     def call_cmd_args(self):
         for k, v in vars(self.args).items():
@@ -227,7 +227,7 @@ class connection(object):
                                                     if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
                                                 else:
                                                     if self.plaintext_login(usr.strip(), f_pass.strip()): return True
-
+                    user.seek(0) # added june 2020, may break everything but solve this issue cme smb file -u file -p file
                 elif isinstance(user, str):
                         if hasattr(self.args, 'hash') and self.args.hash:
                             with sem:
