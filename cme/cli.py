@@ -6,8 +6,8 @@ from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    VERSION  = '5.0.2dev'
-    CODENAME = 'P3l1as'
+    VERSION  = '5.1.0dev'
+    CODENAME = '3TH@n'
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
