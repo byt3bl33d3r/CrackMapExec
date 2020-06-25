@@ -37,7 +37,7 @@ This repository contains the following repositories as submodules:
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
 
 # Installation
-Please see the installation wiki page [here](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation).
+Please see the installation wiki page [here](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation) or the [GitBook](https://mpgn.gitbook.io/crackmapexec/)
 
 # How to fund my tea & sushi reserve
 
