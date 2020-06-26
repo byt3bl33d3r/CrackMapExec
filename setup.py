@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 setup(name='crackmapexec',
-    version='5.0.2dev',
+    version='5.1.0dev',
     description='A swiss army knife for pentesting networks',
     classifiers=[
         'Environment :: Console',
