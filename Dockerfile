@@ -7,7 +7,7 @@ ENV PIP_NO_CACHE_DIR=off
 WORKDIR /usr/src/crackmapexec
 
 RUN apk update && \
-    apk add --no-cache build-base libffi-dev libxml2-dev libxslt-dev openssl-dev
+    apk add --no-cache build-base libffi-dev libxml2-dev libxslt-dev openssl-dev openssl
 
 COPY requirements.txt .
 
