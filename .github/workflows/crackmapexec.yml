@@ -3,7 +3,7 @@ name: CrackMapExec Tests & Build
 on: [push]
 
 jobs:
-  test:
+  build:
     name: CrackMapExec Tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:

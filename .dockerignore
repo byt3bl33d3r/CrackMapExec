@@ -1,0 +1,10 @@
+tests
+Dockerfile
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+*_valid_accounts.txt
+.vscode
+.venv
+.github
