@@ -1,0 +1,5 @@
+#!/bin/bash
+# https://docs.docker.com/docker-hub/builds/advanced/#custom-build-phase-hooks
+git checkout docker-hub-test
+git submodule sync
+git submodule update --init --recursive --remote cme/thirdparty/pywerview/
