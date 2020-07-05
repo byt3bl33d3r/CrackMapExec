@@ -1,5 +1,6 @@
 import json
 import errno
+import os
 import time
 import logging
 import traceback
@@ -31,13 +32,14 @@ get_list_from_option = lambda opt: list(map(lambda o: o.lower(), filter(bool, op
 
 class SMBSpiderPlus:
 
-    def __init__(self, smb, logger, exclude_dirs, exclude_exts, max_file_size, output_folder):
+    def __init__(self, smb, logger, read_only, exclude_dirs, exclude_exts, max_file_size, output_folder):
         self.smb = smb
         self.host = self.smb.conn.getRemoteHost()
         self.conn_retry = 5
         self.logger = logger
         self.results = {}
 
+        self.read_only = read_only
         self.exclude_dirs = exclude_dirs
         self.exclude_exts = exclude_exts
         self.max_file_size = max_file_size
@@ -208,6 +210,8 @@ class SMBSpiderPlus:
                     continue
 
                 ## You can add more checks here: date, ...
+                if self.read_only == True:
+                    continue
 
                 # The file passes the checks, then we fetch it!
                 remote_file = self.get_remote_file(share, next_path)
@@ -276,7 +280,16 @@ class CMEModule:
     multiple_hosts = True # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
-        self.pattern = get_list_from_option(module_options.get('PATTERN', ''))
+
+        """
+            READ_ONLY           Only list files and put the name into a JSON (default: True)
+            EXCLUDE_EXTS        Extension file to exclude (Default: ico,lnk)
+            EXCLUDE_DIR         Directory to exclude (Default: print$)
+            MAX_FILE_SIZE       Max file size allowed to dump (Default: 51200)
+            OUTPUT_FOLDER       Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
+        """
+
+        self.read_only = module_options.get('READ_ONLY', True)
         self.exclude_exts = get_list_from_option(module_options.get('EXT', 'ico,lnk'))
         self.exlude_dirs = get_list_from_option(module_options.get('DIR', 'print$'))
         self.max_file_size = int(module_options.get('SIZE', 50 * 1024))
@@ -293,6 +306,7 @@ class CMEModule:
         spider = SMBSpiderPlus(
             connection,
             context.log,
+            self.read_only,
             self.exlude_dirs,
             self.exclude_exts,
             self.max_file_size,
