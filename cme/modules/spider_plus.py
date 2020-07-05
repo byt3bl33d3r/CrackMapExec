@@ -1,4 +1,5 @@
 import json
+import errno
 import time
 import logging
 import traceback
@@ -20,7 +21,7 @@ def make_dirs(path):
     try:
         os.makedirs(path)
     except OSError as e:
-        if e.errno != os.errno.EEXIST:
+        if e.errno != errno.EEXIST:
             raise
 
         pass
@@ -279,7 +280,7 @@ class CMEModule:
         self.exclude_exts = get_list_from_option(module_options.get('EXT', 'ico,lnk'))
         self.exlude_dirs = get_list_from_option(module_options.get('DIR', 'print$'))
         self.max_file_size = int(module_options.get('SIZE', 50 * 1024))
-        self.output_folder = module_options.get('OUTPUT', './output')
+        self.output_folder = module_options.get('OUTPUT', os.path.join('/tmp', 'cme_spider_plus'))
 
     def on_login(self, context, connection):
 
