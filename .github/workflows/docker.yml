@@ -11,7 +11,7 @@ jobs:
       - name: Build Docker Image and Publish to Github Packages
         uses: whoan/docker-build-with-cache-action@v5
         with:
-          username: ${{ secrets.GIT_USERNAME }}
-          password: ${{ secrets.GIT_TOKEN }}
+          username: ${{ secrets.GITHUB_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
           image_name: crackmapexec
