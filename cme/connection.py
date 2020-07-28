@@ -196,9 +196,9 @@ class connection(object):
 
                                     elif not isinstance(ntlm_hash, str) and isfile(ntlm_hash.name) and self.args.no_bruteforce == True:
                                         user.seek(0)
-                                        for usr, f_pass in zip(user, ntlm_hash):
+                                        for usr, f_hash in zip(user, ntlm_hash):
                                             if not self.over_fail_limit(usr.strip()):
-                                                if self.plaintext_login(self.domain, usr.strip(), f_hash.strip()): return True
+                                                if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
 
                         elif self.args.password:
                             with sem:

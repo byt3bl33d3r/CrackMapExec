@@ -22,6 +22,7 @@ class winrm(connection):
 
     def __init__(self, args, db, host):
         self.domain = None
+        self.server_os = None
 
         connection.__init__(self, args, db, host)
 
