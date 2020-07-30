@@ -12,6 +12,17 @@ from impacket.smbconnection import SessionError
 
 CHUNK_SIZE = 4096
 
+suffixes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB']
+def humansize(nbytes):
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+def humaclock(time):
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time))
 
 def make_dirs(path):
     """
@@ -68,14 +79,14 @@ class SMBSpiderPlus:
             filelist = self.smb.conn.listPath(share, subfolder + '*')
 
         except SessionError as e:
-            self.logger.info(f'Failed listing files on share "{share}" in directory {subfolder}.')
+            self.logger.debug(f'Failed listing files on share "{share}" in directory {subfolder}.')
             self.logger.debug(str(e))
 
             if 'STATUS_ACCESS_DENIED' in str(e):
-                self.logger.error(f"Cannot list files in directory \"{subfolder}\"")
+                self.logger.debug(f"Cannot list files in directory \"{subfolder}\"")
 
             elif 'STATUS_OBJECT_PATH_NOT_FOUND' in str(e):
-                self.logger.error(f"The directory {subfolder} does not exist.")
+                self.logger.debug(f"The directory {subfolder} does not exist.")
 
             elif self.reconnect():
                 filelist = self.list_path(share, subfolder)
@@ -184,13 +195,13 @@ class SMBSpiderPlus:
             else:
                 # Record the file metadata
                 self.results[share][next_path] = {
-                    'size': result.get_filesize(),
-                    'ctime': result.get_ctime(),
-                    'ctime_epoch': result.get_ctime_epoch(),
-                    'mtime': result.get_mtime(),
-                    'mtime_epoch': result.get_mtime_epoch(),
-                    'atime': result.get_atime(),
-                    'atime_epoch': result.get_atime_epoch(),
+                    'size': humansize(result.get_filesize()),
+                    #'ctime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_ctime())),
+                    'ctime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_ctime_epoch())),
+                    #'mtime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_mtime())),
+                    'mtime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_mtime_epoch())),
+                    #'atime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_atime())),
+                    'atime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_atime_epoch()))
                 }
 
                 # The collection logic is here. You can add more checks based
