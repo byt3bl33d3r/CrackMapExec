@@ -89,7 +89,7 @@ def requires_smb_server(func):
             if not smb_server:
                 #with sem:
                 logging.debug('Starting SMB server')
-                smb_server = CMESMBServer(self.logger, smb_share_name, verbose=self.args.verbose)
+                smb_server = CMESMBServer(self.logger, smb_share_name, listen_port=self.args.smb_server_port, verbose=self.args.verbose)
                 smb_server.start()
 
         output = func(self, *args, **kwargs)
@@ -130,6 +130,7 @@ class smb(connection):
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         smb_parser.add_argument("--port", type=int, choices={445, 139}, default=445, help="SMB port (default: 445)")
         smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
+        smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         

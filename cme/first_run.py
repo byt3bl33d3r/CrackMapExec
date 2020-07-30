@@ -1,4 +1,5 @@
 import os
+import errno
 import sqlite3
 import shutil
 import cme
@@ -82,11 +83,14 @@ def first_run_setup(logger):
         try:
             check_output(['openssl', 'help'], stderr=PIPE)
         except OSError as e:
-            if e.errno == os.errno.ENOENT:
+            if e.errno == errno.ENOENT:
                 logger.error('OpenSSL command line utility is not installed, could not generate certificate')
                 exit(1)
             else:
                 logger.error('Error while generating SSL certificate: {}'.format(e))
                 exit(1)
-
-        os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
+        if os.name != 'nt':
+            os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
+        else:
+            os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US"'.format(path=CERT_PATH))
+     

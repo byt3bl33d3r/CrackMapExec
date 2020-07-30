@@ -111,7 +111,7 @@ class winrm(connection):
 
         for url in endpoints:
             try:
-                requests.get(url, verify=False, timeout=10)
+                requests.get(url, verify=False, timeout=3)
                 self.endpoint = url
                 if self.endpoint.startswith('https://'):
                     self.port = 5986

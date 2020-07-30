@@ -8,7 +8,6 @@ class CMESMBServer(threading.Thread):
     def __init__(self, logger, share_name, share_path='/tmp/cme_hosted', listen_address='0.0.0.0', listen_port=445, verbose=False):
         try:
             threading.Thread.__init__(self)
-
             self.server = smbserver.SimpleSMBServer(listen_address, listen_port)
             self.server.addShare(share_name.upper(), share_path)
             if verbose: self.server.setLogFile('')
