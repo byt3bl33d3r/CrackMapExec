@@ -975,7 +975,6 @@ class smb(connection):
 
             LSA.finish()
 
-    @requires_admin
     def ntds(self):
         self.enable_remoteops()
         use_vss_method = False
