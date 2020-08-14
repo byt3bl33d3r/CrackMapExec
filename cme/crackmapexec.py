@@ -205,6 +205,11 @@ def main():
                 logging.debug("Doin' the Jitterbug for {} seconds".format(value))
                 sleep(value)
 
+        # Lets azure not require a target
+        if args.protocol == 'az':
+            if not targets:
+                jobs.append(pool.spawn(protocol_object, args, db, '1'))
+                
         for job in jobs:
             job.join(timeout=args.timeout)
     except KeyboardInterrupt:
