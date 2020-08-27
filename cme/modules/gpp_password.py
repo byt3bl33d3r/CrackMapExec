@@ -43,7 +43,7 @@ class CMEModule:
                     elif 'Services.xml' in path:
                         xml_section = xml.findall('./NTService/Properties')
 
-                    elif 'Scheduledtasks.xml' in path:
+                    elif 'ScheduledTasks.xml' in path:
                         xml_section = xml.findall('./Task/Properties')
 
                     elif 'DataSources.xml' in path:
@@ -85,4 +85,4 @@ class CMEModule:
         password = b64decode(cpassword)
         IV = "\x00" * 16
         decypted = AES.new(key, AES.MODE_CBC, IV.encode("utf8")).decrypt(password)
-        return decypted.decode()
+        return decypted.decode().rstrip()
