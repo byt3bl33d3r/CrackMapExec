@@ -143,7 +143,7 @@ class mssql(connection):
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
             logging.debug("'sysadmin' group members:\n{}".format(query_output))
 
-            if auth == 'windows':
+            if not auth:
                 search_string = '{}\\{}'.format(self.domain, self.username)
             else:
                 search_string = self.username
@@ -166,30 +166,21 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
-            res = self.conn.login(None, username, password, domain, None, True)
-            self.domain = domain
-            auth = 'windows'
+            res = self.conn.login(None, username, password, domain, None, not self.args.local_auth)
             if res is not True:
-                try:
-                    self.conn.disconnect()
-                except:
-                    pass
-                self.create_conn_obj()
-                res = self.conn.login(None, username, password, domain, None, False)
-                auth = ''
-                if res is not True:
-                    self.conn.printReplies()
-                    return False
+                self.conn.printReplies()
+                return False
 
             self.password = password
             self.username = username
-            self.check_if_admin(auth)
+            self.domain = domain
+            self.check_if_admin(self.args.local_auth)
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
                 self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if auth == 'windows' else '',
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                     username,
                                     password,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
