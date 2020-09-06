@@ -19,6 +19,7 @@ class mssql(connection):
         self.domain = None
         self.server_os = None
         self.hash = None
+        self.os_arch = None
 
         connection.__init__(self, args, db, host)
 
@@ -31,7 +32,6 @@ class mssql(connection):
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
-        mssql_parser.add_argument("-a", "--auth-type", choices={'windows', 'normal'}, default='windows', help='MSSQL authentication type to use (default: windows)')
         mssql_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         mssql_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
@@ -75,46 +75,38 @@ class mssql(connection):
         except:
             pass
 
-        if self.args.auth_type == 'windows':
-            if self.args.domain:
-                self.domain = self.args.domain
-            else:
+        if self.args.domain:
+            self.domain = self.args.domain
+        else:
+            try:
+                smb_conn = SMBConnection(self.host, self.host, None)
                 try:
-                    smb_conn = SMBConnection(self.host, self.host, None)
-                    try:
-                        smb_conn.login('', '')
-                    except SessionError as e:
-                        if "STATUS_ACCESS_DENIED" in e.message:
-                            pass
-
-                    self.domain = smb_conn.getServerDomain()
-                    self.hostname = smb_conn.getServerName()
-                    self.server_os = smb_conn.getServerOS()
-                    self.logger.extra['hostname'] = self.hostname
-
-                    try:
-                        smb_conn.logoff()
-                    except:
+                    smb_conn.login('', '')
+                except SessionError as e:
+                    if "STATUS_ACCESS_DENIED" in e.message:
                         pass
 
-                    if self.args.domain:
-                        self.domain = self.args.domain
+                self.domain = smb_conn.getServerDNSDomainName()
+                self.hostname = smb_conn.getServerName()
+                self.server_os = smb_conn.getServerOS()
+                self.logger.extra['hostname'] = self.hostname
 
-                    if self.args.local_auth:
-                        self.domain = self.hostname
+                try:
+                    smb_conn.logoff()
+                except:
+                    pass
 
-                except Exception as e:
-                    self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+                if self.args.domain:
+                    self.domain = self.args.domain
 
-        self.mssql_instances = self.conn.getInstances(10)
-        if len(self.mssql_instances) > 0:
-            for i, instance in enumerate(self.mssql_instances):
-                for key in instance.keys():
-                    if key.lower() == 'servername':
-                        self.hostname = instance[key]
-                        break
+                if self.args.local_auth:
+                    self.domain = self.hostname
 
-            self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
+            except Exception as e:
+                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+
+        self.mssql_instances = self.conn.getInstances(0)
+        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
 
         try:
             self.conn.disconnect()
@@ -122,12 +114,15 @@ class mssql(connection):
             pass
 
     def print_host_info(self):
-        if len(self.mssql_instances) > 0:
-            self.logger.info("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
-            for i, instance in enumerate(self.mssql_instances):
-                self.logger.highlight("Instance {}".format(i))
-                for key in instance.keys():
-                    self.logger.highlight(key + ":" + instance[key])
+        self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
+                                                            self.hostname,
+                                                            self.domain))
+        # if len(self.mssql_instances) > 0:
+        #     self.logger.info("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
+        #     for i, instance in enumerate(self.mssql_instances):
+        #         self.logger.debug("Instance {}".format(i))
+        #         for key in instance.keys():
+        #             self.logger.debug(key + ":" + instance[key])
 
     def create_conn_obj(self):
         try:
@@ -171,21 +166,30 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
-            res = self.conn.login(None, username, password, domain, None, self.args.auth_type == 'windows')
+            res = self.conn.login(None, username, password, domain, None, True)
+            self.domain = domain
+            auth = 'windows'
             if res is not True:
-                self.conn.printReplies()
-                return False
+                try:
+                    self.conn.disconnect()
+                except:
+                    pass
+                self.create_conn_obj()
+                res = self.conn.login(None, username, password, domain, None, False)
+                auth = ''
+                if res is not True:
+                    self.conn.printReplies()
+                    return False
 
             self.password = password
             self.username = username
-            self.domain = domain
             self.check_if_admin()
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
                 self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if self.args.auth_type == 'windows' else '',
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if auth == 'windows' else '',
                                     username,
                                     password,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))

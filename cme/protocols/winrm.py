@@ -74,7 +74,7 @@ class winrm(connection):
                     if "STATUS_ACCESS_DENIED" in e.message:
                         pass
 
-                self.domain = smb_conn.getServerDomain()
+                self.domain = smb_conn.getServerDNSDomainName()
                 self.hostname = smb_conn.getServerName()
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
