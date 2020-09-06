@@ -148,7 +148,7 @@ class mssql(connection):
             else:
                 search_string = self.username
 
-            if query_output.find(search_string) != -1:
+            if re.search(r'\b'+search_string+'\W', query_output):
                 self.admin_privs = True
             else:
                 return False
