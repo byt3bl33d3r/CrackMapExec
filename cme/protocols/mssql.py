@@ -133,7 +133,7 @@ class mssql(connection):
 
         return True
 
-    def check_if_admin(self):
+    def check_if_admin(self, auth):
         try:
             # I'm pretty sure there has to be a better way of doing this.
             # Currently we are just searching for our user in the sysadmin group
@@ -143,7 +143,7 @@ class mssql(connection):
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
             logging.debug("'sysadmin' group members:\n{}".format(query_output))
 
-            if self.args.auth_type == 'windows':
+            if auth == 'windows':
                 search_string = '{}\\{}'.format(self.domain, self.username)
             else:
                 search_string = self.username
@@ -153,7 +153,7 @@ class mssql(connection):
             else:
                 return False
         except Exception as e:
-            logging.debug('Error calling check_if_admin(): {}'.format(e))
+            self.logger.error('Error calling check_if_admin(): {}'.format(e))
             return False
 
         return True
@@ -183,7 +183,7 @@ class mssql(connection):
 
             self.password = password
             self.username = username
-            self.check_if_admin()
+            self.check_if_admin(auth)
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
