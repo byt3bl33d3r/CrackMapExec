@@ -82,15 +82,15 @@ def first_run_setup(logger):
         logger.info('Generating SSL certificate')
         try:
             check_output(['openssl', 'help'], stderr=PIPE)
+            if os.name != 'nt':
+                os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
+            else:
+                os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US"'.format(path=CERT_PATH))
         except OSError as e:
             if e.errno == errno.ENOENT:
-                logger.error('OpenSSL command line utility is not installed, could not generate certificate')
-                exit(1)
+                logger.error('OpenSSL command line utility is not installed, could not generate certificate, using default certificate')
+                default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'default.pem')
+                shutil.copy(default_path, CERT_PATH)                
             else:
                 logger.error('Error while generating SSL certificate: {}'.format(e))
                 exit(1)
-        if os.name != 'nt':
-            os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
-        else:
-            os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US"'.format(path=CERT_PATH))
-     
