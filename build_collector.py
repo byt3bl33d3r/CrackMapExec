@@ -18,10 +18,12 @@ from shiv.cli import __version__ as VERSION
 def build_cme():
     try:
         os.mkdir("build")
+        os.mkdir("bin")
         shutil.copytree("cme", "build/cme")
     except:
         shutil.rmtree("build")
-        shutil.copytree("stormcollector", "app/stormcollector")
+        shutil.rmtree("bin")
+        shutil.copytree("cme", "build/cme")
 
     subprocess.check_call(
         [sys.executable, "-m", "pip", "install", "-r", "requirements.txt" ,"-t", "build"],
