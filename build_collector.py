@@ -25,10 +25,9 @@ def build_cme():
         shutil.rmtree("bin")
         shutil.copytree("cme", "build/cme")
 
-    subprocess.check_call(
+    subprocess.run(
         [sys.executable, "-m", "pip", "install", "-r", "requirements.txt" ,"-t", "build"],
-        stdout=sys.stdout,
-        stderr=subprocess.STDOUT,
+        check=True
     )
 
     #[shutil.rmtree(p) for p in Path("build").glob("**/__pycache__")]

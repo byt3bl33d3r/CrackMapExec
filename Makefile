@@ -17,5 +17,5 @@ tests:
 	flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude cme/thirdparty/*,cme/data/*
 
 reqs:
-	poetry export -f requirements.txt -o requirements.txt
-	poetry export --dev -f requirements.txt -o requirements-dev.txt
+	poetry export --without-hashes -f requirements.txt -o requirements.txt
+	poetry export --without-hashes --dev -f requirements.txt -o requirements-dev.txt
