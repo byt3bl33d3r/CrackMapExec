@@ -1,0 +1,78 @@
+[tool.poetry]
+name = "crackmapexec"
+version = "5.1.0dev"
+description = "A swiss army knife for pentesting networks"
+authors = ["Marcello Salvati <byt3bl33d3r@pm.com>"]
+readme = "README.md"
+homepage = "https://github.com/byt3bl33d3r/CrackMapExec"
+repository = "https://github.com/byt3bl33d3r/CrackMapExec"
+exclude = [
+    "prune cme/data/powersploit/Recon/Dictionaries",
+    "cme/data/powersploit/Exfiltration/NTFSParser",
+    "cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources",
+    "cme/data/powersploit/Exfiltration/LogonUser",
+    "cme/data/netripper/DLL",
+    "cme/data/netripper/Metasploit",
+    "cme/data/netripper/NetRipper",
+    "cme/data/netripper/Win32",
+    "cme/data/netripper/Release",
+    "cme/data/netripper/minhook",
+    "cme/data/netripper/x64",
+    "cme/data/netripper/**/*.pdf",
+    "cme/data/netripper/**/*.sln",
+    "cme/data/invoke-vnc/winvnc",
+    "cme/data/invoke-vnc/vncdll",
+    "cme/data/invoke-vnc/pebytes.ps1",
+    "cme/data/invoke-vnc/ReflectiveDLLInjection",
+    "cme/data/RID-Hijacking/modules",
+    "cme/data/RID-Hijacking/slides",
+    "cme/data/invoke-vnc/**/*.py",
+    "cme/data/invoke-vnc/**/*.bat",
+    "cme/data/invoke-vnc/**/*.msbuild",
+    "cme/data/invoke-vnc/**/*.sln",
+    "cme/data/powersploit/Tests"
+]
+include = ["LICENSE", "cme/data/*", "cme/modules/*", "cme/thirdparty/*"]
+license = "BSD-2-Clause"
+classifiers = [
+    'Environment :: Console',
+    'License :: OSI Approved :: BSD License',
+    'Programming Language :: Python :: 3',
+    'Topic :: Security',
+]
+packages = [
+    { include = "cme"}
+]
+
+[tool.poetry.scripts]
+cme = 'cme.crackmapexec:main'
+crackmapexec = 'cme.crackmapexec:main'
+cmedb = 'cme.cmedb:main'
+
+[tool.poetry.dependencies]
+python = "^3.7.0"
+gevent = ">=1.2.0"
+requests = ">=2.9.1"
+requests-ntlm = ">=0.3.0"
+bs4 = "^0.0.1"
+lsassy = "^2.1.2"
+termcolor = "^1.1.0"
+msgpack = "^1.0.0"
+neo4j = "^4.1.1"
+pylnk3 = "^0.3.0"
+pypsrp = "^0.5.0"
+paramiko = "^2.7.2"
+impacket = "^0.9.21"
+xmltodict = "^0.12.0"
+terminaltables = "^3.1.0"
+
+
+[tool.poetry.dev-dependencies]
+flake8 = "^3.8.2"
+pylint = "^2.5.2"
+shiv = "^0.3.1"
+ipython = "^7.18.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
