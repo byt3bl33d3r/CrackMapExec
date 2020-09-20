@@ -11,6 +11,7 @@ exclude = [
     "cme/data/powersploit/Exfiltration/NTFSParser",
     "cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources",
     "cme/data/powersploit/Exfiltration/LogonUser",
+    "cme/data/powersploit/Tests",
     "cme/data/netripper/DLL",
     "cme/data/netripper/Metasploit",
     "cme/data/netripper/NetRipper",
@@ -24,13 +25,12 @@ exclude = [
     "cme/data/invoke-vnc/vncdll",
     "cme/data/invoke-vnc/pebytes.ps1",
     "cme/data/invoke-vnc/ReflectiveDLLInjection",
-    "cme/data/RID-Hijacking/modules",
-    "cme/data/RID-Hijacking/slides",
     "cme/data/invoke-vnc/*.py",
     "cme/data/invoke-vnc/*.bat",
     "cme/data/invoke-vnc/*.msbuild",
     "cme/data/invoke-vnc/*.sln",
-    "cme/data/powersploit/Tests"
+    "cme/data/RID-Hijacking/modules",
+    "cme/data/RID-Hijacking/slides"
 ]
 include = ["LICENSE", "cme/data/*", "cme/modules/*", "cme/thirdparty/*"]
 license = "BSD-2-Clause"
