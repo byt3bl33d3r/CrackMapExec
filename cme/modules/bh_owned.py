@@ -18,7 +18,7 @@ class CMEModule:
     def options(self, context, module_options):
         """
             URI            URI for Neo4j database (default: 127.0.0.1)
-            PORT           Listeninfg port for Neo4j database (default: 7687)
+            PORT           Listening port for Neo4j database (default: 7687)
             USER           Username for Neo4j database (default: 'neo4j')
             PASS           Password for Neo4j database (default: 'neo4j')
         """
