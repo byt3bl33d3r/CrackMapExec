@@ -19,7 +19,7 @@ def get_ps_script(path):
     return os.path.join(os.path.dirname(cme.__file__), 'data', path)
 
 def encode_ps_command(command):
-    return b64encode(command.encode('UTF-16LE'))
+    return b64encode(command.encode('UTF-16LE')).decode()
 
 def is_powershell_installed():
     if which('powershell'): 
