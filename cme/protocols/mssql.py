@@ -83,7 +83,7 @@ class mssql(connection):
                 try:
                     smb_conn.login('', '')
                 except SessionError as e:
-                    if "STATUS_ACCESS_DENIED" in e.message:
+                    if "STATUS_ACCESS_DENIED" in e.getErrorString():
                         pass
 
                 self.domain = smb_conn.getServerDNSDomainName()
