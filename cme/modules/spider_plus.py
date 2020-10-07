@@ -173,6 +173,9 @@ class SMBSpiderPlus:
         self.logger.debug(f'Spider share "{share}" on folder "{subfolder}"')
 
         filelist = self.list_path(share, subfolder + '*')
+        if share.lower() in self.exclude_dirs:
+            self.logger.debug(f'The directory has been excluded')
+            return
 
         # For each entry:
         # - It's a directory then we spider it (skipping `.` and `..`)
