@@ -2,6 +2,7 @@ import ntpath, logging
 import os
 import cmd
 import sys
+import time
 
 from gevent import sleep
 from cme.helpers.misc import gen_random_string

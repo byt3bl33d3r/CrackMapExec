@@ -31,6 +31,7 @@ from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
+import time
 from datetime import datetime
 from functools import wraps
 from traceback import format_exc
@@ -455,7 +456,8 @@ class smb(connection):
 
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output: get_output = True
+        
+        if not self.args.no_output: get_output = True
 
         for method in methods:
 
