@@ -83,7 +83,7 @@ class mssql(connection):
                 try:
                     smb_conn.login('', '')
                 except SessionError as e:
-                    if "STATUS_ACCESS_DENIED" in e.message:
+                    if "STATUS_ACCESS_DENIED" in e.getErrorString():
                         pass
 
                 self.domain = smb_conn.getServerDNSDomainName()
@@ -135,20 +135,12 @@ class mssql(connection):
 
     def check_if_admin(self, auth):
         try:
-            # I'm pretty sure there has to be a better way of doing this.
-            # Currently we are just searching for our user in the sysadmin group
-
-            self.conn.sql_query("EXEC sp_helpsrvrolemember 'sysadmin'")
+            self.conn.sql_query("SELECT IS_SRVROLEMEMBER('sysadmin')")
             self.conn.printRows()
             query_output = self.conn._MSSQL__rowsPrinter.getMessage()
-            logging.debug("'sysadmin' group members:\n{}".format(query_output))
+            query_output = query_output.strip("\n-")
 
-            if not auth:
-                search_string = '{}\\{}'.format(self.domain, self.username)
-            else:
-                search_string = self.username
-
-            if re.search(r'\b'+search_string+'\W', query_output):
+            if int(query_output):
                 self.admin_privs = True
             else:
                 return False
