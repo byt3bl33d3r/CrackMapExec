@@ -28,7 +28,7 @@
 
 import logging
 import os
-from gevent import sleep
+from time import sleep
 from cme.helpers.misc import gen_random_string
 
 from impacket.dcerpc.v5.dcom.oaut import IID_IDispatch, string_to_bin, IDispatch, DISPPARAMS, DISPATCH_PROPERTYGET, \

@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from http.server import BaseHTTPRequestHandler
-from gevent import sleep
+from time import sleep
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 

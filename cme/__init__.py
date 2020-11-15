@@ -1,9 +1,6 @@
-from gevent import monkey
 import sys
 import os
 import cme
-
-monkey.patch_all()
 
 thirdparty_modules = os.path.join(os.path.dirname(cme.__file__), 'thirdparty')
 

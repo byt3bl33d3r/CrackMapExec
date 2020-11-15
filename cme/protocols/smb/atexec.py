@@ -4,7 +4,7 @@ from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from cme.helpers.misc import gen_random_string
-from gevent import sleep
+from time import sleep
 
 class TSCH_EXEC:
     def __init__(self, target, share_name, username, password, domain, doKerberos=False, aesKey=None, kdcHost=None, hashes=None):

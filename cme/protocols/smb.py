@@ -526,7 +526,11 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
-        #hostid,_,_,_,_,_,_ = self.db.get_hosts(filterTerm=self.host)[0]
+        computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        user_id = self.db.get_user(
+            self.domain.split('.')[0].upper(),
+            self.username
+        )[0][0]
         permissions = []
 
         try:
@@ -553,7 +557,9 @@ class smb(connection):
                     pass
 
                 permissions.append(share_info)
-                #self.db.add_share(hostid, share_name, share_remark, read, write)
+
+                if share_name != "IPC$":
+                    self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
 
             self.logger.success('Enumerated shares')
             self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))

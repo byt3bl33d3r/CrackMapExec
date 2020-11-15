@@ -6,8 +6,8 @@ from cme.helpers.logger import highlight
 
 def gen_cli_args():
 
-    VERSION  = '5.1.1dev'
-    CODENAME = '3TH@n'
+    VERSION  = '5.1.3dev'
+    CODENAME = 'U fancy huh?'
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
@@ -24,7 +24,7 @@ def gen_cli_args():
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
                                                       {}: {}
-                                                     {}: {}
+                                                    {}: {}
 """.format(highlight('Version', 'red'),
            highlight(VERSION),
            highlight('Codename', 'red'),
@@ -32,7 +32,7 @@ def gen_cli_args():
 
                                     formatter_class=RawTextHelpFormatter,
                                     #version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog="Ya feelin' a bit buggy all of a sudden?")
+                                    epilog="A la mierda el mundo soy una erección ambulante")
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')

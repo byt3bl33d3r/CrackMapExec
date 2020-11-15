@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from gevent.pool import Pool
-from gevent import sleep
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
@@ -14,7 +12,13 @@ from cme.loaders.module_loader import module_loader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
+from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
+from decimal import Decimal
+import time
+import asyncio
+import aioconsole
+import functools
 import configparser
 import cme.helpers.powershell as powershell
 import cme
@@ -26,11 +30,85 @@ import os
 import sys
 import logging
 
+setup_logger()
+logger = CMEAdapter()
+
+async def monitor_threadpool(pool, targets):
+    logging.debug('Started thread poller')
+
+    while True:
+        try:
+            text = await aioconsole.ainput("")
+            if text == "":
+                pool_size = pool._work_queue.qsize()
+                finished_threads = len(targets) - pool_size
+                percentage = Decimal(finished_threads) / Decimal(len(targets)) * Decimal(100)
+                logger.info(f"completed: {percentage:.2f}% ({finished_threads}/{len(targets)})")
+        except asyncio.CancelledError:
+            logging.debug("Stopped thread poller")
+            break
+
+async def run_protocol(loop, protocol_obj, args, db, target, jitter):
+    try:
+        if jitter:
+            value = random.choice(range(jitter[0], jitter[1]))
+            logging.debug(f"Doin' the jitterbug for {value} second(s)")
+            await asyncio.sleep(value)
+
+        thread = loop.run_in_executor(
+            None,
+            functools.partial(
+                protocol_obj,
+                args,
+                db,
+                str(target)
+            )
+        )
+
+        await asyncio.wait_for(
+            thread,
+            timeout=args.timeout
+        )
+
+    except asyncio.TimeoutError:
+        logging.debug("Thread exceeded timeout")
+    except asyncio.CancelledError:
+        logging.debug("Stopping thread")
+        thread.cancel()
+
+async def start_threadpool(protocol_obj, args, db, targets, jitter):
+    pool = ThreadPoolExecutor(max_workers=args.threads + 1)
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(pool)
+
+    monitor_task = asyncio.create_task(
+        monitor_threadpool(pool, targets)
+    )
+
+    jobs = [
+        run_protocol(
+            loop,
+            protocol_obj,
+            args,
+            db,
+            target,
+            jitter
+        )
+        for target in targets
+    ]
+
+    try:
+        logging.debug("Running")
+        await asyncio.gather(*jobs)
+    except asyncio.CancelledError:
+        print('\n')
+        logger.info("Shutting down, please wait...")
+        logging.debug("Cancelling scan")
+    finally:
+        monitor_task.cancel()
+        pool.shutdown(wait=True)
 
 def main():
-
-    setup_logger()
-    logger = CMEAdapter()
     first_run_setup(logger)
 
     args = gen_cli_args()
@@ -191,27 +269,14 @@ def main():
                 setattr(protocol_object, 'server', module_server.server)
 
     try:
-        '''
-            Open all the greenlet (as supposed to redlet??) threads
-            Whoever came up with that name has a fetish for traffic lights
-        '''
-        pool = Pool(args.threads)
-        jobs = []
-        for target in targets:
-            jobs.append(pool.spawn(protocol_object, args, db, str(target)))
-
-            if jitter:
-                value = random.choice(range(jitter[0], jitter[1]))
-                logging.debug("Doin' the Jitterbug for {} seconds".format(value))
-                sleep(value)
-
-        for job in jobs:
-            job.join(timeout=args.timeout)
+        asyncio.run(
+            start_threadpool(protocol_object, args, db, targets, jitter)
+        )
     except KeyboardInterrupt:
-        pass
-
-    if module_server:
-        module_server.shutdown()
+        logging.debug("Got keyboard interrupt")
+    finally:
+        if module_server:
+            module_server.shutdown()
 
 if __name__ == '__main__':
     main()

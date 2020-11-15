@@ -1,7 +1,7 @@
 import ntpath, logging
 import os
 
-from gevent import sleep
+from time import sleep
 from cme.helpers.misc import gen_random_string
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
