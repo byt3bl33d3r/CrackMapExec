@@ -3,6 +3,7 @@ import sys
 from argparse import RawTextHelpFormatter
 from cme.loaders.protocol_loader import protocol_loader
 from cme.helpers.logger import highlight
+from termcolor import colored
 
 def gen_cli_args():
 
@@ -12,7 +13,7 @@ def gen_cli_args():
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
 
-    parser = argparse.ArgumentParser(description="""
+    parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
      /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
     |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
@@ -23,16 +24,13 @@ def gen_cli_args():
                                          A swiss army knife for pentesting networks
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
-                                                      {}: {}
-                                                    {}: {}
-""".format(highlight('Version', 'red'),
-           highlight(VERSION),
-           highlight('Codename', 'red'),
-           highlight(CODENAME)),
+                                           {colored("Exclusive release for Kali Linux users", "magenta")}
 
-                                    formatter_class=RawTextHelpFormatter,
-                                    #version='{} - {}'.format(VERSION, CODENAME),
-                                    epilog="A la mierda el mundo soy una erección ambulante")
+                                                     {highlight('Version', 'red')}: {highlight(VERSION)}
+                                                   {highlight('Codename', 'red')}: {highlight(CODENAME)}
+""",
+
+    formatter_class=RawTextHelpFormatter)
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
