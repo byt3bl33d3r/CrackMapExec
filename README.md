@@ -6,7 +6,12 @@
   <img src="https://cloud.githubusercontent.com/assets/5151193/17577511/d312ceb4-5f3b-11e6-8de5-8822246289fd.jpg" alt="cme"/>
 </p>
 
-# Sponsors
+
+## In partnership with
+
+<p align="center"><img height=150 width=300 src="https://user-images.githubusercontent.com/5151193/99304058-1cef5700-280f-11eb-8642-1f9553808d2d.png"/></p>
+
+## Sponsors
 [<img src="https://www.blackhillsinfosec.com/wp-content/uploads/2016/03/BHIS-logo-L-300x300.png" width="130" height="130"/>](https://www.blackhillsinfosec.com/)
 [<img src="https://handbook.volkis.com.au/assets/img/Volkis_Logo_Brandpack.svg" width="130" hspace="10"/>](https://volkis.com.au)
 [<img src="https://user-images.githubusercontent.com/5151193/85817125-875e0880-b743-11ea-83e9-764cd55a29c5.png" width="200" vspace="21"/>](https://qomplx.com/blog/cyber/)
