@@ -23,7 +23,7 @@ class SMBSpider:
     def spider(self, share, folder='.', pattern=[], regex=[], exclude_dirs=[], depth=None, content=False, onlyfiles=True):
         if regex:
             try:
-                self.regex = [re.compile(rx) for rx in regex]
+                self.regex = [re.compile(bytes(rx,'utf8')) for rx in regex]
             except Exception as e:
                 self.logger.error('Regex compilation error: {}'.format(e))
 
@@ -98,32 +98,33 @@ class SMBSpider:
     def dir_list(self, files, path):
         path = path.replace('*', '')
         for result in files:
-            for pattern in self.pattern:
-                if result.get_longname().lower().find(pattern.lower()) != -1:
-                    if not self.onlyfiles and result.is_directory():
-                        self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, 
-                                                                           path, 
-                                                                           result.get_longname()))
-                    else:
-                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
-                                                                                       path,
-                                                                                       result.get_longname(),
-                                                                                       'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
-                                                                                       result.get_filesize()))
-                    self.results.append('{}{}'.format(path, result.get_longname()))
+            if self.pattern:
+                for pattern in self.pattern:
+                    if bytes(result.get_longname().lower(),'utf8').find(bytes(pattern.lower(),'utf8')) != -1:
+                        if not self.onlyfiles and result.is_directory():
+                            self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, 
+                                                                            path, 
+                                                                            result.get_longname()))
+                        else:
+                            self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
+                                                                                        path,
+                                                                                        result.get_longname(),
+                                                                                        'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
+                                                                                        result.get_filesize()))
+                        self.results.append('{}{}'.format(path, result.get_longname()))
+            if self.regex:
+                for regex in self.regex:
+                    if regex.findall(bytes(result.get_longname(), 'utf8')):
+                        if not self.onlyfiles and result.is_directory():
+                            self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, path, result.get_longname()))
+                        else:
+                            self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
+                                                                                        path,
+                                                                                        result.get_longname(),
+                                                                                        'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
+                                                                                        result.get_filesize()))
 
-            for regex in self.regex:
-                if regex.findall(result.get_longname()):
-                    if not self.onlyfiles and result.is_directory():
-                        self.logger.highlight(u"//{}/{}/{}{} [dir]".format(self.smbconnection.getRemoteHost(), self.share, path, result.get_longname()))
-                    else:
-                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{}]".format(self.smbconnection.getRemoteHost(), self.share,
-                                                                                       path,
-                                                                                       result.get_longname(),
-                                                                                       'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
-                                                                                       result.get_filesize()))
-
-                    self.results.append('{}{}'.format(path, result.get_longname()))
+                        self.results.append('{}{}'.format(path, result.get_longname()))
 
             if self.content:
                 if not result.is_directory():
@@ -149,30 +150,30 @@ class SMBSpider:
                 except Exception:
                     traceback.print_exc()
                     break
-
-                for pattern in self.pattern:
-                    if contents.lower().find(pattern.lower()) != -1:
-                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.smbconnection.getRemoteHost(), 
+                if self.pattern:
+                    for pattern in self.pattern:
+                        if contents.lower().find(bytes(pattern.lower(),'utf8')) != -1:
+                            self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} pattern:'{}']".format(self.smbconnection.getRemoteHost(), 
+                                                                                                                self.share,
+                                                                                                                path,
+                                                                                                                result.get_longname(),
+                                                                                                                'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
+                                                                                                                result.get_filesize(),
+                                                                                                                rfile.tell(),
+                                                                                                                pattern))
+                            self.results.append('{}{}'.format(path, result.get_longname()))
+                if self.regex:
+                    for regex in self.regex:
+                        if regex.findall(contents):
+                            self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.smbconnection.getRemoteHost(),
                                                                                                             self.share,
                                                                                                             path,
                                                                                                             result.get_longname(),
                                                                                                             'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
                                                                                                             result.get_filesize(),
                                                                                                             rfile.tell(),
-                                                                                                            pattern))
-                        self.results.append('{}{}'.format(path, result.get_longname()))
-
-                for regex in self.regex:
-                    if regex.findall(contents):
-                        self.logger.highlight(u"//{}/{}/{}{} [lastm:'{}' size:{} offset:{} regex:'{}']".format(self.smbconnection.getRemoteHost(),
-                                                                                                          self.share,
-                                                                                                          path,
-                                                                                                          result.get_longname(),
-                                                                                                          'n\\a' if not self.get_lastm_time(result) else self.get_lastm_time(result),
-                                                                                                          result.get_filesize(),
-                                                                                                          rfile.tell(),
-                                                                                                          regex.pattern))
-                        self.results.append('{}{}'.format(path, result.get_longname()))
+                                                                                                            regex.pattern))
+                            self.results.append('{}{}'.format(path, result.get_longname()))
 
             rfile.close()
             return
