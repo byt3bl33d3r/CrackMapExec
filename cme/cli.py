@@ -7,7 +7,7 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.1.3dev'
+    VERSION  = '5.1.4dev'
     CODENAME = 'U fancy huh?'
 
     p_loader =  protocol_loader()
