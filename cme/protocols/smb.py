@@ -527,10 +527,13 @@ class smb(connection):
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
         computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
-        user_id = self.db.get_user(
-            self.domain.split('.')[0].upper(),
-            self.username
-        )[0][0]
+        try:
+            user_id = self.db.get_user(
+                self.domain.split('.')[0].upper(),
+                self.username
+            )[0][0]
+        except:
+            return
         permissions = []
 
         try:
@@ -570,11 +573,12 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-
+        except SessionError as e:
+            self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
             error, desc = e.getErrorString()
             self.logger.error('Error enumerating shares: {}'.format(error),
-                            color='magenta' if error in smb_error_status else 'red')
+                            color='magenta' if error in smb_error_status else 'red')          
 
         return permissions
 
@@ -589,14 +593,16 @@ class smb(connection):
 
         return dc_ips
 
-    def sessions(self):
-        sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-        self.logger.success('Enumerated sessions')
-        for session in sessions:
-            if session.sesi10_cname.find(self.local_ip) == -1:
-                self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
-
-        return sessions
+    def user_id(self):
+        try:
+            sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
+            self.logger.success('Enumerated sessions')
+            for session in sessions:
+                if session.sesi10_cname.find(self.local_ip) == -1:
+                    self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
+            return sessions
+        except:
+            pass      
 
     def disks(self):
         disks = []

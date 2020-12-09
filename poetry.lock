@@ -118,7 +118,7 @@ beautifulsoup4 = "*"
 
 [[package]]
 name = "certifi"
-version = "2020.11.8"
+version = "2020.12.5"
 description = "Python package for providing Mozilla's CA Bundle."
 category = "main"
 optional = false
@@ -161,14 +161,14 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "cryptography"
-version = "3.2.1"
+version = "3.3"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 category = "main"
 optional = false
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
 
 [package.dependencies]
-cffi = ">=1.8,<1.11.3 || >1.11.3"
+cffi = ">=1.12"
 six = ">=1.4.1"
 
 [package.extras]
@@ -261,7 +261,7 @@ six = "*"
 
 [[package]]
 name = "importlib-metadata"
-version = "3.1.0"
+version = "3.1.1"
 description = "Read metadata from Python packages"
 category = "dev"
 optional = false
@@ -271,8 +271,8 @@ python-versions = ">=3.6"
 zipp = ">=0.5"
 
 [package.extras]
-docs = ["sphinx", "rst.linker"]
-testing = ["packaging", "pep517", "unittest2", "importlib-resources (>=1.3)"]
+docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
+testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "packaging", "pep517", "pyfakefs", "flufl.flake8", "pytest-black (>=0.3.7)", "pytest-mypy", "importlib-resources (>=1.3)"]
 
 [[package]]
 name = "isort"
@@ -380,7 +380,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "minikerberos"
-version = "0.2.5"
+version = "0.2.6"
 description = "Kerberos manipulation library in pure Python"
 category = "main"
 optional = false
@@ -572,14 +572,14 @@ tests = ["pytest (>=3.2.1,!=3.3.0)", "hypothesis (>=3.27.0)"]
 
 [[package]]
 name = "pyopenssl"
-version = "19.1.0"
+version = "20.0.0"
 description = "Python wrapper module around the OpenSSL library"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
 
 [package.dependencies]
-cryptography = ">=2.8"
+cryptography = ">=3.2"
 six = ">=1.5.2"
 
 [package.extras]
@@ -621,7 +621,7 @@ winsspi = ">=0.0.9"
 
 [[package]]
 name = "pyspnego"
-version = "0.1.3"
+version = "0.1.4"
 description = "Windows Negotiate Authentication Client and Server"
 category = "main"
 optional = false
@@ -734,7 +734,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "tqdm"
-version = "4.54.0"
+version = "4.54.1"
 description = "Fast, Extensible Progress Meter"
 category = "main"
 optional = false
@@ -889,8 +889,8 @@ bs4 = [
     {file = "bs4-0.0.1.tar.gz", hash = "sha256:36ecea1fd7cc5c0c6e4a1ff075df26d50da647b75376626cc186e2212886dd3a"},
 ]
 certifi = [
-    {file = "certifi-2020.11.8-py2.py3-none-any.whl", hash = "sha256:1f422849db327d534e3d0c5f02a263458c3955ec0aae4ff09b95f195c59f4edd"},
-    {file = "certifi-2020.11.8.tar.gz", hash = "sha256:f05def092c44fbf25834a51509ef6e631dc19765ab8a57b4e7ab85531f0a9cf4"},
+    {file = "certifi-2020.12.5-py2.py3-none-any.whl", hash = "sha256:719a74fb9e33b9bd44cc7f3a8d94bc35e4049deebe19ba7d8e108280cfd59830"},
+    {file = "certifi-2020.12.5.tar.gz", hash = "sha256:1a4995114262bffbc2413b159f2a1a480c969de6e6eb13ee966d470af86af59c"},
 ]
 cffi = [
     {file = "cffi-1.14.4-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:ebb253464a5d0482b191274f1c8bf00e33f7e0b9c66405fbffc61ed2c839c775"},
@@ -941,28 +941,20 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 cryptography = [
-    {file = "cryptography-3.2.1-cp27-cp27m-macosx_10_10_x86_64.whl", hash = "sha256:6dc59630ecce8c1f558277ceb212c751d6730bd12c80ea96b4ac65637c4f55e7"},
-    {file = "cryptography-3.2.1-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:75e8e6684cf0034f6bf2a97095cb95f81537b12b36a8fedf06e73050bb171c2d"},
-    {file = "cryptography-3.2.1-cp27-cp27m-manylinux2010_x86_64.whl", hash = "sha256:4e7268a0ca14536fecfdf2b00297d4e407da904718658c1ff1961c713f90fd33"},
-    {file = "cryptography-3.2.1-cp27-cp27m-win32.whl", hash = "sha256:7117319b44ed1842c617d0a452383a5a052ec6aa726dfbaffa8b94c910444297"},
-    {file = "cryptography-3.2.1-cp27-cp27m-win_amd64.whl", hash = "sha256:a733671100cd26d816eed39507e585c156e4498293a907029969234e5e634bc4"},
-    {file = "cryptography-3.2.1-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:a75f306a16d9f9afebfbedc41c8c2351d8e61e818ba6b4c40815e2b5740bb6b8"},
-    {file = "cryptography-3.2.1-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:5849d59358547bf789ee7e0d7a9036b2d29e9a4ddf1ce5e06bb45634f995c53e"},
-    {file = "cryptography-3.2.1-cp35-abi3-macosx_10_10_x86_64.whl", hash = "sha256:bd717aa029217b8ef94a7d21632a3bb5a4e7218a4513d2521c2a2fd63011e98b"},
-    {file = "cryptography-3.2.1-cp35-abi3-manylinux1_x86_64.whl", hash = "sha256:efe15aca4f64f3a7ea0c09c87826490e50ed166ce67368a68f315ea0807a20df"},
-    {file = "cryptography-3.2.1-cp35-abi3-manylinux2010_x86_64.whl", hash = "sha256:32434673d8505b42c0de4de86da8c1620651abd24afe91ae0335597683ed1b77"},
-    {file = "cryptography-3.2.1-cp35-abi3-manylinux2014_aarch64.whl", hash = "sha256:7b8d9d8d3a9bd240f453342981f765346c87ade811519f98664519696f8e6ab7"},
-    {file = "cryptography-3.2.1-cp35-cp35m-win32.whl", hash = "sha256:d3545829ab42a66b84a9aaabf216a4dce7f16dbc76eb69be5c302ed6b8f4a29b"},
-    {file = "cryptography-3.2.1-cp35-cp35m-win_amd64.whl", hash = "sha256:a4e27ed0b2504195f855b52052eadcc9795c59909c9d84314c5408687f933fc7"},
-    {file = "cryptography-3.2.1-cp36-abi3-win32.whl", hash = "sha256:13b88a0bd044b4eae1ef40e265d006e34dbcde0c2f1e15eb9896501b2d8f6c6f"},
-    {file = "cryptography-3.2.1-cp36-abi3-win_amd64.whl", hash = "sha256:07ca431b788249af92764e3be9a488aa1d39a0bc3be313d826bbec690417e538"},
-    {file = "cryptography-3.2.1-cp36-cp36m-win32.whl", hash = "sha256:a035a10686532b0587d58a606004aa20ad895c60c4d029afa245802347fab57b"},
-    {file = "cryptography-3.2.1-cp36-cp36m-win_amd64.whl", hash = "sha256:d26a2557d8f9122f9bf445fc7034242f4375bd4e95ecda007667540270965b13"},
-    {file = "cryptography-3.2.1-cp37-cp37m-win32.whl", hash = "sha256:545a8550782dda68f8cdc75a6e3bf252017aa8f75f19f5a9ca940772fc0cb56e"},
-    {file = "cryptography-3.2.1-cp37-cp37m-win_amd64.whl", hash = "sha256:55d0b896631412b6f0c7de56e12eb3e261ac347fbaa5d5e705291a9016e5f8cb"},
-    {file = "cryptography-3.2.1-cp38-cp38-win32.whl", hash = "sha256:3cd75a683b15576cfc822c7c5742b3276e50b21a06672dc3a800a2d5da4ecd1b"},
-    {file = "cryptography-3.2.1-cp38-cp38-win_amd64.whl", hash = "sha256:d25cecbac20713a7c3bc544372d42d8eafa89799f492a43b79e1dfd650484851"},
-    {file = "cryptography-3.2.1.tar.gz", hash = "sha256:d3d5e10be0cf2a12214ddee45c6bd203dab435e3d83b4560c03066eda600bfe3"},
+    {file = "cryptography-3.3-cp27-cp27m-macosx_10_10_x86_64.whl", hash = "sha256:41892759f13c7dfc329573cabd3a513f1e7b5d309ca55c931ffefc3b2f304899"},
+    {file = "cryptography-3.3-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:4935d0603b118dc036c477917e5e8a020f7309bc11c363a4d572407dcbd53c80"},
+    {file = "cryptography-3.3-cp27-cp27m-manylinux2010_x86_64.whl", hash = "sha256:2c28e69e8c2620869425420e466b224d351d5dc242d3e3293062cffa7fcdd276"},
+    {file = "cryptography-3.3-cp27-cp27m-win32.whl", hash = "sha256:ee0084f6d62f083316b08111b122dc4fbe16e534059b92b5ddc3d73dc52dd39c"},
+    {file = "cryptography-3.3-cp27-cp27m-win_amd64.whl", hash = "sha256:f43d6e72e3cdf983b5e5e65938c0519ce4eeb42b6af766f714b1414ae7b9f8ef"},
+    {file = "cryptography-3.3-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:651eff09297e4518287f711b4e28523567cbde7beaa794d06d0b35ac9adc1172"},
+    {file = "cryptography-3.3-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:1366e6fff96bb1d320e3ef3c531b0428cb780c517b6059ffe8820e2a30bf5858"},
+    {file = "cryptography-3.3-cp36-abi3-macosx_10_10_x86_64.whl", hash = "sha256:66f41aa7642f97d35976750a2c0a6d5915733ba6c9ca7a0f327e56f037c1236e"},
+    {file = "cryptography-3.3-cp36-abi3-manylinux1_x86_64.whl", hash = "sha256:9518da854136181407d946b971dd27a0e941d5d07f87f87a44c598b3da7a77d2"},
+    {file = "cryptography-3.3-cp36-abi3-manylinux2010_x86_64.whl", hash = "sha256:ad8dc319f876273b474a59797344d5986beaaaf18f7cc0ab9255155da057d979"},
+    {file = "cryptography-3.3-cp36-abi3-manylinux2014_aarch64.whl", hash = "sha256:55574bd84ff551fd6f7617e5eeda0b2d129f84788340ab57904f0c7f13f8f149"},
+    {file = "cryptography-3.3-cp36-abi3-win32.whl", hash = "sha256:f95ca692fafea80f1815bbfecf57c6833c0b21432d17026a077341debee76e79"},
+    {file = "cryptography-3.3-cp36-abi3-win_amd64.whl", hash = "sha256:402273e7f78e01f5c42452acef56bd52fa73fa0f312e4160db7ad29bbc90335d"},
+    {file = "cryptography-3.3.tar.gz", hash = "sha256:d9f1e520f2ee08c5a88e1ae0b31159bdb13da40a486bea3e9f7d338564850ea6"},
 ]
 dnspython = [
     {file = "dnspython-2.0.0-py3-none-any.whl", hash = "sha256:40bb3c24b9d4ec12500f0124288a65df232a3aa749bb0c39734b782873a2544d"},
@@ -987,8 +979,8 @@ impacket = [
     {file = "impacket-0.9.22.tar.gz", hash = "sha256:4bf7e7b595356585599b4b2773b8a463d7b9765c97012dcd5a44eb6d547f6a1d"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-3.1.0-py2.py3-none-any.whl", hash = "sha256:590690d61efdd716ff82c39ca9a9d4209252adfe288a4b5721181050acbd4175"},
-    {file = "importlib_metadata-3.1.0.tar.gz", hash = "sha256:d9b8a46a0885337627a6430db287176970fff18ad421becec1d64cfc763c2099"},
+    {file = "importlib_metadata-3.1.1-py3-none-any.whl", hash = "sha256:6112e21359ef8f344e7178aa5b72dc6e62b38b0d008e6d3cb212c5b84df72013"},
+    {file = "importlib_metadata-3.1.1.tar.gz", hash = "sha256:b0c2d3b226157ae4517d9625decf63591461c66b3a808c2666d538946519d170"},
 ]
 isort = [
     {file = "isort-5.6.4-py3-none-any.whl", hash = "sha256:dcab1d98b469a12a1a624ead220584391648790275560e1a43e54c5dceae65e7"},
@@ -1085,8 +1077,8 @@ minidump = [
     {file = "minidump-0.0.13.tar.gz", hash = "sha256:ba8a988f915e53005f8b4747515269e7ab7c937bc74ab09fec949edf04f423f1"},
 ]
 minikerberos = [
-    {file = "minikerberos-0.2.5-py3-none-any.whl", hash = "sha256:86fd9a9681ce9f766a6077a641c037387fe8eda91740bb465757c2bfa04ea7b9"},
-    {file = "minikerberos-0.2.5.tar.gz", hash = "sha256:fe6d0f3686a51f76073d915b982b3072e3e27c3abe8ebf10b5c22b10e5321e34"},
+    {file = "minikerberos-0.2.6-py3-none-any.whl", hash = "sha256:6eb0767133a470bd89a9157739736e35aaeff95482101aaa709e397ffc5b2995"},
+    {file = "minikerberos-0.2.6.tar.gz", hash = "sha256:ad4716fbda4f6175a8142b0a0562dfdc0b1e252382753c6b32e0613b095cd656"},
 ]
 msgpack = [
     {file = "msgpack-1.0.0-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:cec8bf10981ed70998d98431cd814db0ecf3384e6b113366e7f36af71a0fca08"},
@@ -1232,8 +1224,8 @@ pynacl = [
     {file = "PyNaCl-1.4.0.tar.gz", hash = "sha256:54e9a2c849c742006516ad56a88f5c74bf2ce92c9f67435187c3c5953b346505"},
 ]
 pyopenssl = [
-    {file = "pyOpenSSL-19.1.0-py2.py3-none-any.whl", hash = "sha256:621880965a720b8ece2f1b2f54ea2071966ab00e2970ad2ce11d596102063504"},
-    {file = "pyOpenSSL-19.1.0.tar.gz", hash = "sha256:9a24494b2602aaf402be5c9e30a0b82d4a5c67528fe8fb475e3f3bc00dd69507"},
+    {file = "pyOpenSSL-20.0.0-py2.py3-none-any.whl", hash = "sha256:898aefbde331ba718570244c3b01dcddb1b31a3b336613436a45e52e27d9a82d"},
+    {file = "pyOpenSSL-20.0.0.tar.gz", hash = "sha256:92f08eccbd73701cf744e8ffd6989aa7842d48cbe3fea8a7c031c5647f590ac5"},
 ]
 pypsrp = [
     {file = "pypsrp-0.5.0-py2.py3-none-any.whl", hash = "sha256:a2eec4d9a1f16208e79c87699129b0fe265be9b423641dbac0798d1e3f225e87"},
@@ -1244,20 +1236,20 @@ pypykatz = [
     {file = "pypykatz-0.3.15.tar.gz", hash = "sha256:718618aabf115d06136007fb4cd6bf3baf98ffc004c5bd90baf8d0cd9546d0e5"},
 ]
 pyspnego = [
-    {file = "pyspnego-0.1.3-cp27-cp27m-win32.whl", hash = "sha256:17c4c29ffa8a99d2b95942570864804f00756945bacb5c217c96d24d72523596"},
-    {file = "pyspnego-0.1.3-cp27-cp27m-win_amd64.whl", hash = "sha256:0fa9ea4bd6be196ec88db3f63a54854e6898e6a5bcba973551a99f4786cefa25"},
-    {file = "pyspnego-0.1.3-cp35-cp35m-win32.whl", hash = "sha256:f87f10c66a17b7b1d9e186110c35269d353ecb6e30c7a573e65cfb1286e8799f"},
-    {file = "pyspnego-0.1.3-cp35-cp35m-win_amd64.whl", hash = "sha256:53dd617ae50b3d7dea3d44b8e2184f3a11f0ddc9dd94ef6abe990cbd4b7eac50"},
-    {file = "pyspnego-0.1.3-cp36-cp36m-win32.whl", hash = "sha256:ac7b19f0c24bfdef3065b1b0187a2653c86f15f6cc0cb123a3bf1c88e466073b"},
-    {file = "pyspnego-0.1.3-cp36-cp36m-win_amd64.whl", hash = "sha256:73e896e916d47b3ab15372e48f21291c84608bc15885e091544c9417ffe2f0bc"},
-    {file = "pyspnego-0.1.3-cp37-cp37m-win32.whl", hash = "sha256:3ca1faf60b6e42f8583c20d40e0a29af2baf282943abd847a609356c0086c6a4"},
-    {file = "pyspnego-0.1.3-cp37-cp37m-win_amd64.whl", hash = "sha256:320fdcc33599d28cfc257b01d01cfb2a8b59cd821a15949e81fb74befe8a56d9"},
-    {file = "pyspnego-0.1.3-cp38-cp38-win32.whl", hash = "sha256:9b6222bf10a912351bb8cadad26307e8ca227aca0533c36bc8ad763cb3f8310e"},
-    {file = "pyspnego-0.1.3-cp38-cp38-win_amd64.whl", hash = "sha256:ce50e00516bac280c93acfaab098579ef2d138790fa47a208938bfb91016e417"},
-    {file = "pyspnego-0.1.3-cp39-cp39-win32.whl", hash = "sha256:e6ffcf69090a6b10866f3e68ba5055a5f9371e9e1aab544493a9bcdf80c7e53f"},
-    {file = "pyspnego-0.1.3-cp39-cp39-win_amd64.whl", hash = "sha256:95570bbef667df19d3e59d22ebb4afb88ad713f12d81899c5d82f8dd475b85d9"},
-    {file = "pyspnego-0.1.3-py2.py3-none-any.whl", hash = "sha256:e63dec220a0a29bd929f8bbd401eb747da591c50f1c5a4e68f86aa73626dd57d"},
-    {file = "pyspnego-0.1.3.tar.gz", hash = "sha256:a2963d52b64ecd7df3f8e9a311a423e75bd4bcc5944d46da16837607f9f6e667"},
+    {file = "pyspnego-0.1.4-cp27-cp27m-win32.whl", hash = "sha256:6f6b76d311de4b10dc37ff590a210c79298c4fdbf7bd2cb5bae6258052f124ee"},
+    {file = "pyspnego-0.1.4-cp27-cp27m-win_amd64.whl", hash = "sha256:b1aa97b6d3270311f7a609e3bc888fdb27cbcb109a0f77f30475544104e4af20"},
+    {file = "pyspnego-0.1.4-cp35-cp35m-win32.whl", hash = "sha256:e541add4fee4b2dd492967ad7af2df799c7ab5990438355570a03dd292ca9675"},
+    {file = "pyspnego-0.1.4-cp35-cp35m-win_amd64.whl", hash = "sha256:2df26bf2e80cd7adf8d3f5ef972a8361dc756549296ea01e184a6a0503c6aa46"},
+    {file = "pyspnego-0.1.4-cp36-cp36m-win32.whl", hash = "sha256:36c62a028b2495bebcb3526609b402ee9d80ec531f1ce8ae172d5e530fa9dccb"},
+    {file = "pyspnego-0.1.4-cp36-cp36m-win_amd64.whl", hash = "sha256:1cf9f56152ef0f55a8fe14f33213c70fa371188ad3d824b405cea943e38598e5"},
+    {file = "pyspnego-0.1.4-cp37-cp37m-win32.whl", hash = "sha256:0769f4f317798230bd36e06316b1d482a3e853f1762362d878ad48366646012b"},
+    {file = "pyspnego-0.1.4-cp37-cp37m-win_amd64.whl", hash = "sha256:7c1ff3fecb42cced14eef2a38f4739f21aa7fed5d5431b03e74e6a6ec1ec3338"},
+    {file = "pyspnego-0.1.4-cp38-cp38-win32.whl", hash = "sha256:cc000152bd34fe09d66e3f99127ceec82c20dfd8c1e2337613cac7c4922198f1"},
+    {file = "pyspnego-0.1.4-cp38-cp38-win_amd64.whl", hash = "sha256:739fdcffbfc6911d1b758ac79e20328f3c7fd6b67402d985adba1c68f6db544f"},
+    {file = "pyspnego-0.1.4-cp39-cp39-win32.whl", hash = "sha256:af629a5070d43dac86301b4fe6ee4126edb70845632241adb71131510dcbf906"},
+    {file = "pyspnego-0.1.4-cp39-cp39-win_amd64.whl", hash = "sha256:3186c00bd88d97ada17c497ff0168077710739c5d7ff87a8f3e7b9953a2d8c78"},
+    {file = "pyspnego-0.1.4-py2.py3-none-any.whl", hash = "sha256:00a89971609ed2c8c1b8892329ec5036bd9f6c68751ae1d72cd9fb2e524120fa"},
+    {file = "pyspnego-0.1.4.tar.gz", hash = "sha256:0182c34964f6f08a91bd538e6e22cc6d38c73dbb4801bbe20f8c2855b7604a7d"},
 ]
 pytz = [
     {file = "pytz-2020.4-py2.py3-none-any.whl", hash = "sha256:5c55e189b682d420be27c6995ba6edce0c0a77dd67bfbe2ae6607134d5851ffd"},
@@ -1337,8 +1329,8 @@ toml = [
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
 ]
 tqdm = [
-    {file = "tqdm-4.54.0-py2.py3-none-any.whl", hash = "sha256:9e7b8ab0ecbdbf0595adadd5f0ebbb9e69010e0bd48bbb0c15e550bf2a5292df"},
-    {file = "tqdm-4.54.0.tar.gz", hash = "sha256:5c0d04e06ccc0da1bd3fa5ae4550effcce42fcad947b4a6cafa77bdc9b09ff22"},
+    {file = "tqdm-4.54.1-py2.py3-none-any.whl", hash = "sha256:d4f413aecb61c9779888c64ddf0c62910ad56dcbe857d8922bb505d4dbff0df1"},
+    {file = "tqdm-4.54.1.tar.gz", hash = "sha256:38b658a3e4ecf9b4f6f8ff75ca16221ae3378b2e175d846b6b33ea3a20852cf5"},
 ]
 typed-ast = [
     {file = "typed_ast-1.4.1-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:73d785a950fc82dd2a25897d525d003f6378d1cb23ab305578394694202a58c3"},
