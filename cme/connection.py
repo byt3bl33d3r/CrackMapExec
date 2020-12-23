@@ -1,16 +1,30 @@
 import logging
+import socket
 from os.path import isfile
-# from traceback import format_exc
 from gevent.lock import BoundedSemaphore
 from gevent.socket import gethostbyname
 from functools import wraps
+
 from cme.logger import CMEAdapter
 from cme.context import Context
+
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
 user_failed_logins = {}
 
+
+def gethost_addrinfo(hostname):
+    try:
+        for res in socket.getaddrinfo(hostname, None, socket.AF_INET6,
+                socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+            af, socktype, proto, canonname, sa = res
+    except (socket.gaierror, TypeError):
+        for res in socket.getaddrinfo(hostname, None, socket.AF_INET,
+                socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+            af, socktype, proto, canonname, sa = res
+
+    return sa[0]
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
@@ -37,7 +51,7 @@ class connection(object):
         self.local_ip = None
 
         try:
-            self.host = gethostbyname(self.hostname)
+            self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
         except Exception as e:
