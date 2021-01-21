@@ -35,6 +35,7 @@ class ldap(connection):
         self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
+        self.admin_privs = False
 
         connection.__init__(self, args, db, host)
 
@@ -56,6 +57,8 @@ class ldap(connection):
         vgroup = ldap_parser.add_argument_group("Retrieve useful information on the domain", "Options to to play with Kerberos")
         vgroup.add_argument("--trusted-for-delegation", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
+        vgroup.add_argument("--users", action="store_true", help="Enumerate domain users")
+        vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
 
         return parser
 
@@ -189,13 +192,16 @@ class ldap(connection):
                     hash_asreproast.write(hash_TGT + '\n')
             return False
 
-        # Connect to LDAP
-        out = u'{}{}:{}'.format('{}\\'.format(domain),
-                                                username,
-                                                password)
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+            #self.check_if_admin()
+
+            # Connect to LDAP
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain),
+                                                username,
+                                                password,
+                                                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -270,6 +276,7 @@ class ldap(connection):
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+            #self.check_if_admin()
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -335,6 +342,105 @@ class ldap(connection):
         t -= 116444736000000000
         t /= 10000000
         return t
+
+    def users(self):
+        # Building the search filter
+        searchFilter = "(sAMAccountType=805306368)"
+        try:
+            logging.debug('Search Filter=%s' % searchFilter)
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
+                                        attributes=[],
+                                        sizeLimit=999)
+        except ldap_impacket.LDAPSearchError as e:
+            if e.getErrorString().find('sizeLimitExceeded') >= 0:
+                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
+                # paged queries
+                resp = e.getAnswers()
+                pass
+            else:
+                return False
+        answers = []
+        logging.debug('Total of records returned %d' % len(resp))
+
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            mustCommit = False
+            sAMAccountName =  ''
+            badPasswordTime = ''
+            badPwdCount = 0
+            try:
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'sAMAccountName':
+                        sAMAccountName = str(attribute['vals'][0])
+                        mustCommit = True
+                    elif str(attribute['type']) == 'badPwdCount':
+                        badPwdCount = "0x%x" % int(attribute['vals'][0])
+                    elif str(attribute['type']) == 'badPasswordTime':
+                        if str(attribute['vals'][0]) == '0':
+                            badPasswordTime = '<never>'
+                        else:
+                            badPasswordTime = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                if mustCommit is True:
+                    answers.append([sAMAccountName, badPwdCount, badPasswordTime])
+            except Exception as e:
+                logging.debug("Exception:", exc_info=True)
+                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                pass
+        if len(answers)>0:
+            logging.debug(answers)
+            for value in answers:
+                self.logger.highlight('{:<30} badpwdcount: {} pwdLastSet: {}'.format(value[0], int(value[1],16),value[2]))
+        else:
+            self.logger.error("No entries found!")
+        return
+
+    def groups(self):
+        # Building the search filter
+        searchFilter = "(objectCategory=group)"
+        try:
+            logging.debug('Search Filter=%s' % searchFilter)
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
+                                        attributes=[],
+                                        sizeLimit=999)
+        except ldap_impacket.LDAPSearchError as e:
+            if e.getErrorString().find('sizeLimitExceeded') >= 0:
+                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
+                # paged queries
+                resp = e.getAnswers()
+                pass
+            else:
+                return False
+        answers = []
+        logging.debug('Total of records returned %d' % len(resp))
+
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            mustCommit = False
+            name =  ''
+            try:
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'name':
+                        name = str(attribute['vals'][0])
+                        mustCommit = True
+                    # if str(attribute['type']) == 'objectSid':
+                    #     print(format_sid((attribute['vals'][0])))
+                if mustCommit is True:
+                    answers.append([name])
+            except Exception as e:
+                logging.debug("Exception:", exc_info=True)
+                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                pass
+        if len(answers)>0:
+            logging.debug(answers)
+            for value in answers:
+                self.logger.highlight('{}'.format(value[0]))
+        else:
+            self.logger.error("No entries found!")
+        return
 
     def asreproast(self):
         if self.password == '' and self.nthash == '' and self.kerberos == False:
