@@ -218,6 +218,13 @@ class ldap(connection):
                                                  self.password))
             return False
 
+        except OSError as e:
+            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password,
+                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
+            return False
+
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -282,6 +289,12 @@ class ldap(connection):
                 self.logger.error(u'{}\{}:{}'.format(self.domain, 
                                                     self.username, 
                                                     self.nthash))
+            return False
+        except OSError as e:
+            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.nthash,
+                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
             return False
 
     def create_smbv1_conn(self):
