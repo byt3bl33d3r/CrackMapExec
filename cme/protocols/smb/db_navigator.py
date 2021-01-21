@@ -47,7 +47,10 @@ class navigator(DatabaseNavigator):
             ip = host[1]
             hostname = host[2]
             domain = host[3]
-            os = host[4]
+            try:
+                os = host[4].decode()
+            except:
+                os = host[4]
 
             links = self.db.get_admin_relations(hostID=hostID)
 
