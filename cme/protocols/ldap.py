@@ -197,6 +197,10 @@ class ldap(connection):
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.logger.success(out)
+
+            if not self.args.continue_on_success:
+                return True
+
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
@@ -214,7 +218,6 @@ class ldap(connection):
                                                  self.password))
             return False
 
-        return True
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -260,8 +263,10 @@ class ldap(connection):
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-
             self.logger.success(out)
+
+            if not self.args.continue_on_success:
+                return True
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 try:
@@ -278,8 +283,6 @@ class ldap(connection):
                                                     self.username, 
                                                     self.nthash))
             return False
-
-        return True
 
     def create_smbv1_conn(self):
         try:
