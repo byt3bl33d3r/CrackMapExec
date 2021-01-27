@@ -593,7 +593,7 @@ class smb(connection):
 
         return dc_ips
 
-    def user_id(self):
+    def sessions(self):
         try:
             sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
             self.logger.success('Enumerated sessions')
