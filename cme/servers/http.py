@@ -93,7 +93,7 @@ class CMEServer(threading.Thread):
 
         # make sure all the threads are killed
         for thread in threading.enumerate():
-            if thread.isAlive():
+            if thread.is_alive():
                 try:
                     thread._stop()
                 except:
