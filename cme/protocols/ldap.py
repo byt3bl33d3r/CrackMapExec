@@ -343,14 +343,12 @@ class ldap(connection):
         t /= 10000000
         return t
 
-    def users(self):
-        # Building the search filter
-        searchFilter = "(sAMAccountType=805306368)"
+    def search(self, searchFilter, attributes, sizeLimit=999):
         try:
             logging.debug('Search Filter=%s' % searchFilter)
             resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                        attributes=[],
-                                        sizeLimit=999)
+                                                attributes=attributes,
+                                                sizeLimit=sizeLimit)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
                 logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
@@ -359,7 +357,15 @@ class ldap(connection):
                 resp = e.getAnswers()
                 pass
             else:
+                logging.debug(e)
                 return False
+        return resp 
+
+    def users(self):
+        # Building the search filter
+        searchFilter = "(sAMAccountType=805306368)"
+        attributes= []
+        resp = self.search(searchFilter, attributes, 999)
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
 
@@ -399,20 +405,8 @@ class ldap(connection):
     def groups(self):
         # Building the search filter
         searchFilter = "(objectCategory=group)"
-        try:
-            logging.debug('Search Filter=%s' % searchFilter)
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                        attributes=[],
-                                        sizeLimit=999)
-        except ldap_impacket.LDAPSearchError as e:
-            if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
-                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
-                # paged queries
-                resp = e.getAnswers()
-                pass
-            else:
-                return False
+        attributes=[]
+        resp = self.search(searchFilter, attributes, 999)
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
 
@@ -440,7 +434,7 @@ class ldap(connection):
                 self.logger.highlight('{}'.format(value[0]))
         else:
             self.logger.error("No entries found!")
-        return
+        return       
 
     def asreproast(self):
         if self.password == '' and self.nthash == '' and self.kerberos == False:
@@ -449,23 +443,8 @@ class ldap(connection):
         searchFilter = "(&(UserAccountControl:1.2.840.113556.1.4.803:=%d)" \
                     "(!(UserAccountControl:1.2.840.113556.1.4.803:=%d))(!(objectCategory=computer)))" % \
                     (UF_DONT_REQUIRE_PREAUTH, UF_ACCOUNTDISABLE)
-
-        try:
-            logging.debug('Search Filter=%s' % searchFilter)
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                        attributes=['sAMAccountName',
-                                                    'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
-                                        sizeLimit=999)
-        except ldap_impacket.LDAPSearchError as e:
-            if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
-                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
-                # paged queries
-                resp = e.getAnswers()
-                pass
-            else:
-                logging.debug(e)
-                return False
+        attributes = ['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
+        resp = self.search(searchFilter, attributes, 999)
 
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
@@ -518,21 +497,8 @@ class ldap(connection):
         # Building the search filter
         searchFilter = "(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512)" \
                        "(!(UserAccountControl:1.2.840.113556.1.4.803:=2))(!(objectCategory=computer)))"
-
-        try:
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                         attributes=['servicePrincipalName', 'sAMAccountName',
-                                                     'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
-                                         sizeLimit=999)
-        except ldap_impacket.LDAPSearchError as e:
-            if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
-                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
-                # paged queries
-                resp = e.getAnswers()
-                pass
-            else:
-                return False
+        attributes = ['servicePrincipalName', 'sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
+        resp = self.search(searchFilter, attributes, 999)
 
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
@@ -609,21 +575,9 @@ class ldap(connection):
     def trusted_for_delegation(self):
         # Building the search filter
         searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=524288)"
-        try:
-            logging.debug('Search Filter=%s' % searchFilter)
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                        attributes=['sAMAccountName',
-                                                    'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
-                                        sizeLimit=999)
-        except ldap_impacket.LDAPSearchError as e:
-            if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
-                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
-                # paged queries
-                resp = e.getAnswers()
-                pass
-            else:
-                return False
+        attributes = ['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
+        resp = self.search(searchFilter, attributes, 999)
+
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
 
@@ -672,21 +626,8 @@ class ldap(connection):
     def admin_count(self):
         # Building the search filter
         searchFilter = "(adminCount=1)"
-        try:
-            logging.debug('Search Filter=%s' % searchFilter)
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                        attributes=['sAMAccountName',
-                                                    'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
-                                        sizeLimit=999)
-        except ldap_impacket.LDAPSearchError as e:
-            if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
-                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
-                # paged queries
-                resp = e.getAnswers()
-                pass
-            else:
-                return False
+        attributes=['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
+        resp = self.search(searchFilter, attributes, 999)
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
 
