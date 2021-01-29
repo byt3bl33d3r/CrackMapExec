@@ -576,7 +576,7 @@ class smb(connection):
         except SessionError as e:
             self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
-            error, desc = e.getErrorString()
+            error = e.getErrorString()
             self.logger.error('Error enumerating shares: {}'.format(error),
                             color='magenta' if error in smb_error_status else 'red')          
 
