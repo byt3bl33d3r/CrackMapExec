@@ -533,7 +533,7 @@ class smb(connection):
                 self.username
             )[0][0]
         except:
-            return
+            pass
         permissions = []
 
         try:
