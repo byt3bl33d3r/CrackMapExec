@@ -1,0 +1,32 @@
+Topics
+Classes
+class JSContext
+A JSContext object represents a JavaScript execution environment. You create and use JavaScript contexts to evaluate JavaScript scripts from Objective-C or Swift code, to access values defined in or calculated in JavaScript, and to make native objects, methods, or functions accessible to JavaScript.
+class JSManagedValue
+A JSManagedValue object wraps a JSValue object, adding “conditional retain” behavior to provide automatic memory management of values. The primary use case for a managed value is to store a JavaScript value in an Objective-C or Swift object that is itself exported to JavaScript.
+class JSValue
+A JSValue instance is a reference to a JavaScript value. You use the JSValue class to convert basic values (such as numbers and strings) between JavaScript and Objective-C or Swift representations in order to pass data between native code and JavaScript code. You can also use this class to create JavaScript objects that wrap native objects of custom classes or JavaScript functions whose implementations are provided by native methods or blocks.
+class JSVirtualMachine
+A JSVirtualMachine instance represents a self-contained environment for JavaScript execution. You use this class for two main purposes: to support concurrent JavaScript execution, and to manage memory for objects bridged between JavaScript and Objective-C or Swift.
+Protocols
+protocol JSExport
+The protocol you implement to export Objective-C classes and their instance methods, class methods, and properties to JavaScript code.
+Legacy JavaScriptCore APIs
+JSBase.h
+Defines the JavaScriptCore interface engine.
+JSContextRef.h
+JSObjectRef.h
+A JavaScript Object.
+JSStringRef.h
+A UTF16 character buffer that is the fundamental string representation in JavaScript.
+JSStringRefCF.h
+Contains CFString convenience methods.
+JSValueRef.h
+A JavaScript value that is the base type for all JavaScript values and the polymorphic functions on them.
+Reference
+JavaScriptCore Constants
+JavaScriptCore Functions
+JavaScriptCore Data Types
+Structures
+struct JSTypedArrayType
+A constant identifying the Typed Array type of a JSObjectRef.
