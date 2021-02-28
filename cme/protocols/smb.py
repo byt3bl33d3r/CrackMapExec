@@ -180,6 +180,7 @@ class smb(connection):
 
         psgroup = smb_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
         psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
+        psgroup.add_argument('--amsi-bypass', nargs=1, metavar="FILE", help='File with a custom AMSI bypass')
         psgroup.add_argument('--clear-obfscripts', action='store_true', help='Clear all cached obfuscated PowerShell scripts')
 
         return parser
@@ -515,13 +516,14 @@ class smb(connection):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
-
+        
+        amsi_bypass = self.args.amsi_bypass[0] if self.args.amsi_bypass else None 
         if os.path.isfile(payload):
             with open(payload) as commands:
                 for c in commands:
-                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs, custom_amsi=amsi_bypass), get_output, methods)
         else:
-            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs, custom_amsi=amsi_bypass), get_output, methods)
         return ''
 
     def shares(self):
