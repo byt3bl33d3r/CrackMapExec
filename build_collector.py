@@ -20,6 +20,23 @@ def build_cme():
         os.mkdir("build")
         os.mkdir("bin")
         shutil.copytree("cme", "build/cme")
+        # remove useless file > 10mo
+        shutil.copy("cme/data/netripper/PowerShell/Invoke-NetRipper.ps1", "cme/data/")
+        shutil.rmtree("cme/data/netripper")
+        os.mkdir("cme/data/netripper/")
+        os.mkdir("cme/data/netripper/PowerShell/")
+        shutil.move("cme/data/Invoke-NetRipper.ps1", "cme/data/netripper/PowerShell/")
+
+        shutil.copy("cme/data/invoke-vnc/Invoke-Vnc.ps1", "cme/data/")
+        shutil.rmtree("cme/data/invoke-vnc/")
+        os.mkdir("cme/data/invoke-vnc/")
+        shutil.move("cme/data/Invoke-Vnc.ps1", "cme/data/invoke-vnc/")      
+
+        shutil.rmtree("cme/data/powersploit/Recon/Dictionaries/")
+        shutil.rmtree("cme/data/powersploit/Exfiltration/NTFSParser/")
+        shutil.rmtree("cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources/")
+        shutil.rmtree("cme/data/powersploit/Exfiltration/LogonUser/")
+        shutil.rmtree("cme/data/powersploit/Tests/")  
     except:
         shutil.rmtree("build")
         shutil.rmtree("bin")
