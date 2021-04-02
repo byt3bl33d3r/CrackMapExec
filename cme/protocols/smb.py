@@ -564,7 +564,10 @@ class smb(connection):
                 permissions.append(share_info)
 
                 if share_name != "IPC$":
-                    self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
+                    try:
+                        self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
+                    except:
+                        pass
 
             self.logger.success('Enumerated shares')
             self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
