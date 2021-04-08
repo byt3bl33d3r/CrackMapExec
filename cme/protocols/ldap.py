@@ -55,6 +55,7 @@ class ldap(connection):
         
         vgroup = ldap_parser.add_argument_group("Retrieve useful information on the domain", "Options to to play with Kerberos")
         vgroup.add_argument("--trusted-for-delegation", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
+        vgroup.add_argument("--password-not-required", action="store_true", help="Get the list of users with flag PASSWD_NOTREQD")
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
 
         return parser
@@ -542,6 +543,72 @@ class ldap(connection):
             logging.debug(answers)
             for value in answers:
                 self.logger.highlight(value[0])
+        else:
+            self.logger.error("No entries found!")
+        return
+    
+    def password_not_required(self):
+        # Building the search filter
+        searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=32)"
+        try:
+            logging.debug('Search Filter=%s' % searchFilter)
+            resp = self.ldapConnection.search(searchFilter=searchFilter,
+                        attributes=['sAMAccountName',
+                                'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
+                        sizeLimit=999)
+        except ldap_impacket.LDAPSearchError as e:
+            if e.getErrorString().find('sizeLimitExceeded') >= 0:
+                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
+                # paged queries
+                resp = e.getAnswers()
+                pass
+            else:
+                return False
+        answers = []
+        logging.debug('Total of records returned %d' % len(resp))
+
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            mustCommit = False
+            sAMAccountName =  ''
+            memberOf = ''
+            pwdLastSet = ''
+            userAccountControl = 0
+            status = 'enabled'
+            lastLogon = 'N/A'
+            try:
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'sAMAccountName':
+                        sAMAccountName = str(attribute['vals'][0])
+                        mustCommit = True
+                    elif str(attribute['type']) == 'userAccountControl':
+                        if int(attribute['vals'][0]) & 2 :
+                            status = 'disabled'
+                        userAccountControl = "0x%x" % int(attribute['vals'][0])
+                    elif str(attribute['type']) == 'memberOf':
+                        memberOf = str(attribute['vals'][0])
+                    elif str(attribute['type']) == 'pwdLastSet':
+                        if str(attribute['vals'][0]) == '0':
+                            pwdLastSet = '<never>'
+                        else:
+                            pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                    elif str(attribute['type']) == 'lastLogon':
+                        if str(attribute['vals'][0]) == '0':
+                            lastLogon = '<never>'
+                        else:
+                            lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                if mustCommit is True:
+                    answers.append([sAMAccountName, memberOf, pwdLastSet, lastLogon, userAccountControl, status])
+            except Exception as e:
+                logging.debug("Exception:", exc_info=True)
+                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                pass
+        if len(answers)>0:
+            logging.debug(answers)
+            for value in answers:
+                self.logger.highlight("User: " + value[0] + " Status: " + value[5])
         else:
             self.logger.error("No entries found!")
         return
