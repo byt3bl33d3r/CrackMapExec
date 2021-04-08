@@ -7,7 +7,7 @@ class CMEModule:
     '''
         Executes the BloodHound recon script on the target and retreives the results onto the attackers' machine
         2 supported modes :
-            CSV :           exports data into CSVs on the target file system before retreiving them (NOT opsec safe)
+            CSV :           exports data into CSVs on the target file system before retrieving them (NOT opsec safe)
             Neo4j API :     exports data directly to the Neo4j API (opsec safe)
 
         Module by Waffle-Wrath
