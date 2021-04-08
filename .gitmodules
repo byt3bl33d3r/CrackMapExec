@@ -31,3 +31,6 @@
 [submodule "cme/data/RID-Hijacking"]
 	path = cme/data/RID-Hijacking
 	url = https://github.com/r4wd3r/RID-Hijacking.git
+[submodule "cme/data/EAPrimer"]
+	path = cme/data/EAPrimer
+	url = https://github.com/m8r0wn/EAPrimer
