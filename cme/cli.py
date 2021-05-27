@@ -24,7 +24,7 @@ def gen_cli_args():
                                          A swiss army knife for pentesting networks
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
-                                           {colored("Exclusive release for Kali Linux users", "magenta")}
+                                           {colored("Public version of CrackMapExec", "magenta")}
 
                                                      {highlight('Version', 'red')}: {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
