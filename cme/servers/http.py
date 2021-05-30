@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from http.server import BaseHTTPRequestHandler
-from gevent import sleep
+from time import sleep
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 
@@ -93,7 +93,7 @@ class CMEServer(threading.Thread):
 
         # make sure all the threads are killed
         for thread in threading.enumerate():
-            if thread.isAlive():
+            if thread.is_alive():
                 try:
                     thread._stop()
                 except:

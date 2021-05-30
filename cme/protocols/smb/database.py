@@ -59,6 +59,19 @@ class database:
             FOREIGN KEY(groupid) REFERENCES groups(id)
             )''')
 
+        db_conn.execute('''CREATE TABLE "shares" (
+            "id" integer PRIMARY KEY,
+            "computerid" integer,
+            "userid" integer,
+            "name" text,
+            "remark" text,
+            "read" boolean,
+            "write" boolean,
+            FOREIGN KEY(computerid) REFERENCES computers(id),
+            FOREIGN KEY(userid) REFERENCES users(id)
+            UNIQUE(computerid, userid, name)
+        )''')
+
         #db_conn.execute('''CREATE TABLE "ntds_dumps" (
         #    "id" integer PRIMARY KEY,
         #    "computerid", integer,
@@ -68,21 +81,72 @@ class database:
         #    FOREIGN KEY(computerid) REFERENCES computers(id)
         #    )''')
 
-        #db_conn.execute('''CREATE TABLE "shares" (
-        #    "id" integer PRIMARY KEY,
-        #    "hostid" integer,
-        #    "name" text,
-        #    "remark" text,
-        #    "read" boolean,
-        #    "write" boolean
-        #    )''')
+    def add_share(self, computerid, userid, name, remark, read, write):
+        cur = self.conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO shares (computerid, userid, name, remark, read, write) VALUES (?,?,?,?,?,?)", [computerid, userid, name, remark, read, write])
+        cur.close()
 
-    #def add_share(self, hostid, name, remark, read, write):
-    #    cur = self.conn.cursor()
+    def is_share_valid(self, shareID):
+        """
+        Check if this share ID is valid.
+        """
 
-    #    cur.execute("INSERT INTO shares (hostid, name, remark, read, write) VALUES (?,?,?,?,?)", [hostid, name, remark, read, write])
+        cur = self.conn.cursor()
+        cur.execute('SELECT * FROM shares WHERE id=? LIMIT 1', [shareID])
+        results = cur.fetchall()
+        cur.close()
 
-    #    cur.close()
+        logging.debug(f"is_share_valid(shareID={shareID}) => {len(results) > 0}")
+        return len(results) > 0
+    
+    def get_shares(self, filterTerm = None):
+        cur = self.conn.cursor()
+
+        if self.is_share_valid(filterTerm):
+            cur.execute("SELECT * FROM shares WHERE id=?", [filterTerm])
+        elif filterTerm:
+            cur.execute("SELECT * FROM shares WHERE LOWER(name) LIKE LOWER(?)", [f"%{filterTerm}%"])
+        else:
+            cur.execute("SELECT * FROM shares")
+
+        results = cur.fetchall()
+        return results
+
+    def get_shares_by_access(self, permissions, shareID=None):
+        cur = self.conn.cursor()
+        permissions = permissions.lower()
+
+        if shareID:
+            if permissions == "r":
+                cur.execute("SELECT * FROM shares WHERE id=? AND read=1",[shareID])
+            elif permissions == "w":
+                cur.execute("SELECT * FROM shares WHERE id=? write=1", [shareID])
+            elif permissions == "rw":
+                cur.execute("SELECT * FROM shares WHERE id=? AND read=1 AND write=1", [shareID])
+        else:
+            if permissions == "r":
+                cur.execute("SELECT * FROM shares WHERE read=1")
+            elif permissions == "w":
+                cur.execute("SELECT * FROM shares WHERE write=1")
+            elif permissions == "rw":
+                cur.execute("SELECT * FROM shares WHERE read= AND write=1")
+
+        results = cur.fetchall()
+        return results
+
+    def get_users_with_share_access(self, computerID, share_name, permissions):
+        cur = self.conn.cursor()
+        permissions = permissions.lower()
+
+        if permissions == "r":
+            cur.execute("SELECT userid FROM shares WHERE computerid=(?) AND name=(?) AND read=1", [computerID, share_name])
+        elif permissions == "w":
+            cur.execute("SELECT userid FROM shares WHERE computerid=(?) AND name=(?) AND write=1", [computerID, share_name])
+        elif permissions == "rw":
+            cur.execute("SELECT userid FROM shares WHERE computerid=(?) AND name=(?) AND read=1 AND write=1", [computerID, share_name])
+
+        results = cur.fetchall()
+        return results
 
     def add_computer(self, ip, hostname, domain, os, dc=None):
         """
@@ -111,6 +175,7 @@ class database:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
+
         domain = domain.split('.')[0].upper()
         user_rowid = None
         cur = self.conn.cursor()
@@ -366,6 +431,13 @@ class database:
         else:
             cur.execute("SELECT * FROM users")
 
+        results = cur.fetchall()
+        cur.close()
+        return results
+
+    def get_user(self, domain, username):
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = cur.fetchall()
         cur.close()
         return results

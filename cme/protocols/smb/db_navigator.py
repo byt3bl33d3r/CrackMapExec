@@ -47,13 +47,130 @@ class navigator(DatabaseNavigator):
             ip = host[1]
             hostname = host[2]
             domain = host[3]
-            os = host[4]
+            try:
+                os = host[4].decode()
+            except:
+                os = host[4]
 
             links = self.db.get_admin_relations(hostID=hostID)
 
             data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os])
 
         self.print_table(data, title='Hosts')
+    
+    def display_shares(self, shares):
+
+        data = [["ShareID", "Name", "Remark", "Read Access", "Write Access"]]
+
+        for share in shares:
+            
+            shareID = share[0]
+            computerid = share[1]
+            name = share[3]
+            remark = share[4]
+
+            users_r_access = self.db.get_users_with_share_access(
+                computerID=computerid,
+                share_name=name,
+                permissions='r'
+            )
+
+            users_w_access = self.db.get_users_with_share_access(
+                computerID=computerid,
+                share_name=name,
+                permissions='w'
+            )
+
+            data.append([shareID, name, remark, f"{len(users_r_access)} User(s)", f"{len(users_w_access)} Users"])
+
+        self.print_table(data)
+
+    def do_shares(self, line):
+        filterTerm = line.strip()
+
+        if filterTerm == "":
+            shares = self.db.get_shares()
+            self.display_shares(shares)
+        else:
+            shares = self.db.get_shares(filterTerm=filterTerm)
+
+            if len(shares) > 1:
+                self.display_shares(shares)
+            elif len(shares) == 1:
+                share = shares[0]
+                shareID = share[0]
+                computerID = share[1]
+                name = share[3]
+                remark = share[4]
+
+                users_r_access = self.db.get_users_with_share_access(
+                    computerID=computerID,
+                    share_name=name,
+                    permissions='r'
+                )
+
+                users_w_access = self.db.get_users_with_share_access(
+                    computerID=computerID,
+                    share_name=name,
+                    permissions='w'
+                )
+
+                data = [["ShareID", "Name", "Remark"]]
+
+                data.append([shareID, name, remark])
+            
+                self.print_table(data, title='Share')
+
+                host = self.db.get_computers(filterTerm=computerID)[0]
+
+                data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
+  
+                hostID = host[0]
+
+                ip = host[1]
+                hostname = host[2]
+                domain = host[3]
+                os = host[4]
+                dc = host[5]
+
+                data.append([hostID, ip, hostname, domain, os, dc])
+
+                self.print_table(data, title='Share Location')
+
+                if users_r_access:
+                    data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
+                    for user in users_r_access:
+                        userid = user[0]
+                        creds = self.db.get_credentials(filterTerm=userid)
+
+                        for cred in creds:
+                            credID = cred[0]
+                            domain = cred[1]
+                            username = cred[2]
+                            password = cred[3]
+                            credtype = cred[4]
+
+                            data.append([credID, credtype, domain, username, password])
+
+                    self.print_table(data, title='Users(s) with Read Access')
+
+                if users_w_access:
+                    data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
+                    for user in users_w_access:
+                        userid = user[0]
+                        creds = self.db.get_credentials(filterTerm=userid)
+
+                        for cred in creds:
+                            credID = cred[0]
+                            domain = cred[1]
+                            username = cred[2]
+                            password = cred[3]
+                            credtype = cred[4]
+
+                            data.append([credID, credtype, domain, username, password])
+
+                    self.print_table(data, title='Users(s) with Write Access')
+
 
     def do_groups(self, line):
 
@@ -130,7 +247,7 @@ class navigator(DatabaseNavigator):
 
                     data.append([hostID, ip, hostname, domain, os, dc])
 
-                self.print_table(data, title='Host(s)')
+                self.print_table(data, title='Host')
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:

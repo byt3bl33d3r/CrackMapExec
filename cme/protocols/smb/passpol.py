@@ -37,8 +37,8 @@ def convert(low, high, lockout=False):
             high = abs(high)
             low = abs(low)
 
-            tmp = low + (high)*16**8  # convert to 64bit int
-            tmp *= (1e-7)  # convert to seconds
+        tmp = low + (high)*16**8  # convert to 64bit int
+        tmp *= (1e-7)  # convert to seconds
     else:
         tmp = abs(high) * (1e-7)
 
@@ -62,6 +62,7 @@ def convert(low, high, lockout=False):
     elif minutes == 1:
         time += "{0} minute ".format(minutes)
     return time
+
 
 class PassPolDump:
 

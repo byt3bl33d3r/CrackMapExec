@@ -34,7 +34,7 @@ class CMESMBServer(threading.Thread):
         # TODO: should fine the proper way 
         # make sure all the threads are killed
         for thread in threading.enumerate():
-            if thread.isAlive():
+            if thread.is_alive():
                 try:
                     self._stop()
                 except:

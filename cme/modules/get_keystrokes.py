@@ -1,7 +1,7 @@
 from cme.helpers.powershell import *
 from cme.helpers.misc import gen_random_string
 from cme.servers.smb import CMESMBServer
-from gevent import sleep
+from time import sleep
 from sys import exit
 import os
 

@@ -25,9 +25,6 @@
 [submodule "cme/data/mimipenguin"]
 	path = cme/data/mimipenguin
 	url = https://github.com/huntergregal/mimipenguin
-[submodule "cme/thirdparty/pywerview"]
-	path = cme/thirdparty/pywerview
-	url = https://github.com/mpgn/pywerview
 [submodule "cme/data/RID-Hijacking"]
 	path = cme/data/RID-Hijacking
 	url = https://github.com/r4wd3r/RID-Hijacking.git

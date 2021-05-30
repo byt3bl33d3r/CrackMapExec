@@ -16,14 +16,38 @@ from shiv.builder import create_archive
 from shiv.cli import __version__ as VERSION
 
 def build_cme():
+    print("building CME")
     try:
+        shutil.rmtree("build")
+        shutil.rmtree("bin")
+    except:
+        pass
+
+    try:
+        print("remove useless files")
         os.mkdir("build")
         os.mkdir("bin")
         shutil.copytree("cme", "build/cme")
-    except:
-        shutil.rmtree("build")
-        shutil.rmtree("bin")
-        shutil.copytree("cme", "build/cme")
+        #remove useless file > 10mo
+        shutil.copy("cme/data/netripper/PowerShell/Invoke-NetRipper.ps1", "cme/data/")
+        shutil.rmtree("cme/data/netripper")
+        os.mkdir("cme/data/netripper/")
+        os.mkdir("cme/data/netripper/PowerShell/")
+        shutil.move("cme/data/Invoke-NetRipper.ps1", "cme/data/netripper/PowerShell/")
+
+        shutil.copy("cme/data/invoke-vnc/Invoke-Vnc.ps1", "cme/data/")
+        shutil.rmtree("cme/data/invoke-vnc/")
+        os.mkdir("cme/data/invoke-vnc/")
+        shutil.move("cme/data/Invoke-Vnc.ps1", "cme/data/invoke-vnc/")      
+
+        shutil.rmtree("cme/data/powersploit/Recon/Dictionaries/")
+        shutil.rmtree("cme/data/powersploit/Exfiltration/NTFSParser/")
+        shutil.rmtree("cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources/")
+        shutil.rmtree("cme/data/powersploit/Exfiltration/LogonUser/")
+        shutil.rmtree("cme/data/powersploit/Tests/")  
+    except Exception as e:
+        print(e)
+        return
 
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "-r", "requirements.txt" ,"-t", "build"],
@@ -53,6 +77,7 @@ def build_cme():
     )
 
 def build_cmedb():
+    print("building CMEDB")
     env = Environment(
         built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
             "%Y-%m-%d %H:%M:%S"

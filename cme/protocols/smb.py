@@ -180,6 +180,7 @@ class smb(connection):
 
         psgroup = smb_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
         psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
+        psgroup.add_argument('--amsi-bypass', nargs=1, metavar="FILE", help='File with a custom AMSI bypass')
         psgroup.add_argument('--clear-obfscripts', action='store_true', help='Clear all cached obfuscated PowerShell scripts')
 
         return parser
@@ -515,18 +516,26 @@ class smb(connection):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output: get_output = True
-
+        
+        amsi_bypass = self.args.amsi_bypass[0] if self.args.amsi_bypass else None 
         if os.path.isfile(payload):
             with open(payload) as commands:
                 for c in commands:
-                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+                    self.execute(create_ps_command(c, force_ps32=force_ps32, dont_obfs=dont_obfs, custom_amsi=amsi_bypass), get_output, methods)
         else:
-            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs), get_output, methods)
+            self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs, custom_amsi=amsi_bypass), get_output, methods)
         return ''
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
-        #hostid,_,_,_,_,_,_ = self.db.get_hosts(filterTerm=self.host)[0]
+        computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        try:
+            user_id = self.db.get_user(
+                self.domain.split('.')[0].upper(),
+                self.username
+            )[0][0]
+        except:
+            pass
         permissions = []
 
         try:
@@ -553,7 +562,12 @@ class smb(connection):
                     pass
 
                 permissions.append(share_info)
-                #self.db.add_share(hostid, share_name, share_remark, read, write)
+
+                if share_name != "IPC$":
+                    try:
+                        self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
+                    except:
+                        pass
 
             self.logger.success('Enumerated shares')
             self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
@@ -564,11 +578,12 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-
+        except SessionError as e:
+            self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
-            error, desc = e.getErrorString()
+            error = e.getErrorString()
             self.logger.error('Error enumerating shares: {}'.format(error),
-                            color='magenta' if error in smb_error_status else 'red')
+                            color='magenta' if error in smb_error_status else 'red')          
 
         return permissions
 
@@ -584,13 +599,15 @@ class smb(connection):
         return dc_ips
 
     def sessions(self):
-        sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-        self.logger.success('Enumerated sessions')
-        for session in sessions:
-            if session.sesi10_cname.find(self.local_ip) == -1:
-                self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
-
-        return sessions
+        try:
+            sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
+            self.logger.success('Enumerated sessions')
+            for session in sessions:
+                if session.sesi10_cname.find(self.local_ip) == -1:
+                    self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
+            return sessions
+        except:
+            pass      
 
     def disks(self):
         disks = []

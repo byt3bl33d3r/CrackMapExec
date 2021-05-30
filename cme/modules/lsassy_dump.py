@@ -25,7 +25,7 @@ class CMEModule:
             DUMPERT_PATH        Path to procdump on attacker host (Required for method 5)
             BLOODHOUND          Enable Bloodhound integration (default: false)
             NEO4JURI            URI for Neo4j database (default: 127.0.0.1)
-            NEO4JPORT           Listeninfg port for Neo4j database (default: 7687)
+            NEO4JPORT           Listening port for Neo4j database (default: 7687)
             NEO4JUSER           Username for Neo4j database (default: 'neo4j')
             NEO4JPASS           Password for Neo4j database (default: 'neo4j')
             WITHOUT_EDGES       List of black listed edges (example: 'SQLAdmin,CanRDP', default: '')

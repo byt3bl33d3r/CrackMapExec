@@ -1,6 +1,6 @@
 import logging
 import os
-from gevent import sleep
+from time import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from impacket.smbconnection import *
 from cme.helpers.misc import gen_random_string
