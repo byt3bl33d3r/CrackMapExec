@@ -34,6 +34,7 @@ class CMEModule:
         ACTION    Specifies the action to perform:
             - enum_priv (default)
             - privesc
+            - rollback (remove sysadmin privilege)
         """
         self.action = None
 
@@ -48,6 +49,19 @@ class CMEModule:
         self.current_user = User(self.current_username)
         self.current_user.is_sysadmin = self.is_admin()
         self.current_user.dbowner = self.check_dbowner_privesc()
+
+        if self.action == "rollback":
+            if not self.current_user.is_sysadmin:
+                context.log.error(
+                    f"{self.current_username} is not sysadmin"
+                )
+                return
+            if self.remove_sysadmin_priv():
+                context.log.success("sysadmin role removed")
+            else:
+                context.log.success("failed to remove sysadmin role")
+            return
+
 
         if self.current_user.is_sysadmin:
             context.log.success(
@@ -274,7 +288,7 @@ class CMEModule:
                    FROM  sys.server_permissions a
                    INNER JOIN sys.server_principals b
                    ON a.grantor_principal_id = b.principal_id
-                   WHERE a.permission_name = 'IMPERSONATE'"""
+                   WHERE a.permission_name like 'IMPERSONATE%'"""
         res = self.query_and_get_output(exec_as + query)
         self.revert_context(exec_as)
         try:
@@ -282,14 +296,24 @@ class CMEModule:
         except IndexError:
             return []
 
+    def remove_sysadmin_priv(self) -> bool:
+        res = self.query_and_get_output(
+            f"EXEC sp_dropsrvrolemember '{self.current_username}', 'sysadmin'"
+        )
+        return not self.is_admin()
+
+
     def is_admin_user(self, username) -> bool:
         res = self.query_and_get_output(
             f"SELECT IS_SRVROLEMEMBER('sysadmin', '{username}')"
         )
-        if int(res):
-            self.admin_privs = True
-            return True
-        else:
+        try:
+            if int(res):
+                self.admin_privs = True
+                return True
+            else:
+                return False
+        except:
             return False
 
     def revert_context(self, exec_as):
