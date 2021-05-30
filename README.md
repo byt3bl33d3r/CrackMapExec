@@ -29,9 +29,9 @@ Come hang out on Discord!
 **(These are the people who did the hard stuff)**
 
 This project was originally inspired by:
-- [smbmap](https://github.com/ShawnDEvans/smbmap)
 - [CredCrack](https://github.com/gojhonny/CredCrack)
 - [smbexec](https://github.com/pentestgeek/smbexec)
+- [smbmap](https://github.com/ShawnDEvans/smbmap)
 
 Unintentional contributors:
 
@@ -41,17 +41,17 @@ Unintentional contributors:
 
 This repository contains the following repositories as submodules:
 - [Impacket](https://github.com/CoreSecurity/impacket)
-- [Pypsrp](https://github.com/jborean93/pypsrp)
-- [Pywerview](https://github.com/the-useless-one/pywerview)
-- [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
 - [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)
 - [Invoke-Vnc](https://github.com/artkond/Invoke-Vnc)
 - [Mimikittenz](https://github.com/putterpanda/mimikittenz)
-- [NetRipper](https://github.com/NytroRST/NetRipper)
-- [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
-- [SessionGopher](https://github.com/fireeye/SessionGopher)
 - [Mimipenguin](https://github.com/huntergregal/mimipenguin)
+- [NetRipper](https://github.com/NytroRST/NetRipper)
+- [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
+- [Pypsrp](https://github.com/jborean93/pypsrp)
+- [Pywerview](https://github.com/the-useless-one/pywerview)
+- [RandomPS-Scripts](https://github.com/xorrior/RandomPS-Scripts)
 - [RID-Hijacking](https://github.com/r4wd3r/RID-Hijacking)
+- [SessionGopher](https://github.com/fireeye/SessionGopher)
 
 # Documentation, Tutorials, Examples
 See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
