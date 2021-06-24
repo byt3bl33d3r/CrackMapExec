@@ -25,6 +25,7 @@ from cme.protocols.smb.smbexec import SMBEXEC
 from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
+from cme.protocols.smb.samruser import UserSamrDump
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
@@ -149,6 +150,7 @@ class smb(connection):
         egroup.add_argument("--loggedon-users", action='store_true', help='enumerate logged on users')
         egroup.add_argument('--users', nargs='?', const='', metavar='USER', help='enumerate domain users, if a user is specified than only its information is queried.')
         egroup.add_argument("--groups", nargs='?', const='', metavar='GROUP', help='enumerate domain groups, if a group is specified than its members are enumerated')
+        egroup.add_argument('--computers', nargs='?', const='', metavar='COMPUTER', help='enumerate computer users')
         egroup.add_argument("--local-groups", nargs='?', const='', metavar='GROUP', help='enumerate local groups, if a group is specified then its members are enumerated')
         egroup.add_argument("--pass-pol", action='store_true', help='dump password policy')
         egroup.add_argument("--rid-brute", nargs='?', type=int, const=4000, metavar='MAX_RID', help='enumerate users by bruteforcing RID\'s (default: 4000)')
@@ -675,12 +677,17 @@ class smb(connection):
                     domain = domain+"."+v
         return domain
 
+    def domainfromdnshostname(self, dns):
+        dnsparts = dns.split(".")
+        domain = ".".join(dnsparts[1:])
+        return domain, dnsparts[0]+"$"
+
     def groups(self):
         groups = []
         for dc_ip in self.get_dc_ips():
             if self.args.groups:
                 try:
-                    groups = get_netgroupmember(dc_ip, '', self.username, password=self.password,
+                    groups = get_netgroupmember(dc_ip, self.domain, self.username, password=self.password,
                                                 lmhash=self.lmhash, nthash=self.nthash, queried_groupname=self.args.groups, queried_sid=str(),
                                                 queried_domain=str(), ads_path=str(), recurse=False, use_matching_rule=False,
                                                 full_data=False, custom_filter=str())
@@ -703,7 +710,7 @@ class smb(connection):
                     self.logger.error('Error enumerating domain group members using dc ip {}: {}'.format(dc_ip, e))
             else:
                 try:
-                    groups = get_netgroup(dc_ip, '', self.username, password=self.password,
+                    groups = get_netgroup(dc_ip, self.domain, self.username, password=self.password,
                                           lmhash=self.lmhash, nthash=self.nthash, queried_groupname=str(), queried_sid=str(),
                                           queried_username=str(), queried_domain=str(), ads_path=str(),
                                           admin_count=False, full_data=True, custom_filter=str())
@@ -726,7 +733,7 @@ class smb(connection):
         users = []
         for dc_ip in self.get_dc_ips():
             try:
-                users = get_netuser(dc_ip, '', self.username, password=self.password, lmhash=self.lmhash,
+                users = get_netuser(dc_ip, self.domain, self.username, password=self.password, lmhash=self.lmhash,
                                     nthash=self.nthash, queried_username=self.args.users, queried_domain='', ads_path=str(),
                                     admin_count=False, spn=False, unconstrained=False, allow_delegation=False,
                                     custom_filter=str())
@@ -735,13 +742,32 @@ class smb(connection):
                 for user in users:
                     domain = self.domainfromdsn(user.distinguishedname)
                     self.logger.highlight('{}\\{:<30} badpwdcount: {} baddpwdtime: {}'.format(domain,user.samaccountname,getattr(user,'badpwdcount',0),getattr(user, 'badpasswordtime','')))
-                    self.db.add_user(domain, user.samaccountname)
-
+                    #self.db.add_user(domain, user.samaccountname)
                 break
             except Exception as e:
-                logging.debug('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
-
+                self.logger.error('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
+                self.logger.info('Trying with SAMRPC protocol')
+                self.logger.success('Enumerated domain user(s)')
+                users = UserSamrDump(self).dump()
+                break
         return users
+
+    def computers(self):
+        computers = []
+        for dc_ip in self.get_dc_ips():
+            try:
+                computers = get_netcomputer(dc_ip, self.domain, self.username, password=self.password, lmhash=self.lmhash,
+                                    nthash=self.nthash, queried_domain='', ads_path=str(), custom_filter=str())
+
+                self.logger.success('Enumerated domain computer(s)')
+                for computer in computers:
+                    domain, computerclean = self.domainfromdnshostname(computer.dnshostname)
+                    self.logger.highlight('{}\\{:<30}'.format(domain, computerclean))
+                break
+            except Exception as e:
+                self.logger.error('Error enumerating domain computers using dc ip {}: {}'.format(dc_ip, e))
+                break
+        return computers
 
     def loggedon_users(self):
         loggedon = []

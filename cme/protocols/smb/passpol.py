@@ -173,6 +173,8 @@ class PassPolDump:
                          'lock_accnt_dur': self.__lock_accnt_dur, 'accnt_lock_thres': self.__accnt_lock_thres,
                          'force_logoff_time': self.__force_logoff_time}
 
+        dce.disconnect()
+
     def pretty_print(self):
 
         PASSCOMPLEX = {
