@@ -747,7 +747,6 @@ class smb(connection):
             except Exception as e:
                 self.logger.error('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
                 self.logger.info('Trying with SAMRPC protocol')
-                self.logger.success('Enumerated domain user(s)')
                 users = UserSamrDump(self).dump()
                 break
         return users

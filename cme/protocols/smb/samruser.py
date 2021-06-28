@@ -95,8 +95,10 @@ class UserSamrDump:
                 resp = samr.hSamrEnumerateUsersInDomain(dce, domainHandle, enumerationContext = enumerationContext)
             except DCERPCException as e:
                 if str(e).find('STATUS_MORE_ENTRIES') < 0:
-                    raise 
+                    self.logger.error('Error enumerating domain user(s)')
+                    break 
                 resp = e.get_packet()
+            self.logger.success('Enumerated domain user(s)')
             for user in resp['Buffer']['Buffer']:
                 r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user['RelativeId'])
                 info = samr.hSamrQueryInformationUser2(dce, r['UserHandle'],samr.USER_INFORMATION_CLASS.UserAllInformation)

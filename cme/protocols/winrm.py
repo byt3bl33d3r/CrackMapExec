@@ -32,6 +32,7 @@ class winrm(connection):
         winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -104,9 +105,10 @@ class winrm(connection):
         
 
     def create_conn_obj(self):
+
         endpoints = [
-            'https://{}:5986/wsman'.format(self.host),
-            'http://{}:5985/wsman'.format(self.host)
+            'https://{}:{}/wsman'.format(self.host, self.args.port if self.args.port else 5986),
+            'http://{}:{}/wsman'.format(self.host, self.args.port if self.args.port else 5985)
         ]
 
         for url in endpoints:
@@ -114,9 +116,9 @@ class winrm(connection):
                 requests.get(url, verify=False, timeout=3)
                 self.endpoint = url
                 if self.endpoint.startswith('https://'):
-                    self.port = 5986
+                    self.port = self.args.port if self.args.port else 5986
                 else:
-                    self.port = 5985
+                    self.port = self.args.port if self.args.port else 5985
 
                 self.logger.extra['port'] = self.port
 

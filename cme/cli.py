@@ -7,7 +7,7 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.1.6dev'
+    VERSION  = '5.1.7dev'
     CODENAME = 'U fancy huh?'
 
     p_loader =  protocol_loader()
@@ -24,7 +24,7 @@ def gen_cli_args():
                                          A swiss army knife for pentesting networks
                                     Forged by @byt3bl33d3r using the powah of dank memes
 
-                                           {colored("Public version of CrackMapExec", "magenta")}
+                                           {colored("Exclusive release for Kali Linux users", "magenta")}
 
                                                      {highlight('Version', 'red')}: {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
