@@ -4,6 +4,7 @@
 import requests
 import logging
 import configparser
+from binascii import b2a_hex, unhexlify, hexlify
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -17,6 +18,17 @@ from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from io import StringIO
+
+ldap_error_status = {
+    "533":"STATUS_ACCOUNT_DISABLED",
+    "701":"STATUS_ACCOUNT_EXPIRED",
+    "531":"STATUS_ACCOUNT_RESTRICTION",
+    "530":"STATUS_INVALID_LOGON_HOURS",
+    "532":"STATUS_PASSWORD_EXPIRED",
+    "773":"STATUS_PASSWORD_MUST_CHANGE",
+    "775":"USER_ACCOUNT_LOCKED",
+    "50":"LDAP_INSUFFICIENT_ACCESS"
+}
 
 class ldap(connection):
 
@@ -142,36 +154,12 @@ class ldap(connection):
                                                                                       self.smbv1))
 
     def kerberos_login(self, aesKey, kdcHost):
-        # Create the baseDN
-        domainParts = self.domain.split('.')
-        self.baseDN = ''
-        for i in domainParts:
-            self.baseDN += 'dc=%s,' % i
-        # Remove last ','
-        self.baseDN = self.baseDN[:-1]
+        if self.kdcHost is not None:
+            target = self.kdcHost
+        else:
+            target = self.domain
+            self.kdcHost = domain
 
-        # if self.kdcHost is not None:
-        #     target = self.kdcHost
-        # else:
-        #     target = self.domain
-
-        try:
-            self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=self.kdcHost)                                
-        except ldap_impacket.LDAPSessionError as e:
-            if str(e).find('strongerAuthRequired') >= 0:
-                # We need to try SSL
-                self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.kdcHost, self.baseDN, self.kdcHost)
-                self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=self.kdcHost)
-
-        return True
-
-
-    def plaintext_login(self, domain, username, password):
-        self.username = username
-        self.password = password
-        self.domain = domain
         # Create the baseDN
         self.baseDN = ''
         domainParts = self.kdcHost.split('.')
@@ -180,10 +168,44 @@ class ldap(connection):
         # Remove last ','
         self.baseDN = self.baseDN[:-1]
 
-        # if self.kdcHost is not None:
-        #     target = self.kdcHost
-        # else:
-        #     target = domain
+        try:
+            self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
+                                                self.aesKey, kdcHost=self.kdcHost)                                
+        except ldap_impacket.LDAPSessionError as e:
+            if str(e).find('strongerAuthRequired') >= 0:
+                # We need to try SSL
+                self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
+                self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
+                                                self.aesKey, kdcHost=self.kdcHost)
+            else:
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
+
+        return True
+
+
+    def plaintext_login(self, domain, username, password):
+        self.username = username
+        self.password = password
+        self.domain = domain
+
+        if self.kdcHost is not None:
+            target = self.kdcHost
+        else:
+            target = domain
+            self.kdcHost = domain
+
+        # Create the baseDN
+        self.baseDN = ''
+        domainParts = self.kdcHost.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
 
         if self.password == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
@@ -194,9 +216,9 @@ class ldap(connection):
             return False
 
         try:
-            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.kdcHost, self.baseDN, self.kdcHost)
+            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-            #self.check_if_admin()
+            self.check_if_admin()
 
             # Connect to LDAP
             out = u'{}{}:{} {}'.format('{}\\'.format(domain),
@@ -216,17 +238,23 @@ class ldap(connection):
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
-                    self.logger.error(u'{}\{}:{}'.format(self.domain, 
-                                                            self.username, 
-                                                            self.password))
+                    errorCode = str(e).split()[-2][:-1]
+                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                    self.username, 
+                                                    self.password,
+                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                    color='magenta' if errorCode in ldap_error_status else 'red')
             else:
-                self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password))
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
             return False
 
         except OSError as e:
-            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+            self.logger.error(u'{}_\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password,
                                                  "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
@@ -249,6 +277,13 @@ class ldap(connection):
 
         self.username = username
         self.domain = domain
+
+        if self.kdcHost is not None:
+            target = self.kdcHost
+        else:
+            target = domain
+            self.kdcHost = domain
+
         # Create the baseDN
         self.baseDN = ''
         domainParts = self.kdcHost.split('.')
@@ -256,11 +291,6 @@ class ldap(connection):
             self.baseDN += 'dc=%s,' % i
         # Remove last ','
         self.baseDN = self.baseDN[:-1]
-
-        # if self.kdcHost is not None:
-        #     target = self.kdcHost
-        # else:
-        #     target = domain
 
         if self.hash == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
@@ -275,9 +305,9 @@ class ldap(connection):
                                     username,
                                     nthash)
         try:
-            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.kdcHost, self.baseDN, self.kdcHost)
+            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-            #self.check_if_admin()
+            self.check_if_admin()
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -286,17 +316,23 @@ class ldap(connection):
             if str(e).find('strongerAuthRequired') >= 0:
                 try:
                     # We need to try SSL
-                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.kdcHost, self.baseDN, self.kdcHost)
+                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
-                    self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                    errorCode = str(e).split()[-2][:-1]
+                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.nthash))
+                                                    self.password,
+                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                    color='magenta' if errorCode in ldap_error_status else 'red')
             else:
-                self.logger.error(u'{}\{}:{}'.format(self.domain, 
-                                                    self.username, 
-                                                    self.nthash))
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
             return False
         except OSError as e:
             self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
@@ -339,6 +375,65 @@ class ldap(connection):
 
         return False
 
+    def sid_to_str(self, sid):
+
+        try:
+            # revision
+            revision = int(sid[0])
+            # count of sub authorities
+            sub_authorities = int(sid[1])
+            # big endian
+            identifier_authority = int.from_bytes(sid[2:8], byteorder='big')
+            # If true then it is represented in hex
+            if identifier_authority >= 2 ** 32:
+                identifier_authority = hex(identifier_authority)
+
+            # loop over the count of small endians
+            sub_authority = '-' + '-'.join([str(int.from_bytes(sid[8 + (i * 4): 12 + (i * 4)], byteorder='little')) for i in range(sub_authorities)])
+            objectSid = 'S-' + str(revision) + '-' + str(identifier_authority) + sub_authority
+
+            return objectSid
+        except Exception:
+            pass
+
+        return sid
+
+    def check_if_admin(self):
+
+        # 1. get SID of the domaine
+        sid_domaine = ""
+        searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=8192)"
+        attributes= ["objectSid"]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for attribute in resp[0][1]:
+            if str(attribute['type']) == 'objectSid':
+                sid = self.sid_to_str(attribute['vals'][0])
+                sid_domaine = '-'.join(sid.split('-')[:-1])
+
+        # 2. get all group cn name
+        searchFilter = "(|(objectSid="+sid_domaine+"-512)(objectSid="+sid_domaine+"-544)(objectSid="+sid_domaine+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
+        attributes= ["distinguishedName"]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            for attribute in item['attributes']:
+                if str(attribute['type']) == 'distinguishedName':
+                    answers.append(str("(memberOf:1.2.840.113556.1.4.1941:=" + attribute['vals'][0] + ")"))
+
+        # 3. get memeber of these groups
+        searchFilter = "(&(objectCategory=user)(sAMAccountName=" + self.username + ")(|" + ''.join(answers) + "))"
+        attributes= [""]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            if item:
+                self.admin_privs = True
+
     def getUnixTime(self, t):
         t -= 116444736000000000
         t /= 10000000
@@ -352,13 +447,13 @@ class ldap(connection):
                                                 sizeLimit=sizeLimit)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                self.logger.error('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
                 pass
             else:
-                logging.debug(e)
+                self.logger.error(e)
                 return False
         return resp 
 
@@ -446,7 +541,7 @@ class ldap(connection):
         resp = self.search(searchFilter, attributes, 0)
         if resp:
             answers = []
-            logging.debug('Total of records returned %d' % len(resp))
+            self.logger.info('Total of records returned %d' % len(resp))
 
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -502,7 +597,7 @@ class ldap(connection):
         resp = self.search(searchFilter, attributes, 0)
         if resp:
             answers = []
-            logging.debug('Total of records returned %d' % len(resp))
+            self.logger.info('Total of records returned %d' % len(resp))
 
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:

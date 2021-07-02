@@ -48,7 +48,7 @@ def gen_cli_args():
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
     std_parser.add_argument("--export", metavar="EXPORT", nargs='+', help="Export result into a file, probably buggy")
     std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
-    std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
+    std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="FQDN of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
 
     fail_group = std_parser.add_mutually_exclusive_group()
     fail_group.add_argument("--gfail-limit", metavar='LIMIT', type=int, help='max number of global failed login attempts')
