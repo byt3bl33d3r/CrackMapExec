@@ -5,20 +5,20 @@ from impacket.smbconnection import SessionError
 
 class CMEModule:
     '''
-    Enumerate whether the WebClient service is running on the target host by looking for the
+    Enumerate whether the WebClient service is running on the target by looking for the
     DAV RPC Service pipe. This technique was first suggested by Lee Christensen (@tifkin_)
 
     Module by Tobias Neitzel (@qtc_de)
     '''
     name = 'webdav'
-    description = 'Checks whether the WebClient service is running on the target host'
+    description = 'Checks whether the WebClient service is running on the target'
     supported_protocols = ['smb']
     opsec_safe= True
     multiple_hosts = True
 
     def options(self, context, module_options):
         '''
-        MSG     Info message to use when a host is vulnerable. '{}' is replaced by the target.
+        MSG     Info message when the WebClient service is running. '{}' is replaced by the target.
         '''
         self.output = 'WebClient Service enabled on: {}'
 
@@ -28,7 +28,7 @@ class CMEModule:
     def on_login(self, context, connection):
         '''
         Check whether the 'DAV RPC Service' pipe exists within the 'IPC$' share. This indicates
-        that the WebClient service is running on the target host.
+        that the WebClient service is running on the target.
         '''
         try:
             remote_file = RemoteFile(connection.conn, 'DAV RPC Service', 'IPC$', access=FILE_READ_DATA)
