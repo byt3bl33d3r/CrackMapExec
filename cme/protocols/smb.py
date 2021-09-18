@@ -7,7 +7,7 @@ from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
-from impacket.nmb import NetBIOSError
+from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
@@ -325,7 +325,7 @@ class smb(connection):
                     pass
                 self.create_conn_obj()
 
-        except SessionError as e:
+        except (SessionError, NetBIOSTimeout) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
@@ -379,7 +379,7 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
-        except SessionError as e:
+        except (SessionError, NetBIOSTimeout) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         username,
@@ -402,7 +402,7 @@ class smb(connection):
             if str(e).find('Connection reset by peer') != -1:
                 logging.debug('SMBv1 might be disabled on {}'.format(self.host))
             return False
-        except Exception as e:
+        except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv1 connection to {}: {}'.format(self.host, e))
             return False
 
@@ -414,7 +414,7 @@ class smb(connection):
             self.smbv1 = False
         except socket.error:
             return False
-        except Exception as e:
+        except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
             return False
 
