@@ -1,4 +1,5 @@
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
+from impacket.ldap import ldap as ldap_impacket
 import re
 
 class CMEModule:
@@ -35,13 +36,13 @@ class CMEModule:
         searchFilter = "(objectclass=user)"
 
         try:
-            logging.debug('Search Filter=%s' % searchFilter)
+            context.log.debug('Search Filter=%s' % searchFilter)
             resp = connection.ldapConnection.search(searchFilter=searchFilter,
                                         attributes=['sAMAccountName','description'],
-                                        sizeLimit=999)
+                                        sizeLimit=0)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                context.log.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
@@ -51,7 +52,7 @@ class CMEModule:
                 return False
 
         answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        context.log.debug('Total of records returned %d' % len(resp))
         for item in resp:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
@@ -66,14 +67,14 @@ class CMEModule:
                 if sAMAccountName != '' and description != '':
                     answers.append([sAMAccountName,description])
             except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                context.log.debug("Exception:", exc_info=True)
+                context.log.debug('Skipping item, cannot process due to error %s' % str(e))
                 pass
         answers = self.filter_answer(context, answers)
         if len(answers) > 0:
             context.log.success('Found following users: ')
             for answer in answers:
-                context.log.highlight('User: {} description: {}'.format(answer[0],answer[1]))
+                context.log.highlight(u'User: {} description: {}'.format(answer[0],answer[1]))
 
     def filter_answer(self, context, answers):
         # No option to filter

