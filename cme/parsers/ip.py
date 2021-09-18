@@ -17,7 +17,10 @@ def parse_targets(target):
                 for ip in ip_range:
                     yield str(ip)
         else:
-            for ip in ip_network(target, strict=False):
-                yield str(ip)
+            if ip_address(target).is_link_local:
+                yield str(target)
+            else:
+                for ip in ip_network(target, strict=False):
+                   yield str(ip)
     except ValueError:
         yield str(target)
