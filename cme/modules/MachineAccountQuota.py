@@ -23,6 +23,7 @@ class CMEModule:
     multiple_hosts = False
 
     def on_login(self, context, connection):
+        result = []
         context.log.info('Getting the MachineAccountQuota')
         searchFilter = '(objectClass=*)'
         attributes = ['ms-DS-MachineAccountQuota']

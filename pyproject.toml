@@ -61,11 +61,11 @@ neo4j = "^4.1.1"
 pylnk3 = "^0.3.0"
 pypsrp = "^0.5.0"
 paramiko = "^2.7.2"
-impacket = "^0.9.22"
+impacket = "^0.9.23"
 xmltodict = "^0.12.0"
 terminaltables = "^3.1.0"
 aioconsole = "^0.3.1"
-pywerview = "^0.3.0"
+pywerview = "^0.3.1"
 
 
 [tool.poetry.dev-dependencies]

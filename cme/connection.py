@@ -7,6 +7,7 @@ from socket import gethostbyname
 from functools import wraps
 from cme.logger import CMEAdapter
 from cme.context import Context
+from cme.helpers.logger import write_log
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
@@ -45,6 +46,7 @@ class connection(object):
         self.kerberos = True if self.args.kerberos else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
+        self.export = None if not self.args.export else self.args.export
         self.failed_logins = 0
         self.local_ip = None
 
@@ -103,7 +105,9 @@ class connection(object):
             if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                 if v is not False and v is not None:
                     logging.debug('Calling {}()'.format(k))
-                    getattr(self, k)()
+                    r = getattr(self, k)()
+                    if self.export:
+                        write_log(str(r), self.export[0])
 
     def call_modules(self):
         module_logger = CMEAdapter(extra={
