@@ -254,10 +254,10 @@ class ldap(connection):
             return False
 
         except OSError as e:
-            self.logger.error(u'{}_\{}:{} {}'.format(self.domain, 
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password,
-                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
 
@@ -335,10 +335,10 @@ class ldap(connection):
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
             return False
         except OSError as e:
-            self.logger.error(u'{}\{}:{} {}'.format(self.domain, 
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.nthash,
-                                                 "Error connecting to the domain, please add option --kdcHost with the IP of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
     def create_smbv1_conn(self):
