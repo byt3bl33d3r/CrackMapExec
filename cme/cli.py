@@ -21,10 +21,10 @@ def gen_cli_args():
     |  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
      \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
-                                         A swiss army knife for pentesting networks
-                                    Forged by @byt3bl33d3r using the powah of dank memes
+                                                 A swiss army knife for pentesting networks
+                                    Forged by @byt3bl33d3r and @mpgn_x64 using the powah of dank memes
 
-                                           {colored("Exclusive release for Kali Linux users", "magenta")}
+                                           {colored("Public release for all users", "magenta")}
 
                                                      {highlight('Version', 'red')}: {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
