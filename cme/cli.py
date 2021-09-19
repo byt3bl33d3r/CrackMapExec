@@ -7,8 +7,8 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.1.7dev'
-    CODENAME = 'U fancy huh?'
+    VERSION  = '5.2.0dev'
+    CODENAME = "That's a lovely lovely voice"
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
@@ -21,12 +21,12 @@ def gen_cli_args():
     |  `----.|  |\  \----. /  _____  \  |  `----.|  .  \  |  |  |  |  /  _____  \  |  |      |  |____  /  .  \  |  |____ |  `----.
      \______|| _| `._____|/__/     \__\  \______||__|\__\ |__|  |__| /__/     \__\ | _|      |_______|/__/ \__\ |_______| \______|
 
-                                         A swiss army knife for pentesting networks
-                                    Forged by @byt3bl33d3r using the powah of dank memes
+                                                A swiss army knife for pentesting networks
+                                    Forged by @byt3bl33d3r and @mpgn_x64 using the powah of dank memes
 
-                                           {colored("Exclusive release for Kali Linux users", "magenta")}
+                                           {colored("Exclusive release for Porchetta Industries users", "magenta")}
 
-                                                     {highlight('Version', 'red')}: {highlight(VERSION)}
+                                                   {highlight('Version', 'red')} : {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
 """,
 

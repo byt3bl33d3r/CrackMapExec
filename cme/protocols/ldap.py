@@ -53,7 +53,7 @@ class ldap(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        ldap_parser = parser.add_parser('ldap', help="own stuff using ldap", parents=[std_parser, module_parser])
+        ldap_parser = parser.add_parser('ldap', help="own stuff using LDAP", parents=[std_parser, module_parser])
         ldap_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         ldap_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
