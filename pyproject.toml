@@ -2,7 +2,7 @@
 name = "crackmapexec"
 version = "5.1.7dev"
 description = "A swiss army knife for pentesting networks"
-authors = ["Marcello Salvati <byt3bl33d3r@pm.com>"]
+authors = ["Marcello Salvati <byt3bl33d3r@pm.com>", "Martial Puygrenier <mpgn@protonmail.com>"]
 readme = "README.md"
 homepage = "https://github.com/byt3bl33d3r/CrackMapExec"
 repository = "https://github.com/byt3bl33d3r/CrackMapExec"
