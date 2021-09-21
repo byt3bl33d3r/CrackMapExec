@@ -134,6 +134,7 @@ class smb(connection):
         smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 3 secondes", type=int, default=2)
         
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -256,9 +257,6 @@ class smb(connection):
         if self.args.local_auth:
             self.domain = self.hostname
 
-        #Re-connect since we logged off
-        self.create_conn_obj()
-
     def print_host_info(self):
         self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
                                                                                       ' x{}'.format(self.os_arch) if self.os_arch else '',
@@ -267,6 +265,8 @@ class smb(connection):
                                                                                       self.signing,
                                                                                       self.smbv1))
     def kerberos_login(self, aesKey, kdcHost):
+        #Re-connect since we logged off
+        self.create_conn_obj()
         # dirty code to check if user is admin but pywerview does not support kerberos auth ...
         error = ''
         try:
@@ -300,6 +300,8 @@ class smb(connection):
             self.create_conn_obj()
 
     def plaintext_login(self, domain, username, password):
+        #Re-connect since we logged off
+        self.create_conn_obj()
         try:
             self.password = password
             self.username = username
@@ -342,6 +344,8 @@ class smb(connection):
                 return True  
 
     def hash_login(self, domain, username, ntlm_hash):
+        #Re-connect since we logged off
+        self.create_conn_obj()
         lmhash = ''
         nthash = ''
 
@@ -398,7 +402,7 @@ class smb(connection):
 
     def create_smbv1_conn(self):
         try:
-            self.conn = SMBConnection(self.host, self.host, None, self.args.port, preferredDialect=SMB_DIALECT)
+            self.conn = SMBConnection(self.host, self.host, None, self.args.port, preferredDialect=SMB_DIALECT, timeout=self.args.smb_timeout)
             self.smbv1 = True
         except socket.error as e:
             if str(e).find('Connection reset by peer') != -1:
@@ -412,7 +416,7 @@ class smb(connection):
 
     def create_smbv3_conn(self):
         try:
-            self.conn = SMBConnection(self.host, self.host, None, self.args.port)
+            self.conn = SMBConnection(self.host, self.host, None, self.args.port, timeout=self.args.smb_timeout)
             self.smbv1 = False
         except socket.error:
             return False
@@ -547,7 +551,6 @@ class smb(connection):
                 share_info = {'name': share_name, 'remark': share_remark, 'access': []}
                 read = False
                 write = False
-
                 try:
                     self.conn.listPath(share_name, '*')
                     read = True
@@ -581,7 +584,7 @@ class smb(connection):
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         except SessionError as e:
-            self.logger.error('Error enumerating shares: {}'.format(e))     
+            self.logger.error('SessionError enumerating shares: {}'.format(e))     
         except Exception as e:
             error = e.getErrorString()
             self.logger.error('Error enumerating shares: {}'.format(error),
