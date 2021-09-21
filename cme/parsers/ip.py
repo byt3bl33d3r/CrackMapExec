@@ -23,5 +23,4 @@ def parse_targets(target):
                 for ip in ip_network(target, strict=False):
                     yield str(ip)
     except ValueError as e:
-        print(e)
         yield str(target)
