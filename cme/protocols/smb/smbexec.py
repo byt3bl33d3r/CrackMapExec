@@ -8,9 +8,9 @@ from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
 class SMBEXEC:
 
-    def __init__(self, host, share_name, protocol, username = '', password = '', domain = '', doKerberos=False, aesKey=None, kdcHost=None, hashes = None, share = None, port=445):
+    def __init__(self, host, share_name, smbconnection, protocol, username = '', password = '', domain = '', doKerberos=False, aesKey=None, kdcHost=None, hashes = None, share = None, port=445):
         self.__host = host
-        self.__share_name = share_name
+        self.__share_name = "C$"
         self.__port = port
         self.__username = username
         self.__password = password
@@ -19,6 +19,7 @@ class SMBEXEC:
         self.__lmhash = ''
         self.__nthash = ''
         self.__share = share
+        self.__smbconnection = smbconnection
         self.__output = None
         self.__batchFile = None
         self.__outputBuffer = b''
@@ -71,9 +72,9 @@ class SMBEXEC:
         if os.path.isfile(command):
             with open(command) as commands:
                 for c in commands:
-                    self.execute_fileless(c.strip())
+                    self.execute_remote(c.strip())
         else:
-            self.execute_fileless(command)
+            self.execute_remote(command)
         self.finish()
         try:
             if isinstance(self.__outputBuffer, str):
@@ -86,6 +87,57 @@ class SMBEXEC:
 
     def output_callback(self, data):
         self.__outputBuffer += data
+
+    def execute_remote(self, data):
+        self.__output = gen_random_string(6)
+        self.__batchFile = gen_random_string(6) + '.bat'
+
+        if self.__retOutput:
+            command = self.__shell + 'echo '+ data + ' ^> \\\\127.0.0.1\\{}\\{} 2^>^&1 > %TEMP%\{} & %COMSPEC% /Q /c %TEMP%\{} & del %TEMP%\{}'.format(self.__share_name, self.__output, self.__batchFile, self.__batchFile, self.__batchFile)
+        else:
+            command = self.__shell + data
+
+        with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
+            batch_file.write(command)
+
+        logging.debug('Hosting batch file with command: ' + command)
+
+        #command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
+        logging.debug('Command to execute: ' + command)
+
+        logging.debug('Remote service {} created.'.format(self.__serviceName))
+        resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command, dwStartType=scmr.SERVICE_DEMAND_START)
+        service = resp['lpServiceHandle']
+
+        try:
+            logging.debug('Remote service {} started.'.format(self.__serviceName))
+            scmr.hRStartServiceW(self.__scmr, service)
+        except:
+           pass
+        logging.debug('Remote service {} deleted.'.format(self.__serviceName))
+        scmr.hRDeleteService(self.__scmr, service)
+        scmr.hRCloseServiceHandle(self.__scmr, service)
+        self.get_output_remote()       
+
+    def get_output_remote(self):
+        if self.__retOutput is False:
+            self.__outputBuffer = ''
+            return
+        while True:
+            try:
+                self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
+                break
+            except Exception as e:
+                print(e)
+                if str(e).find('STATUS_SHARING_VIOLATION') >=0:
+                    # Output not finished, let's wait
+                    sleep(2)
+                    pass
+                else:
+                    #print str(e)
+                    pass
+
+        self.__smbconnection.deleteFile(self.__share, self.__output) 
 
     def execute_fileless(self, data):
         self.__output = gen_random_string(6)

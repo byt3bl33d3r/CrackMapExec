@@ -56,7 +56,7 @@ class TSCH_EXEC:
     def execute_handler(self, data):
         if self.__retOutput:
             try:
-                self.doStuff(data, fileless=True)
+                self.doStuff(data, fileless=False)
             except:
                 self.doStuff(data)
         else:

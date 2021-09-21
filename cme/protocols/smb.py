@@ -453,7 +453,7 @@ class smb(connection):
                         relay_list.write(self.host + '\n')
 
     @requires_admin
-    @requires_smb_server
+    #@requires_smb_server
     def execute(self, payload=None, get_output=False, methods=None):
 
         if self.args.exec_method: methods = [self.args.exec_method]
@@ -497,7 +497,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.conn, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
