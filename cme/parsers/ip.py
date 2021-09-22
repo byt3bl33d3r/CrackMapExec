@@ -1,4 +1,4 @@
-from ipaddress import ip_address, ip_network, summarize_address_range
+from ipaddress import ip_address, ip_network, summarize_address_range, ip_interface
 
 def parse_targets(target):
     try:
@@ -17,10 +17,10 @@ def parse_targets(target):
                 for ip in ip_range:
                     yield str(ip)
         else:
-            if ip_address(target).is_link_local:
+            if ip_interface(target).ip.version == 6 and ip_address(target).is_link_local:
                 yield str(target)
             else:
                 for ip in ip_network(target, strict=False):
-                   yield str(ip)
-    except ValueError:
+                    yield str(ip)
+    except ValueError as e:
         yield str(target)
