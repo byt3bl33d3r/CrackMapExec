@@ -134,7 +134,7 @@ class SMBEXEC:
                     sleep(2)
                     pass
                 else:
-                    #print str(e)
+                    logging.debug(e)
                     pass
 
         self.__smbconnection.deleteFile(self.__share, self.__output) 
