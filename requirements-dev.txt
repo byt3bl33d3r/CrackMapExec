@@ -27,7 +27,7 @@ jinja2==2.11.3; python_version >= "3.6" and python_full_version < "3.0.0" or pyt
 lazy-object-proxy==1.5.2; python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "4.0" or python_version >= "3.6" and python_version < "4.0" and python_full_version >= "3.5.0"
 ldap3==2.9; python_version >= "3.6"
 ldapdomaindump==0.9.3; python_version >= "3.6"
-lsassy==2.1.4; python_version >= "3.6"
+lsassy==3.0.0; python_version >= "3.6"
 markupsafe==1.1.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 mccabe==0.6.1; python_version >= "3.6" and python_full_version < "3.0.0" and python_version < "4.0" or python_version >= "3.6" and python_version < "4.0" and python_full_version >= "3.4.0"
 minidump==0.0.13; python_version >= "3.6"
