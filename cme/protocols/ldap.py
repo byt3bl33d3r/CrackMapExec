@@ -77,9 +77,9 @@ class ldap(connection):
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={
-                                        'protocol': 'LDAP',
+                                        'protocol': "SMB",
                                         'host': self.host,
-                                        'port': self.args.port,
+                                        'port': "445",
                                         'hostname': self.hostname
                                         })
 
@@ -225,6 +225,8 @@ class ldap(connection):
                                                 username,
                                                 password,
                                                 highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.extra['protocol'] = "LDAP"
+            self.logger.extra['port'] = "389"
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -236,6 +238,8 @@ class ldap(connection):
                 try:
                     self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                    self.logger.extra['protocol'] = "LDAPS"
+                    self.logger.extra['port'] = "636"
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
@@ -301,13 +305,16 @@ class ldap(connection):
             return False
 
         # Connect to LDAP
-        out = u'{}{}:{}'.format('{}\\'.format(domain),
-                                    username,
-                                    nthash)
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain),
+                                    username,
+                                    nthash,
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.extra['protocol'] = "LDAP"
+            self.logger.extra['port'] = "389"
             self.logger.success(out)
 
             if not self.args.continue_on_success:
@@ -318,6 +325,8 @@ class ldap(connection):
                     # We need to try SSL
                     self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                    self.logger.extra['protocol'] = "LDAPS"
+                    self.logger.extra['port'] = "636"
                     self.logger.success(out)
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]

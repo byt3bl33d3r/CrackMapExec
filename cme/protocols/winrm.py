@@ -56,7 +56,7 @@ class winrm(connection):
                     self.call_cmd_args()
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={'protocol': 'WINRM',
+        self.logger = CMEAdapter(extra={'protocol': 'SMB',
                                         'host': self.host,
                                         'port': 'NONE',
                                         'hostname': 'NONE'})
@@ -96,12 +96,16 @@ class winrm(connection):
 
     def print_host_info(self):
         if self.args.domain:
+            self.logger.extra['protocol'] = "HTTP"
             self.logger.info(self.endpoint)
-        else:    
+        else:
+            self.logger.extra['protocol'] = "SMB"
             self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
                                                                     self.hostname,
                                                                     self.domain))
+            self.logger.extra['protocol'] = "HTTP"
             self.logger.info(self.endpoint)
+        self.logger.extra['protocol'] = "WINRM"
         
 
     def create_conn_obj(self):
