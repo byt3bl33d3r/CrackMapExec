@@ -460,45 +460,35 @@ class ldap(connection):
     def users(self):
         # Building the search filter
         searchFilter = "(sAMAccountType=805306368)"
-        attributes= []
+        attributes= ['sAMAccountName', 'description', 'badPasswordTime', 'badPwdCount', 'pwdLastSet']
         resp = self.search(searchFilter, attributes,  sizeLimit=0)
         if resp:
             answers = []
             self.logger.info('Total of records returned %d' % len(resp))
-
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
                 sAMAccountName =  ''
                 badPasswordTime = ''
                 badPwdCount = 0
+                description = ''
+                pwdLastSet = ''
                 try:
                     for attribute in item['attributes']:
                         if str(attribute['type']) == 'sAMAccountName':
                             sAMAccountName = str(attribute['vals'][0])
-                        elif str(attribute['type']) == 'badPwdCount':
-                            badPwdCount = str(attribute['vals'][0])
-                        elif str(attribute['type']) == 'pwdLastSet':
-                            if str(attribute['vals'][0]) == '0':
-                                pwdLastSet = '<never>'
-                            else:
-                                pwdLastSet = str(datetime.fromtimestamp(self.getUnixTime(int(str(attribute['vals'][0])))))
-                    answers.append([sAMAccountName, badPwdCount, pwdLastSet])
+                        elif str(attribute['type']) == 'description':
+                            description = str(attribute['vals'][0])
+                    self.logger.highlight('{:<30} {}'.format(sAMAccountName, description))
                 except Exception as e:
                     self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                     pass
-            if len(answers)>0:
-                logging.debug(answers)
-                for value in answers:
-                    self.logger.highlight('{:<30} badpwdcount: {} pwdLastSet: {}'.format(value[0], value[1],value[2]))
-            else:
-                self.logger.error("No entries found!")
             return
 
     def groups(self):
         # Building the search filter
         searchFilter = "(objectCategory=group)"
-        attributes=[]
+        attributes=['name']
         resp = self.search(searchFilter, attributes, 0)
         if resp:
             answers = []
@@ -507,27 +497,16 @@ class ldap(connection):
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
-                mustCommit = False
                 name =  ''
                 try:
                     for attribute in item['attributes']:
                         if str(attribute['type']) == 'name':
                             name = str(attribute['vals'][0])
-                            mustCommit = True
-                        # if str(attribute['type']) == 'objectSid':
-                        #     print(format_sid((attribute['vals'][0])))
-                    if mustCommit is True:
-                        answers.append([name])
+                    self.logger.highlight('{}'.format(name))
                 except Exception as e:
                     logging.debug("Exception:", exc_info=True)
                     logging.debug('Skipping item, cannot process due to error %s' % str(e))
                     pass
-            if len(answers)>0:
-                logging.debug(answers)
-                for value in answers:
-                    self.logger.highlight('{}'.format(value[0]))
-            else:
-                self.logger.error("No entries found!")
             return       
 
     def asreproast(self):
