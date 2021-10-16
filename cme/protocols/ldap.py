@@ -187,7 +187,6 @@ class ldap(connection):
 
         return True
 
-
     def plaintext_login(self, domain, username, password):
         self.username = username
         self.password = password
