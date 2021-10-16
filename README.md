@@ -1,5 +1,7 @@
 ![Supported Python versions](https://img.shields.io/badge/python-3.7+-blue.svg)
 
+:triangular_flag_on_post: This is the public repository of CrackMapExec, for latest version and updates please consider supporting us through https://porchetta.industries/
+
 # CrackMapExec
 
 <p align="center">
@@ -11,15 +13,11 @@
 
 <p align="center"><img height=150 width=300 src="https://user-images.githubusercontent.com/5151193/99304058-1cef5700-280f-11eb-8642-1f9553808d2d.png"/></p>
 
-## Sponsors
-[<img src="https://www.blackhillsinfosec.com/wp-content/uploads/2016/03/BHIS-logo-L-300x300.png" width="130" height="130"/>](https://www.blackhillsinfosec.com/)
-[<img src="https://handbook.volkis.com.au/assets/img/Volkis_Logo_Brandpack.svg" width="130" hspace="10"/>](https://volkis.com.au)
-[<img src="https://user-images.githubusercontent.com/5151193/85817125-875e0880-b743-11ea-83e9-764cd55a29c5.png" width="200" vspace="21"/>](https://qomplx.com/blog/cyber/)
-[<img src="https://user-images.githubusercontent.com/5151193/86521020-9f0f4e00-be21-11ea-9256-836bc28e9d14.png" width="250" hspace="20"/>](https://ledgerops.com)
-[<img src="https://user-images.githubusercontent.com/5151193/87607538-ede79e00-c6d3-11ea-9fcf-a32d314eb65e.png" width="170" hspace="20"/>](https://www.guidepointsecurity.com/)
-[<img src="https://user-images.githubusercontent.com/5151193/95542303-a27f1c00-09b2-11eb-8682-e10b3e0f0710.jpg" width="200" hspace="20"/>](https://lostrabbitlabs.com/)
+## :triangular_flag_on_post: Sponsors
 
-# Official Discord Channel
+If you want to sponsors this project and have the latest updates on CME, latest issues fixed, latest features, please support us on https://porchetta.industries/
+
+## Official Discord Channel
 
 Come hang out on Discord!
 
@@ -40,7 +38,7 @@ Unintentional contributors:
 - @ConsciousHacker's partial Python port of Invoke-obfuscation from the [GreatSCT](https://github.com/GreatSCT/GreatSCT) project
 
 This repository contains the following repositories as submodules:
-- [Impacket](https://github.com/CoreSecurity/impacket)
+- [Impacket](https://github.com/CoreSecurity/impacket) ♥️
 - [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation)
 - [Invoke-Vnc](https://github.com/artkond/Invoke-Vnc)
 - [Mimikittenz](https://github.com/putterpanda/mimikittenz)
