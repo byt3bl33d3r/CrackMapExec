@@ -19,7 +19,7 @@ itsdangerous==1.1.0; python_version >= "3.6" and python_full_version < "3.0.0" o
 jinja2==2.11.3; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 ldap3==2.9; python_version >= "3.6"
 ldapdomaindump==0.9.3; python_version >= "3.6"
-lsassy==2.1.4; python_version >= "3.6"
+lsassy==3.0.0; python_version >= "3.6"
 markupsafe==1.1.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 minidump==0.0.13; python_version >= "3.6"
 minikerberos==0.2.9; platform_system == "Windows" and python_version >= "3.7"
