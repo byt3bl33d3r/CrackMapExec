@@ -137,7 +137,7 @@ class smb(connection):
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 3 secondes", type=int, default=2)
-        smb_parser.add_argument("--laps", action='store_true', help="LAPS authentification")
+        smb_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
         
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -281,7 +281,7 @@ class smb(connection):
                 else:
                     msMCSAdmPwd = str(computer['vals'][0])
             logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
-        self.username = "administrator"
+        self.username = self.args.laps
         self.password = msMCSAdmPwd
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
