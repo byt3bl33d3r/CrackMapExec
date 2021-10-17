@@ -3,6 +3,7 @@
 import socket
 import os
 import ntpath
+import hashlib,binascii
 from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
@@ -26,6 +27,7 @@ from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.protocols.smb.samruser import UserSamrDump
+from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
@@ -135,6 +137,7 @@ class smb(connection):
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 3 secondes", type=int, default=2)
+        smb_parser.add_argument("--laps", action='store_true', help="LAPS authentification")
         
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -257,6 +260,34 @@ class smb(connection):
         if self.args.local_auth:
             self.domain = self.hostname
 
+    def laps_search(self, username, password, ntlm_hash, domain):
+        ldapco = LDAPConnect(self.domain, "389", self.domain)
+        connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
+
+        searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
+        attributes = ['ms-MCS-AdmPwd','samAccountname']
+        result = connection.search(searchFilter=searchFilter,
+                                                attributes=attributes,
+                                                sizeLimit=0)
+
+        for item in result:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            msMCSAdmPwd = ''
+            sAMAccountName = ''
+            for computer in item['attributes']:
+                if str(computer['type']) == "sAMAccountName":
+                    sAMAccountName = str(computer['vals'][0])
+                else:
+                    msMCSAdmPwd = str(computer['vals'][0])
+            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+        self.username = "administrator"
+        self.password = msMCSAdmPwd
+        if ntlm_hash:
+            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            self.args.hash = [binascii.hexlify(hash_ntlm).decode()]
+        self.domain = self.hostname
+
     def print_host_info(self):
         self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
                                                                                       ' x{}'.format(self.os_arch) if self.os_arch else '',
@@ -264,6 +295,9 @@ class smb(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
+        if self.args.laps:
+            self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+
     def kerberos_login(self, aesKey, kdcHost):
         #Re-connect since we logged off
         self.create_conn_obj()
@@ -303,20 +337,21 @@ class smb(connection):
         #Re-connect since we logged off
         self.create_conn_obj()
         try:
-            self.password = password
-            self.username = username
+            if not self.args.laps:
+                self.password = password
+                self.username = username
             self.domain = domain
-            self.conn.login(username, password, domain)
+            self.conn.login(self.username, self.password, domain)
 
             self.check_if_admin()
-            self.db.add_credential('plaintext', domain, username, password)
+            self.db.add_credential('plaintext', domain, self.username, self.password)
 
             if self.admin_privs:
-                self.db.add_admin_user('plaintext', domain, username, password, self.host)
+                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host)
 
             out = u'{}\\{}:{} {}'.format(domain,
-                                         username,
-                                         password,
+                                         self.username,
+                                         self.password,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
@@ -332,8 +367,8 @@ class smb(connection):
         except (SessionError, NetBIOSTimeout) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
-                                                        username,
-                                                        password,
+                                                        self.username,
+                                                        self.password,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')          
@@ -359,19 +394,19 @@ class smb(connection):
             self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
-
-            self.username = username
+            if not self.args.laps:
+                self.username = username
             self.domain = domain
-            self.conn.login(username, '', domain, lmhash, nthash)
+            self.conn.login(self.username, '', domain, lmhash, nthash)
 
             self.check_if_admin()
-            self.db.add_credential('hash', domain, username, ntlm_hash)
+            self.db.add_credential('hash', domain, self.username, ntlm_hash)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
+                self.db.add_admin_user('hash', domain, self.username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(domain,
-                                         username,
+            out = u'{}\\{}:{} {}'.format(domain,
+                                         self.username,
                                          ntlm_hash,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
@@ -388,14 +423,14 @@ class smb(connection):
         except (SessionError, NetBIOSTimeout) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
-                                                        username,
+                                                        self.username,
                                                         ntlm_hash,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
 
             if error not in smb_error_status: 
-                self.inc_failed_login(username)
+                self.inc_failed_login(self.username)
                 return False
             if not self.args.continue_on_success:
                 return True 

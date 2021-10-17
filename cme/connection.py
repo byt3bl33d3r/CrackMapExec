@@ -90,8 +90,8 @@ class connection(object):
 
     def proto_flow(self):
         if self.create_conn_obj():
-            self.enum_host_info()
             self.proto_logger()
+            self.enum_host_info()
             self.print_host_info()
             # because of null session
             if self.login() or (self.username == '' and self.password == ''):

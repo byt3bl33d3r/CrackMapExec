@@ -9,6 +9,7 @@ from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT,
 from impacket.krb5.types import KerberosTime, Principal
 from impacket.krb5 import constants
 from impacket.ntlm import compute_lmhash, compute_nthash
+from impacket.ldap import ldap as ldap_impacket
 from impacket.examples import logger
 from binascii import hexlify, unhexlify
 from datetime import datetime,timedelta
@@ -33,7 +34,7 @@ class KerberosAttacks:
                 self.nthash = self.hash
         
         if self.password is None:
-            self.password = ''
+            self.password = ''    
 
     def outputTGS(self, tgs, oldSessionKey, sessionKey, username, spn, fd=None):
         decodedTGS = decoder.decode(tgs, asn1Spec=TGS_REP())[0]
