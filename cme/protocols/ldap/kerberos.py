@@ -34,23 +34,7 @@ class KerberosAttacks:
                 self.nthash = self.hash
         
         if self.password is None:
-            self.password = ''
-
-    def login_for_smb(username, password, domain):
-
-        # Create the baseDN
-        baseDN = ''
-        domainParts = domain.split('.')
-        for i in domainParts:
-            baseDN += 'dc=%s,' % i
-        # Remove last ','
-        baseDN = baseDN[:-1]
-        print(domain, baseDN, domain)
-        ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % domain, baseDN, domain)
-        print(username, password, domain)
-        ldapConnection.login(username, password, domain, '', '')
-        return ldapConnection       
-
+            self.password = ''    
 
     def outputTGS(self, tgs, oldSessionKey, sessionKey, username, spn, fd=None):
         decodedTGS = decoder.decode(tgs, asn1Spec=TGS_REP())[0]

@@ -3,6 +3,7 @@
 import socket
 import os
 import ntpath
+import hashlib,binascii
 from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
@@ -26,8 +27,7 @@ from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.protocols.smb.samruser import UserSamrDump
-from cme.protocols.ldap.kerberos import KerberosAttacks
-from impacket.ldap import ldapasn1 as ldapasn1_impacket
+from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.powershell import create_ps_command
@@ -260,15 +260,9 @@ class smb(connection):
         if self.args.local_auth:
             self.domain = self.hostname
 
-        if self.args.laps:
-            print("laps auth")
-            print(self.args.username)
-            self.laps_search(self.args.username, self.args.password, self.domain)
-
-    def laps_search(self, username, password, domain):
-        print("ldap connection")
-        connection = KerberosAttacks.login_for_smb(username[0], password[0], domain)
-        print("ldap connection end", self.hostname)
+    def laps_search(self, username, password, ntlm_hash, domain):
+        ldapco = LDAPConnect(self.domain, "389", self.domain)
+        connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
 
         searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
         attributes = ['ms-MCS-AdmPwd','samAccountname']
@@ -286,10 +280,13 @@ class smb(connection):
                     sAMAccountName = str(computer['vals'][0])
                 else:
                     msMCSAdmPwd = str(computer['vals'][0])
-            context.log.highlight("Computer: {:<20} Password: {}".format(sAMAccountName, msMCSAdmPwd))
+            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
         self.username = "administrator"
-        self.password = "October2021"
-
+        self.password = msMCSAdmPwd
+        if ntlm_hash:
+            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            self.args.hash = [binascii.hexlify(hash_ntlm).decode()]
+        self.domain = self.hostname
 
     def print_host_info(self):
         self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
@@ -298,6 +295,9 @@ class smb(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
+        if self.args.laps:
+            self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+
     def kerberos_login(self, aesKey, kdcHost):
         #Re-connect since we logged off
         self.create_conn_obj()
@@ -394,19 +394,19 @@ class smb(connection):
             self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
-
-            self.username = username
+            if not self.args.laps:
+                self.username = username
             self.domain = domain
-            self.conn.login(username, '', domain, lmhash, nthash)
+            self.conn.login(self.username, '', domain, lmhash, nthash)
 
             self.check_if_admin()
-            self.db.add_credential('hash', domain, username, ntlm_hash)
+            self.db.add_credential('hash', domain, self.username, ntlm_hash)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
+                self.db.add_admin_user('hash', domain, self.username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(domain,
-                                         username,
+            out = u'{}\\{}:{} {}'.format(domain,
+                                         self.username,
                                          ntlm_hash,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
@@ -423,14 +423,14 @@ class smb(connection):
         except (SessionError, NetBIOSTimeout) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
-                                                        username,
+                                                        self.username,
                                                         ntlm_hash,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
 
             if error not in smb_error_status: 
-                self.inc_failed_login(username)
+                self.inc_failed_login(self.username)
                 return False
             if not self.args.continue_on_success:
                 return True 
