@@ -9,6 +9,7 @@ from lsassy import logger
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
+from lsassy.impacketfile import ImpacketFile
 
 
 class CMEModule:
@@ -62,6 +63,7 @@ class CMEModule:
 
         credentials, tickets = Parser(file).parse()
         file.close()
+        ImpacketFile.delete(session, file.get_file_path())
         if credentials is None:
             credentials = []
         credentials = [cred.get_object() for cred in credentials if not cred.get_username().endswith("$")]
