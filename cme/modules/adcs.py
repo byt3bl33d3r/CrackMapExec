@@ -25,7 +25,6 @@ class CMEModule:
         self.server = None
         if module_options and 'SERVER' in module_options:
             self.server = module_options['SERVER']
-            self.context.log.highlight('Using PKI Enrollment Server: {}'.format(self.server))
 
     def on_login(self, context, connection):
         '''
@@ -35,6 +34,7 @@ class CMEModule:
             search_filter = '(objectClass=pKIEnrollmentService)'
         else:
             search_filter = '(distinguishedName=CN={},CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,'.format(self.server)
+            self.context.log.highlight('Using PKI Enrollment Server: {}'.format(self.server))
 
         context.log.debug("Starting LDAP search with search filter '{}'".format(search_filter))
 
