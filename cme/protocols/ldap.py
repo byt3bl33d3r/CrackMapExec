@@ -153,22 +153,24 @@ class ldap(connection):
                                                                                       self.signing,
                                                                                       self.smbv1))
 
-    def kerberos_login(self, aesKey, kdcHost):
+    def kerberos_login(self, domain, aesKey, kdcHost):
+
         if self.kdcHost is not None:
             target = self.kdcHost
         else:
             target = self.domain
-            self.kdcHost = domain
+            self.kdcHost = self.domain
 
         # Create the baseDN
         self.baseDN = ''
-        domainParts = self.kdcHost.split('.')
+        domainParts = self.domain.split('.')
         for i in domainParts:
             self.baseDN += 'dc=%s,' % i
         # Remove last ','
         self.baseDN = self.baseDN[:-1]
 
         try:
+            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)                                
         except ldap_impacket.LDAPSessionError as e:
