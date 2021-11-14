@@ -53,7 +53,7 @@ class CMEModule:
             with open(self.handlekatz_path + self.handlekatz, 'wb') as handlekatz:
                 handlekatz.write(self.handlekatz_embeded)
     
-        context.log.info('Copy {} to {}'.format(self.handlekatz_path, self.tmp_dir))
+        context.log.info('Copy {} to {}'.format(self.handlekatz_path + self.handlekatz, self.tmp_dir))
         with open(self.handlekatz_path + self.handlekatz, 'rb') as handlekatz:
             try:
                 connection.conn.putFile(self.share, self.tmp_share + self.handlekatz, handlekatz.read)

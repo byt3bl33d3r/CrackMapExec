@@ -53,7 +53,7 @@ class CMEModule:
             with open(self.nano_path + self.nano, 'wb') as nano:
                 nano.write(self.nano_embeded)
     
-        context.log.info('Copy {} to {}'.format(self.nano_path, self.tmp_dir))
+        context.log.info('Copy {} to {}'.format(self.nano_path + self.nano, self.tmp_dir))
         with open(self.nano_path + self.nano, 'rb') as nano:
             try:
                 connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
