@@ -92,13 +92,13 @@ class connection(object):
         if self.create_conn_obj():
             self.proto_logger()
             self.enum_host_info()
-            self.print_host_info()
-            # because of null session
-            if self.login() or (self.username == '' and self.password == ''):
-                if hasattr(self.args, 'module') and self.args.module:
-                    self.call_modules()
-                else:
-                    self.call_cmd_args()
+            if self.print_host_info():
+                # because of null session
+                if self.login() or (self.username == '' and self.password == ''):
+                    if hasattr(self.args, 'module') and self.args.module:
+                        self.call_modules()
+                    else:
+                        self.call_cmd_args()
 
     def call_cmd_args(self):
         for k, v in vars(self.args).items():

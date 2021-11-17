@@ -152,6 +152,7 @@ class ldap(connection):
                                                                                       self.domain,
                                                                                       self.signing,
                                                                                       self.smbv1))
+        return True
 
     def kerberos_login(self, domain, aesKey, kdcHost):
 

@@ -31,6 +31,7 @@ class ssh(connection):
 
     def print_host_info(self):
         self.logger.info(self.remote_version)
+        return True
 
     def enum_host_info(self):
         self.remote_version = self.conn._transport.remote_version

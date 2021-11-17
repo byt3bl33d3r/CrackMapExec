@@ -263,18 +263,20 @@ class smb(connection):
     def laps_search(self, username, password, ntlm_hash, domain):
         ldapco = LDAPConnect(self.domain, "389", self.domain)
         connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
-
+        if connection == False:
+            logging.debug('LAPS connection failed with account {}'.format(username))
+            return False
         searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
         attributes = ['ms-MCS-AdmPwd','samAccountname']
         result = connection.search(searchFilter=searchFilter,
                                                 attributes=attributes,
                                                 sizeLimit=0)
 
+        msMCSAdmPwd = ''
+        sAMAccountName = ''
         for item in result:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
-            msMCSAdmPwd = ''
-            sAMAccountName = ''
             for computer in item['attributes']:
                 if str(computer['type']) == "sAMAccountName":
                     sAMAccountName = str(computer['vals'][0])
@@ -283,10 +285,14 @@ class smb(connection):
             logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
         self.username = self.args.laps
         self.password = msMCSAdmPwd
+        if msMCSAdmPwd == '':
+            logging.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
             self.args.hash = [binascii.hexlify(hash_ntlm).decode()]
         self.domain = self.hostname
+        return True
 
     def print_host_info(self):
         self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
@@ -296,7 +302,8 @@ class smb(connection):
                                                                                       self.signing,
                                                                                       self.smbv1))
         if self.args.laps:
-            self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+            return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+        return True
 
     def kerberos_login(self, domain, aesKey, kdcHost):
         #Re-connect since we logged off
