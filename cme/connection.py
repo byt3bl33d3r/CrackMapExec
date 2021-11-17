@@ -118,7 +118,11 @@ class connection(object):
                                          })
 
         context = Context(self.db, module_logger, self.args)
-        context.localip  = self.local_ip
+        if self.args.connectback_host:
+            logging.debug('connectback_host {}'.format(self.args.connectback_host))
+            context.localip  = self.args.connectback_host
+        else:
+            context.localip  = self.local_ip
 
         if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
             self.server.connection = self

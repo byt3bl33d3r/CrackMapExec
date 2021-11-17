@@ -65,6 +65,7 @@ def gen_cli_args():
     module_parser.add_argument("--server", choices={'http', 'https'}, default='https', help='use the selected server (default: https)')
     module_parser.add_argument("--server-host", type=str, default='0.0.0.0', metavar='HOST', help='IP to bind the server to (default: 0.0.0.0)')
     module_parser.add_argument("--server-port", metavar='PORT', type=int, help='start the server on the specified port')
+    module_parser.add_argument("--connectback-host", type=str, metavar='CHOST', help='IP for the remote system to connect back to (default: same as server-host)')
 
     for protocol in protocols.keys():
         protocol_object = p_loader.load_protocol(protocols[protocol]['path'])
