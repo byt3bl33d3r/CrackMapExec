@@ -1,0 +1,14 @@
+stages :
+  - build
+
+build_linux :
+  image:  python:3.8
+  stage:  build
+  before_script:
+    - pip install shiv
+  script: 
+    - python build_collector.py
+  artifacts:
+    untracked: false
+    expire_in: 30 days
+    paths:  ["./bin/cme", "./bin/cmedb"]
