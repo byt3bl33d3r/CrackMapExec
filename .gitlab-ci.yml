@@ -2,9 +2,12 @@ stages :
   - build
 
 build_linux :
-  image:  python:3.8
+  image:  python:3.8-slim
   stage:  build
   before_script:
+    - apt update
+    - apt install git
+    - git submodule update --init --recursive
     - pip install shiv
   script: 
     - python build_collector.py
