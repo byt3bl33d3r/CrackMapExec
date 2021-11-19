@@ -8,6 +8,7 @@ from functools import wraps
 from cme.logger import CMEAdapter
 from cme.context import Context
 from cme.helpers.logger import write_log
+from cme.helpers.bloodhound import add_user_bh
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
@@ -90,15 +91,16 @@ class connection(object):
 
     def proto_flow(self):
         if self.create_conn_obj():
-            self.proto_logger()
             self.enum_host_info()
-            if self.print_host_info():
-                # because of null session
-                if self.login() or (self.username == '' and self.password == ''):
-                    if hasattr(self.args, 'module') and self.args.module:
-                        self.call_modules()
-                    else:
-                        self.call_cmd_args()
+            self.proto_logger()
+            self.print_host_info()
+            # because of null session
+            if self.login() or (self.username == '' and self.password == ''):
+                add_user_bh(self.username, self.domain, self.logger, self.config)
+                if hasattr(self.args, 'module') and self.args.module:
+                    self.call_modules()
+                else:
+                    self.call_cmd_args()
 
     def call_cmd_args(self):
         for k, v in vars(self.args).items():
@@ -118,11 +120,7 @@ class connection(object):
                                          })
 
         context = Context(self.db, module_logger, self.args)
-        if self.args.connectback_host:
-            logging.debug('connectback_host {}'.format(self.args.connectback_host))
-            context.localip  = self.args.connectback_host
-        else:
-            context.localip  = self.local_ip
+        context.localip  = self.local_ip
 
         if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
             self.server.connection = self
@@ -163,7 +161,7 @@ class connection(object):
 
     def login(self):
         if self.args.kerberos:
-            if self.kerberos_login(self.domain, self.aesKey, self.kdcHost): return True
+            if self.kerberos_login(self.aesKey, self.kdcHost): return True
         else:
             for cred_id in self.args.cred_id:
                 with sem:
