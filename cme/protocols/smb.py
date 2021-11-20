@@ -30,6 +30,7 @@ from cme.protocols.smb.samruser import UserSamrDump
 from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
+from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
@@ -362,6 +363,7 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
+            add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
             elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
@@ -418,6 +420,7 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
+            add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321

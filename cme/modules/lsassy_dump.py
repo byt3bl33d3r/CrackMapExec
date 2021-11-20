@@ -10,7 +10,7 @@ from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
 from lsassy.impacketfile import ImpacketFile
-
+from cme.helpers.bloodhound import add_user_bh
 
 class CMEModule:
     name = 'lsassy'
@@ -78,9 +78,15 @@ class CMEModule:
     def process_credentials(self, context, connection, credentials):
         if len(credentials) == 0:
             context.log.info("No credentials found")
+        credz_bh = []
         for cred in credentials:
+            domain = cred["domain"]
+            if "." not in cred["domain"] and cred["domain"].upper() in connection.domain.upper():
+                domain = connection.domain # slim shady
             self.save_credentials(context, connection, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             self.print_credentials(context, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
+            credz_bh.append({'username': cred["username"].upper(), 'domain': domain.upper()})
+        add_user_bh(credz_bh, domain, context.log, connection.config)
 
     @staticmethod
     def print_credentials(context, domain, username, password, lmhash, nthash):

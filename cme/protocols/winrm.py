@@ -5,6 +5,7 @@ import configparser
 from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
+from cme.helpers.bloodhound import add_user_bh
 from cme.logger import CMEAdapter
 from io import StringIO
 from pypsrp.client import Client
@@ -151,6 +152,7 @@ class winrm(connection):
                                                        username,
                                                        password,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            add_user_bh(self.username, self.domain, self.logger, self.config) 
             if not self.args.continue_on_success:
                 return True
 
@@ -198,6 +200,7 @@ class winrm(connection):
                                                        username,
                                                        self.hash,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 

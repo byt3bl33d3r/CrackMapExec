@@ -8,7 +8,6 @@ from functools import wraps
 from cme.logger import CMEAdapter
 from cme.context import Context
 from cme.helpers.logger import write_log
-from cme.helpers.bloodhound import add_user_bh
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
@@ -96,7 +95,6 @@ class connection(object):
             self.print_host_info()
             # because of null session
             if self.login() or (self.username == '' and self.password == ''):
-                add_user_bh(self.username, self.domain, self.logger, self.config)
                 if hasattr(self.args, 'module') and self.args.module:
                     self.call_modules()
                 else:

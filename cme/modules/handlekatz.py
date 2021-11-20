@@ -133,11 +133,18 @@ class CMEModule:
                     data = outfile.read()
                     regex = r"(?:username:? (?!NA)(?P<username>.+[^\$])\n.*domain(?:name)?:? (?P<domain>.+)\n)(?:.*password:? (?!None)(?P<password>.+)|.*\n.*NT: (?P<hash>.*))"
                     matches = re.finditer(regex, data, re.MULTILINE | re.IGNORECASE)
+                    credz_bh = []
+                    domain = ""
                     for match in matches:
                         domain = match.group("domain")
                         username = match.group("username")
                         password = match.group("password") or match.group("hash")
                         context.log.success(highlight(domain + "\\" + username + ":" + password))
+                        if "." not in domain and domain.upper() in connection.domain.upper():
+                            domain = connection.domain
+                            credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
+                    if domain:
+                        add_user_bh(credz_bh, domain, context.log, connection.config)
             except Exception as e:
                 context.log.error('Error while execute pypykatz: {}'.format(e))
                 context.log.error('Please make sure pypykatz is installed (pip3 install pypykatz)')

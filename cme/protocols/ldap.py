@@ -8,6 +8,7 @@ from binascii import b2a_hex, unhexlify, hexlify
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
+from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.ldap.kerberos import KerberosAttacks
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
@@ -231,6 +232,7 @@ class ldap(connection):
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
+            add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 
@@ -319,6 +321,7 @@ class ldap(connection):
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
+            add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except ldap_impacket.LDAPSessionError as e:
