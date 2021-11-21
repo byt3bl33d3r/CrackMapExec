@@ -1,0 +1,17 @@
+stages :
+  - build
+
+build_linux :
+  image:  python:3.8-slim
+  stage:  build
+  before_script:
+    - apt update
+    - apt install -y git
+    - git submodule update --init --recursive
+    - pip install shiv
+  script: 
+    - python build_collector.py
+  artifacts:
+    untracked: false
+    expire_in: 30 days
+    paths:  ["./bin/cme", "./bin/cmedb"]
