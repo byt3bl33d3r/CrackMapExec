@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crackmapexec"
-version = "5.2.1dev"
+version = "5.2.2dev"
 description = "A swiss army knife for pentesting networks"
 authors = ["Marcello Salvati <byt3bl33d3r@pm.com>", "Martial Puygrenier <mpgn@protonmail.com>"]
 readme = "README.md"

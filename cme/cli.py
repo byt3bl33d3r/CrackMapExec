@@ -7,8 +7,8 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.2.1dev'
-    CODENAME = "Nostalg1a"
+    VERSION  = '5.2.2dev'
+    CODENAME = "The Dark Knight"
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
