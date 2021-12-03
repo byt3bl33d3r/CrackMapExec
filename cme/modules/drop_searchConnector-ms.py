@@ -21,7 +21,7 @@ class CMEModule:
             URL         URL in the searchConnector-ms file, default https://rickroll
             CLEANUP     Cleanup (choices: True or False)
             SHARE       Specify a share to target
-            FILENAME    Specify the filename used WITHOUT the extension (it's automatically added). default is "Documents"
+            FILENAME    Specify the filename used WITHOUT the extension searchConnector-ms (it's automatically added), default is "Documents"
         '''
         self.cleanup = False
         if 'CLEANUP' in module_options:
