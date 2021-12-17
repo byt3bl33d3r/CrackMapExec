@@ -135,7 +135,7 @@ class winrm(connection):
             log.addFilter(SuppressFilter())
             self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=username,
+                                        username=u'{}\\{}'.format(domain, username),
                                         password=password,
                                         ssl=False)
 
@@ -182,7 +182,7 @@ class winrm(connection):
             if nthash: self.nthash = nthash
             self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=username,
+                                        username=u'{}\\{}'.format(domain, username),
                                         password=ntlm_hash,
                                         ssl=False)
 
