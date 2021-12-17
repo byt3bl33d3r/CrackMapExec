@@ -386,6 +386,9 @@ class smb(connection):
                 return False
             if not self.args.continue_on_success:
                 return True  
+        except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
+            self.logger.error('Connection Error: {}'.format(e))
+            return False
 
     def hash_login(self, domain, username, ntlm_hash):
         #Re-connect since we logged off
@@ -444,6 +447,9 @@ class smb(connection):
                 return False
             if not self.args.continue_on_success:
                 return True 
+        except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
+            self.logger.error('Connection Error: {}'.format(e))
+            return False
 
     def create_smbv1_conn(self):
         try:
@@ -628,8 +634,8 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-        except SessionError as e:
-            self.logger.error('SessionError enumerating shares: {}'.format(e))     
+        except (SessionError, UnicodeEncodeError) as e:
+            self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
             error = e.getErrorString()
             self.logger.error('Error enumerating shares: {}'.format(error),
