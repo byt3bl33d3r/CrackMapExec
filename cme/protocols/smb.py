@@ -7,7 +7,7 @@ from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
-from impacket.nmb import NetBIOSError
+from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.dcerpc.v5 import transport, lsat, lsad
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory
@@ -338,6 +338,9 @@ class smb(connection):
                 return False
             if not self.args.continue_on_success:
                 return True  
+        except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
+            self.logger.error('Connection Error: {}'.format(e))
+            return False
 
     def hash_login(self, domain, username, ntlm_hash):
         lmhash = ''
@@ -393,6 +396,9 @@ class smb(connection):
                 return False
             if not self.args.continue_on_success:
                 return True 
+        except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
+            self.logger.error('Connection Error: {}'.format(e))
+            return False
 
     def create_smbv1_conn(self):
         try:
@@ -578,7 +584,7 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-        except SessionError as e:
+        except (SessionError, UnicodeEncodeError) as e:
             self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
             error = e.getErrorString()
