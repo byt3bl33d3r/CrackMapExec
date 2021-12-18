@@ -17,7 +17,7 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        SERVER             PKI Enrollment Server to enumerate templates for. Default is None.
+        SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name
         '''
         self.context = context
         self.regex = re.compile('(https?://.+)')
@@ -34,7 +34,7 @@ class CMEModule:
             search_filter = '(objectClass=pKIEnrollmentService)'
         else:
             search_filter = '(distinguishedName=CN={},CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,'.format(self.server)
-            self.context.log.highlight('Using PKI Enrollment Server: {}'.format(self.server))
+            self.context.log.highlight('Using PKI CN: {}'.format(self.server))
 
         context.log.debug("Starting LDAP search with search filter '{}'".format(search_filter))
 
@@ -43,7 +43,7 @@ class CMEModule:
 
             if self.server is None:
                 resp = connection.ldapConnection.search(searchFilter=search_filter,
-                                            attributes=['dNSHostName', 'msPKI-Enrollment-Servers'],
+                                            attributes=[],
                                             sizeLimit=0, searchControls=[sc],
                                             perRecordCallback=self.process_servers,
                                             searchBase='CN=Configuration,' + connection.ldapConnection._baseDN)
@@ -66,13 +66,17 @@ class CMEModule:
 
         urls = []
         host_name = None
+        cn = None
 
         try:
-
             for attribute in item['attributes']:
+
+                
 
                 if str(attribute['type']) == 'dNSHostName':
                     host_name = attribute['vals'][0].asOctets().decode('utf-8')
+                if str(attribute['type']) == 'cn':
+                    cn = attribute['vals'][0].asOctets().decode('utf-8')
 
                 elif str(attribute['type']) == 'msPKI-Enrollment-Servers':
 
@@ -92,6 +96,9 @@ class CMEModule:
 
         if host_name:
             self.context.log.highlight('Found PKI Enrollment Server: {}'.format(host_name))
+
+        if cn:
+            self.context.log.highlight('Found CN: {}'.format(cn))
 
         for url in urls:
             self.context.log.highlight('Found PKI Enrollment WebService: {}'.format(url))
