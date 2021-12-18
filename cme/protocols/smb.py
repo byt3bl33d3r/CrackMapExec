@@ -373,7 +373,7 @@ class smb(connection):
                     pass
                 self.create_conn_obj()
 
-        except (SessionError, NetBIOSTimeout) as e:
+        except (SessionError) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         self.username,
@@ -433,7 +433,7 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
-        except (SessionError, NetBIOSTimeout) as e:
+        except (SessionError) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         self.username,
