@@ -36,6 +36,7 @@ class CMEModule:
         dce = plop.connect(connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe=self.pipe, targetIp=connection.host)
         if plop.EfsRpcOpenFileRaw(dce, self.listener):
             context.log.highlight("VULNERABLE")
+            context.log.highlight("Next step: https://github.com/topotam/PetitPotam")
 
 
 class DCERPCSessionError(DCERPCException):
