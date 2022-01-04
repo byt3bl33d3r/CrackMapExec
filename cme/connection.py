@@ -215,7 +215,7 @@ class connection(object):
                                                             if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
                                         else: # ntlm_hash is a string
                                             if not self.over_fail_limit(usr.strip()):
-                                                if self.hash_login(self.domain, usr.strip(), ntlm_hash_file): return True
+                                                if self.hash_login(self.domain, usr.strip(), ntlm_hash.strip()): return True
 
                             elif self.args.password:
                                 with sem:
@@ -255,7 +255,7 @@ class connection(object):
                                                 if self.hash_login(self.domain, user, f_hash.strip()): return True
                                 else: # ntlm_hash is a string
                                     if not self.over_fail_limit(user):
-                                        if self.hash_login(self.domain, user, ntlm_hash): return True
+                                        if self.hash_login(self.domain, user, ntlm_hash.strip()): return True
 
                     elif self.args.password:
                         with sem:
