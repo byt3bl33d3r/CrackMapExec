@@ -22,8 +22,9 @@ def gethost_addrinfo(hostname):
         for res in socket.getaddrinfo(hostname, None, socket.AF_INET,
                 socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-
-    return sa[0]
+    if canonname == '':
+        return sa[0]
+    return canonname
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
