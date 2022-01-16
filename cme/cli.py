@@ -7,7 +7,7 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.2.2dev'
+    VERSION  = '5.2.2'
     CODENAME = "The Dark Knight"
 
     p_loader =  protocol_loader()
