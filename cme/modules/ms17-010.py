@@ -9,7 +9,7 @@ import struct
 class CMEModule:
 
     name = 'ms17-010'
-    description = "TODO"
+    description = "MS17-010, /!\ not tested oustide home lab"
     supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
