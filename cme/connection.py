@@ -160,7 +160,7 @@ class connection(object):
 
     def login(self):
         if self.args.kerberos:
-            if self.kerberos_login(self.aesKey, self.kdcHost): return True
+            if self.kerberos_login(self.domain, self.aesKey, self.kdcHost): return True
         else:
             for cred_id in self.args.cred_id:
                 with sem:
