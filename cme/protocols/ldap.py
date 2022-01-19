@@ -174,13 +174,24 @@ class ldap(connection):
         try:
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN, self.kdcHost)
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=self.kdcHost)                                
+                                                self.aesKey, kdcHost=self.kdcHost)
+
+            out = u'{}{}'.format('{}\\'.format(self.domain),
+                                                self.username)
+
+            self.logger.extra['protocol'] = "LDAP"
+            self.logger.extra['port'] = "389"
+            self.logger.success(out)
+
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
+                self.logger.extra['protocol'] = "LDAPS"
+                self.logger.extra['port'] = "636"
+                self.logger.success(out)
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
