@@ -7,7 +7,7 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.2.2'
+    VERSION  = '5.2.3'
     CODENAME = "The Dark Knight"
 
     p_loader =  protocol_loader()
@@ -25,6 +25,7 @@ def gen_cli_args():
                                     Forged by @byt3bl33d3r and @mpgn_x64 using the powah of dank memes
 
                                            {colored("Exclusive release for Porchetta Industries users", "magenta")}
+                                                       {colored("https://porchetta.industries/", "magenta")}
 
                                                    {highlight('Version', 'red')} : {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
