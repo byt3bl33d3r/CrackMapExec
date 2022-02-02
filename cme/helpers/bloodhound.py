@@ -17,13 +17,20 @@ def add_user_bh(user, domain, logger, config):
             with driver.session() as session:
                 with session.begin_transaction() as tx:
                     for info in users_owned:
-                        user_owned = info['username'] + "@" + info['domain']
+                        if info['username'][-1] == '$':
+                            user_owned = info['username'][:-1] + "." + info['domain']
+                            account_type = 'Computer'
+                        else:
+                            user_owned = info['username'] + "@" + info['domain']
+                            account_type = 'User'
+
                         result = tx.run(
-                            "MATCH (c:User {{name:\"{}\"}}) RETURN c".format(user_owned))
-                        if result.data()[0]['c'].get('owned') == False:
-                            logger.debug("MATCH (c:User {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(user_owned))
+                            "MATCH (c:{} {{name:\"{}\"}}) RETURN c".format(account_type, user_owned))
+
+                        if result.data()[0]['c'].get('owned') in (False, None):
+                            logger.debug("MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
                             result = tx.run(
-                                "MATCH (c:User {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(user_owned))
+                                "MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
                             logger.highlight("Node {} successfully set as owned in BloodHound".format(user_owned))
         except AuthError as e:
             logger.error(
