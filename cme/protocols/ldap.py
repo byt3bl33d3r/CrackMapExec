@@ -215,7 +215,7 @@ class ldap(connection):
 
         # Create the baseDN
         self.baseDN = ''
-        domainParts = self.kdcHost.split('.')
+        domainParts = self.domain.split('.')
         for i in domainParts:
             self.baseDN += 'dc=%s,' % i
         # Remove last ','
@@ -305,7 +305,7 @@ class ldap(connection):
 
         # Create the baseDN
         self.baseDN = ''
-        domainParts = self.kdcHost.split('.')
+        domainParts = self.domain.split('.')
         for i in domainParts:
             self.baseDN += 'dc=%s,' % i
         # Remove last ','
