@@ -175,7 +175,7 @@ class mssql(connection):
 
             out = u'{}{}:{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                     username,
-                                    password,
+                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
@@ -222,7 +222,7 @@ class mssql(connection):
 
             out = u'{}\\{} {} {}'.format(domain,
                                         username,
-                                        ntlm_hash,
+                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:

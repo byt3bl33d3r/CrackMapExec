@@ -359,7 +359,7 @@ class smb(connection):
 
             out = u'{}\\{}:{} {}'.format(domain,
                                          self.username,
-                                         self.password,
+                                         self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
@@ -420,7 +420,7 @@ class smb(connection):
 
             out = u'{}\\{}:{} {}'.format(domain,
                                          self.username,
-                                         ntlm_hash,
+                                         ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)

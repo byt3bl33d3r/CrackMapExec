@@ -150,7 +150,7 @@ class winrm(connection):
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                        username,
-                                                       password,
+                                                       password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
@@ -199,7 +199,7 @@ class winrm(connection):
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                        username,
-                                                       self.hash,
+                                                       self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
