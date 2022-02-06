@@ -240,6 +240,7 @@ class smb(connection):
         self.os_arch   = self.get_os_arch()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+        self.output_filename = self.output_filename.replace(":", "-")
 
         if not self.domain:
             self.domain = self.hostname
