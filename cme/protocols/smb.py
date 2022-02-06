@@ -363,7 +363,8 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
             elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
@@ -423,7 +424,8 @@ class smb(connection):
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321

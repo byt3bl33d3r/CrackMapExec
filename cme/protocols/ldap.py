@@ -243,7 +243,8 @@ class ldap(connection):
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 
@@ -332,7 +333,8 @@ class ldap(connection):
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except ldap_impacket.LDAPSessionError as e:

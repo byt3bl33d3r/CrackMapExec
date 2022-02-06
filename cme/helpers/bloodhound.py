@@ -41,6 +41,6 @@ def add_user_bh(user, domain, logger, config):
             return
         except Exception as e:
             logger.error("Unexpected error with Neo4J")
-            logger.error("Error : ".format(str(e)))
+            logger.error("Account not found on the domain")
             return
         driver.close()
