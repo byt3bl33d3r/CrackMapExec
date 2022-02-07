@@ -185,7 +185,7 @@ class mssql(connection):
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                         username,
-                                                        password,
+                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
             return False
 
@@ -232,7 +232,7 @@ class mssql(connection):
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                         username,
-                                                        ntlm_hash,
+                                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
             return False
 

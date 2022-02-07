@@ -76,7 +76,7 @@ class ssh(connection):
                 return True
         except Exception as e:
             self.logger.error(u'{}:{} {}'.format(username,
-                                                 password,
+                                                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  e))
             self.client_close()
             return False

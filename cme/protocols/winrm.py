@@ -161,11 +161,11 @@ class winrm(connection):
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
                                                         username,
-                                                        password))
+                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
                                                         username,
-                                                        password,
+                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False
@@ -210,11 +210,11 @@ class winrm(connection):
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
                                                         username,
-                                                        self.hash))
+                                                        self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
                                                         username,
-                                                        self.hash,
+                                                        self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False

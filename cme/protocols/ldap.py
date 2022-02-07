@@ -261,14 +261,14 @@ class ldap(connection):
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.password,
+                                                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                     color='magenta' if errorCode in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
             return False
@@ -276,7 +276,7 @@ class ldap(connection):
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
@@ -350,21 +350,21 @@ class ldap(connection):
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.password,
+                                                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                     color='magenta' if errorCode in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
             return False
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.nthash,
+                                                 nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
