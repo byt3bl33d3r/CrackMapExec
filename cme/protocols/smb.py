@@ -137,7 +137,7 @@ class smb(connection):
         smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
-        smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 3 secondes", type=int, default=2)
+        smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 2 secondes", type=int, default=2)
         smb_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
         
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
@@ -291,7 +291,7 @@ class smb(connection):
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
-            self.args.hash = [binascii.hexlify(hash_ntlm).decode()]
+            self.hash = binascii.hexlify(hash_ntlm).decode()
         self.domain = self.hostname
         return True
 
@@ -396,19 +396,21 @@ class smb(connection):
         self.create_conn_obj()
         lmhash = ''
         nthash = ''
-
-        #This checks to see if we didn't provide the LM Hash
-        if ntlm_hash.find(':') != -1:
-            lmhash, nthash = ntlm_hash.split(':')
-        else:
-            nthash = ntlm_hash
-
         try:
-            self.hash = ntlm_hash
-            if lmhash: self.lmhash = lmhash
-            if nthash: self.nthash = nthash
+
             if not self.args.laps:
                 self.username = username
+                #This checks to see if we didn't provide the LM Hash
+                if ntlm_hash.find(':') != -1:
+                    lmhash, nthash = ntlm_hash.split(':')
+                else:
+                    nthash = ntlm_hash
+                self.hash = ntlm_hash
+                if lmhash: self.lmhash = lmhash
+                if nthash: self.nthash = nthash
+            else:
+                nthash = self.hash
+            
             self.domain = domain
             self.conn.login(self.username, '', domain, lmhash, nthash)
 
@@ -420,7 +422,7 @@ class smb(connection):
 
             out = u'{}\\{}:{} {}'.format(domain,
                                          self.username,
-                                         ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                         self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.success(out)
@@ -439,7 +441,7 @@ class smb(connection):
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
                                                         self.username,
-                                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                        self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
