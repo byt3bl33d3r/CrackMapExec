@@ -6,6 +6,7 @@ from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
+from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.logger import CMEAdapter
 from io import StringIO
 from pypsrp.client import Client
@@ -34,6 +35,7 @@ class winrm(connection):
         winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
+        winrm_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -49,12 +51,12 @@ class winrm(connection):
         self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
-            self.print_host_info()
-            if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
-                    self.call_modules()
-                else:
-                    self.call_cmd_args()
+            if self.print_host_info():
+                if self.login():
+                    if hasattr(self.args, 'module') and self.args.module:
+                        self.call_modules()
+                    else:
+                        self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'SMB',
@@ -73,14 +75,12 @@ class winrm(connection):
                 try:
                     smb_conn.login('', '')
                 except SessionError as e:
-                    if "STATUS_ACCESS_DENIED" in e.message:
-                        pass
+                    pass
 
                 self.domain = smb_conn.getServerDNSDomainName()
                 self.hostname = smb_conn.getServerName()
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
-
                 try:
                     smb_conn.logoff()
                 except:
@@ -95,6 +95,40 @@ class winrm(connection):
             if self.args.local_auth:
                 self.domain = self.hostname
 
+    def laps_search(self, username, password, ntlm_hash, domain):
+        ldapco = LDAPConnect(self.domain, "389", self.domain)
+        connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
+        if connection == False:
+            logging.debug('LAPS connection failed with account {}'.format(username))
+            return False
+        searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
+        attributes = ['ms-MCS-AdmPwd','samAccountname']
+        result = connection.search(searchFilter=searchFilter,
+                                                attributes=attributes,
+                                                sizeLimit=0)
+
+        msMCSAdmPwd = ''
+        sAMAccountName = ''
+        for item in result:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            for computer in item['attributes']:
+                if str(computer['type']) == "sAMAccountName":
+                    sAMAccountName = str(computer['vals'][0])
+                else:
+                    msMCSAdmPwd = str(computer['vals'][0])
+            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+        self.username = self.args.laps
+        self.password = msMCSAdmPwd
+        if msMCSAdmPwd == '':
+            logging.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            return False
+        if ntlm_hash:
+            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            self.hash = binascii.hexlify(hash_ntlm).decode()
+        self.domain = self.hostname
+        return True
+
     def print_host_info(self):
         if self.args.domain:
             self.logger.extra['protocol'] = "HTTP"
@@ -107,6 +141,9 @@ class winrm(connection):
             self.logger.extra['protocol'] = "HTTP"
             self.logger.info(self.endpoint)
         self.logger.extra['protocol'] = "WINRM"
+        if self.args.laps:
+            return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+        return True
         
 
     def create_conn_obj(self):
@@ -138,10 +175,14 @@ class winrm(connection):
         try:
             from urllib3.connectionpool import log
             log.addFilter(SuppressFilter())
+            if not self.args.laps:
+                self.password = password
+                self.username = username
+            self.domain = domain
             self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=u'{}\\{}'.format(domain, username),
-                                        password=password,
+                                        username=u'{}\\{}'.format(domain, self.username),
+                                        password=self.password,
                                         ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
@@ -149,8 +190,8 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
-                                                       username,
-                                                       password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                       self.username,
+                                                       self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
@@ -160,12 +201,12 @@ class winrm(connection):
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
-                                                        username,
-                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
+                                                        self.username,
+                                                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
-                                                        username,
-                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                        self.username,
+                                                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False
@@ -177,20 +218,24 @@ class winrm(connection):
             lmhash = '00000000000000000000000000000000:'
             nthash = ''
 
-            #This checks to see if we didn't provide the LM Hash
-            if ntlm_hash.find(':') != -1:
-                lmhash, nthash = ntlm_hash.split(':')
+            if not self.args.laps:
+                self.username = username
+                #This checks to see if we didn't provide the LM Hash
+                if ntlm_hash.find(':') != -1:
+                    lmhash, nthash = ntlm_hash.split(':')
+                else:
+                    nthash = ntlm_hash
+                    ntlm_hash = lmhash + nthash
+                if lmhash: self.lmhash = lmhash
+                if nthash: self.nthash = nthash
             else:
-                nthash = ntlm_hash
-                ntlm_hash = lmhash + nthash
+                nthash = self.hash
 
-            self.hash = nthash
-            if lmhash: self.lmhash = lmhash
-            if nthash: self.nthash = nthash
+            self.domain = domain
             self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=u'{}\\{}'.format(domain, username),
-                                        password=ntlm_hash,
+                                        username=u'{}\\{}'.format(self.domain, self.username),
+                                        password=lmhash + nthash,
                                         ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
@@ -198,8 +243,8 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
-                                                       username,
-                                                       self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                       self.username,
+                                                       nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -209,12 +254,12 @@ class winrm(connection):
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
-                                                        username,
-                                                        self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
+                                                        self.username,
+                                                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
-                                                        username,
-                                                        self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                        self.username,
+                                                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False

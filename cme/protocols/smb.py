@@ -403,9 +403,10 @@ class smb(connection):
                 #This checks to see if we didn't provide the LM Hash
                 if ntlm_hash.find(':') != -1:
                     lmhash, nthash = ntlm_hash.split(':')
+                    self.hash = nthash
                 else:
                     nthash = ntlm_hash
-                self.hash = ntlm_hash
+                    self.hash = ntlm_hash
                 if lmhash: self.lmhash = lmhash
                 if nthash: self.nthash = nthash
             else:
@@ -415,10 +416,10 @@ class smb(connection):
             self.conn.login(self.username, '', domain, lmhash, nthash)
 
             self.check_if_admin()
-            self.db.add_credential('hash', domain, self.username, ntlm_hash)
+            self.db.add_credential('hash', domain, self.username, nthash)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, self.username, ntlm_hash, self.host)
+                self.db.add_admin_user('hash', domain, self.username, nthash, self.host)
 
             out = u'{}\\{}:{} {}'.format(domain,
                                          self.username,
