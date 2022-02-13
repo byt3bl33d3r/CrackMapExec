@@ -1,6 +1,3 @@
-from impacket.ldap import ldapasn1 as ldapasn1_impacket
-
-
 class CMEModule:
     '''
       Module by Shutdown and Podalirius
