@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "crackmapexec"
-version = "5.2.3"
+version = "5.2.4"
 description = "A swiss army knife for pentesting networks"
 authors = ["Marcello Salvati <byt3bl33d3r@pm.com>", "Martial Puygrenier <mpgn@protonmail.com>"]
 readme = "README.md"
@@ -65,7 +65,6 @@ xmltodict = "^0.12.0"
 terminaltables = "^3.1.0"
 aioconsole = "^0.3.3"
 pywerview = "^0.3.3"
-
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
