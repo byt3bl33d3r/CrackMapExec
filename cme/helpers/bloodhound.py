@@ -34,7 +34,7 @@ def add_user_bh(user, domain, logger, config):
                             logger.highlight("Node {} successfully set as owned in BloodHound".format(user_owned))
         except AuthError as e:
             logger.error(
-                "Provided Neo4J credentials ({}:{}) are not valid.".format(config.get('Bloodhound', 'bh_user'), config.get('Bloodhound', 'bh_pass')))
+                "Provided Neo4J credentials ({}:{}) are not valid.".format(config.get('BloodHound', 'bh_user'), config.get('BloodHound', 'bh_pass')))
             return
         except ServiceUnavailable as e:
             logger.error("Neo4J does not seem to be available on {}.".format(uri))
