@@ -1,5 +1,6 @@
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
+
 class CMEModule:
     '''
       Module by technobro refactored by @mpgn (now compatible with LDAP protocol + filter by computer)
@@ -23,26 +24,27 @@ class CMEModule:
             COMPUTER    Computer name or wildcard ex: WIN-S10, WIN-* etc. Default: *
         """
 
-        self.computer = "*"
+        self.computer = None
         if 'COMPUTER' in module_options:
             self.computer = module_options['COMPUTER']
 
     def on_login(self, context, connection):
-     
         context.log.info('Getting LAPS Passwords')
+        if self.computer is not None:
+            searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name=' + self.computer + '))'
+        else:
+            searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*))'
+        attributes = ['ms-MCS-AdmPwd', 'sAMAccountName']
+        results = connection.search(searchFilter, attributes, 10000)
+        results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
 
-        searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.computer +'))'
-        attributes = ['ms-MCS-AdmPwd','samAccountname']
-        result = connection.search(searchFilter, attributes, 10000)
-
-        for item in result:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
+        laps_computers = []
+        for computer in results:
             msMCSAdmPwd = ''
             sAMAccountName = ''
-            for computer in item['attributes']:
-                if str(computer['type']) == "sAMAccountName":
-                    sAMAccountName = str(computer['vals'][0])
-                else:
-                    msMCSAdmPwd = str(computer['vals'][0])
+            values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in computer['attributes']}
+            laps_computers.append((values['samaccountname'], values['ms-mcs-admpwd']))
+
+        laps_computers = sorted(laps_computers, key=lambda x: x[0])
+        for sAMAccountName, msMCSAdmPwd in laps_computers:
             context.log.highlight("Computer: {:<20} Password: {}".format(sAMAccountName, msMCSAdmPwd))
