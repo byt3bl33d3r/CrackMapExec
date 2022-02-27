@@ -59,6 +59,7 @@ class ldap(connection):
         ldap_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         ldap_parser.add_argument("--port", type=int, choices={389, 636}, default=389, help="LDAP port (default: 389)")
+        ldap_parser.add_argument("--no-smb", action='store_true', help='No smb connection')
         dgroup = ldap_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -109,50 +110,64 @@ class ldap(connection):
         return 0
 
     def enum_host_info(self):
-        self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
-
-        try:
-            self.conn.login('' , '')
-        except:
-            #if "STATUS_ACCESS_DENIED" in e:
-            pass
-
-        self.domain    = self.conn.getServerDNSDomainName()
-        self.hostname  = self.conn.getServerName()
-        self.server_os = self.conn.getServerOS()
-        self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
-        self.os_arch   = self.get_os_arch()
-
-        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-
-        if not self.domain:
-            self.domain = self.hostname
-
-        try:
-            '''plaintext_login
-                DC's seem to want us to logoff first, windows workstations sometimes reset the connection
-                (go home Windows, you're drunk)
-            '''
-            self.conn.logoff()
-        except:
-            pass
-
-        if self.args.domain:
+        # smb no open, specify the domain
+        if self.args.no_smb:
             self.domain = self.args.domain
-        
-        if self.args.local_auth:
-            self.domain = self.hostname
+            #self.logger.extra['hostname'] = self.hostname
+        else:
+            self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
 
-        #Re-connect since we logged off
-        self.create_conn_obj()
+            try:
+                self.conn.login('' , '')
+            except:
+                #if "STATUS_ACCESS_DENIED" in e:
+                pass
+
+            self.domain    = self.conn.getServerDNSDomainName()
+            self.hostname  = self.conn.getServerName()
+            self.server_os = self.conn.getServerOS()
+            self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+            self.os_arch   = self.get_os_arch()
+
+            self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+
+            if not self.domain:
+                self.domain = self.hostname
+
+            try:
+                '''plaintext_login
+                    DC's seem to want us to logoff first, windows workstations sometimes reset the connection
+                    (go home Windows, you're drunk)
+                '''
+                self.conn.logoff()
+            except:
+                pass
+
+            if self.args.domain:
+                self.domain = self.args.domain
+            
+            if self.args.local_auth:
+                self.domain = self.hostname
+
+            #Re-connect since we logged off
+            self.create_conn_obj()
+        
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
-                                                                                      ' x{}'.format(self.os_arch) if self.os_arch else '',
-                                                                                      self.hostname,
-                                                                                      self.domain,
-                                                                                      self.signing,
-                                                                                      self.smbv1))
+        if self.args.no_smb:
+            self.logger.extra['protocol'] = "LDAP"
+            self.logger.info(u"Connecting to LDAP {}".format(self.hostname))
+            #self.logger.info(self.endpoint)
+        else:
+            self.logger.extra['protocol'] = "SMB"
+            self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
+                                                                                            ' x{}'.format(self.os_arch) if self.os_arch else '',
+                                                                                            self.hostname,
+                                                                                            self.domain,
+                                                                                            self.signing,
+                                                                                            self.smbv1))
+            self.logger.extra['protocol'] = "LDAP"
+            #self.logger.info(self.endpoint)
         return True
 
     def kerberos_login(self, domain, aesKey, kdcHost):
