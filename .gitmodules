@@ -28,3 +28,6 @@
 [submodule "cme/data/RID-Hijacking"]
 	path = cme/data/RID-Hijacking
 	url = https://github.com/r4wd3r/RID-Hijacking.git
+[submodule "cme/data/aardwolf"]
+	path = cme/data/aardwolf
+	url = https://gitlab.porchetta.industries/Skelsec/aardwolf
