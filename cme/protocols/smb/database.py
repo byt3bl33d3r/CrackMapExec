@@ -165,7 +165,7 @@ class database:
         else:
             for host in results:
                 if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
-                    cur.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1, signing WHERE id=?", [hostname, domain, os, smbv1, signing, host[0]])
+                    cur.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=? WHERE id=?", [hostname, domain, os, smbv1, signing, host[0]])
                 if dc != None and (dc != host[5]):
                     cur.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
 
