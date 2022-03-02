@@ -245,7 +245,7 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
-        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os,self.smbv1,self.signing)
+        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, self.smbv1, self.signing)
 
         try:
             '''
