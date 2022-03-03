@@ -21,7 +21,7 @@ def add_user_bh(user, domain, logger, config):
     bh_pass = config.get('Bloodhound', 'bh_pass')
 
     uri = "bolt://{}:{}".format(bh_uri, bh_port)
-    driver = GraphDatabase.driver(uri, auth=(bh_user, bh_port), encrypted=False)
+    driver = GraphDatabase.driver(uri, auth=(bh_user, bh_pass), encrypted=False)
 
     try:
         with driver.session() as session:
