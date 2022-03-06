@@ -411,12 +411,14 @@ class ldap(connection):
         return True
 
     def create_conn_obj(self):
-        if self.create_smbv1_conn():
+        if not self.args.no_smb:
+            if self.create_smbv1_conn():
+                return True
+            elif self.create_smbv3_conn():
+                return True
+            return False
+        else:
             return True
-        elif self.create_smbv3_conn():
-            return True
-
-        return False
 
     def sid_to_str(self, sid):
 
