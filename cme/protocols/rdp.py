@@ -1,14 +1,18 @@
 import logging
-import configparser
 import asyncio
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 
-from aardwolf import logger
-from aardwolf.commons.url import RDPConnectionURL
-from aardwolf.commons.iosettings import RDPIOSettings
-from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
+try:
+    from aardwolf import logger
+    from aardwolf.commons.url import RDPConnectionURL
+    from aardwolf.commons.iosettings import RDPIOSettings
+    from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
+except ImportError:
+    print("aardwolf librairy is missing, you need to install the submodule")
+    print("run the command: ")
+    exit()
 
 logger.setLevel(logging.WARNING)
 
@@ -40,9 +44,8 @@ class rdp(connection):
         return parser
 
     def proto_flow(self):
-        self.proto_logger()
         if self.create_conn_obj():
-            #self.enum_host_info()
+            self.proto_logger()
             self.print_host_info()
             if self.login():
                 if hasattr(self.args, 'module') and self.args.module:
@@ -54,7 +57,7 @@ class rdp(connection):
         self.logger = CMEAdapter(extra={'protocol': 'RDP',
                                         'host': self.host,
                                         'port': '3389',
-                                        'hostname': self.host})
+                                        'hostname': self.hostname})
 
     def print_host_info(self):
         self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
@@ -74,6 +77,13 @@ class rdp(connection):
 
             self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
             self.output_filename = self.output_filename.replace(":", "-")
+
+            if self.args.domain:
+                self.domain = self.args.domain
+            
+            if self.args.local_auth:
+                self.domain = self.hostname
+
             return True
 
     async def connect_rdp(self, url):
@@ -93,6 +103,8 @@ class rdp(connection):
                                                         username,
                                                         password,
                                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            if not self.args.local_auth:
+                add_user_bh(username, domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 
@@ -115,6 +127,8 @@ class rdp(connection):
                                                        username,
                                                        ntlm_hash,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            if not self.args.local_auth:
+                add_user_bh(username, domain, self.logger, self.config)            
             if not self.args.continue_on_success:
                 return True
 

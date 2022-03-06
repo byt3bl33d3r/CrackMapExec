@@ -31,3 +31,6 @@
 [submodule "cme/data/aardwolf"]
 	path = cme/data/aardwolf
 	url = https://gitlab.porchetta.industries/Skelsec/aardwolf
+[submodule "aardwolf"]
+	path = aardwolf
+	url = https://gitlab.porchetta.industries/Skelsec/aardwolf
