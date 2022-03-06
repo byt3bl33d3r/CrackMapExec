@@ -134,7 +134,7 @@ class mssql(connection):
 
         return True
 
-    def check_if_admin(self, auth):
+    def check_if_admin(self):
         try:
             self.conn.sql_query("SELECT IS_SRVROLEMEMBER('sysadmin')")
             self.conn.printRows()
@@ -167,7 +167,7 @@ class mssql(connection):
             self.password = password
             self.username = username
             self.domain = domain
-            self.check_if_admin(self.args.local_auth)
+            self.check_if_admin()
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
