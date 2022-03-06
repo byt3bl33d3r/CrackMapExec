@@ -35,6 +35,7 @@ from cme.helpers.powershell import create_ps_command
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
+import time
 from datetime import datetime
 from functools import wraps
 from traceback import format_exc
@@ -185,6 +186,7 @@ class smb(connection):
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
         cegroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='execute the specified PowerShell command')
+        cegroup.add_argument("-i", '--interactive', action='store_true', help='Start an interactive command prompt')
 
         psgroup = smb_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
         psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
@@ -514,7 +516,8 @@ class smb(connection):
 
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output: get_output = True
+        
+        if not self.args.no_output: get_output = True
 
         for method in methods:
 
@@ -584,6 +587,39 @@ class smb(connection):
         else:
             self.execute(create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs, custom_amsi=amsi_bypass), get_output, methods)
         return ''
+
+    @requires_admin
+    @requires_smb_server
+    def interactive(self, payload=None, get_output=False, methods=None):
+        """Start an interactive shell."""
+        self.logger.info("Bout to get shellular")
+
+        # Uncomment after other exec methods are finished
+        #if self.args.exec_method:
+        #    method = self.args.exec_method
+        #else:
+        #    method = 'wmiexec' # 'dcomexec', 'atexec', 'smbexec', 'psexec'
+
+        method = 'wmiexec'
+
+        if hasattr(self, 'server'):
+            self.server.track_host(self.host)
+
+        # Start of execution method object builders
+        if method == 'wmiexec':
+            try:
+                exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash, self.args.share)
+                logging.debug('Interactive shell using wmiexec')
+            except:
+                self.logger.error('Failed to initiate wmiexec')
+                logging.debug('Error launching shell via wmiexec, traceback:')
+                logging.debug(format_exc())
+                return
+
+        try:
+            exec_method.run(self.host, self.host)
+        except Exception as e:
+            logging.debug('b {}'.format(str(e)))
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
