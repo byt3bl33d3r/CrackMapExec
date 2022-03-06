@@ -157,6 +157,7 @@ class ldap(connection):
     def print_host_info(self):
         if self.args.no_smb:
             self.logger.extra['protocol'] = "LDAP"
+            self.logger.extra['port'] = "389"
             self.logger.info(u"Connecting to LDAP {}".format(self.hostname))
             #self.logger.info(self.endpoint)
         else:
