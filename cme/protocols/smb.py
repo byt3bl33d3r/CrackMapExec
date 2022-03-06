@@ -51,7 +51,8 @@ smb_error_status = [
     "STATUS_LOGON_TYPE_NOT_GRANTED",
     "STATUS_PASSWORD_EXPIRED",
     "STATUS_PASSWORD_MUST_CHANGE",
-    "STATUS_ACCESS_DENIED"
+    "STATUS_ACCESS_DENIED",
+    "STATUS_NO_SUCH_FILE"
 ]
 
 def requires_smb_server(func):
