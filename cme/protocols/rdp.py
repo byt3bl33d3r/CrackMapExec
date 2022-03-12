@@ -16,6 +16,10 @@ except ImportError:
 
 logger.setLevel(logging.WARNING)
 
+rdp_error_status = {
+    '-1073741711': 'STATUS_PASSWORD_EXPIRED'
+}
+
 class rdp(connection):
 
     def __init__(self, args, db, host):
@@ -40,6 +44,9 @@ class rdp(connection):
         dgroup = rdp_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+
+        egroup = rdp_parser.add_argument_group("Screenshot", "Remote Desktop Screenshot")
+        egroup.add_argument("--screenshot", action="store_true", help="Screenshot RDP if connection success")
 
         return parser
 
@@ -109,12 +116,16 @@ class rdp(connection):
                 return True
 
         except Exception as e:
-            #print(e)
+            reason = None
+            for word in rdp_error_status.keys():
+                if word in str(e):
+                    reason = rdp_error_status[word]
+            
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
                                                     username,
                                                     password,
-                                                    '({})'.format(e) if "STATUS" in str(e) else ''),
-                                                    color='red' if "CredSSP" in str(e) else 'magenta')
+                                                    '({})'.format(reason) if reason else ''),
+                                                    color='magenta' if (reason or "CredSSP" not in str(e)) else 'red')
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -133,10 +144,18 @@ class rdp(connection):
                 return True
 
         except Exception as e:
+            reason = None
+            for word in rdp_error_status.keys():
+                if word in str(e):
+                    reason = rdp_error_status[word]
+            
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
                                                     username,
                                                     ntlm_hash,
-                                                    '({})'.format(e) if "STATUS" in str(e) else ''),
-                                                    color='red' if "CredSSP" in str(e) else 'magenta')
+                                                    '({})'.format(reason) if reason else ''),
+                                                    color='magenta' if (reason or "CredSSP" not in str(e)) else 'red')
 
             return False
+
+    def screenshot(self):
+        print("screenshot")
