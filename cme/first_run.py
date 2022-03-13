@@ -28,7 +28,7 @@ def first_run_setup(logger):
         logger.info('Creating home directory structure')
         os.mkdir(CME_PATH)
 
-    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts']
+    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
             os.mkdir(os.path.join(CME_PATH, folder))

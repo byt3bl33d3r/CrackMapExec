@@ -9,6 +9,7 @@ try:
     from aardwolf.commons.url import RDPConnectionURL
     from aardwolf.commons.iosettings import RDPIOSettings
     from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
+    from aardwolf.commons.queuedata.constants import MOUSEBUTTON, VIDEO_FORMAT
 except ImportError:
     print("aardwolf librairy is missing, you need to install the submodule")
     print("run the command: ")
@@ -27,9 +28,20 @@ class rdp(connection):
         self.server_os = None
         self.iosettings = RDPIOSettings()
         self.iosettings.supported_protocols = SUPP_PROTOCOLS.HYBRID_EX
+        self.iosettings.channels = []
+        width, height = args.res.upper().split('X')
+        height = int(height)
+        width = int(width)
+        self.iosettings.video_width = width
+        self.iosettings.video_height = height
+        self.iosettings.video_bpp_min = 15 #servers dont support 8 any more :/
+        self.iosettings.video_bpp_max = 32
+        self.iosettings.video_out_format = VIDEO_FORMAT.PNG #PIL produces incorrect picture for some reason?! TODO: check bug
+        self.iosettings.clipboard_use_pyperclip = False
         self.output_filename = None
         self.domain = None
         self.server_os = None
+        self.url = None
 
         connection.__init__(self, args, db, host)
 
@@ -47,6 +59,8 @@ class rdp(connection):
 
         egroup = rdp_parser.add_argument_group("Screenshot", "Remote Desktop Screenshot")
         egroup.add_argument("--screenshot", action="store_true", help="Screenshot RDP if connection success")
+        egroup.add_argument('--screentime', type=int, default=5, help='Time to wait for desktop image')
+        egroup.add_argument('--res', default='1024x768', help='Resolution in "WIDTHxHEIGHT" format. Default: "1024x768"')
 
         return parser
 
@@ -103,8 +117,8 @@ class rdp(connection):
 
     def plaintext_login(self, domain, username, password):     
         try:
-            url = 'rdp+ntlm-password://' + domain + '\\' + username + ':' + password + '@' + self.host
-            asyncio.run(self.connect_rdp(url))
+            self.url = 'rdp+ntlm-password://' + domain + '\\' + username + ':' + password + '@' + self.host
+            asyncio.run(self.connect_rdp(self.url))
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
                                                         username,
@@ -130,8 +144,8 @@ class rdp(connection):
 
     def hash_login(self, domain, username, ntlm_hash):
         try:
-            url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host
-            asyncio.run(self.connect_rdp(url))
+            self.url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host
+            asyncio.run(self.connect_rdp(self.url))
 
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
@@ -157,5 +171,16 @@ class rdp(connection):
 
             return False
 
+    async def screen(self):
+        await self.connect_rdp(self.url)
+        await asyncio.sleep(int(self.args.screentime))
+
+        if self.conn is not None and self.conn.desktop_buffer_has_data is True:
+            buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
+            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+            buffer.save(filename,'png')
+            self.logger.highlight("Screenshot saved {}".format(filename + ".png"))
+
     def screenshot(self):
-        print("screenshot")
+        asyncio.run(self.screen())
+        
