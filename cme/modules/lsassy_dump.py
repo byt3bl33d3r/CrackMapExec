@@ -76,6 +76,7 @@ class CMEModule:
         self.process_credentials(context, connection, credentials_output)
 
     def process_credentials(self, context, connection, credentials):
+        domain=None
         if len(credentials) == 0:
             context.log.info("No credentials found")
         credz_bh = []
