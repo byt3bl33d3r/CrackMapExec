@@ -34,6 +34,8 @@ class winrm(connection):
         winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
+        winrm_parser.add_argument("-S", '--ssl', action='store_true', help="Connect to SSL Enabled WINRM")
+        winrm_parser.add_argument("--ignore-ssl-cert", action='store_true', help="Ignore Certificate Verification")
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -138,7 +140,21 @@ class winrm(connection):
         try:
             from urllib3.connectionpool import log
             log.addFilter(SuppressFilter())
-            self.conn = Client(self.host,
+            if self.args.ssl and self.args.ignore_ssl_cert:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, username),
+                                        password=password,
+                                        ssl=True,
+                                        cert_validation=False)
+            elif self.args.ssl:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, username),
+                                        password=password,
+                                        ssl=True)
+            else:
+                self.conn = Client(self.host,
                                         auth='ntlm',
                                         username=u'{}\\{}'.format(domain, username),
                                         password=password,
@@ -186,7 +202,21 @@ class winrm(connection):
             self.hash = nthash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
-            self.conn = Client(self.host,
+            if self.args.ssl and self.args.ignore_ssl_cert:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, username),
+                                        password=ntlm_hash,
+                                        ssl=True,
+                                        cert_validation=False)
+            elif self.args.ssl:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, username),
+                                        password=ntlm_hash,
+                                        ssl=True)
+            else:
+                self.conn = Client(self.host,
                                         auth='ntlm',
                                         username=u'{}\\{}'.format(domain, username),
                                         password=ntlm_hash,
