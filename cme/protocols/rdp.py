@@ -15,7 +15,7 @@ except ImportError:
     print("run the command: ")
     exit()
 
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.CRITICAL)
 
 rdp_error_status = {
     '-1073741711': 'STATUS_PASSWORD_EXPIRED',
@@ -36,7 +36,8 @@ class rdp(connection):
         self.domain = None
         self.server_os = None
         self.iosettings = RDPIOSettings()
-        self.iosettings.supported_protocols = SUPP_PROTOCOLS.HYBRID_EX
+        self.iosettings.supported_protocols = ""
+        self.protoflags = self.protoflags = [SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID_EX]
         self.iosettings.channels = []
         width, height = args.res.upper().split('X')
         height = int(height)
@@ -51,6 +52,8 @@ class rdp(connection):
         self.domain = None
         self.server_os = None
         self.url = None
+        self.nla = False
+        self.hybrid = False
 
         connection.__init__(self, args, db, host)
 
@@ -90,31 +93,44 @@ class rdp(connection):
                                         'hostname': self.hostname})
 
     def print_host_info(self):
-        self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
-                                                            self.hostname,
-                                                            self.domain))
+        if self.domain == None:
+            self.logger.info(u"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{})".format(self.nla))
+        else:
+            self.logger.info(u"{} (name:{}) (domain:{}) (nla:{})".format(self.server_os,
+                                                                self.hostname,
+                                                                self.domain,
+                                                                self.nla))
 
     def create_conn_obj(self):
-        try:
-            asyncio.run(self.connect_rdp('rdp+ntlm-password://FAKE\\user:pass@' + self.host))
-        except OSError:
-            return False
-        except Exception as e:
-            info_domain = self.conn.get_extra_info()
-            self.domain    = info_domain['dnsdomainname']
-            self.hostname  = info_domain['computername']
-            self.server_os = info_domain['os_guess'] + " Build " + str(info_domain['os_build'])
+        
+        for proto in self.protoflags:
+            try:
+                self.iosettings.supported_protocols = proto
+                self .url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host
+                asyncio.run(self.connect_rdp(self.url))
+                if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
+                    self.nla = True
+            except OSError as e:
+                if "Errno 104" not in str(e):
+                    return False
+            except Exception as e:
+                if "Reason:" not in str(e):
+                    info_domain = self.conn.get_extra_info()
+                    self.domain    = info_domain['dnsdomainname']
+                    self.hostname  = info_domain['computername']
+                    self.server_os = info_domain['os_guess'] + " Build " + str(info_domain['os_build'])
 
-            self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-            self.output_filename = self.output_filename.replace(":", "-")
+                    self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+                    self.output_filename = self.output_filename.replace(":", "-")
+                    break
 
-            if self.args.domain:
-                self.domain = self.args.domain
-            
-            if self.args.local_auth:
-                self.domain = self.hostname
+        if self.args.domain:
+            self.domain = self.args.domain
+        
+        if self.args.local_auth:
+            self.domain = self.args.domain
 
-            return True
+        return True
 
     async def connect_rdp(self, url):
         rdpurl = RDPConnectionURL(url)
@@ -124,12 +140,12 @@ class rdp(connection):
             raise err
         return True
 
-    def plaintext_login(self, domain, username, password):     
+    def plaintext_login(self, domain, username, password):
         try:
             self.url = 'rdp+ntlm-password://' + domain + '\\' + username + ':' + password + '@' + self.host
             asyncio.run(self.connect_rdp(self.url))
             self.admin_privs = True
-            self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
+            self.logger.success(u'{}\\{}:{} {}'.format(domain,
                                                         username,
                                                         password,
                                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
@@ -144,7 +160,7 @@ class rdp(connection):
                 if word in str(e):
                     reason = rdp_error_status[word]
             
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+            self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     username,
                                                     password,
                                                     '({})'.format(reason) if reason else ''),
@@ -172,7 +188,7 @@ class rdp(connection):
                 if word in str(e):
                     reason = rdp_error_status[word]
             
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+            self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     username,
                                                     ntlm_hash,
                                                     '({})'.format(reason) if reason else ''),
@@ -191,5 +207,6 @@ class rdp(connection):
             self.logger.highlight("Screenshot saved {}".format(filename + ".png"))
 
     def screenshot(self):
+        print("ddd", self.url)
         asyncio.run(self.screen())
         
