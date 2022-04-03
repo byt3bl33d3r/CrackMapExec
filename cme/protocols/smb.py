@@ -57,9 +57,9 @@ smb_error_status = [
 
 def get_error_string(exception):
     if hasattr(exception, 'getErrorString'):
-        exception.getErrorString()
+        return exception.getErrorString()
     else:
-        str(exception)
+        return str(exception)
 
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
