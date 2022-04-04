@@ -63,10 +63,8 @@ def get_error_string(exception):
         else:
             return es
     else:
-        if exception is tuple:
-            return exception[0]
-        else:
-            return str(exception)
+        return str(exception)
+        
 
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
