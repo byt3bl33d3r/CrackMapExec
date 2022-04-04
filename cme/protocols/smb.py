@@ -57,9 +57,16 @@ smb_error_status = [
 
 def get_error_string(exception):
     if hasattr(exception, 'getErrorString'):
-        return exception.getErrorString()
+        es =  exception.getErrorString()
+        if type(es) is tuple:
+            return es[0]
+        else:
+            return es
     else:
-        return str(exception)
+        if exception is tuple:
+            return exception[0]
+        else:
+            return str(exception)
 
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
@@ -646,12 +653,10 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-        except (SessionError, UnicodeEncodeError) as e:
-            self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
             error = get_error_string(e)
             self.logger.error('Error enumerating shares: {}'.format(error),
-                            color='magenta' if error in smb_error_status else 'red')          
+                            color='magenta' if error in smb_error_status else 'red')
 
         return permissions
 
