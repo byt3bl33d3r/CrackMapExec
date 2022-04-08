@@ -66,7 +66,7 @@ class CMEModule:
         context.log.info('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
-        command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + '%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%-%USERDOMAIN%.log'
+        command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + '%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%--%USERDOMAIN%.log'
         context.log.info('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
@@ -78,7 +78,7 @@ class CMEModule:
             context.log.error('Process lsass.exe error un dump, try with verbose')
         
         if dump:
-            regex = r"([A-Za-z0-9]*-[A-Za-z]*[0-9]+-[A-Za-z0-9]*\.log)"
+            regex = r"([A-Za-z0-9]*-[A-Za-z]*[0-9]+--[A-Za-z0-9]*\.log)"
             p = connection.execute("dir " + self.tmp_dir, True)
             context.log.debug(p)
             matches = re.search(regex, str(p), re.MULTILINE)
