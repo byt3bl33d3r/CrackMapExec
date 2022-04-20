@@ -114,6 +114,8 @@ class rdp(connection):
                 if "Errno 104" not in str(e):
                     return False
             except Exception as e:
+                if "TCPSocket" in str(e):
+                    return False
                 if "Reason:" not in str(e):
                     info_domain = self.conn.get_extra_info()
                     self.domain    = info_domain['dnsdomainname']
