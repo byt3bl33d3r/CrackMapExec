@@ -52,7 +52,7 @@ class rdp(connection):
         self.domain = None
         self.server_os = None
         self.url = None
-        self.nla = False
+        self.nla = True
         self.hybrid = False
 
         connection.__init__(self, args, db, host)
@@ -109,7 +109,7 @@ class rdp(connection):
                 self .url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host
                 asyncio.run(self.connect_rdp(self.url))
                 if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
-                    self.nla = True
+                    self.nla = False
             except OSError as e:
                 if "Errno 104" not in str(e):
                     return False
