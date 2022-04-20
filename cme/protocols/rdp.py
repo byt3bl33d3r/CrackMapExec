@@ -27,7 +27,8 @@ rdp_error_status = {
     '-1073741712' : 'STATUS_INVALID_WORKSTATION',
     '-1073741477' : 'STATUS_LOGON_TYPE_NOT_GRANTED',
     '-1073741276' : 'STATUS_PASSWORD_MUST_CHANGE',
-    '-1073741790' : 'STATUS_ACCESS_DENIED'
+    '-1073741790' : 'STATUS_ACCESS_DENIED',
+    '-1073741715' : 'STATUS_LOGON_FAILURE'
 }
 
 class rdp(connection):
@@ -161,12 +162,12 @@ class rdp(connection):
             for word in rdp_error_status.keys():
                 if word in str(e):
                     reason = rdp_error_status[word]
-            
+
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     username,
                                                     password,
                                                     '({})'.format(reason) if reason else ''),
-                                                    color='magenta' if (reason or "CredSSP" not in str(e)) else 'red')
+                                                    color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -194,7 +195,7 @@ class rdp(connection):
                                                     username,
                                                     ntlm_hash,
                                                     '({})'.format(reason) if reason else ''),
-                                                    color='magenta' if (reason or "CredSSP" not in str(e)) else 'red')
+                                                    color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
 
             return False
 
