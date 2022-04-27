@@ -2,6 +2,7 @@
 
 import socket
 import os
+import re
 import ntpath
 import hashlib,binascii
 from io import StringIO
@@ -153,6 +154,7 @@ class smb(connection):
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
         egroup.add_argument("--sessions", action='store_true', help='enumerate active sessions')
         egroup.add_argument('--disks', action='store_true', help='enumerate disks')
+        egroup.add_argument("--loggedon-users-filter",action='store',help='only search for specific user, works with regex')
         egroup.add_argument("--loggedon-users", action='store_true', help='enumerate logged on users')
         egroup.add_argument('--users', nargs='?', const='', metavar='USER', help='enumerate domain users, if a user is specified than only its information is queried.')
         egroup.add_argument("--groups", nargs='?', const='', metavar='GROUP', help='enumerate domain groups, if a group is specified than its members are enumerated')
@@ -829,8 +831,13 @@ class smb(connection):
         try:
             loggedon = get_netloggedon(self.host, self.domain, self.username, self.password, lmhash=self.lmhash, nthash=self.nthash)
             self.logger.success('Enumerated loggedon users')
-            for user in loggedon:
-                self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username,
+            if(self.args.loggedon_users_filter):
+                for user in loggedon:
+                    if(re.match(self.args.loggedon_users_filter,user.wkui1_username)):
+                        self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username,'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
+            else:
+                for user in loggedon:
+                    self.logger.highlight('{}\\{:<25} {}'.format(user.wkui1_logon_domain, user.wkui1_username,
                                                            'logon_server: {}'.format(user.wkui1_logon_server) if user.wkui1_logon_server else ''))
         except Exception as e:
             self.logger.error('Error enumerating logged on users: {}'.format(e))
