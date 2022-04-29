@@ -12,7 +12,7 @@
         poetry2nix.overlay
         (final: prev: {
           # The application
-          CME = prev.poetry2nix.mkPoetryApplication {
+          CrackMapExec = prev.poetry2nix.mkPoetryApplication {
             projectDir = ./.;
           };
         })
@@ -26,11 +26,11 @@
       in
       {
         apps = {
-          CME = pkgs.CME;
+          CrackMapExec = pkgs.CrackMapExec;
         };
 
-        defaultApp = pkgs.CME;
+        defaultApp = pkgs.CrackMapExec;
 
-        packages = { CME = pkgs.CME; };
+        packages = { CrackMapExec = pkgs.CrackMapExec; };
       }));
 }
