@@ -12,7 +12,7 @@
         poetry2nix.overlay
         (final: prev: {
           # The application
-          myapp = prev.poetry2nix.mkPoetryApplication {
+          CME = prev.poetry2nix.mkPoetryApplication {
             projectDir = ./.;
           };
         })
@@ -26,9 +26,11 @@
       in
       {
         apps = {
-          myapp = pkgs.myapp;
+          CME = pkgs.CME;
         };
 
-        defaultApp = pkgs.myapp;
+        defaultApp = pkgs.CME;
+
+        packages = { ... };
       }));
 }
