@@ -31,6 +31,6 @@
 
         defaultApp = pkgs.CME;
 
-        packages = { ... };
+        packages = { CME = pkgs.CME; };
       }));
 }
