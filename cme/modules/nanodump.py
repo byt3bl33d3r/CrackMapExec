@@ -59,7 +59,7 @@ class CMEModule:
                 connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
                 context.log.success('Created file {} on the \\\\{}{}'.format(self.nano, self.share, self.tmp_share))
             except Exception as e:
-              context.log.error('Error writing file to share {}: {}'.format(share, e))
+              context.log.error('Error writing file to share {}: {}'.format(self.share, e))
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
