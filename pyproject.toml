@@ -52,7 +52,7 @@ cmedb = 'cme.cmedb:main'
 [tool.poetry.dependencies]
 python = "^3.7.0"
 requests = ">=2.27.1"
-bs4 = "^0.0.1"
+beautifulsoup4 = ">=4.11,<5"
 lsassy = ">=3.1.1"
 termcolor = "^1.1.0"
 msgpack = "^1.0.0"
