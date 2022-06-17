@@ -52,7 +52,7 @@ class MMCEXEC:
         self.__nthash = ''
         self.__share_name = share_name
         self.__output = None
-        self.__outputBuffer = ''
+        self.__outputBuffer = b''
         self.__shell = 'c:\\windows\\system32\\cmd.exe'
         self.__pwd = 'C:\\'
         self.__quit = None
@@ -174,7 +174,7 @@ class MMCEXEC:
         self.get_output_fileless()
 
     def output_callback(self, data):
-        self.__outputBuffer += data.decode("utf-8") 
+        self.__outputBuffer += data
 
     def get_output_fileless(self):
         if not self.__retOutput: return

