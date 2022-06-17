@@ -55,6 +55,17 @@ smb_error_status = [
     "STATUS_NO_SUCH_FILE"
 ]
 
+def get_error_string(exception):
+    if hasattr(exception, 'getErrorString'):
+        es =  exception.getErrorString()
+        if type(es) is tuple:
+            return es[0]
+        else:
+            return es
+    else:
+        return str(exception)
+        
+
 def requires_smb_server(func):
     def _decorator(self, *args, **kwargs):
         global smb_server
@@ -237,7 +248,11 @@ class smb(connection):
         self.domain    = self.conn.getServerDNSDomainName()
         self.hostname  = self.conn.getServerName()
         self.server_os = self.conn.getServerOS()
-        self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+        try:
+            self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+        except:
+            pass
+
         self.os_arch   = self.get_os_arch()
 
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
@@ -641,12 +656,10 @@ class smb(connection):
                 perms  = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
-        except (SessionError, UnicodeEncodeError) as e:
-            self.logger.error('Error enumerating shares: {}'.format(e))     
         except Exception as e:
-            error = e.getErrorString()
+            error = get_error_string(e)
             self.logger.error('Error enumerating shares: {}'.format(error),
-                            color='magenta' if error in smb_error_status else 'red')          
+                            color='magenta' if error in smb_error_status else 'red')
 
         return permissions
 
