@@ -191,6 +191,11 @@ class smb(connection):
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
+        cgroup.add_argument('--codec', default='utf-8', help='Set encoding used (codec) from the target\'s output (default '
+                                                             '"utf-8"). If errors are detected, run chcp.com at the target, '
+                                                             'map the result with '
+                                                             'https://docs.python.org/3/library/codecs.html#standard-encodings and then execute '
+                                                             'again with --codec and the corresponding codec')
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
         cegroup = cgroup.add_mutually_exclusive_group()
@@ -580,7 +585,16 @@ class smb(connection):
 
         if hasattr(self, 'server'): self.server.track_host(self.host)
 
-        output = u'{}'.format(exec_method.execute(payload, get_output).strip())
+        output = exec_method.execute(payload, get_output)
+
+        try:
+            if not isinstance(output, str):
+                output = output.decode(self.args.codec)
+        except UnicodeDecodeError:
+            logging.debug('Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings')
+            output = output.decode('cp437')
+
+        output = u'{}'.format(output.strip())
 
         if self.args.execute or self.args.ps_execute:
             self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
