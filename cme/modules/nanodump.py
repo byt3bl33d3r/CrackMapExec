@@ -65,14 +65,10 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         if self.useembeded == True:
             with open(self.nano_path + self.nano, 'wb') as nano:
-                # Figure out if we're dealing with 32-bit or 64-bit Windows
-                command = 'wmic os get osarchitecture | find /v "OSArchitecture"'
-                context.log.info('Determining system architecture: {}'.format(command))
-                p = connection.execute(command, True)
-                if "32" in p:
+                if connection.os_arch == 32:
                     context.log.info("32-bit Windows detected.")
                     nano.write(self.nano_embedded32)
-                elif "64" in p:
+                elif connection.os_arch == 64:
                     context.log.info("64-bit Windows detected.")
                     nano.write(self.nano_embedded64)
                 else:
