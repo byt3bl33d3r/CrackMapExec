@@ -70,13 +70,13 @@ class ssh(connection):
 
             self.check_if_admin()
             self.logger.success(u'{}:{} {}'.format(username,
-                                                   password,
+                                                   password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
             self.logger.error(u'{}:{} {}'.format(username,
-                                                 password,
+                                                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  e))
             self.client_close()
             return False
