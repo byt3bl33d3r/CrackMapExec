@@ -93,7 +93,6 @@ class CMEModule:
             self.save_credentials(context, connection, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             self.print_credentials(context, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             credz_bh.append({'username': cred["username"].upper(), 'domain': domain.upper()})
-        if domain is not None:
             add_user_bh(credz_bh, domain, context.log, connection.config)
 
     @staticmethod

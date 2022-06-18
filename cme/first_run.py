@@ -28,7 +28,7 @@ def first_run_setup(logger):
         logger.info('Creating home directory structure')
         os.mkdir(CME_PATH)
 
-    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts']
+    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
             os.mkdir(os.path.join(CME_PATH, folder))
@@ -73,6 +73,8 @@ def first_run_setup(logger):
             config.read(CONFIG_PATH)
             config.get('CME', 'workspace')
             config.get('CME', 'pwn3d_label')
+            config.get('CME', 'audit_mode')
+            config.get('BloodHound', 'bh_enabled')
         except (NoSectionError, NoOptionError):
             logger.info('Old configuration file detected, replacing with new version')
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
