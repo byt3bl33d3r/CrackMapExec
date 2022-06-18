@@ -37,12 +37,13 @@ class navigator(DatabaseNavigator):
 
         self.print_table(data, title='Groups')
 
+    #pull/545
     def display_hosts(self, hosts):
 
-        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS']]
-
+        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing']]
+    
         for host in hosts:
-
+            print(host)
             hostID = host[0]
             ip = host[1]
             hostname = host[2]
@@ -51,11 +52,15 @@ class navigator(DatabaseNavigator):
                 os = host[4].decode()
             except:
                 os = host[4]
-
-            links = self.db.get_admin_relations(hostID=hostID)
-
-            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os])
-
+            try:
+                smbv1 = host[6]
+                signing = host[7]
+                links = self.db.get_admin_relations(hostID=hostID)
+                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing])
+            except:
+                links = self.db.get_admin_relations(hostID=hostID)
+                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os])
+            
         self.print_table(data, title='Hosts')
     
     def display_shares(self, shares):
