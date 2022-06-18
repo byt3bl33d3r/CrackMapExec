@@ -43,7 +43,6 @@ class navigator(DatabaseNavigator):
         data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing']]
     
         for host in hosts:
-            print(host)
             hostID = host[0]
             ip = host[1]
             hostname = host[2]
