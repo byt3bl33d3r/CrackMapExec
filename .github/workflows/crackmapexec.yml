@@ -27,8 +27,9 @@ jobs:
         python-version: 3.8
     - name: Install libkrb5
       run: |
-         if [ "$RUNNER_OS" == "Linux" ]; then
-              sudo apt-get install -y libkrb5-dev 
+           if [ "$RUNNER_OS" == "Linux" ]; then
+                sudo apt-get install -y libkrb5-dev 
+           fi
     - name: Build binaries with Shiv
       run: |
         pip install shiv
