@@ -25,6 +25,8 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
+    - name: Install xmllint
+      run: sudo apt-get install -y libkrb5-dev
     - name: Build binaries with Shiv
       run: |
         pip install shiv
