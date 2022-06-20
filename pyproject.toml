@@ -6,32 +6,7 @@ authors = ["Marcello Salvati <byt3bl33d3r@pm.com>", "Martial Puygrenier <mpgn@pr
 readme = "README.md"
 homepage = "https://github.com/byt3bl33d3r/CrackMapExec"
 repository = "https://github.com/byt3bl33d3r/CrackMapExec"
-exclude = [
-    "cme/data/powersploit/Recon/Dictionaries",
-    "cme/data/powersploit/Exfiltration/NTFSParser",
-    "cme/data/powersploit/CodeExecution/Invoke-ReflectivePEInjection_Resources",
-    "cme/data/powersploit/Exfiltration/LogonUser",
-    "cme/data/powersploit/Tests",
-    "cme/data/netripper/DLL",
-    "cme/data/netripper/Metasploit",
-    "cme/data/netripper/NetRipper",
-    "cme/data/netripper/Win32",
-    "cme/data/netripper/Release",
-    "cme/data/netripper/minhook",
-    "cme/data/netripper/x64",
-    "cme/data/netripper/*.pdf",
-    "cme/data/netripper/*.sln",
-    "cme/data/invoke-vnc/winvnc",
-    "cme/data/invoke-vnc/vncdll",
-    "cme/data/invoke-vnc/pebytes.ps1",
-    "cme/data/invoke-vnc/ReflectiveDLLInjection",
-    "cme/data/invoke-vnc/*.py",
-    "cme/data/invoke-vnc/*.bat",
-    "cme/data/invoke-vnc/*.msbuild",
-    "cme/data/invoke-vnc/*.sln",
-    "cme/data/RID-Hijacking/modules",
-    "cme/data/RID-Hijacking/slides"
-]
+exclude = []
 include = ["LICENSE", "cme/data/*", "cme/modules/*"]
 license = "BSD-2-Clause"
 classifiers = [
