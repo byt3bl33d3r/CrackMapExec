@@ -28,7 +28,9 @@ jobs:
     - name: Install libkrb5
       run: |
            if [ "$RUNNER_OS" == "Linux" ]; then
-                sudo apt-get install -y libkrb5-dev 
+                sudo apt-get install -y libkrb5-dev
+           elif [ "$RUNNER_OS" == "macOS" ]; then
+                pip download --no-binary aardwolf aardwolf
            fi
       shell: bash
     - name: Build binaries with Shiv
