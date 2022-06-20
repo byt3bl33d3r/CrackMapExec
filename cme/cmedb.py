@@ -6,7 +6,6 @@ import os
 import requests
 from time import sleep
 from terminaltables import AsciiTable
-from cme.msfrpc import Msfrpc, MsfAuthError
 import configparser
 from cme.loaders.protocol_loader import protocol_loader
 from requests import ConnectionError
@@ -122,44 +121,6 @@ class DatabaseNavigator(cmd.Cmd):
 
             except ConnectionError as e:
                 print("[-] Unable to connect to Empire's RESTful API server: {}".format(e))
-
-        elif line == 'metasploit':
-            msf = Msfrpc({'host': self.config.get('Metasploit', 'rpc_host'),
-                          'port': self.config.get('Metasploit', 'rpc_port')})
-
-            try:
-                msf.login('msf', self.config.get('Metasploit', 'password'))
-            except MsfAuthError:
-                print("[-] Error authenticating to Metasploit's MSGRPC server!")
-                return
-
-            console_id = str(msf.call('console.create')['id'])
-
-            msf.call('console.write', [console_id, 'creds\n'])
-
-            sleep(2)
-
-            creds = msf.call('console.read', [console_id])
-
-            for entry in creds['data'].split('\n'):
-                cred = entry.split()
-                try:
-                    # host = cred[0]
-                    # port = cred[2]
-                    proto = cred[3]
-                    username = cred[4]
-                    password = cred[5]
-                    cred_type = cred[6]
-
-                    if proto == '({})'.format(self.proto) and cred_type == 'Password':
-                        self.db.add_credential('plaintext', '', username, password)
-
-                except IndexError:
-                    continue
-
-            msf.call('console.destroy', [console_id])
-
-            print("[+] Metasploit credential import successful")
 
     def complete_import(self, text, line, begidx, endidx):
         "Tab-complete 'import' commands."
