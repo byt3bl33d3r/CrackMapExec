@@ -16,7 +16,7 @@ jobs:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-
+        python-version: ['3.9']
     steps:
     - uses: actions/checkout@v2
       with:
@@ -24,12 +24,13 @@ jobs:
     - name: CrackMapExec tests on ${{ matrix.os }}
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Install libkrb5
       run: |
            if [ "$RUNNER_OS" == "Linux" ]; then
                 sudo apt-get install -y libkrb5-dev 
            fi
+      shell: bash
     - name: Build binaries with Shiv
       run: |
         pip install shiv
