@@ -131,7 +131,7 @@ class rdp(connection):
             self.domain = self.args.domain
         
         if self.args.local_auth:
-            self.domain = self.args.domain
+            self.domain = self.hostname
 
         return True
 
