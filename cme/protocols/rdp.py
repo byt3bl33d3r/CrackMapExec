@@ -210,6 +210,5 @@ class rdp(connection):
             self.logger.highlight("Screenshot saved {}".format(filename + ".png"))
 
     def screenshot(self):
-        print("ddd", self.url)
         asyncio.run(self.screen())
         
