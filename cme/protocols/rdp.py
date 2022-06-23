@@ -90,7 +90,7 @@ class rdp(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'RDP',
                                         'host': self.host,
-                                        'port': '3389',
+                                        'port': self.args.port,
                                         'hostname': self.hostname})
 
     def print_host_info(self):
@@ -107,7 +107,7 @@ class rdp(connection):
         for proto in self.protoflags:
             try:
                 self.iosettings.supported_protocols = proto
-                self .url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host
+                self .url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host + ':' + str(self.args.port)
                 asyncio.run(self.connect_rdp(self.url))
                 if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
                     self.nla = False
@@ -145,7 +145,7 @@ class rdp(connection):
 
     def plaintext_login(self, domain, username, password):
         try:
-            self.url = 'rdp+ntlm-password://' + domain + '\\' + username + ':' + password + '@' + self.host
+            self.url = 'rdp+ntlm-password://' + domain + '\\' + username + ':' + password + '@' + self.host + ':' + str(self.args.port)
             asyncio.run(self.connect_rdp(self.url))
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(domain,
@@ -172,7 +172,7 @@ class rdp(connection):
 
     def hash_login(self, domain, username, ntlm_hash):
         try:
-            self.url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host
+            self.url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host + ':' + str(self.args.port)
             asyncio.run(self.connect_rdp(self.url))
 
             self.admin_privs = True
