@@ -159,7 +159,7 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
-            res = self.conn.login(None, username, password, domain, None, not self.args.local_auth)
+            res = self.conn.login(None, username, password, domain, None, True)
             if res is not True:
                 self.conn.printReplies()
                 return False

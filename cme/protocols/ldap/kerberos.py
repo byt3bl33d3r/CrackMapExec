@@ -83,10 +83,6 @@ class KerberosAttacks:
     def getTGT_kerberoasting(self):
         try:
             ccache = CCache.loadFile(getenv('KRB5CCNAME'))
-        except:
-            # No cache present
-            pass
-        else:
             # retrieve user and domain information from CCache file if needed
             if self.domain == '':
                 domain = ccache.principal.realm['data']
@@ -101,6 +97,9 @@ class KerberosAttacks:
                 return TGT
             else:
                 logging.debug("No valid credentials found in cache. ")
+        except:
+            # No cache present
+            pass
 
         # No TGT in cache, request it
         userName = Principal(self.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value)

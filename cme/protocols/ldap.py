@@ -687,6 +687,7 @@ class ldap(connection):
                         self.logger.highlight(u'{}'.format(r))
                         with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
                             hash_kerberoasting.write(r + '\n')
+                        return True
                     except Exception as e:
                         logging.debug("Exception:", exc_info=True)
                         logging.error('SPN: %s - %s' % (SPN,str(e)))
