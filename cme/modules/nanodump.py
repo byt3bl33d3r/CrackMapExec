@@ -155,11 +155,11 @@ class CMEModule:
                                         credtype = "hash"
                                         credential = NThash
                                     context.log.highlight(domain + "\\" + username + ":" + credential)
-                                    domain = connection.domain
                                     credtype = "password" if password else "hash"
                                     hostid = context.db.get_computers(connection.host)[0][0]
-                                    context.db.add_credential(credtype, domain, username, credential, pillaged_from=hostid)
+                                    context.db.add_credential(credtype, connection.domain, username, credential, pillaged_from=hostid)
                                     if "." not in domain and domain.upper() in connection.domain.upper():
+                                        domain = connection.domain
                                         credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
                     if len(credz_bh) > 0:
                         add_user_bh(credz_bh, None, context.log, connection.config)
