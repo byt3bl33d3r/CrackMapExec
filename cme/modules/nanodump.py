@@ -148,8 +148,15 @@ class CMEModule:
                                 if NThash is not None:
                                     NThash = NThash.hex()
                                 if username and (password or NThash) and "$" not in username:
-                                    print_pass = password if password else NThash
-                                    context.log.highlight(domain + "\\" + username + ":" + print_pass)
+                                    if password:
+                                        credtype = "password"
+                                        credential = password
+                                    else:
+                                        credtype = "hash"
+                                        credential = NThash
+                                    context.log.highlight(domain + "\\" + username + ":" + credential)
+                                    hostid = context.db.get_computers(connection.host)[0][0]
+                                    context.db.add_credential(credtype, connection.domain, username, credential, pillaged_from=hostid)
                                     if "." not in domain and domain.upper() in connection.domain.upper():
                                         domain = connection.domain
                                         credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
