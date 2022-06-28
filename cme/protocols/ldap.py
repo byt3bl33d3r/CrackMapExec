@@ -206,6 +206,10 @@ class ldap(connection):
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
+                
+                out = u'{}{}'.format('{}\\'.format(self.domain),
+                                                self.username)
+                
                 self.logger.extra['protocol'] = "LDAPS"
                 self.logger.extra['port'] = "636"
                 self.logger.success(out)
