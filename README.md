@@ -38,10 +38,10 @@ Unintentional contributors:
 - @ConsciousHacker's partial Python port of Invoke-obfuscation from the [GreatSCT](https://github.com/GreatSCT/GreatSCT) project
 
 # Documentation, Tutorials, Examples
-See the project's [wiki](https://github.com/byt3bl33d3r/CrackMapExec/wiki) for documentation and usage examples
+See the project's [wiki](https://mpgn.gitbook.io/crackmapexec/) for documentation and usage examples
 
 # Installation
-Please see the installation wiki page [here](https://github.com/byt3bl33d3r/CrackMapExec/wiki/Installation) or the [GitBook](https://mpgn.gitbook.io/crackmapexec/)
+Please see the installation on the [GitBook](https://mpgn.gitbook.io/crackmapexec/)
 
 # To do
 - ~~0wn everything~~
