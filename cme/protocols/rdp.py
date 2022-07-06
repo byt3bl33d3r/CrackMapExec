@@ -3,17 +3,11 @@ import asyncio
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-
-try:
-    from aardwolf import logger
-    from aardwolf.commons.url import RDPConnectionURL
-    from aardwolf.commons.iosettings import RDPIOSettings
-    from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
-    from aardwolf.commons.queuedata.constants import MOUSEBUTTON, VIDEO_FORMAT
-except ImportError:
-    print("aardwolf librairy is missing, you need to install the submodule")
-    print("run the command: ")
-    exit()
+from aardwolf import logger
+from aardwolf.commons.url import RDPConnectionURL
+from aardwolf.commons.iosettings import RDPIOSettings
+from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
+from aardwolf.commons.queuedata.constants import MOUSEBUTTON, VIDEO_FORMAT
 
 logger.setLevel(logging.CRITICAL)
 
