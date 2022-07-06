@@ -40,7 +40,7 @@ dsinternals = "^1.2.4"
 xmltodict = "^0.12.0"
 terminaltables = "^3.1.0"
 aioconsole = "^0.3.3"
-pywerview = "^0.4.0"
+pywerview = "^0.3.3"
 aardwolf = "^0.0.8"
 
 

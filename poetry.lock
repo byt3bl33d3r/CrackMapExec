@@ -298,14 +298,6 @@ ssh = ["bcrypt (>=3.1.5)"]
 test = ["pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-subtests", "pytest-xdist", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,!=3.79.2)"]
 
 [[package]]
-name = "decorator"
-version = "5.1.1"
-description = "Decorators for Humans"
-category = "main"
-optional = false
-python-versions = ">=3.5"
-
-[[package]]
 name = "dill"
 version = "0.3.5.1"
 description = "serialize all of python"
@@ -388,17 +380,6 @@ description = "Clean single-source support for Python 3 and 2"
 category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[[package]]
-name = "gssapi"
-version = "1.7.3"
-description = "Python GSSAPI Wrapper"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-decorator = "*"
 
 [[package]]
 name = "idna"
@@ -899,7 +880,7 @@ python-versions = "*"
 
 [[package]]
 name = "pywerview"
-version = "0.4.0"
+version = "0.3.3"
 description = "A Python port of PowerSploit's PowerView"
 category = "main"
 optional = false
@@ -907,11 +888,8 @@ python-versions = "*"
 
 [package.dependencies]
 bs4 = "*"
-gssapi = "*"
 impacket = ">=0.9.22"
-ldap3 = ">=2.8.1"
 lxml = "*"
-pyasn1 = "*"
 
 [[package]]
 name = "regex"
@@ -1140,7 +1118,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.0"
-content-hash = "dc25d9a353c151ce0c20763d474dc1be9486d7170a3468df8a58699901c1e125"
+content-hash = "144b3dec6f5fc026bb9709d3177227507ccb24d1df9b0ab36c84d1c64e990a96"
 
 [metadata.files]
 aardwolf = [
@@ -1353,10 +1331,6 @@ cryptography = [
     {file = "cryptography-37.0.4-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:4c590ec31550a724ef893c50f9a97a0c14e9c851c85621c5650d699a7b88f7ab"},
     {file = "cryptography-37.0.4.tar.gz", hash = "sha256:63f9c17c0e2474ccbebc9302ce2f07b55b3b3fcb211ded18a42d5764f5c10a82"},
 ]
-decorator = [
-    {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
-    {file = "decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330"},
-]
 dill = [
     {file = "dill-0.3.5.1-py2.py3-none-any.whl", hash = "sha256:33501d03270bbe410c72639b350e941882a8b0fd55357580fbc873fba0c59302"},
     {file = "dill-0.3.5.1.tar.gz", hash = "sha256:d75e41f3eff1eee599d738e76ba8f4ad98ea229db8b085318aa2b3333a208c86"},
@@ -1382,27 +1356,6 @@ flask = [
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
-]
-gssapi = [
-    {file = "gssapi-1.7.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:69104cb87205ab6b6ac1e265b2df1c94b661140fdd5db223fefc564f958bcd44"},
-    {file = "gssapi-1.7.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d2fd3546303db6ae238764d61b4b639ffb74d615d0eb4735389887af804ff336"},
-    {file = "gssapi-1.7.3-cp310-cp310-win32.whl", hash = "sha256:ee76851059aecfcf2927ae991d74bd8c635de3e958d8e1cd3cd213d566ec7911"},
-    {file = "gssapi-1.7.3-cp310-cp310-win_amd64.whl", hash = "sha256:2788648b614ac10fdf3df71a15ac04ec256e1721dd0c84ac8e104b71cd5fbac5"},
-    {file = "gssapi-1.7.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:a5ba691f66e554d9adaf7d6aa8c82f384494d954059bdfcc6be560e7f9122ed3"},
-    {file = "gssapi-1.7.3-cp36-cp36m-win32.whl", hash = "sha256:35e864942c50d0e19608d12052a721745c8f28221c229cba05e534669d7b6225"},
-    {file = "gssapi-1.7.3-cp36-cp36m-win_amd64.whl", hash = "sha256:2b9a47aa3d9c267c9c3677131f305fbf3c3c544450d2999f113af6e3ba738d2c"},
-    {file = "gssapi-1.7.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:0eb28405cf3d5171b37796fa7cf5c06bb48eefd6d854b587aafe31b4b4d068db"},
-    {file = "gssapi-1.7.3-cp37-cp37m-win32.whl", hash = "sha256:6e5a0aae3be78fa5747120f51baa9d070dbc188c105064669ca6b53b75a08c80"},
-    {file = "gssapi-1.7.3-cp37-cp37m-win_amd64.whl", hash = "sha256:35dcddb6915dc7c5ae73afacaa6bb1e2da79c24668ad5a3cf2d7890d9c149d3e"},
-    {file = "gssapi-1.7.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:5e62981c96b4c138684e8b9dd932a4d52dcc7cc185cf8ac10aae9dd3db23d7e2"},
-    {file = "gssapi-1.7.3-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:56ae0564140ef3cd53034bdb0e4236e00f69dd2b0e3680c41263025d40d02c9d"},
-    {file = "gssapi-1.7.3-cp38-cp38-win32.whl", hash = "sha256:a7a9c9af5c96bfb95daa9b7166ae071549c8e6a01fbbdf9a589856d60677a823"},
-    {file = "gssapi-1.7.3-cp38-cp38-win_amd64.whl", hash = "sha256:a2d272d6df0cdbc934d06a0e299fcfb8d7dff211b63d43ce291dcc8055a598ac"},
-    {file = "gssapi-1.7.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:ec25bfa506dbf82e0471f9ffce198b10da8f4b787f1779d52dbe514eb2cda999"},
-    {file = "gssapi-1.7.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:13971279ccad7df0847d6be33ed2ea1c643bd58f065735c4954cd37c6f85d333"},
-    {file = "gssapi-1.7.3-cp39-cp39-win32.whl", hash = "sha256:c65221f5bc91f1fa317b48866d1a6da6248195d5c58e743f6c512a80c7c98119"},
-    {file = "gssapi-1.7.3-cp39-cp39-win_amd64.whl", hash = "sha256:8bb1603b24a1f21a0da19df9f2544c122af896b1f28a17b0d45cf87773de58c4"},
-    {file = "gssapi-1.7.3.tar.gz", hash = "sha256:c69b9f633a0c03c1b84ba14c73b0ec132f6323056e675702c1a5f75f316e06fb"},
 ]
 idna = [
     {file = "idna-3.3-py3-none-any.whl", hash = "sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff"},
@@ -1488,7 +1441,6 @@ lxml = [
     {file = "lxml-4.9.1-cp27-cp27m-win_amd64.whl", hash = "sha256:4cfbe42c686f33944e12f45a27d25a492cc0e43e1dc1da5d6a87cbcaf2e95627"},
     {file = "lxml-4.9.1-cp27-cp27mu-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:dad7b164905d3e534883281c050180afcf1e230c3d4a54e8038aa5cfcf312b84"},
     {file = "lxml-4.9.1-cp27-cp27mu-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:a614e4afed58c14254e67862456d212c4dcceebab2eaa44d627c2ca04bf86837"},
-    {file = "lxml-4.9.1-cp310-cp310-macosx_10_15_universal2.whl", hash = "sha256:49a866923e69bc7da45a0565636243707c22752fc38f6b9d5c8428a86121022c"},
     {file = "lxml-4.9.1-cp310-cp310-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_24_i686.whl", hash = "sha256:f9ced82717c7ec65a67667bb05865ffe38af0e835cdd78728f1209c8fffe0cad"},
     {file = "lxml-4.9.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:d9fc0bf3ff86c17348dfc5d322f627d78273eba545db865c3cd14b3f19e57fa5"},
     {file = "lxml-4.9.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl", hash = "sha256:e5f66bdf0976ec667fc4594d2812a00b07ed14d1b44259d19a41ae3fff99f2b8"},
@@ -1877,8 +1829,8 @@ pytz = [
     {file = "pytz-2022.1.tar.gz", hash = "sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7"},
 ]
 pywerview = [
-    {file = "pywerview-0.4.0-py3-none-any.whl", hash = "sha256:4998bd7ee6e709ea84d990b536e0f69c45f916502c978c7ab8257eedf3dcf0d1"},
-    {file = "pywerview-0.4.0.tar.gz", hash = "sha256:a59891f1174e2e709f40af8647d5f2f2bec6135809ea54151575670943aeeaf4"},
+    {file = "pywerview-0.3.3-py3-none-any.whl", hash = "sha256:66e8135456bb47c88a00a00caf8f4a19b63f9e7bbb00774e99720f3b21b50f63"},
+    {file = "pywerview-0.3.3.tar.gz", hash = "sha256:adc8797976659efeadf3e2fd583430b80c28ed76e0ca54ecb8dc95b6030c6d5c"},
 ]
 regex = [
     {file = "regex-2022.6.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:042d122f9fee3ceb6d7e3067d56557df697d1aad4ff5f64ecce4dc13a90a7c01"},

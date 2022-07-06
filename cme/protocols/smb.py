@@ -831,7 +831,7 @@ class smb(connection):
                 self.logger.success('Enumerated domain user(s)')
                 for user in users:
                     domain = self.domainfromdsn(user.distinguishedname)
-                    self.logger.highlight('{}\\{:<30} badpwdcount: {} baddpwdtime: {}'.format(domain,user.samaccountname,getattr(user,'badpwdcount',0),getattr(user, 'badpasswordtime','')))
+                    self.logger.highlight('{}\\{:<30} badpwdcount: {} desc: {}'.format(domain,user.samaccountname,getattr(user,'badpwdcount',0), user.description[0] if hasattr(user,'description') else '' ))
                     #self.db.add_user(domain, user.samaccountname)
                 break
             except Exception as e:
