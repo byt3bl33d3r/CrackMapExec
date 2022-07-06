@@ -16,15 +16,13 @@ jobs:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        python-version: ['3.9']
+        python-version: ['3.8', '3.9', '3.10']
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
     - name: CrackMapExec tests on ${{ matrix.os }}
       uses: actions/setup-python@v1
-      with:
-        python-version: 3.9
     - name: Install aardwolf on macos
       run: |
            if [ "$RUNNER_OS" == "macOS" ]; then
