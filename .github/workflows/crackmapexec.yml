@@ -25,11 +25,9 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.9
-    - name: Install libkrb5
+    - name: Install aardwolf on macos
       run: |
-           if [ "$RUNNER_OS" == "Linux" ]; then
-                sudo apt-get install -y libkrb5-dev
-           elif [ "$RUNNER_OS" == "macOS" ]; then
+           if [ "$RUNNER_OS" == "macOS" ]; then
                 pip download --no-binary aardwolf aardwolf
            fi
       shell: bash
