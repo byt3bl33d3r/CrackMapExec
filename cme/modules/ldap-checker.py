@@ -49,14 +49,14 @@ class CMEModule:
                     elif "data 52e" in str(ldapConn.result):
                         return False #channel binding not enforced
                     else:
-                        print("UNEXPECTED ERROR: " + str(ldapConn.result))
+                        context.log.error("UNEXPECTED ERROR: " + str(ldapConn.result))
                 else:
                     #LDAPS bind successful
                     return False #because channel binding is not enforced
                     exit()
             except Exception as e:
-                print("\n   [!] "+ dcTarget+" -", str(e))
-                print("        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host")
+                context.log.error("\n   [!] "+ dcTarget+" -", str(e))
+                context.log.error("        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host")
 
         #Conduct a bind to LDAPS with channel binding supported
         #but intentionally miscalculated. In the case that and
@@ -72,7 +72,7 @@ class CMEModule:
                 ldapsClientConn = MSLDAPClientConnection(ldaps_client.target, ldaps_client.creds)
                 _, err = await ldapsClientConn.connect()
                 if err is not None:
-                    print("ERROR while connecting to " + dcTarget + ": " + err)
+                    context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
                 #forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
                 ldapsClientConn.cb_data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                 _, err = await ldapsClientConn.bind()
@@ -81,11 +81,11 @@ class CMEModule:
                 elif "data 52e" in str(err):
                     return False
                 elif err is not None:
-                    print("ERROR while connecting to " + dcTarget + ": " + err)
+                    context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
                 elif err is None:
                     return False
             except Exception as e:
-                print("something went wrong during ldaps_withEPA bind:" + str(e))
+                context.log.error("something went wrong during ldaps_withEPA bind:" + str(e))
 
         #Domain Controllers do not have a certificate setup for
         #LDAPS on port 636 by default. If this has not been setup,
@@ -112,8 +112,9 @@ class CMEModule:
                     ssl_sock.close()
                     return False
                 else:
-                    print("Unexpected error during LDAPS handshake: " + str(e))
+                    context.log.error("Unexpected error during LDAPS handshake: " + str(e))
                     ssl_sock.close()
+                    return False
 
 
         #Conduct and LDAP bind and determine if server signing
@@ -128,10 +129,10 @@ class CMEModule:
                 if "stronger" in str(ldapConn.result):
                     return True #because LDAP server signing requirements ARE enforced
                 elif "data 52e" or "data 532" in str(ldapConn.result):
-                    print("[!!!] invalid credentials - aborting to prevent unnecessary authentication")
+                    context.log.error("[!!!] invalid credentials - aborting to prevent unnecessary authentication")
                     exit()
                 else:
-                    print("UNEXPECTED ERROR: " + str(ldapConn.result))
+                    context.log.error("UNEXPECTED ERROR: " + str(ldapConn.result))
             else:
                 #LDAPS bind successful
                 return False #because LDAP server signing requirements are not enforced
@@ -156,11 +157,9 @@ class CMEModule:
                 elif ldapsChannelBindingAlwaysCheck == True:
                     context.log.error('Channel Binding is set to \"Required\" - Meeeehhhh :(')
                 else:
-                    print("\nSomething went wrong...")
-                    exit()
-                
-                        
-            elif DoesLdapsCompleteHandshake(dc) == False:
-                print("      [!] "+dcTarget+ " - cannot complete TLS handshake, cert likely not configured")
+                    context.log.error("\nSomething went wrong...")
+                    exit()          
+            else:
+                context.log.error(dcTarget + " - cannot complete TLS handshake, cert likely not configured")
         except Exception as e:
-            print("      [-] ERROR: " + str(e))
+            context.log.error("ERROR: " + str(e))
