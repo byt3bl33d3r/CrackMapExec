@@ -7,12 +7,14 @@ import configparser
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from cme.loaders.protocol_loader import protocol_loader
 from subprocess import check_output, PIPE
-from sys import exit
+import sys
 
 CME_PATH = os.path.expanduser('~/.cme')
 TMP_PATH = os.path.join('/tmp', 'cme_hosted')
 if os.name == 'nt':
     TMP_PATH = os.getenv('LOCALAPPDATA') + '\\Temp\\cme_hosted'
+if hasattr(sys, 'getandroidapilevel'):
+    TMP_PATH = os.path.join('/data','data', 'com.termux', 'files', 'usr', 'tmp', 'cme_hosted')
 WS_PATH = os.path.join(CME_PATH, 'workspaces')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
@@ -28,7 +30,7 @@ def first_run_setup(logger):
         logger.info('Creating home directory structure')
         os.mkdir(CME_PATH)
 
-    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts']
+    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
             os.mkdir(os.path.join(CME_PATH, folder))
@@ -73,6 +75,8 @@ def first_run_setup(logger):
             config.read(CONFIG_PATH)
             config.get('CME', 'workspace')
             config.get('CME', 'pwn3d_label')
+            config.get('CME', 'audit_mode')
+            config.get('BloodHound', 'bh_enabled')
         except (NoSectionError, NoOptionError):
             logger.info('Old configuration file detected, replacing with new version')
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
@@ -93,4 +97,4 @@ def first_run_setup(logger):
                 shutil.copy(default_path, CERT_PATH)                
             else:
                 logger.error('Error while generating SSL certificate: {}'.format(e))
-                exit(1)
+                sys.exit(1)

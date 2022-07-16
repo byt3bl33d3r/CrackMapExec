@@ -1,6 +1,3 @@
-from impacket.ldap import ldapasn1 as ldapasn1_impacket
-
-
 class CMEModule:
     '''
       Module by Shutdown and Podalirius
@@ -22,13 +19,10 @@ class CMEModule:
     opsec_safe = True
     multiple_hosts = False
 
-    def on_login(self, context, connection):
+    def on_login(self, context, connection):     
         result = []
         context.log.info('Getting the MachineAccountQuota')
         searchFilter = '(objectClass=*)'
         attributes = ['ms-DS-MachineAccountQuota']
-        result = connection.search(searchFilter, attributes, 1)
-        for item in result:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            context.log.highlight("MachineAccountQuota: %d" % item['attributes'][0]['vals'][0])
+        result = connection.search(searchFilter, attributes)
+        context.log.highlight("MachineAccountQuota: %d" % result[0]['attributes'][0]['vals'][0])

@@ -134,7 +134,7 @@ class mssql(connection):
 
         return True
 
-    def check_if_admin(self, auth):
+    def check_if_admin(self):
         try:
             self.conn.sql_query("SELECT IS_SRVROLEMEMBER('sysadmin')")
             self.conn.printRows()
@@ -159,7 +159,7 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
-            res = self.conn.login(None, username, password, domain, None, not self.args.local_auth)
+            res = self.conn.login(None, username, password, domain, None, True)
             if res is not True:
                 self.conn.printReplies()
                 return False
@@ -167,7 +167,7 @@ class mssql(connection):
             self.password = password
             self.username = username
             self.domain = domain
-            self.check_if_admin(self.args.local_auth)
+            self.check_if_admin()
             self.db.add_credential('plaintext', domain, username, password)
 
             if self.admin_privs:
@@ -175,16 +175,17 @@ class mssql(connection):
 
             out = u'{}{}:{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                     username,
-                                    password,
+                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                         username,
-                                                        password,
+                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
             return False
 
@@ -221,16 +222,17 @@ class mssql(connection):
 
             out = u'{}\\{} {} {}'.format(domain,
                                         username,
-                                        ntlm_hash,
+                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
-            add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                         username,
-                                                        ntlm_hash,
+                                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                         e))
             return False
 
