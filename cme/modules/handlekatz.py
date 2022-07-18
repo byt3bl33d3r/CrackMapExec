@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # handlekatz module for CME python3
 # author of the module : github.com/mpgn
 # HandleKatz: https://github.com/codewhitesec/HandleKatz

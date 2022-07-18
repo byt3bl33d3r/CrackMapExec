@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # everything is comming from https://github.com/dirkjanm/CVE-2020-1472
 # credit to @dirkjanm
 # module by : @mpgn_x64

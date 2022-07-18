@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from cme.helpers.powershell import create_ps_command
 from sys import exit
 

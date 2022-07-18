@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from impacket.ldap import ldap
 
 class CMEModule:

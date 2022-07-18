@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import ldap3
 import ssl
 from msldap.commons.url import MSLDAPURLDecoder, MSLDAPClientConnection

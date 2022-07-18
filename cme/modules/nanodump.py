@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # nanodump module for CME python3
 # author of the module : github.com/mpgn
 # nanodump: https://github.com/helpsystems/nanodump
