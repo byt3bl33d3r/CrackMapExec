@@ -11,7 +11,15 @@
 
 ## In partnership with
 
-<p align="center"><img height=150 width=300 src="https://user-images.githubusercontent.com/5151193/99304058-1cef5700-280f-11eb-8642-1f9553808d2d.png"/></p>
+<p float="left">
+ <a href="https://www.kali.org/">
+  <img src="https://user-images.githubusercontent.com/5151193/99304058-1cef5700-280f-11eb-8642-1f9553808d2d.png" width="300" align="left"/>
+ </a>
+ 
+  <a href="https://focal-point.com/services/penetration-testing/">
+    <img src="https://user-images.githubusercontent.com/5151193/182207768-f53d7e0e-5bd5-40cf-8734-dfa6a40a738e.png" width="300"/> 
+  </a>
+</p>
 
 ## :triangular_flag_on_post: Sponsors
 
