@@ -2,18 +2,18 @@ from ldap3 import Server, Connection, NTLM, ALL
 
 class CMEModule:
     '''
-        Sanity check of current user groups and privileges 
+        Basic enumeration of provided user information and privileges 
         Module by spyr0 (@spyr0-sec)
     '''
     name = 'whoami'
-    description = 'Get privileges of provided user'
+    description = 'Get details of provided user'
     supported_protocols = ['ldap']
     opsec_safe = True #Does the module touch disk?
     multiple_hosts = True # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         '''
-            No options required
+            No options requireds
         '''
         pass
 
@@ -44,7 +44,7 @@ class CMEModule:
             for response in ldapConn.response:
                 context.log.highlight(f"Distinguished name: {response['attributes']['distinguishedName']}")
                 context.log.highlight(f"Human name: {response['attributes']['name']}")
-                context.log.highlight(f"Description: {response['attributes']['description'][0]}")
+                context.log.highlight(f"Description: {response['attributes']['description']}")
                 context.log.highlight(f"Password last set: {response['attributes']['pwdLastSet']}")
 
                 for group in response['attributes']['memberOf']:
