@@ -42,7 +42,7 @@ class CMEModule:
                     'RemoteIp': '',
                     'ClientName': '',
                     'Username': '',
-                    'Domain':'',
+                    'Domain': '',
                     'Resolution': '',
                     'ClientTimeZone': ''
                 }
@@ -90,7 +90,7 @@ class CMEModule:
                 self.get_session_list(connection)
                 self.enumerate_sessions_config(connection)
 
-                maxUserNameLen = max([len(self.sessions[i]['Username']+self.sessions[i]['Domain'])+1 for i in self.sessions])+1
+                maxUserNameLen = max([len(self.sessions[i]['Username'] + self.sessions[i]['Domain']) + 1 for i in self.sessions]) + 1
                 if maxUserNameLen < 11:
                     maxUserNameLen = 11
 
@@ -110,10 +110,10 @@ class CMEModule:
                         pid='PID',
                         sessionName='SessName',
                         sessid='SessID',
-                        sessionuser = 'SessUser',
-                        sessstate   = 'State',
-                        sid         = 'SID',
-                        workingset  = 'Mem Usage'
+                        sessionuser='SessUser',
+                        sessstate='State',
+                        sid='SID',
+                        workingset='Mem Usage'
                     )
                 )
                 
@@ -140,21 +140,21 @@ class CMEModule:
                         fullUserName += self.sessions[sessId]['Username']
 
                     row = template.replace('{workingset: <12}', '{workingset: >10,} K').format(
-                        imagename   = procInfo['ImageName'],
-                        pid         = procInfo['UniqueProcessId'],
-                        sessionName = self.sessions[sessId]['SessionName'],
-                        sessid      = procInfo['SessionId'],
-                        sessstate  = self.sessions[sessId]['state'].replace('Disconnected','Disc'),
-                        sid         = procInfo['pSid'],
-                        sessionuser = fullUserName,
-                        workingset  = procInfo['WorkingSetSize'] // 1000
+                        imagename=procInfo['ImageName'],
+                        pid=procInfo['UniqueProcessId'],
+                        sessionName=self.sessions[sessId]['SessionName'],
+                        sessid=procInfo['SessionId'],
+                        sessstate=self.sessions[sessId]['state'].replace('Disconnected', 'Disc'),
+                        sid=procInfo['pSid'],
+                        sessionuser=fullUserName,
+                        workingset=procInfo['WorkingSetSize'] // 1000
                     )
 
                     context.log.highlight(row)
             else:
                 template = '{: <%d} {: <8} {: <11} {: <%d} {: >12}' % (maxImageNameLen, maxSidLen)
                 context.log.highlight(template.format('Image Name', 'PID', 'Session#', 'SID', 'Mem Usage'))
-                context.log.highlight(template.replace(': ',':=').format('','','','',''))
+                context.log.highlight(template.replace(': ', ':=').format('', '', '', '', ''))
 
                 for procInfo in r:
                     row = template.format(
