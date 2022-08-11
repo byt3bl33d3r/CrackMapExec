@@ -55,7 +55,11 @@ class CMEModule:
                 context.log.highlight(f"Distinguished name: {response['attributes']['distinguishedName']}")
                 context.log.highlight(f"Password last set: {response['attributes']['pwdLastSet']}")
                 context.log.highlight(f"Logon count: {response['attributes']['logonCount']}")
-                context.log.highlight(f"Last logon: {response['attributes']['lastLogon']}")
+
+                if '1601' in str(response['attributes']['lastLogon']):
+                    context.log.highlight(f"Last logon: Never")
+                else:
+                    context.log.highlight(f"Last logon: {response['attributes']['lastLogon']}")
 
                 if response['attributes']['userAccountControl'] == 512:
                     context.log.highlight(f"Enabled: Yes")
