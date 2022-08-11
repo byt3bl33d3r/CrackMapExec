@@ -13,9 +13,11 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-            No options requireds
+            USER  Enumerate information about a different SamAccountName
         '''
-        pass
+        self.username = None
+        if 'USER' in module_options:
+                self.username = module_options['USER']
 
     def on_login(self, context, connection):
 
@@ -31,21 +33,42 @@ class CMEModule:
 
             # https://github.com/pycontribs/python3-ldap/blob/master/python3-ldap/ldap3/protocol/rfc4512.py
             searchBase = ldapServer.info.naming_contexts[0]
-            searchFilter = f'(sAMAccountName={connection.username})'
 
+            if self.username is None:
+                searchFilter = f'(sAMAccountName={connection.username})'
+            else:
+                searchFilter = f'(sAMAccountName={format(self.username)})'
+                
             context.log.debug(f'Using naming context: {searchBase} and {searchFilter} as search filter')
 
             # Confirm login / get username
-            context.log.highlight(f'Username: {ldapConn.extend.standard.who_am_i().replace("u:","")}')
+            context.log.debug(f'Running LDAP queries as: {ldapConn.extend.standard.who_am_i().replace("u:","")}')
 
             # Get attributes of provided user
-            ldapConn.search(search_base=searchBase,search_filter=searchFilter,attributes=['description','distinguishedName', 'memberOf', 'name', 'pwdLastSet'])      
+            ldapConn.search(search_base=searchBase,search_filter=searchFilter,
+            attributes=['name','sAmAccountName','description','distinguishedName','pwdLastSet','logonCount','lastLogon','userAccountControl','memberOf'])      
 
             for response in ldapConn.response:
-                context.log.highlight(f"Distinguished name: {response['attributes']['distinguishedName']}")
                 context.log.highlight(f"Human name: {response['attributes']['name']}")
+                context.log.highlight(f"Username: {response['attributes']['sAmAccountName']}")
                 context.log.highlight(f"Description: {response['attributes']['description']}")
+                context.log.highlight(f"Distinguished name: {response['attributes']['distinguishedName']}")
                 context.log.highlight(f"Password last set: {response['attributes']['pwdLastSet']}")
+                context.log.highlight(f"Logon count: {response['attributes']['logonCount']}")
+                context.log.highlight(f"Last logon: {response['attributes']['lastLogon']}")
+
+                if response['attributes']['userAccountControl'] == 512:
+                    context.log.highlight(f"Enabled: Yes")
+                    context.log.highlight(f"Password Never Expires: No")
+                if response['attributes']['userAccountControl'] == 514:
+                    context.log.highlight(f"Enabled: No")
+                    context.log.highlight(f"Password Never Expires: No")                    
+                if response['attributes']['userAccountControl'] == 66048:
+                    context.log.highlight(f"Enabled: Yes")
+                    context.log.highlight(f"Password Never Expires: Yes")
+                if response['attributes']['userAccountControl'] == 66050:
+                    context.log.highlight(f"Enabled: No")
+                    context.log.highlight(f"Password Never Expires: Yes")                
 
                 for group in response['attributes']['memberOf']:
                     context.log.highlight(f'Member of: {group}')
@@ -53,5 +76,8 @@ class CMEModule:
                 # Only want output from first response
                 break
         
+        except KeyError:
+            context.log.error(f'Username does not exist')
+
         except Exception as e:
-            context.log.error(f'UNEXPECTED ERROR: {e}')
+            context.log.error(f'UNEXPECTED ERROR: {repr(e)}')
