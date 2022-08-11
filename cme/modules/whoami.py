@@ -46,7 +46,7 @@ class CMEModule:
 
             # Get attributes of provided user
             ldapConn.search(search_base=searchBase,search_filter=searchFilter,
-            attributes=['name','sAmAccountName','description','distinguishedName','pwdLastSet','logonCount','lastLogon','userAccountControl','memberOf'])      
+            attributes=['name','sAmAccountName','description','distinguishedName','pwdLastSet','logonCount','lastLogon','userAccountControl','servicePrincipalName','memberOf'])      
 
             for response in ldapConn.response:
                 context.log.highlight(f"Human name: {response['attributes']['name']}")
@@ -68,8 +68,13 @@ class CMEModule:
                     context.log.highlight(f"Password Never Expires: Yes")
                 if response['attributes']['userAccountControl'] == 66050:
                     context.log.highlight(f"Enabled: No")
-                    context.log.highlight(f"Password Never Expires: Yes")                
+                    context.log.highlight(f"Password Never Expires: Yes")
 
+                if len(response['attributes']['servicePrincipalName']) != 0:
+                    context.log.highlight(f"Service Account Name(s) found - Potentially Kerberoastable user!")
+                    for spn in response['attributes']['servicePrincipalName']:
+                        context.log.highlight(f"Service Account Name: {spn}")
+                              
                 for group in response['attributes']['memberOf']:
                     context.log.highlight(f'Member of: {group}')
 
