@@ -217,4 +217,4 @@ class CMEModule:
             result.append(row + row_verbose)
 
         for row in result:
-            self.context.log.highlight(row)
+            context.log.highlight(row)
