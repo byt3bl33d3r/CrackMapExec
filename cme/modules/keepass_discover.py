@@ -4,7 +4,7 @@ class CMEModule:
     """
         Search for KeePass-related files and process
 
-        Module by @JulienBedel
+        Module by @d3lb3
         Inspired by @harmj0y https://raw.githubusercontent.com/GhostPack/KeeThief/master/PowerShell/KeePassConfig.ps1
     """
 
@@ -21,9 +21,9 @@ class CMEModule:
     def options(self, context, module_options):
         """
         SEARCH_TYPE     Specify what to search, between:
-                        PROCESS     Look for running KeePass.exe process only
-                        FILES       Look for KeePass-related files (KeePass.config.xml, .kdbx, KeePass.exe) only, may take some time
-                        ALL         Look for running KeePass.exe process and KeePass-related files (default)
+                          PROCESS     Look for running KeePass.exe process only
+                          FILES       Look for KeePass-related files (KeePass.config.xml, .kdbx, KeePass.exe) only, may take some time
+                          ALL         Look for running KeePass.exe process and KeePass-related files (default)
 
         SEARCH_PATH     Comma-separated remote locations where to search for KeePass-related files (you must add single quotes around the paths if they include spaces)
                         Default: 'C:\\Users\\','$env:PROGRAMFILES','env:ProgramFiles(x86)'
