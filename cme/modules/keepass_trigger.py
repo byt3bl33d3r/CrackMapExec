@@ -306,9 +306,9 @@ class CMEModule:
             if self.trigger_added(context, connection):
                 context.log.error('Unknown error while removing trigger "{}", exiting'.format(self.trigger_name))
             else:
-                context.log.success('Trigger "{}" successfully removed from KeePass configuration file'.format(self.trigger_name))
+                context.log.info('Found trigger "{}" in configuration file, removing'.format(self.trigger_name))
         else:
-            context.log.success('No trigger "{}" found in "{}"'.format(self.trigger_name, self.keepass_config_path))
+            context.log.success('No trigger "{}" found in "{}", skipping'.format(self.trigger_name, self.keepass_config_path))
 
     def all_in_one(self, context, connection):
         """Performs ADD, RESTART, POLL and CLEAN actions one after the other"""
