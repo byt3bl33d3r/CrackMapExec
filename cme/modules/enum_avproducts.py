@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 class CMEModule:
     '''
         Uses WMI to gather information on all endpoint protection solutions installed on the the remote host(s)

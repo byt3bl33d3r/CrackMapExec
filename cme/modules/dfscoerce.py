@@ -1,4 +1,7 @@
-import logging 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import logging
 from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT

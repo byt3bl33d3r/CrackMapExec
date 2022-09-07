@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Author:
 # Peter Gormington @hackerm00n on Twitter
 

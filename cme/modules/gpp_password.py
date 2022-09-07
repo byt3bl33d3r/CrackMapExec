@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import xml.etree.ElementTree as ET
 from Cryptodome.Cipher import AES
 from base64 import b64decode

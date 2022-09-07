@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from cme.protocols.smb.remotefile import RemoteFile
 from impacket import nt_errors
 from impacket.smb3structs import FILE_READ_DATA

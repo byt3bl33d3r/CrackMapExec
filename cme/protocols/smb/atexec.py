@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 import logging
 from impacket.dcerpc.v5 import tsch, transport
