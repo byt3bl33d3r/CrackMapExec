@@ -136,6 +136,20 @@ class ldap(connection):
 
         return 0
 
+    def get_ldap_username(self):
+        extendedRequest = ldapasn1_impacket.ExtendedRequest()
+        extendedRequest['requestName'] = '1.3.6.1.4.1.4203.1.11.3'  # whoami
+
+        response = self.ldapConnection.sendReceive(extendedRequest)
+        for message in response:
+            searchResult = message['protocolOp'].getComponent()
+            if searchResult['resultCode'] == ldapasn1_impacket.ResultCode('success'):
+                responseValue = searchResult['responseValue']
+                if responseValue.hasValue():
+                    value = responseValue.asOctets().decode(responseValue.encoding)[2:]
+                    return value.split('\\')[1]
+        return ''
+
     def enum_host_info(self):
         # smb no open, specify the domain
         if self.args.no_smb:
@@ -213,6 +227,9 @@ class ldap(connection):
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
 
+            if self.username == '':
+                self.username = self.get_ldap_username() 
+
             out = u'{}{}'.format('{}\\'.format(self.domain),
                                                 self.username)
 
@@ -226,6 +243,9 @@ class ldap(connection):
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.host, self.baseDN)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
+            
+                if self.username == '':
+                    self.username = self.get_ldap_username() 
                 
                 out = u'{}{}'.format('{}\\'.format(self.domain),
                                                 self.username)
