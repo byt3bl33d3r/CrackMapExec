@@ -108,7 +108,7 @@ class ldap(connection):
                     logging.debug("Exception:", exc_info=True)
                     logging.debug('Skipping item, cannot process due to error %s' % str(e))
         except OSError as e:
-                self.logger.error(u'Error connecting to the host.')
+            self.logger.error(u'Error connecting to the host.')
 
         return '' 
 
