@@ -98,16 +98,10 @@ class DatabaseNavigator(cmd.Cmd):
                         shareid,hostid,userid,sharename,shareremark,read,write = share
                         export_file.write('{},{},{},{},{},{},{}\n'.format(shareid,hostid,userid,sharename,shareremark,read,write))
                     print('[+] shares exported')  
+                    
             elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
                 shares = self.db.get_shares()
                 #id|computerid|userid|name|remark|read|write
-
-                users = self.db.get_users()
-                #id|domain|username|password|credtype|pillaged_from_computerid
-
-                hosts = self.db.get_computers()
-                #id|ip|hostname|domain|os|dc|smbv1|signing
-
                 with open(os.path.expanduser(line[2]), 'w') as export_file:
                     export_file.write('id,computerid,userid,name,remark,read,write\n')
                     for share in shares:
