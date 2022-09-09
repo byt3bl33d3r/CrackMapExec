@@ -143,8 +143,6 @@ class DatabaseNavigator(cmd.Cmd):
         return "HOST NOT FOUND"
         
 
-        else:
-            print('[-] invalid argument, specify creds or hosts')
 
 
     def do_import(self, line):
