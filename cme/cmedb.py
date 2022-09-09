@@ -84,6 +84,65 @@ class DatabaseNavigator(cmd.Cmd):
                     export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
             print('[+] hosts exported')
 
+        elif line[0].lower() == 'shares':
+            if len(line) < 3:
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                return
+            
+            if line[1].lower() == 'simple':
+                shares = self.db.get_shares()
+                with open(os.path.expanduser(line[2]), 'w') as export_file:
+                    export_file.write('id,computerid,userid,name,remark,read,write\n')
+                    #id|computerid|userid|name|remark|read|write
+                    for share in shares:
+                        shareid,hostid,userid,sharename,shareremark,read,write = share
+                        export_file.write('{},{},{},{},{},{},{}\n'.format(shareid,hostid,userid,sharename,shareremark,read,write))
+                    print('[+] shares exported')  
+            elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
+                shares = self.db.get_shares()
+                #id|computerid|userid|name|remark|read|write
+
+                users = self.db.get_users()
+                #id|domain|username|password|credtype|pillaged_from_computerid
+
+                hosts = self.db.get_computers()
+                #id|ip|hostname|domain|os|dc|smbv1|signing
+
+                with open(os.path.expanduser(line[2]), 'w') as export_file:
+                    export_file.write('id,computerid,userid,name,remark,read,write\n')
+                    for share in shares:
+                        shareid,hostid,userid,sharename,shareremark,read,write = share
+                        export_file.write('{},{},{},{},{},{},{}\n'.format(shareid,self.get_host(hostid),self.get_user(userid),sharename,shareremark,bool(read),bool(write)))
+                    print('[+] shares exported')
+
+            else:
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                return
+
+        else:
+            print('[-] invalid argument, specify creds, hosts or shares')
+            
+        # Return username from ID
+    def get_user(self,req_id: int) -> str:
+        users = self.db.get_users()
+        #id|domain|username|password|credtype|pillaged_from_computerid
+        for u in users:
+            id,domain,username,password,credtype,pillaged_from_computerid = u
+            if req_id == id:
+                return '{}\\{}'.format(domain,username)
+        return "USER NOT FOUND"
+    
+    # Return hostname from ID
+    def get_host(self,req_id: int) -> str:
+        hosts = self.db.get_computers()
+        #id|ip|hostname|domain|os|dc|smbv1|signing
+        for h in hosts:
+            id,ip,hostname,domain,os,dc,smbv1,signing = h
+            if req_id == id:
+                return hostname
+        return "HOST NOT FOUND"
+        
+
         else:
             print('[-] invalid argument, specify creds or hosts')
 
