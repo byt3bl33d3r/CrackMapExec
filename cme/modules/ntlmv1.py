@@ -33,7 +33,7 @@ class CMEModule:
 
                 rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'lmcompatibilitylevel\x00')
 
-                if int(data) in [0, 1]:
+                if int(data) in [0, 1, 2]:
                     context.log.highlight(self.output.format(connection.conn.getRemoteHost(), data))
 
             try:
