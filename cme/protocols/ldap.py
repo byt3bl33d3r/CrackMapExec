@@ -20,6 +20,7 @@ from impacket.krb5.types import KerberosTime, Principal
 from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
+import argparse
 from io import StringIO
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
@@ -34,6 +35,22 @@ ldap_error_status = {
     "775":"USER_ACCOUNT_LOCKED",
     "50":"LDAP_INSUFFICIENT_ACCESS"
 }
+
+
+def get_conditional_action(baseAction):
+    class ConditionalAction(baseAction):
+        def __init__(self, option_strings, dest, **kwargs):
+            x = kwargs.pop('make_required', [])
+            super(ConditionalAction, self).__init__(option_strings, dest, **kwargs)
+            self.make_required = x
+    
+        def __call__(self, parser, namespace, values, option_string=None):
+            for x in self.make_required:
+                x.required = True
+            super(ConditionalAction, self).__call__(parser, namespace, values, option_string)
+
+    return ConditionalAction
+
 
 class ldap(connection):
 
@@ -64,10 +81,12 @@ class ldap(connection):
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         ldap_parser.add_argument("--port", type=int, choices={389, 636}, default=389, help="LDAP port (default: 389)")
         ldap_parser.add_argument("--basedn", type=str, default=None, help='Ldap base DN')
-        ldap_parser.add_argument("--no-smb", action='store_true', help='No smb connection')
+        no_smb_arg = ldap_parser.add_argument("--no-smb", action=get_conditional_action(argparse._StoreTrueAction), make_required=[], help='No smb connection')
+
         dgroup = ldap_parser.add_mutually_exclusive_group()
-        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
+        domain_arg = dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+        no_smb_arg.make_required = [domain_arg]
         
         egroup = ldap_parser.add_argument_group("Retrevie hash on the remote DC", "Options to get hashes from Kerberos")
         egroup.add_argument("--asreproast", help="Get AS_REP response ready to crack with hashcat")
@@ -896,4 +915,5 @@ class ldap(connection):
         else:
             self.logger.error("No entries found!")
         return        
+
 
