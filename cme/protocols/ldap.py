@@ -303,7 +303,7 @@ class ldap(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller or add the IP/HOST to your /etc/host file"))
             return False
 
 
@@ -391,7 +391,7 @@ class ldap(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller or add the IP/HOST to your /etc/host file"))
             return False
 
     def create_smbv1_conn(self):
