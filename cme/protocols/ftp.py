@@ -64,8 +64,6 @@ class ftp(connection):
         return True
 
     def plaintext_login(self, username, password):
-        if username == '':
-            username = 'Anonymous'
         try:
             self.conn.login(user=username, passwd=password)
 
