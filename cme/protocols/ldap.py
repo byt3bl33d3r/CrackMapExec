@@ -242,40 +242,55 @@ class ldap(connection):
             self.baseDN = self.baseDN[:-1]
 
         try:
+            # Connect to LDAP
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.host, self.baseDN)
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
 
             if self.username == '':
-                self.username = self.get_ldap_username() 
+                self.username = self.get_ldap_username()
 
-            out = u'{}{}'.format('{}\\'.format(self.domain),
-                                                self.username)
+            self.check_if_admin()
+
+            # Prepare success credential text
+            out = u'{}\\{} {}'.format(domain,
+                                     self.username,
+                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             self.logger.success(out)
 
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
+                # Connect to LDAPS
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.host, self.baseDN)
                 self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
             
                 if self.username == '':
-                    self.username = self.get_ldap_username() 
-                
-                out = u'{}{}'.format('{}\\'.format(self.domain),
-                                                self.username)
+                    self.username = self.get_ldap_username()
+
+                self.check_if_admin()
+
+                # Prepare success credential text
+                out = u'{}\\{} {}'.format(domain,
+                                         self.username,
+                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
                 
                 self.logger.extra['protocol'] = "LDAPS"
                 self.logger.extra['port'] = "636"
                 self.logger.success(out)
+            
+                if not self.args.local_auth:
+                    add_user_bh(self.username, self.domain, self.logger, self.config)
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
-                                                 self.username, 
+                self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+                                                 self.username,
                                                  self.password,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
@@ -303,17 +318,17 @@ class ldap(connection):
                     hash_asreproast.write(hash_TGT + '\n')
             return False
 
-        # Prepare success credential text
-        out = u'{}{}:{} {}'.format('{}\\'.format(domain),
-                                            username,
-                                            password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
         try:
             # Connect to LDAP
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.host, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
 
+            # Prepare success credential text
+            out = u'{}\\{}:{} {}'.format(domain,
+                                     self.username,
+                                     self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             self.logger.success(out)
@@ -327,11 +342,22 @@ class ldap(connection):
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
                 try:
+                    # Connect to LDAPS
                     self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.host, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                    self.check_if_admin()
+
+                    # Prepare success credential text
+                    out = u'{}\\{}:{} {}'.format(domain,
+                                             self.username,
+                                             self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                             highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
                     self.logger.extra['protocol'] = "LDAPS"
                     self.logger.extra['port'] = "636"
                     self.logger.success(out)
+
+                    if not self.args.local_auth:
+                        add_user_bh(self.username, self.domain, self.logger, self.config)
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
@@ -389,14 +415,16 @@ class ldap(connection):
                     hash_asreproast.write(hash_TGT + '\n')
             return False
 
-        # Connect to LDAP
         try:
+            # Connect to LDAP
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.host, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
-            out = u'{}{}:{} {}'.format('{}\\'.format(domain),
-                                    username,
-                                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+            
+            # Prepare success credential text
+            out = u'{}\\{}:{} {}'.format(domain,
+                                    self.username,
+                                    self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
@@ -412,9 +440,19 @@ class ldap(connection):
                     # We need to try SSL
                     self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.host, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                    self.check_if_admin()
+                    
+                    # Prepare success credential text
+                    out = u'{}\\{}:{} {}'.format(domain,
+                                            self.username,
+                                            self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
                     self.logger.extra['protocol'] = "LDAPS"
                     self.logger.extra['port'] = "636"
                     self.logger.success(out)
+            
+                    if not self.args.local_auth:
+                        add_user_bh(self.username, self.domain, self.logger, self.config)
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
@@ -916,5 +954,6 @@ class ldap(connection):
         else:
             self.logger.error("No entries found!")
         return        
+
 
 
