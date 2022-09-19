@@ -303,16 +303,17 @@ class ldap(connection):
                     hash_asreproast.write(hash_TGT + '\n')
             return False
 
+        # Prepare success credential text
+        out = u'{}{}:{} {}'.format('{}\\'.format(domain),
+                                            username,
+                                            password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
         try:
+            # Connect to LDAP
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % self.host, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
 
-            # Connect to LDAP
-            out = u'{}{}:{} {}'.format('{}\\'.format(domain),
-                                                username,
-                                                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             self.logger.success(out)
@@ -351,7 +352,7 @@ class ldap(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller or add the IP/HOST to your /etc/host file"))
             return False
 
 
@@ -433,7 +434,7 @@ class ldap(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller"))
+                                                 "Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller or add the IP/HOST to your /etc/host file"))
             return False
 
     def create_smbv1_conn(self):

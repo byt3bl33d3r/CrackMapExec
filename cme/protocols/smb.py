@@ -162,6 +162,10 @@ class smb(connection):
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
+        ngroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        ngroup.add_argument("--enabled", action='store_true', help='Only dump enabled targets from DC')
+        ngroup.add_argument("--user", dest='userntds', type=str, help='Dump selected user from DC')
+
         egroup = smb_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
         egroup.add_argument("--sessions", action='store_true', help='enumerate active sessions')
@@ -1122,7 +1126,12 @@ class smb(connection):
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1
-            self.logger.highlight(ntds_hash)
+            if "Enabled" in ntds_hash and self.args.enabled:
+                ntds_hash = ntds_hash.split(" ")[0]
+                self.logger.highlight(ntds_hash)
+            else:
+                ntds_hash = ntds_hash.split(" ")[0]
+                self.logger.highlight(ntds_hash)
             if ntds_hash.find('$') == -1:
                 if ntds_hash.find('\\') != -1:
                     domain, hash = ntds_hash.split('\\')
@@ -1163,13 +1172,13 @@ class smb(connection):
         NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
                         remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=True,
                         pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
-                        justUser=None, printUserStatus=False,
+                        justUser=self.args.userntds if self.args.userntds else None, printUserStatus=True,
                         perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
 
         try:
             self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
             NTDS.dump()
-            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds',                                                                                                            highlight(add_ntds_hash.added_to_db)))
+            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
         except Exception as e:
             #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
                 # We don't store the resume file if this error happened, since this error is related to lack
