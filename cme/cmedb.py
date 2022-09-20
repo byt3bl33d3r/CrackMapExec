@@ -111,7 +111,14 @@ class DatabaseNavigator(cmd.Cmd):
                     shareCSV.writerow(csv_header)
                     for share in shares:
                         shareid,hostid,userid,sharename,shareremark,read,write = share
-                        shareCSV.writerow([shareid,self.get_host(hostid),self.get_user(userid),sharename,shareremark,bool(read),bool(write)])
+
+                        #Format is domain\user
+                        prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
+
+                        #Format is hostname
+                        prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
+
+                        shareCSV.writerow([shareid,prettyhost,prettyuser,sharename,shareremark,bool(read),bool(write)])
                     print('[+] shares exported')
 
             else:
@@ -121,28 +128,6 @@ class DatabaseNavigator(cmd.Cmd):
         else:
             print('[-] invalid argument, specify creds, hosts or shares')
             
-        # Return username from ID
-    def get_user(self,req_id: int) -> str:
-        users = self.db.get_users()
-        #id|domain|username|password|credtype|pillaged_from_computerid
-        for u in users:
-            id,domain,username,password,credtype,pillaged_from_computerid = u
-            if req_id == id:
-                return '{}\\{}'.format(domain,username)
-        return "USER NOT FOUND"
-    
-    # Return hostname from ID
-    def get_host(self,req_id: int) -> str:
-        hosts = self.db.get_computers()
-        #id|ip|hostname|domain|os|dc|smbv1|signing
-        for h in hosts:
-            id,ip,hostname,domain,os,dc,smbv1,signing = h
-            if req_id == id:
-                return hostname
-        return "HOST NOT FOUND"
-        
-
-
 
     def do_import(self, line):
         if not line:
