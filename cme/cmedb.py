@@ -58,34 +58,54 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if line[0].lower() == 'creds':
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>")
+                print("[-] invalid arguments, export creds <simple/detailed> <filename>")
                 return
-            if line[1].lower() == 'plaintext':
-                creds = self.db.get_credentials(credtype="plaintext")
-            elif line[1].lower() == 'hashes':
-                creds = self.db.get_credentials(credtype="hash")
-            else:
-                creds = self.db.get_credentials()
-
-            with open(os.path.expanduser(line[2]), 'w') as export_file:
+            
+            filename = line[2]
+            creds = self.db.get_credentials()
+            csv_header = ["id","domain","username","password","credtype","pillaged_from"]
+            
+            if line[1].lower() == "simple":
+                self.write_csv(filename,csv_header,creds)
+                
+            elif line[1].lower() == "detailed":
+                formattedCreds = []
+               
                 for cred in creds:
-                    credid, domain, user, password, credtype, fromhost = cred
-                    if line[1].lower() == 'csv':
-                        export_file.write('{},{},{},{},{},{}\n'.format(credid,domain,user,password,credtype,fromhost))
+                    entry = []
+                    
+                    entry.append(cred[0])
+                    entry.append(cred[1])
+                    entry.append(cred[2])
+                    entry.append(cred[3])
+                    entry.append(cred[4])
+                    
+                    
+                    if cred[5] == "":
+                        entry.append("Manual")
                     else:
-                        export_file.write('{}\n'.format(password))
+                        entry.append(self.db.get_computers(cred[5])[0][2])
+                        formattedCreds.append(entry)
+                self.write_csv(filename,csv_header,formattedCreds)
             print('[+] creds exported')
 
         #Hosts
         elif line[0].lower() == 'hosts':
-            if len(line) < 2:
-                print("[-] invalid arguments, export hosts <filename>")
+            if len(line) < 3:
+                print("[-] invalid arguments, export hosts <simple/detailed> <filename>")
                 return
             hosts = self.db.get_computers()
-            with open(os.path.expanduser(line[1]), 'w') as export_file:
-                for host in hosts:
-                    hostid,ipaddress,hostname,domain,opsys,dc = host
-                    export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
+            csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
+            filename = line[2]
+            
+            if line[1].lower() == 'simple':
+                self.write_csv(filename,csv_header,hosts)
+            
+            #TODO, maybe add more detail like who is an admin on it, shares discovered, ect
+            elif line[1].lower() == 'detailed':
+                self.write_csv(filename,csv_header,hosts)
+            
+            
             print('[+] hosts exported')
 
         #Shares
