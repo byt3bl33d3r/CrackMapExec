@@ -94,7 +94,7 @@ class DatabaseNavigator(cmd.Cmd):
                 shares = self.db.get_shares()
                 with open(os.path.expanduser(line[2]), 'w') as export_file:
                     shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computerid","userid","name","remark","read","write"]
+                    csv_header = ["id","computer","userid","name","remark","read","write"]
                     shareCSV.writerow(csv_header)                  
                     #id|computerid|userid|name|remark|read|write
                     for share in shares:
@@ -107,7 +107,7 @@ class DatabaseNavigator(cmd.Cmd):
                 #id|computerid|userid|name|remark|read|write
                 with open(os.path.expanduser(line[2]), 'w') as export_file:
                     shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computerid","userid","name","remark","read","write"]
+                    csv_header = ["id","computer","userid","name","remark","read","write"]
                     shareCSV.writerow(csv_header)
                     for share in shares:
                         shareid,hostname,userid,sharename,shareremark,read,write = share

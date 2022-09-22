@@ -66,13 +66,12 @@ class database:
 
         db_conn.execute('''CREATE TABLE "shares" (
             "id" integer PRIMARY KEY,
-            "computerid" integer,
+            "computerid" text,
             "userid" integer,
             "name" text,
             "remark" text,
             "read" boolean,
             "write" boolean,
-            FOREIGN KEY(computerid) REFERENCES computers(id),
             FOREIGN KEY(userid) REFERENCES users(id)
             UNIQUE(computerid, userid, name)
         )''')

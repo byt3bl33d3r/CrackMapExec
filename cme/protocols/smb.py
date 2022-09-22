@@ -666,7 +666,7 @@ class smb(connection):
 
                 if share_name != "IPC$":
                     try:
-                        self.db.add_share(computer_id, self.host, share_name, share_remark, read, write)
+                        self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
                     except:
                         pass
 
