@@ -11,6 +11,7 @@ from terminaltables import AsciiTable
 import configparser
 from cme.loaders.protocol_loader import protocol_loader
 from requests import ConnectionError
+import csv
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -84,9 +85,49 @@ class DatabaseNavigator(cmd.Cmd):
                     export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
             print('[+] hosts exported')
 
-        else:
-            print('[-] invalid argument, specify creds or hosts')
+        elif line[0].lower() == 'shares':
+            if len(line) < 3:
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                return
+            
+            if line[1].lower() == 'simple':
+                shares = self.db.get_shares()
+                with open(os.path.expanduser(line[2]), 'w') as export_file:
+                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
+                    csv_header = ["id","computerid","userid","name","remark","read","write"]
+                    shareCSV.writerow(csv_header)                  
+                    #id|computerid|userid|name|remark|read|write
+                    for share in shares:
+                        shareid,hostid,userid,sharename,shareremark,read,write = share
+                        shareCSV.writerow([shareid,hostid,userid,sharename,shareremark,read,write])
+                    print('[+] shares exported')  
+                    
+            elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
+                shares = self.db.get_shares()
+                #id|computerid|userid|name|remark|read|write
+                with open(os.path.expanduser(line[2]), 'w') as export_file:
+                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
+                    csv_header = ["id","computerid","userid","name","remark","read","write"]
+                    shareCSV.writerow(csv_header)
+                    for share in shares:
+                        shareid,hostid,userid,sharename,shareremark,read,write = share
 
+                        #Format is domain\user
+                        prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
+
+                        #Format is hostname
+                        prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
+
+                        shareCSV.writerow([shareid,prettyhost,prettyuser,sharename,shareremark,bool(read),bool(write)])
+                    print('[+] shares exported')
+
+            else:
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                return
+
+        else:
+            print('[-] invalid argument, specify creds, hosts or shares')
+            
 
     def do_import(self, line):
         if not line:
