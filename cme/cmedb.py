@@ -74,11 +74,11 @@ class DatabaseNavigator(cmd.Cmd):
                 for cred in creds:
                     entry = []
                     
-                    entry.append(cred[0])
-                    entry.append(cred[1])
-                    entry.append(cred[2])
-                    entry.append(cred[3])
-                    entry.append(cred[4])
+                    entry.append(cred[0]) # ID
+                    entry.append(cred[1]) # Domain
+                    entry.append(cred[2]) # Username
+                    entry.append(cred[3]) # Password/Hash
+                    entry.append(cred[4]) # Cred Type
                     
                     
                     if cred[5] == "":
