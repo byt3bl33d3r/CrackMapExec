@@ -98,8 +98,8 @@ class DatabaseNavigator(cmd.Cmd):
                     shareCSV.writerow(csv_header)                  
                     #id|computerid|userid|name|remark|read|write
                     for share in shares:
-                        shareid,hostid,userid,sharename,shareremark,read,write = share
-                        shareCSV.writerow([shareid,hostid,userid,sharename,shareremark,read,write])
+                        shareid,hostname,userid,sharename,shareremark,read,write = share
+                        shareCSV.writerow([shareid,hostname,userid,sharename,shareremark,read,write])
                     print('[+] shares exported')  
                     
             elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
@@ -110,15 +110,15 @@ class DatabaseNavigator(cmd.Cmd):
                     csv_header = ["id","computerid","userid","name","remark","read","write"]
                     shareCSV.writerow(csv_header)
                     for share in shares:
-                        shareid,hostid,userid,sharename,shareremark,read,write = share
+                        shareid,hostname,userid,sharename,shareremark,read,write = share
 
                         #Format is domain\user
                         prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
 
-                        #Format is hostname
-                        prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
+                        # #Format is hostname
+                        # prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
 
-                        shareCSV.writerow([shareid,prettyhost,prettyuser,sharename,shareremark,bool(read),bool(write)])
+                        shareCSV.writerow([shareid,hostname,prettyuser,sharename,shareremark,bool(read),bool(write)])
                     print('[+] shares exported')
 
             else:
