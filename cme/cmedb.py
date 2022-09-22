@@ -55,6 +55,7 @@ class DatabaseNavigator(cmd.Cmd):
         line = line.split()
 
         # Need to use if/elif/else to keep compatibility with py3.8/3.9
+        # Reference DB Function cme/protocols/smb/database.py
         # Users
         if line[0].lower() == 'creds':
             if len(line) < 3:
@@ -80,12 +81,12 @@ class DatabaseNavigator(cmd.Cmd):
                     entry.append(cred[3]) # Password/Hash
                     entry.append(cred[4]) # Cred Type
                     
-                    
-                    if cred[5] == "":
-                        entry.append("Manual")
+                    print(cred[5])
+                    if cred[5] == None:
+                        entry.append("")
                     else:
                         entry.append(self.db.get_computers(cred[5])[0][2])
-                        formattedCreds.append(entry)
+                    formattedCreds.append(entry)
                 self.write_csv(filename,csv_header,formattedCreds)
             print('[+] creds exported')
 
