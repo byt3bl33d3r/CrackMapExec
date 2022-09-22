@@ -94,36 +94,54 @@ class DatabaseNavigator(cmd.Cmd):
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
             
+            shares = self.db.get_shares()
+            csv_header = ["id","computerid","userid","name","remark","read","write"]
+            filename = line[2]
+            
             if line[1].lower() == 'simple':
-                shares = self.db.get_shares()
-                with open(os.path.expanduser(line[2]), 'w') as export_file:
-                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computerid","userid","name","remark","read","write"]
-                    shareCSV.writerow(csv_header)                  
-                    #id|computerid|userid|name|remark|read|write
-                    for share in shares:
-                        shareid,hostid,userid,sharename,shareremark,read,write = share
-                        shareCSV.writerow([shareid,hostid,userid,sharename,shareremark,read,write])
-                    print('[+] shares exported')  
+                self.write_csv(filename,csv_header,shares)
+                
+                
+                print('[+] shares exported')  
                     
             elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
-                shares = self.db.get_shares()
-                #id|computerid|userid|name|remark|read|write
-                with open(os.path.expanduser(line[2]), 'w') as export_file:
-                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computerid","userid","name","remark","read","write"]
-                    shareCSV.writerow(csv_header)
-                    for share in shares:
-                        shareid,hostid,userid,sharename,shareremark,read,write = share
+                formattedShares = []
+                for share in shares:
+                    entry = []
+                    #shareID
+                    entry.append(share[0])
+                    
+                    #computerID
+                    entry.append(self.db.get_computers(share[1])[0][2])
+                    
+                    #userID
+                    user = self.db.get_users(share[2])[0]
+                    entry.append(f"{user[1]}\{user[2]}")
+                    
+                    #name
+                    entry.append(share[3])
+                    
+                    #remark
+                    entry.append(share[4])
+                    
+                    #read
+                    entry.append(bool(share[5]))
+                    
+                    #write
+                    entry.append(bool(share[6]))
+                    
+                    formattedShares.append(entry)
+                
+                self.write_csv(filename,csv_header,formattedShares)
 
                         #Format is domain\user
-                        prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
+                        #prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
 
                         #Format is hostname
-                        prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
+                        #prettyhost = f"{}"
 
-                        shareCSV.writerow([shareid,prettyhost,prettyuser,sharename,shareremark,bool(read),bool(write)])
-                    print('[+] shares exported')
+                        
+                print('[+] shares exported')
             
         #Local Admin
         elif line[0].lower() == 'local_admins':
@@ -140,10 +158,11 @@ class DatabaseNavigator(cmd.Cmd):
                 self.write_csv(filename,csv_header,local_admins)
             
             elif line[1].lower() == 'detailed':
+                
                 formattedLocalAdmins = []
                 
                 for entry in local_admins:
-                    formattedEntry = [] # Can't modify a tuple
+                    formattedEntry = [] # Can't modify a tuple which is what self.db.get_admin_relations() returns.
                     
                     #Entry ID
                     formattedEntry.append(entry[0])
@@ -155,14 +174,14 @@ class DatabaseNavigator(cmd.Cmd):
                     #Hostname
                     formattedEntry.append(self.db.get_computers(filterTerm=entry[2])[0][2]) 
                     
+                    
                     formattedLocalAdmins.append(formattedEntry)
                     
                 self.write_csv(filename,csv_header,formattedLocalAdmins)
+                print('[+] Local Admins exported')
                      
-                              
-
         else:
-            print('[-] invalid argument, specify creds, hosts or shares')
+            print('[-] invalid argument, specify creds, hosts, local_admins or shares')
             
     def write_csv(self,filename,headers,entries):
         """
