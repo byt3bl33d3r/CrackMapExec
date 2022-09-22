@@ -81,7 +81,7 @@ class DatabaseNavigator(cmd.Cmd):
                     entry.append(cred[3]) # Password/Hash
                     entry.append(cred[4]) # Cred Type
                     
-                    print(cred[5])
+                    
                     if cred[5] == None:
                         entry.append("")
                     else:
