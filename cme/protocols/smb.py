@@ -500,6 +500,8 @@ class smb(connection):
             self.conn = SMBConnection(self.host, self.host, None, self.args.port, timeout=self.args.smb_timeout)
             self.smbv1 = False
         except socket.error:
+            if str(e).find('Too many open files') != -1:
+                self.logger.error('SMBv3 connection error on {}: {}'.format(self.host, e))
             return False
         except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
@@ -624,7 +626,7 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
-        computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        #computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
         try:
             user_id = self.db.get_user(
                 self.domain.split('.')[0].upper(),
@@ -660,7 +662,7 @@ class smb(connection):
 
                 if share_name != "IPC$":
                     try:
-                        self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
+                        self.db.add_share(computer_id, self.host, share_name, share_remark, read, write)
                     except:
                         pass
 
