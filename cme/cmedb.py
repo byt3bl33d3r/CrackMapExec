@@ -54,6 +54,8 @@ class DatabaseNavigator(cmd.Cmd):
 
         line = line.split()
 
+        # Need to use if/elif/else to keep compatibility with py3.8/3.9
+        # Users
         if line[0].lower() == 'creds':
             if len(line) < 3:
                 print("[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>")
@@ -74,6 +76,7 @@ class DatabaseNavigator(cmd.Cmd):
                         export_file.write('{}\n'.format(password))
             print('[+] creds exported')
 
+        #Hosts
         elif line[0].lower() == 'hosts':
             if len(line) < 2:
                 print("[-] invalid arguments, export hosts <filename>")
@@ -85,6 +88,7 @@ class DatabaseNavigator(cmd.Cmd):
                     export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
             print('[+] hosts exported')
 
+        #Shares
         elif line[0].lower() == 'shares':
             if len(line) < 3:
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
@@ -120,15 +124,56 @@ class DatabaseNavigator(cmd.Cmd):
 
                         shareCSV.writerow([shareid,prettyhost,prettyuser,sharename,shareremark,bool(read),bool(write)])
                     print('[+] shares exported')
-
-            else:
-                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+            
+        #Local Admin
+        elif line[0].lower() == 'local_admins':
+            if len(line) < 3:
+                print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
                 return
+
+            # These Values don't change between simple and detailed
+            local_admins = self.db.get_admin_relations()
+            csv_header = ["id","userid","computerid"]
+            filename = line[2]
+            
+            if line[1].lower() == 'simple':
+                self.write_csv(filename,csv_header,local_admins)
+            
+            elif line[1].lower() == 'detailed':
+                formattedLocalAdmins = []
+                
+                for entry in local_admins:
+                    formattedEntry = [] # Can't modify a tuple
+                    
+                    #Entry ID
+                    formattedEntry.append(entry[0])
+                    
+                    #DOMAIN/Username
+                    user = self.db.get_users(filterTerm=entry[1])[0]
+                    formattedEntry.append(f"{user[1]}/{user[2]}")
+                    
+                    #Hostname
+                    formattedEntry.append(self.db.get_computers(filterTerm=entry[2])[0][2]) 
+                    
+                    formattedLocalAdmins.append(formattedEntry)
+                    
+                self.write_csv(filename,csv_header,formattedLocalAdmins)
+                     
+                              
 
         else:
             print('[-] invalid argument, specify creds, hosts or shares')
             
-
+    def write_csv(self,filename,headers,entries):
+        """
+        Writes a CSV file with the provided parameters.
+        """
+        with open(os.path.expanduser(filename), 'w') as export_file:
+            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
+            csvFile.writerow(headers)
+            for entry in entries:
+                csvFile.writerow(entry)
+        
     def do_import(self, line):
         if not line:
             return
