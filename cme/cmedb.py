@@ -116,7 +116,7 @@ class DatabaseNavigator(cmd.Cmd):
                 return
             
             shares = self.db.get_shares()
-            csv_header = ["id","computerid","userid","name","remark","read","write"]
+            csv_header = ["id","computer","userid","name","remark","read","write"]
             filename = line[2]
             
             if line[1].lower() == 'simple':
@@ -132,7 +132,7 @@ class DatabaseNavigator(cmd.Cmd):
                     #shareID
                     entry.append(share[0])
                     
-                    #computerID
+                    #computer
                     entry.append(self.db.get_computers(share[1])[0][2])
                     
                     #userID
@@ -172,7 +172,7 @@ class DatabaseNavigator(cmd.Cmd):
 
             # These Values don't change between simple and detailed
             local_admins = self.db.get_admin_relations()
-            csv_header = ["id","userid","computerid"]
+            csv_header = ["id","userid","computer"]
             filename = line[2]
             
             if line[1].lower() == 'simple':
