@@ -148,13 +148,16 @@ class CMEModule:
                 if RECORD_TYPE_MAPPING[dr['Type']] == "A":
                     if dr['Type'] == 1:
                         address = DNS_RPC_RECORD_A(dr['Data'])
-                        outdata.append({'name':recordname, 'type': RECORD_TYPE_MAPPING[dr['Type']], 'value': address.formatCanonical()})
+                        if str(recordname) != 'DomainDnsZones' and str(recordname) != 'ForestDnsZones':
+                            outdata.append({'name':recordname, 'type': RECORD_TYPE_MAPPING[dr['Type']], 'value': address.formatCanonical()})
                     if dr['Type'] in [a for a in RECORD_TYPE_MAPPING if RECORD_TYPE_MAPPING[a] in ['CNAME', 'NS', 'PTR']]:
                         address = DNS_RPC_RECORD_NODE_NAME(dr['Data'])
-                        outdata.append({'name':recordname, 'type':RECORD_TYPE_MAPPING[dr['Type']], 'value': address[list(address.fields)[0]].toFqdn()})
+                        if str(recordname) != 'DomainDnsZones' and str(recordname) != 'ForestDnsZones':
+                            outdata.append({'name':recordname, 'type':RECORD_TYPE_MAPPING[dr['Type']], 'value': address[list(address.fields)[0]].toFqdn()})
                     elif dr['Type'] == 28:
                         address = DNS_RPC_RECORD_AAAA(dr['Data'])
-                        outdata.append({'name':recordname, 'type':RECORD_TYPE_MAPPING[dr['Type']], 'value': address.formatCanonical()})
+                        if str(recordname) != 'DomainDnsZones' and str(recordname) != 'ForestDnsZones':
+                            outdata.append({'name':recordname, 'type':RECORD_TYPE_MAPPING[dr['Type']], 'value': address.formatCanonical()})
 
         context.log.highlight('Found %d records' % len(outdata))
         path = os.path.expanduser('~/.cme/logs/{}_network_{}.log'.format(connection.domain, datetime.now().strftime("%Y-%m-%d_%H%M%S")))

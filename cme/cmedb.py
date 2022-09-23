@@ -120,6 +120,7 @@ class DatabaseNavigator(cmd.Cmd):
             filename = line[2]
             
             if line[1].lower() == 'simple':
+
                 self.write_csv(filename,csv_header,shares)
                 
                 
@@ -155,8 +156,10 @@ class DatabaseNavigator(cmd.Cmd):
                 
                 self.write_csv(filename,csv_header,formattedShares)
 
+
                         #Format is domain\user
                         #prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
+
 
                         #Format is hostname
                         #prettyhost = f"{}"
@@ -168,6 +171,7 @@ class DatabaseNavigator(cmd.Cmd):
         elif line[0].lower() == 'local_admins':
             if len(line) < 3:
                 print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
+
                 return
 
             # These Values don't change between simple and detailed
