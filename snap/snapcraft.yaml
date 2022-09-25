@@ -1,0 +1,82 @@
+name: crackmapexec
+base: core20
+adopt-info: crackmapexec
+
+license: GPL-3.0-or-later
+source-code: https://github.com/Porchetta-Industries/CrackMapExec
+issues: https://github.com/JitPatro/crackmapexec/issues
+
+summary:  A swiss army knife for pentesting networks
+description: |
+  CrackMapExec (a.k.a CME) is a post-exploitation tool that helps automate assessing the security of large Active Directory networks. Built with stealth in mind, CME follows the concept of "Living off the Land": abusing built-in Active Directory features/protocols to achieve it's functionality and allowing it to evade most endpoint protection/IDS/IPS solutions.
+
+  CME makes heavy use of the impacket library (developed by @asolino) for working with network protocols and performing a variety of post-exploitation techniques.
+
+  Although meant to be used primarily for offensive purposes (e.g. red teams, internal pentest), CME can be used by blue teams as well to assess account privileges, find possible misconfigurations and simulate attack scenarios.
+
+  CrackMapExec is developed by @byt3bl33d3r and @mpgn
+
+
+grade: stable
+confinement: strict
+compression: lzo
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+  - build-on: armhf
+
+environment:
+  LC_ALL: C.UTF-8
+  LANG: C.UTF-8
+  POETRY_VIRTUALENVS_PATH: $SNAP/.venv
+
+apps:
+  crackmapexec:
+    command: run crackmapexec
+    plugs: [home, network, network-bind]
+
+  cme:
+    command: run crackmapexec
+    plugs: [home, network, network-bind]
+
+  cmedb:
+    command: run cmedb
+    plugs: [home]
+
+
+parts:
+  openssl3:
+    plugin: autotools
+    source: https://github.com/openssl/openssl.git
+    override-build: |
+      ./Configure --prefix=/usr/local/ssl --openssldir=/usr/local/ssl '-Wl,--enable-new-dtags,-rpath,$(LIBRPATH)'
+      make && make install
+      mkdir -p $SNAPCRAFT_PART_INSTALL/lib
+      cp ./*.so* $SNAPCRAFT_PART_INSTALL/lib/
+
+  crackmapexec:
+    plugin: python
+    source: https://github.com/Porchetta-Industries/CrackMapExec.git
+    python-packages:
+      - poetry
+
+    build-packages:
+      - build-essential
+      - python3-pip
+      - libffi-dev
+      - libkrb5-dev
+      - libssl-dev
+      - rust-all
+
+    override-build: |
+      snapcraftctl build
+      virtualenv -p py .venv
+      poetry config virtualenvs.create false --local
+      poetry install
+      chmod 644 ./poetry.toml
+      cp -r ./* ./.v* $SNAPCRAFT_PRIME/
+      echo -e '#!/bin/sh \n\nset -e\n\ncd $SNAP && poetry run "$@"' > $SNAPCRAFT_PART_INSTALL/run
+      chmod +x $SNAPCRAFT_PART_INSTALL/run
+      snapcraftctl set-version $(git describe --tags)
+      
