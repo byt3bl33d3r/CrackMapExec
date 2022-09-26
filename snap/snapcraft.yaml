@@ -24,8 +24,7 @@ compression: lzo
 architectures:
   - build-on: amd64
   - build-on: arm64
-  - build-on: armhf
-
+  
 environment:
   LC_ALL: C.UTF-8
   LANG: C.UTF-8
@@ -67,7 +66,6 @@ parts:
       - libffi-dev
       - libkrb5-dev
       - libssl-dev
-      - rust-all
 
     override-build: |
       snapcraftctl build
