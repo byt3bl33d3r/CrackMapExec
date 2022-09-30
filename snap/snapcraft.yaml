@@ -78,3 +78,14 @@ parts:
       chmod +x $SNAPCRAFT_PART_INSTALL/run
       snapcraftctl set-version $(git describe --tags)
       
+# Cleanup
+    override-prime: |
+      snapcraftctl prime
+      rm -rf .venv/lib/python3.8/site-packages/pip*
+      rm -rf .venv/lib/python3.8/site-packages/setuptools*
+      rm -rf .venv/src/*
+
+    prime:
+      - -share/python-wheels
+      - -lib/python3.8/site-packages/pip*
+      - -lib/python3.8/site-packages/setuptools*
