@@ -24,6 +24,9 @@ compression: lzo
 architectures:
   - build-on: amd64
   - build-on: arm64
+  - build-on: armhf
+  - build-on: ppc64el
+  - build-on: s390x
   
 environment:
   LC_ALL: C.UTF-8
@@ -66,6 +69,11 @@ parts:
       - libffi-dev
       - libkrb5-dev
       - libssl-dev
+      - libxml2-dev
+      - libxslt1-dev
+      - libjpeg-dev
+      - rustc
+      - cargo
 
     override-build: |
       snapcraftctl build
