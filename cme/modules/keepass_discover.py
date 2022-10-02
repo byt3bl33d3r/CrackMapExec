@@ -58,8 +58,10 @@ class CMEModule:
             search_keepass_files_payload = "Get-ChildItem -Path {} -Recurse -Force -Include ('KeePass.config.xml','KeePass.exe','*.kdbx') -ErrorAction SilentlyContinue | Select FullName -ExpandProperty FullName".format(self.search_path)
             search_keepass_files_cmd = 'powershell.exe "{}"'.format(search_keepass_files_payload)
             search_keepass_files_output = connection.execute(search_keepass_files_cmd, True).split("\r\n")
-            if search_keepass_files_output:
-                for file in search_keepass_files_output:
+            found = False
+            for file in search_keepass_files_output:
+                if 'KeePass' in file or 'kdbx' in file:
+                    found = True
                     context.log.highlight('Found {}'.format(file))
-            else:
+            if not found:
                 context.log.info('No KeePass-related file were found')
