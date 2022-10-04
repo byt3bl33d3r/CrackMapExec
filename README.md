@@ -23,7 +23,7 @@
 
 ## :triangular_flag_on_post: Sponsors
 
-If you want to sponsors this project and have the latest updates on CME, latest issues fixed, latest features, please support us on https://porchetta.industries/
+If you do want to sponsors this project and have the latest updates on CME, latest issues fixed, latest features, please support us on https://porchetta.industries/
 
 ## Official Discord Channel
 
