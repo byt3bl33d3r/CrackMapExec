@@ -39,7 +39,7 @@ def get_dns_resolver(server, context):
     return dnsresolver
 
 def ldap2domain(ldap):
-    return re.sub(',DC=', '.', ldap[ldap.find('dc='):], flags=re.I)[3:]
+    return re.sub(',DC=', '.', ldap[ldap.lower().find('dc='):], flags=re.I)[3:]
 
 def new_record(rtype, serial):
     nr = DNS_RECORD()
