@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.dcerpc.v5 import rrp
+from impacket.examples.secretsdump import RemoteOperations
+
 class CMEModule:
 
     name = 'install_elevated'
@@ -11,33 +18,42 @@ class CMEModule:
         '''
 
     def on_admin_login(self, context, connection):
-        remoteOps = RemoteOperations(connection.conn, False)
-        remoteOps.enableRegistry()
-
         try:
-            ans_machine = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
-            regHandle = ans_machine['phKey']
-            ans_machine = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Policies\\Microsoft\\Windows\\Installer')
-            keyHandle = ans_machine['phkResult']
-            dataType, aie_machine_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'AlwaysInstallElevated')
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
 
-            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+            try:
+                ans_machine = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
+                regHandle = ans_machine['phKey']
+                ans_machine = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Policies\\Microsoft\\Windows\\Installer')
+                keyHandle = ans_machine['phkResult']
+                dataType, aie_machine_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'AlwaysInstallElevated')
+                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
+                if aie_machine_value == 0:
+                    context.log.highlight('AlwaysInstallElevated Status: 0 (Disabled)')
+                    return
 
-            ans_user = rrp.hOpenCurrentUser(remoteOps._RemoteOperations__rrp)
-            regHandle = ans_user['phKey']
-            ans_user = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Policies\\Microsoft\\Windows\\Installer')
-            keyHandle = ans_user['phkResult']
-            dataType, aie_user_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'AlwaysInstallElevated')
-
-            if aie_user_value == 1 and aie_machine_value == 1:
-                context.log.highlight('AlwaysInstallElevated Status: 1 (Enabled)')
-            elif aie_user_value == 0 or aie_machine_value == 0:
+            except rrp.DCERPCSessionError:
                 context.log.highlight('AlwaysInstallElevated Status: 0 (Disabled)')
+                return
 
-            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
-        except rrp.DCERPCSessionError:
-            context.log.highlight('AlwaysInstallElevated Status: 0 (Disabled)')
+            try:
+                ans_user = rrp.hOpenCurrentUser(remoteOps._RemoteOperations__rrp)
+                regHandle = ans_user['phKey']
+                ans_user = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Policies\\Microsoft\\Windows\\Installer')
+                keyHandle = ans_user['phkResult']
+                dataType, aie_user_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'AlwaysInstallElevated')
+                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
-        remoteOps.finish()
+            except rrp.DCERPCSessionError:
+                context.log.highlight('AlwaysInstallElevated Status: 1 (Enabled: Computer Only)')
+                return
+
+            if aie_user_value == 0:
+                context.log.highlight('AlwaysInstallElevated Status: 1 (Enabled: Computer Only)')
+            else:
+                context.log.highlight('AlwaysInstallElevated Status: 1 (Enabled)')
+        finally:
+            remoteOps.finish()
