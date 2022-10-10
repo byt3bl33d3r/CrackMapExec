@@ -199,13 +199,14 @@ class CMEModule:
         It could be interesting to implement the write/remove functions here, but a ldap3 session instead of a LDAPConnection one is required to write.
     '''
     name = 'daclread'
-    description = 'Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_'
+    description = 'Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_. Be carefull, this module cannot read the DACLS recursively, more explains in the options.'
     supported_protocols = ['ldap']
     opsec_safe = True
     multiple_hosts = False
 
     def options(self, context, module_options):
         '''
+        Be carefull, this module cannot read the DACLS recursively. For example, if an object has particular rights because it belongs to a group, the module will not be able to see it directly, you have to check the group rights manually.
         TARGET          The objects that we want to read or backup the DACLs, sepcified by its SamAccountName
         TARGET_DN       The object that we want to read or backup the DACL, specified by its DN (usefull to target the domain itself)
         PRINCIPAL       The trustee that we want to filter on
@@ -262,6 +263,7 @@ class CMEModule:
         On a successful LDAP login we perform a search for the targets' SID, their Security Decriptors and the principal's SID if there is one specified
         '''
 
+        context.log.highlight("Be carefull, this module cannot read the DACLS recursively.")
         self.baseDN = connection.ldapConnection._baseDN
         self.ldap_session = connection.ldapConnection
 
