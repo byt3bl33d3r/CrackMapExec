@@ -63,11 +63,13 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         if self.useembeded == True:
             with open(self.nano_path + self.nano, 'wb') as nano:
-                if connection.os_arch == 32:
+                if connection.os_arch == 32 and context.protocol == 'smb':
                     context.log.info("32-bit Windows detected.")
                     nano.write(self.nano_embedded32)
-                elif connection.os_arch == 64:
+                elif connection.os_arch == 64 and context.protocol == 'smb':
                     context.log.info("64-bit Windows detected.")
+                    nano.write(self.nano_embedded64)
+                elif context.protocol == 'mssql':
                     nano.write(self.nano_embedded64)
                 else:
                     context.log.error('Unsupported Windows architecture')
