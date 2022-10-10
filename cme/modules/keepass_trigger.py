@@ -223,7 +223,7 @@ class CMEModule:
     def poll(self, context, connection):
         """Search for the cleartext database export file in the specified export folder (until found, or manually exited by the user)"""
         found = False
-        context.log.info('Polling for database export every {} seconds, press CTRL+C to abort'.format(self.poll_frequency_seconds))
+        context.log.info('Polling for database export every {} seconds, please be patient, we need to wait for the target to enter his master password ! Press CTRL+C to abort and use clean option to cleanup everything'.format(self.poll_frequency_seconds))
         # if the specified path is %APPDATA%, we need to check in every user's folder
         if self.export_path == '%APPDATA%' or self.export_path == '%appdata%':
             poll_export_command_str = 'powershell.exe "Get-LocalUser | Where {{ $_.Enabled -eq $True }} | select name | ForEach-Object {{ Write-Output (\'C:\\Users\\\'+$_.Name+\'\\AppData\\Roaming\\{}\')}} | ForEach-Object {{ if (Test-Path $_ -PathType leaf){{ Write-Output $_ }}}}"'.format(self.export_name)
