@@ -59,9 +59,14 @@ class CMEModule:
             search_keepass_files_cmd = 'powershell.exe "{}"'.format(search_keepass_files_payload)
             search_keepass_files_output = connection.execute(search_keepass_files_cmd, True).split("\r\n")
             found = False
+            found_xml = False
             for file in search_keepass_files_output:
                 if 'KeePass' in file or 'kdbx' in file:
+                    if 'xml' in file:
+                        found_xml = True
                     found = True
                     context.log.highlight('Found {}'.format(file))
             if not found:
                 context.log.info('No KeePass-related file were found')
+            elif not found_xml:
+                context.log.error('No config settings file found !!!')
