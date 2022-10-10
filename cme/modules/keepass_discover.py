@@ -1,4 +1,4 @@
-import csv
+from csv import reader
 
 class CMEModule:
     """
@@ -41,7 +41,7 @@ class CMEModule:
             # search for keepass process
             search_keepass_process_command_str = 'powershell.exe "Get-Process kee* -IncludeUserName | Select-Object -Property Id,UserName,ProcessName | ConvertTo-CSV -NoTypeInformation"'
             search_keepass_process_output_csv = connection.execute(search_keepass_process_command_str, True) # we return the powershell command as a CSV for easier column parsing
-            csv_reader = csv.reader(search_keepass_process_output_csv.split('\n'), delimiter=',')
+            csv_reader = reader(search_keepass_process_output_csv.split('\n'), delimiter=',')
             next(csv_reader) # to skip the csv header line
             row_number = 0 # as csv_reader is an iterator we can't get its length without exhausting it
             for row in csv_reader:
