@@ -54,81 +54,170 @@ class DatabaseNavigator(cmd.Cmd):
 
         line = line.split()
 
+        # Need to use if/elif/else to keep compatibility with py3.8/3.9
+        # Reference DB Function cme/protocols/smb/database.py
+        # Users
         if line[0].lower() == 'creds':
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <plaintext|hashes|both|csv> <filename>")
+                print("[-] invalid arguments, export creds <simple/detailed> <filename>")
                 return
-            if line[1].lower() == 'plaintext':
-                creds = self.db.get_credentials(credtype="plaintext")
-            elif line[1].lower() == 'hashes':
-                creds = self.db.get_credentials(credtype="hash")
-            else:
-                creds = self.db.get_credentials()
-
-            with open(os.path.expanduser(line[2]), 'w') as export_file:
+            
+            filename = line[2]
+            creds = self.db.get_credentials()
+            csv_header = ["id","domain","username","password","credtype","pillaged_from"]
+            
+            if line[1].lower() == "simple":
+                self.write_csv(filename,csv_header,creds)
+                
+            elif line[1].lower() == "detailed":
+                formattedCreds = []
+               
                 for cred in creds:
-                    credid, domain, user, password, credtype, fromhost = cred
-                    if line[1].lower() == 'csv':
-                        export_file.write('{},{},{},{},{},{}\n'.format(credid,domain,user,password,credtype,fromhost))
+                    entry = []
+                    
+                    entry.append(cred[0]) # ID
+                    entry.append(cred[1]) # Domain
+                    entry.append(cred[2]) # Username
+                    entry.append(cred[3]) # Password/Hash
+                    entry.append(cred[4]) # Cred Type
+                    
+                    
+                    if cred[5] == None:
+                        entry.append("")
                     else:
-                        export_file.write('{}\n'.format(password))
+                        entry.append(self.db.get_computers(cred[5])[0][2])
+                    formattedCreds.append(entry)
+                self.write_csv(filename,csv_header,formattedCreds)
             print('[+] creds exported')
 
+        #Hosts
         elif line[0].lower() == 'hosts':
-            if len(line) < 2:
-                print("[-] invalid arguments, export hosts <filename>")
+            if len(line) < 3:
+                print("[-] invalid arguments, export hosts <simple/detailed> <filename>")
                 return
             hosts = self.db.get_computers()
-            with open(os.path.expanduser(line[1]), 'w') as export_file:
-                for host in hosts:
-                    hostid,ipaddress,hostname,domain,opsys,dc = host
-                    export_file.write('{},{},{},{},{},{}\n'.format(hostid,ipaddress,hostname,domain,opsys,dc))
+            csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
+            filename = line[2]
+            
+            if line[1].lower() == 'simple':
+                self.write_csv(filename,csv_header,hosts)
+            
+            #TODO, maybe add more detail like who is an admin on it, shares discovered, ect
+            elif line[1].lower() == 'detailed':
+                self.write_csv(filename,csv_header,hosts)
+            
+            
             print('[+] hosts exported')
 
+        #Shares
         elif line[0].lower() == 'shares':
             if len(line) < 3:
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
             
+            shares = self.db.get_shares()
+            csv_header = ["id","computer","userid","name","remark","read","write"]
+            filename = line[2]
+            
             if line[1].lower() == 'simple':
-                shares = self.db.get_shares()
-                with open(os.path.expanduser(line[2]), 'w') as export_file:
-                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computer","userid","name","remark","read","write"]
-                    shareCSV.writerow(csv_header)                  
-                    #id|computerid|userid|name|remark|read|write
-                    for share in shares:
-                        shareid,hostname,userid,sharename,shareremark,read,write = share
-                        shareCSV.writerow([shareid,hostname,userid,sharename,shareremark,read,write])
-                    print('[+] shares exported')  
+
+                self.write_csv(filename,csv_header,shares)
+                
+                
+                print('[+] shares exported')  
                     
             elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
-                shares = self.db.get_shares()
-                #id|computerid|userid|name|remark|read|write
-                with open(os.path.expanduser(line[2]), 'w') as export_file:
-                    shareCSV = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
-                    csv_header = ["id","computer","userid","name","remark","read","write"]
-                    shareCSV.writerow(csv_header)
-                    for share in shares:
-                        shareid,hostname,userid,sharename,shareremark,read,write = share
+                formattedShares = []
+                for share in shares:
+                    entry = []
+                    #shareID
+                    entry.append(share[0])
+                    
+                    #computer
+                    entry.append(self.db.get_computers(share[1])[0][2])
+                    
+                    #userID
+                    user = self.db.get_users(share[2])[0]
+                    entry.append(f"{user[1]}\{user[2]}")
+                    
+                    #name
+                    entry.append(share[3])
+                    
+                    #remark
+                    entry.append(share[4])
+                    
+                    #read
+                    entry.append(bool(share[5]))
+                    
+                    #write
+                    entry.append(bool(share[6]))
+                    
+                    formattedShares.append(entry)
+                
+                self.write_csv(filename,csv_header,formattedShares)
+
 
                         #Format is domain\user
-                        prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
+                        #prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
 
-                        # #Format is hostname
-                        # prettyhost = f"{self.db.get_computers(hostid)[0][2]}"
 
-                        shareCSV.writerow([shareid,hostname,prettyuser,sharename,shareremark,bool(read),bool(write)])
-                    print('[+] shares exported')
+                        #Format is hostname
+                        #prettyhost = f"{}"
 
-            else:
-                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                        
+                print('[+] shares exported')
+            
+        #Local Admin
+        elif line[0].lower() == 'local_admins':
+            if len(line) < 3:
+                print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
+
                 return
 
-        else:
-            print('[-] invalid argument, specify creds, hosts or shares')
+            # These Values don't change between simple and detailed
+            local_admins = self.db.get_admin_relations()
+            csv_header = ["id","userid","computer"]
+            filename = line[2]
             
-
+            if line[1].lower() == 'simple':
+                self.write_csv(filename,csv_header,local_admins)
+            
+            elif line[1].lower() == 'detailed':
+                
+                formattedLocalAdmins = []
+                
+                for entry in local_admins:
+                    formattedEntry = [] # Can't modify a tuple which is what self.db.get_admin_relations() returns.
+                    
+                    #Entry ID
+                    formattedEntry.append(entry[0])
+                    
+                    #DOMAIN/Username
+                    user = self.db.get_users(filterTerm=entry[1])[0]
+                    formattedEntry.append(f"{user[1]}/{user[2]}")
+                    
+                    #Hostname
+                    formattedEntry.append(self.db.get_computers(filterTerm=entry[2])[0][2]) 
+                    
+                    
+                    formattedLocalAdmins.append(formattedEntry)
+                    
+                self.write_csv(filename,csv_header,formattedLocalAdmins)
+                print('[+] Local Admins exported')
+                     
+        else:
+            print('[-] invalid argument, specify creds, hosts, local_admins or shares')
+            
+    def write_csv(self,filename,headers,entries):
+        """
+        Writes a CSV file with the provided parameters.
+        """
+        with open(os.path.expanduser(filename), 'w') as export_file:
+            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
+            csvFile.writerow(headers)
+            for entry in entries:
+                csvFile.writerow(entry)
+        
     def do_import(self, line):
         if not line:
             return

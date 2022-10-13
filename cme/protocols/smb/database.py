@@ -319,6 +319,9 @@ class database:
 
         elif hostID:
             cur.execute("SELECT * FROM admin_relations WHERE computerid=?", [hostID])
+        
+        else:
+            cur.execute("SELECT * FROM admin_relations")
 
         results = cur.fetchall()
         cur.close()
