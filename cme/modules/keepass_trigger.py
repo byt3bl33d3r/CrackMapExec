@@ -117,6 +117,7 @@ class CMEModule:
             self.poll(context, connection)
         elif self.action == 'CLEAN':
             self.clean(context, connection)
+            self.restart(context, connection)
         elif self.action == 'ALL':
             self.all_in_one(context, connection)
 
@@ -324,6 +325,7 @@ class CMEModule:
         context.log.highlight("")
         context.log.info('Cleaning everything..')
         self.clean(context, connection)
+        self.restart(context, connection)
         context.log.highlight("")
         context.log.info('Extracting password..')
         self.extract_password(context)
