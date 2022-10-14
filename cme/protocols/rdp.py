@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import logging
 import asyncio
 from cme.connection import *
@@ -199,9 +202,9 @@ class rdp(connection):
 
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
             buffer.save(filename,'png')
-            self.logger.highlight("Screenshot saved {}".format(filename + ".png"))
+            self.logger.highlight("Screenshot saved {}".format(filename))
 
     def screenshot(self):
         asyncio.run(self.screen())

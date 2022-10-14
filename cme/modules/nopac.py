@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Credit to https://exploit.ph/cve-2021-42287-cve-2021-42278-weaponisation.html
 # @exploitph @Evi1cg
 # module by @mpgn_x64

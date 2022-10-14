@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 class database:
 
     def __init__(self, conn):
@@ -29,7 +32,9 @@ class database:
             "credtype" text,
             "domain" text,
             "username" text,
-            "password" text
+            "password" text,
+            "pillaged_from_computerid" integer,
+            FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
             )''')
 
     def add_computer(self, ip, hostname, domain, os, instances):
@@ -46,19 +51,44 @@ class database:
 
         cur.close()
 
-    def add_credential(self, credtype, domain, username, password):
+    def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
+
+        domain = domain.split('.')[0].upper()
+        user_rowid = None
         cur = self.conn.cursor()
 
-        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
+        if groupid and not self.is_group_valid(groupid):
+            cur.close()
+            return
+
+        if pillaged_from and not self.is_computer_valid(pillaged_from):
+            cur.close()
+            return
+
+        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND LOWER(credtype)=LOWER(?)", [domain, username, credtype])
         results = cur.fetchall()
 
         if not len(results):
-            cur.execute("INSERT INTO users (credtype, domain, username, password) VALUES (?,?,?,?)", [credtype, domain, username, password])
+            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, password, credtype, pillaged_from])
+            user_rowid = cur.lastrowid
+            if groupid:
+                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        else:
+            for user in results:
+                if not user[3] and not user[4] and not user[5]:
+                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credtype, pillaged_from, user[0]])
+                    user_rowid = cur.lastrowid
+                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
+                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
         cur.close()
+
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
+
+        return user_rowid
 
     def remove_credentials(self, credIDs):
         """

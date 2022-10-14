@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import logging
 
 
@@ -63,13 +66,12 @@ class database:
 
         db_conn.execute('''CREATE TABLE "shares" (
             "id" integer PRIMARY KEY,
-            "computerid" integer,
+            "computerid" text,
             "userid" integer,
             "name" text,
             "remark" text,
             "read" boolean,
             "write" boolean,
-            FOREIGN KEY(computerid) REFERENCES computers(id),
             FOREIGN KEY(userid) REFERENCES users(id)
             UNIQUE(computerid, userid, name)
         )''')
@@ -317,6 +319,9 @@ class database:
 
         elif hostID:
             cur.execute("SELECT * FROM admin_relations WHERE computerid=?", [hostID])
+        
+        else:
+            cur.execute("SELECT * FROM admin_relations")
 
         results = cur.fetchall()
         cur.close()

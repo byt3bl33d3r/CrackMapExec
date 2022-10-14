@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import socket
 import logging
 from cme.logger import CMEAdapter
@@ -46,6 +49,10 @@ class mssql(connection):
         psgroup = mssql_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
         psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
         psgroup.add_argument('--clear-obfscripts', action='store_true', help='Clear all cached obfuscated PowerShell scripts')
+
+        tgroup = mssql_parser.add_argument_group("Files", "Options for put and get remote files")
+        tgroup.add_argument("--put-file", nargs=2, metavar="FILE", help='Put a local file into remote target, ex: whoami.txt C:\\Windows\\Temp\\whoami.txt')
+        tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: C:\\Windows\\Temp\\whoami.txt whoami.txt')
 
         return parser
 
@@ -278,6 +285,32 @@ class mssql(connection):
         # We're disabling PS obfuscation by default as it breaks the MSSQLEXEC execution method (probably an escaping issue)
         ps_command = create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs)
         return self.execute(ps_command, get_output)
+
+    @requires_admin
+    def put_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
+        with open(self.args.put_file[0], 'rb') as f:
+            try:
+                data = f.read()
+                self.logger.info('Size is {} bytes'.format(len(data)))
+                exec_method = MSSQLEXEC(self.conn)
+                exec_method.put_file(data, self.args.put_file[1])
+                if exec_method.file_exists(self.args.put_file[1]):
+                    self.logger.success('File has been uploaded on the remote machine')
+                else:
+                    self.logger.error('File does not exist on the remote system.. erorr during upload')
+            except Exception as e:
+                self.logger.error('Error during upload : {}'.format(e))
+
+    @requires_admin
+    def get_file(self):
+        self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        try:
+            exec_method = MSSQLEXEC(self.conn)
+            exec_method.get_file(self.args.get_file[0], self.args.get_file[1])
+            self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        except Exception as e:
+            self.logger.error('Error reading file {}: {}'.format(self.args.get_file[0], e))
 
 # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
 # The whole tds library in impacket needs a good overhaul to preserve my sanity

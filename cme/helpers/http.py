@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import random
 
 def get_desktop_uagent(uagent=None):

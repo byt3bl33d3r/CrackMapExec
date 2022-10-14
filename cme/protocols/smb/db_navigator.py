@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from cme.helpers.misc import validate_ntlm
 from cme.cmedb import DatabaseNavigator
 
@@ -64,7 +67,7 @@ class navigator(DatabaseNavigator):
     
     def display_shares(self, shares):
 
-        data = [["ShareID", "Name", "Remark", "Read Access", "Write Access"]]
+        data = [["ShareID", "computer", "Name", "Remark", "Read Access", "Write Access"]]
 
         for share in shares:
             
@@ -85,7 +88,7 @@ class navigator(DatabaseNavigator):
                 permissions='w'
             )
 
-            data.append([shareID, name, remark, f"{len(users_r_access)} User(s)", f"{len(users_w_access)} Users"])
+            data.append([shareID, computerid, name, remark, f"{len(users_r_access)} User(s)", f"{len(users_w_access)} Users"])
 
         self.print_table(data)
 

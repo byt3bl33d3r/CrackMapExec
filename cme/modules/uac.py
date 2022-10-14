@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations

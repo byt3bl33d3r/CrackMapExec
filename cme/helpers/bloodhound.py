@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 def add_user_bh(user, domain, logger, config):
     users_owned = []
     if isinstance(user, str):

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap import ldap as ldap_impacket
 import re

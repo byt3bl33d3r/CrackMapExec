@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import logging
 import random
 from os import getenv
@@ -20,6 +23,7 @@ class KerberosAttacks:
         self.username = connection.username
         self.password = connection.password
         self.domain = connection.domain
+        self.targetDomain = connection.targetDomain
         self.hash = connection.hash
         self.lmhash = ''
         self.nthash = ''
@@ -139,7 +143,7 @@ class KerberosAttacks:
 
         asReq = AS_REQ()
 
-        domain = self.domain.upper()
+        domain = self.targetDomain.upper()
         serverName = Principal('krbtgt/%s' % domain, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
 
         pacRequest = KERB_PA_PAC_REQUEST()

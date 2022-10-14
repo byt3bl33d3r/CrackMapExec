@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # From https://github.com/topotam/PetitPotam
 # All credit to @topotam
 # Module by @mpgn_x64
