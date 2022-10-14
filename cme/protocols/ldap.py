@@ -21,6 +21,10 @@ from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from io import StringIO
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
+from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
+from ldap3 import ALL, Server, Connection, NTLM, SASL, KERBEROS, SUBTREE
+from impacket.ldap.ldaptypes import SR_SECURITY_DESCRIPTOR
+from Cryptodome.Hash import MD4
 
 ldap_error_status = {
     "533":"STATUS_ACCOUNT_DISABLED",
@@ -76,6 +80,7 @@ class ldap(connection):
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
         vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
+        vgroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
 
         return parser
 
@@ -154,7 +159,6 @@ class ldap(connection):
 
             #Re-connect since we logged off
             self.create_conn_obj()
-        
 
     def print_host_info(self):
         if self.args.no_smb:
@@ -869,5 +873,64 @@ class ldap(connection):
                 self.logger.highlight(value[0])
         else:
             self.logger.error("No entries found!")
-        return        
+        return
 
+    def gmsa(self):
+        self.logger.info("Getting GMSA Passwords")
+        ldap_user = self.args.username[0]
+        ldap_pass = self.args.password
+        ldap_hash = self.args.hash[0]
+        ldap_domain = self.domain
+
+        if not ldap_pass: 
+            if ldap_hash.find(':') != -1:
+                ldap_pass = ldap_hash
+            else:
+                ldap_pass = "aad3b435b51404eeaad3b435b51404ee:" + ldap_hash
+
+        # Create the baseDN
+        self.baseDN = ''
+        domainParts = ldap_domain.split('.')
+        for i in domainParts:
+            self.baseDN += 'dc=%s,' % i
+        # Remove last ','
+        self.baseDN = self.baseDN[:-1]
+
+        # Connect to LDAP
+        server = Server(ldap_domain, get_info=ALL) 
+        conn = Connection(server, \
+            user='{}\\{}'.format(ldap_domain, ldap_user), \
+            password=ldap_pass, \
+            authentication=NTLM, \
+            auto_bind=True)
+
+        try:
+            conn.start_tls()
+
+            # Query passwords
+            conn.search(self.baseDN, '(&(ObjectClass=msDS-GroupManagedServiceAccount))', search_scope=SUBTREE, attributes=['sAMAccountName','msDS-ManagedPassword','msDS-GroupMSAMembership'])
+
+            if len(conn.entries) == 0:
+                self.logger.info("No gMSAs returned.")
+                
+            for entry in conn.entries:
+                    sam = entry['sAMAccountName'].value
+
+                    for dacl in SR_SECURITY_DESCRIPTOR(data=entry['msDS-GroupMSAMembership'].raw_values[0])['Dacl']['Data']:
+                        conn.search(self.baseDN, '(&(objectSID='+dacl['Ace']['Sid'].formatCanonical()+'))', attributes=['sAMAccountName'])
+
+                    if 'msDS-ManagedPassword' in entry and entry['msDS-ManagedPassword']:
+                        data = entry['msDS-ManagedPassword'].raw_values[0]
+                        blob = MSDS_MANAGEDPASSWORD_BLOB()
+                        blob.fromString(data)
+                        currentPassword = blob['CurrentPassword'][:-2]
+
+                        # Compute ntlm key
+                        ntlm_hash = MD4.new ()
+                        ntlm_hash.update (currentPassword)
+                        passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                        self.logger.highlight("Username: {:<20} NTLM: {}".format(sam, passwd))
+
+        except Exception as e:
+            self.logger.error("Unexpected LDAP error: '{}'".format(e))
+        return True
