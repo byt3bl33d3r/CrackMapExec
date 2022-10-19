@@ -328,7 +328,9 @@ class CMEDBMenu(cmd.Cmd):
                 pass
 
     def do_workspace(self, line):
+        helpString = "[-] wordkspace create <targetName> | workspace list | workspace <targetName>"
         if not line:
+            print(helpString)
             return
 
         line = line.strip()
@@ -364,12 +366,24 @@ class CMEDBMenu(cmd.Cmd):
 
             self.do_workspace(new_workspace)
 
+        elif line.split()[0] == 'list':
+            print("[*] Enumerating Workspaces")
+            for workspace in os.listdir(os.path.join(self.workspace_dir)):
+                if(workspace==self.workspace):
+                    print("==> "+workspace)
+                else:
+                    print(workspace)        
+
         elif os.path.exists(os.path.join(self.workspace_dir, line)):
             self.config.set('CME', 'workspace', line)
             self.write_configfile()
 
             self.workspace = line
             self.prompt = 'cmedb ({}) > '.format(line)
+        
+        else:
+            print(helpString)
+
 
     def do_exit(self, line):
         sys.exit(0)
