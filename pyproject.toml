@@ -43,6 +43,7 @@ aioconsole = "^0.3.3"
 pywerview = "^0.3.3"
 minikerberos = "0.2.20"
 aardwolf = "^0.0.8"
+masky = "^0.1.1"
 
 
 [tool.poetry.dev-dependencies]
