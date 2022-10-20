@@ -354,8 +354,6 @@ class smb(connection):
                 self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
-
-
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
 
             # self.check_if_admin() # currently pywerview does not support kerberos auth
@@ -372,7 +370,10 @@ class smb(connection):
                                     self.conn.getCredentials()[0],
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
-            return True
+            if not self.args.local_auth:
+                add_user_bh(username, domain, self.logger, self.config)
+            if not self.args.continue_on_success:
+                return True
         else:
             self.logger.error(u'{} {} {}'.format(self.domain, 
                                                  error, 

@@ -238,6 +238,8 @@ class ldap(connection):
         return True
 
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        self.logger.extra['protocol'] = "LDAP"
+        self.logger.extra['port'] = "389"
         # Get ldap info (target, targetDomain, baseDN)
         target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
 
@@ -270,12 +272,25 @@ class ldap(connection):
                                      self.username,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
-            self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
             self.logger.success(out)
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.continue_on_success:
+                return True
+        except SessionError as e:
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+                                                self.username,
+                                                self.password,
+                                                str(e)),
+                                                color='red')
+            return False
+        except KeyError as e:
+            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+                                                self.username,
+                                                '',
+                                                ''),
+                                                color='red')
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
                 # We need to try SSL
@@ -300,6 +315,8 @@ class ldap(connection):
             
                 if not self.args.local_auth:
                     add_user_bh(self.username, self.domain, self.logger, self.config)
+                if not self.args.continue_on_success:
+                    return True
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
@@ -308,9 +325,9 @@ class ldap(connection):
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
 
-        return True
-
     def plaintext_login(self, domain, username, password):
+        self.logger.extra['protocol'] = "LDAP"
+        self.logger.extra['port'] = "389"
         self.username = username
         self.password = password
         self.domain = domain
@@ -337,8 +354,6 @@ class ldap(connection):
                                      self.username,
                                      self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
-            self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -366,6 +381,8 @@ class ldap(connection):
 
                     if not self.args.local_auth:
                         add_user_bh(self.username, self.domain, self.logger, self.config)
+                    if not self.args.continue_on_success:
+                        return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
@@ -391,6 +408,8 @@ class ldap(connection):
 
 
     def hash_login(self, domain, username, ntlm_hash):
+        self.logger.extra['protocol'] = "LDAP"
+        self.logger.extra['port'] = "389"
         lmhash = ''
         nthash = ''
 
@@ -456,6 +475,8 @@ class ldap(connection):
             
                     if not self.args.local_auth:
                         add_user_bh(self.username, self.domain, self.logger, self.config)
+                    if not self.args.continue_on_success:
+                        return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
