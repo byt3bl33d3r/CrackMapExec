@@ -195,7 +195,7 @@ class connection(object):
 
                     except IndexError:
                         self.logger.error("Invalid database credential ID!")
-        if self.args.use_cache:
+        if self.args.use_kcache:
             with sem:
                 if self.kerberos_login(self.domain, '', '', '', '', self.kdcHost, True): return True
         for user in self.args.username:
