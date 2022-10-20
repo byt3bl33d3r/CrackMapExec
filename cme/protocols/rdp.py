@@ -6,11 +6,12 @@ import asyncio
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
+
 from aardwolf import logger
-from aardwolf.commons.url import RDPConnectionURL
+from aardwolf.commons.factory import RDPConnectionFactory
+from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
 from aardwolf.commons.iosettings import RDPIOSettings
 from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
-from aardwolf.commons.queuedata.constants import MOUSEBUTTON, VIDEO_FORMAT
 
 logger.setLevel(logging.CRITICAL)
 
@@ -34,9 +35,10 @@ class rdp(connection):
         self.domain = None
         self.server_os = None
         self.iosettings = RDPIOSettings()
-        self.iosettings.supported_protocols = ""
-        self.protoflags = self.protoflags = [SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID_EX]
         self.iosettings.channels = []
+        self.iosettings.video_out_format = VIDEO_FORMAT.RAW
+        self.iosettings.clipboard_use_pyperclip = False
+        self.protoflags = self.protoflags = [SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID_EX]
         width, height = args.res.upper().split('X')
         height = int(height)
         width = int(width)
@@ -45,7 +47,6 @@ class rdp(connection):
         self.iosettings.video_bpp_min = 15 #servers dont support 8 any more :/
         self.iosettings.video_bpp_max = 32
         self.iosettings.video_out_format = VIDEO_FORMAT.PNG #PIL produces incorrect picture for some reason?! TODO: check bug
-        self.iosettings.clipboard_use_pyperclip = False
         self.output_filename = None
         self.domain = None
         self.server_os = None
@@ -100,7 +101,6 @@ class rdp(connection):
                                                                 self.nla))
 
     def create_conn_obj(self):
-        
         for proto in self.protoflags:
             try:
                 self.iosettings.supported_protocols = proto
@@ -133,8 +133,8 @@ class rdp(connection):
         return True
 
     async def connect_rdp(self, url):
-        rdpurl = RDPConnectionURL(url)
-        self.conn = rdpurl.get_connection(self.iosettings)
+        connectionfactory = RDPConnectionFactory.from_url(url, self.iosettings)
+        self.conn = connectionfactory.create_connection_newtarget(self.hostname, self.iosettings)
         _, err = await self.conn.connect()
         if err is not None:
             raise err
