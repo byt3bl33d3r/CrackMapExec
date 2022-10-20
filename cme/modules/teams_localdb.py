@@ -32,6 +32,8 @@ class CMEModule:
                     found = 1
                     self.parse_file(context, 'skypetoken_asm')
                     self.parse_file(context, 'SSOAUTHCOOKIE')
+                    f.seek(0)
+                    f.trunkate()
                 except Exception as e:
                     if 'STATUS_SHARING_VIOLATION' in str(e):
                         context.log.debug(str(e))
