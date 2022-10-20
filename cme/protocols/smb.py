@@ -371,7 +371,7 @@ class smb(connection):
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
-                add_user_bh(username, domain, self.logger, self.config)
+                add_user_bh(self.conn.getCredentials()[0], domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         else:
