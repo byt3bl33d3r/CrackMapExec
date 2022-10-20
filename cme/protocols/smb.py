@@ -335,14 +335,31 @@ class smb(connection):
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
         return True
 
-    def kerberos_login(self, domain, aesKey, kdcHost):
+    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
         #Re-connect since we logged off
         self.create_conn_obj()
+        lmhash = ''
+        nthash = ''
         # dirty code to check if user is admin but pywerview does not support kerberos auth ...
         error = ''
         try:
-            self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, aesKey, kdcHost)
+
+            self.username = username
+            #This checks to see if we didn't provide the LM Hash
+            if ntlm_hash.find(':') != -1:
+                lmhash, nthash = ntlm_hash.split(':')
+                self.hash = nthash
+            else:
+                nthash = ntlm_hash
+                self.hash = ntlm_hash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+
+
+            self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
+
             # self.check_if_admin() # currently pywerview does not support kerberos auth
+            
         except SessionError as e:
             error = e
         try:

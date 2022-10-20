@@ -237,15 +237,28 @@ class ldap(connection):
             #self.logger.info(self.endpoint)
         return True
 
-    def kerberos_login(self, domain, aesKey, kdcHost):
+    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
         # Get ldap info (target, targetDomain, baseDN)
         target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
+
+        lmhash = ''
+        nthash = ''
+        self.username = username
+        #This checks to see if we didn't provide the LM Hash
+        if ntlm_hash.find(':') != -1:
+            lmhash, nthash = ntlm_hash.split(':')
+            self.hash = nthash
+        else:
+            nthash = ntlm_hash
+            self.hash = ntlm_hash
+        if lmhash: self.lmhash = lmhash
+        if nthash: self.nthash = nthash
 
         try:
             # Connect to LDAP
             self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN)
-            self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=kdcHost)
+            self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
+                                                aesKey, kdcHost=kdcHost, useCache=useCache)
 
             if self.username == '':
                 self.username = self.get_ldap_username()
@@ -268,8 +281,8 @@ class ldap(connection):
                 # We need to try SSL
                 # Connect to LDAPS
                 self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN)
-                self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
-                                                self.aesKey, kdcHost=kdcHost)
+                self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
+                                                aesKey, kdcHost=kdcHost, useCache=useCache)
             
                 if self.username == '':
                     self.username = self.get_ldap_username()
