@@ -243,7 +243,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.gmsa else "ldap"
+            proto = "ldaps" if self.args.gmsa else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
@@ -316,7 +316,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.gmsa else "ldap"
+            proto = "ldaps" if self.args.gmsa else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -409,7 +409,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.gmsa else "ldap"
+            proto = "ldaps" if self.args.gmsa else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
