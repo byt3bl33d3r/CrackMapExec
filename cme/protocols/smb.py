@@ -253,13 +253,16 @@ class smb(connection):
 
         try:
             self.conn.login('' , '')
-        except:
-            #if "STATUS_ACCESS_DENIED" in e:
+            self.domain    = self.conn.getServerDNSDomainName()
+            self.hostname  = self.conn.getServerName()
+            self.server_os = self.conn.getServerOS()
+        except Exception as e:
+            if "STATUS_NOT_SUPPORTED" in str(e):
+                # no ntlm supported
+                self.domain = self.args.domain
+                self.hostname = self.host
             pass
 
-        self.domain    = self.conn.getServerDNSDomainName()
-        self.hostname  = self.conn.getServerName()
-        self.server_os = self.conn.getServerOS()
         try:
             self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
         except:
@@ -358,7 +361,7 @@ class smb(connection):
 
             # self.check_if_admin() # currently pywerview does not support kerberos auth
             
-        except SessionError as e:
+        except (SessionError, Exception) as e:
             error = e
         try:
             self.conn.connectTree("C$")

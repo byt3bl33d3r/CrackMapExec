@@ -240,6 +240,9 @@ class ldap(connection):
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
         self.logger.extra['protocol'] = "LDAP"
         self.logger.extra['port'] = "389"
+        self.username = username
+        self.password = password
+        self.domain = domain
         # Get ldap info (target, targetDomain, baseDN)
         target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
 
@@ -741,7 +744,6 @@ class ldap(connection):
             self.logger.highlight("No entries found!")
         elif resp:
             answers = []
-            self.logger.info('Total of records returned %d' % len(resp))
 
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -792,6 +794,7 @@ class ldap(connection):
                     pass
 
             if len(answers)>0:
+                self.logger.info('Total of records returned %d' % len(answers))
                 TGT = KerberosAttacks(self).getTGT_kerberoasting()
                 dejavue = []
                 for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
