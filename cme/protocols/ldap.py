@@ -238,6 +238,7 @@ class ldap(connection):
         return True
 
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        logging.getLogger("impacket").disabled = True
         self.logger.extra['protocol'] = "LDAP"
         self.logger.extra['port'] = "389"
         self.username = username

@@ -339,6 +339,7 @@ class smb(connection):
         return True
 
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        logging.getLogger("impacket").disabled = True
         #Re-connect since we logged off
         self.create_conn_obj()
         lmhash = ''
@@ -346,8 +347,9 @@ class smb(connection):
         # dirty code to check if user is admin but pywerview does not support kerberos auth ...
         error = ''
         try:
-
-            self.username = username
+            if not self.args.laps:
+                self.password = password
+                self.username = username
             #This checks to see if we didn't provide the LM Hash
             if ntlm_hash.find(':') != -1:
                 lmhash, nthash = ntlm_hash.split(':')
