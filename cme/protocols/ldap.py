@@ -3,15 +3,16 @@
 # from https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py
 # https://troopers.de/downloads/troopers19/TROOPERS19_AD_Fun_With_LDAP.pdf
 
-import requests
 import logging
-import configparser
+from argparse import _StoreTrueAction
 from binascii import b2a_hex, unhexlify, hexlify
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from cme.helpers.bloodhound import add_user_bh
+from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
 from cme.protocols.ldap.kerberos import KerberosAttacks
+from Cryptodome.Hash import MD4
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
@@ -20,11 +21,10 @@ from impacket.krb5.types import KerberosTime, Principal
 from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
-import argparse
+from impacket.ldap.ldaptypes import SR_SECURITY_DESCRIPTOR
 from io import StringIO
 from pywerview.cli.helpers import *
-from pywerview.requester import RPCRequester
-import re
+from re import sub, I
 
 ldap_error_status = {
     "533":"STATUS_ACCOUNT_DISABLED",
@@ -82,7 +82,7 @@ class ldap(connection):
         ldap_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         ldap_parser.add_argument("--port", type=int, choices={389, 636}, default=389, help="LDAP port (default: 389)")
-        no_smb_arg = ldap_parser.add_argument("--no-smb", action=get_conditional_action(argparse._StoreTrueAction), make_required=[], help='No smb connection')
+        no_smb_arg = ldap_parser.add_argument("--no-smb", action=get_conditional_action(_StoreTrueAction), make_required=[], help='No smb connection')
 
         dgroup = ldap_parser.add_mutually_exclusive_group()
         domain_arg = dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
@@ -99,6 +99,7 @@ class ldap(connection):
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
         vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
+        vgroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
 
         return parser
 
@@ -125,7 +126,7 @@ class ldap(connection):
                     for attribute in item['attributes']:
                         if str(attribute['type']) == 'defaultNamingContext':
                             baseDN = str(attribute['vals'][0])
-                            targetDomain = re.sub(',DC=', '.', baseDN[baseDN.lower().find('dc='):], flags=re.I)[3:]
+                            targetDomain = sub(',DC=', '.', baseDN[baseDN.lower().find('dc='):], flags=I)[3:]
                         if str(attribute['type']) == 'dnsHostName':
                             target = str(attribute['vals'][0])
                 except Exception as e:
@@ -217,7 +218,6 @@ class ldap(connection):
 
             #Re-connect since we logged off
             self.create_conn_obj()
-        
 
     def print_host_info(self):
         if self.args.no_smb:
@@ -243,7 +243,8 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN)
+            proto = "ldaps" if self.args.gmsa else "ldap"
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.kerberosLogin(self.username, self.password, self.domain, self.lmhash, self.nthash,
                                                 self.aesKey, kdcHost=kdcHost)
 
@@ -258,7 +259,7 @@ class ldap(connection):
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -315,7 +316,8 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN)
+            proto = "ldaps" if self.args.gmsa else "ldap"
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
 
@@ -325,7 +327,7 @@ class ldap(connection):
                                      self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -407,7 +409,8 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            self.ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % target, self.baseDN)
+            proto = "ldaps" if self.args.gmsa else "ldap"
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
             
@@ -417,7 +420,7 @@ class ldap(connection):
                                     self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -953,8 +956,34 @@ class ldap(connection):
                 self.logger.highlight(value[0])
         else:
             self.logger.error("No entries found!")
-        return        
+        return
 
+    def gmsa(self):
+        self.logger.info("Getting GMSA Passwords")
+        search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
+        gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
+                                    attributes=['sAMAccountName', 'msDS-ManagedPassword','msDS-GroupMSAMembership'],
+                                    sizeLimit=0,
+                                    searchBase=self.baseDN)
+        if gmsa_accounts:
+            answers = []
+            logging.debug('Total of records returned %d' % len(gmsa_accounts))
 
-
-
+            for item in gmsa_accounts:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                sAMAccountName =  ''
+                managedPassword = ''
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'sAMAccountName':
+                        sAMAccountName = str(attribute['vals'][0])
+                    if str(attribute['type']) == 'msDS-ManagedPassword':
+                        data = attribute['vals'][0].asOctets()
+                        blob = MSDS_MANAGEDPASSWORD_BLOB()
+                        blob.fromString(data)
+                        currentPassword = blob['CurrentPassword'][:-2]
+                        ntlm_hash = MD4.new ()
+                        ntlm_hash.update (currentPassword)
+                        passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                        self.logger.highlight("Account: {:<20} NTLM: {}".format(sAMAccountName, passwd))
+        return True
