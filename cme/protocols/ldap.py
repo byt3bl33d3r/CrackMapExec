@@ -259,7 +259,7 @@ class ldap(connection):
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -327,7 +327,7 @@ class ldap(connection):
                                      self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -420,7 +420,7 @@ class ldap(connection):
                                     self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389"
+            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
             self.logger.success(out)
 
             if not self.args.local_auth:
