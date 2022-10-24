@@ -378,6 +378,9 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
+        except FileNotFoundError as e:
+            self.logger.error('CCache Error: {}'.format(e))
+            return False
         except (SessionError, Exception) as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}{} {} {}'.format(domain,
