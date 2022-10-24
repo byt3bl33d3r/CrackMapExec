@@ -134,7 +134,6 @@ class mssql(connection):
 
     def create_conn_obj(self):
         try:
-            print(self.host)
             self.conn = tds.MSSQL(self.host, self.args.port, rowsPrinter=self.logger)
             self.conn.connect()
         except socket.error:
@@ -160,10 +159,14 @@ class mssql(connection):
         return True
 
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
-        print(username, password, domain)
-        res = self.conn.kerberosLogin(None, username, password, domain, None, aesKey, kdcHost=kdcHost)
         try:
-            
+            self.conn.disconnect()
+        except:
+            pass
+        self.create_conn_obj()
+        logging.getLogger("impacket").disabled = True
+        try:
+            res = self.conn.kerberosLogin(None, username, password, domain, None, None, kdcHost=kdcHost)
             if res is not True:
                 self.conn.printReplies()
                 return False
