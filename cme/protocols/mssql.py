@@ -134,6 +134,7 @@ class mssql(connection):
 
     def create_conn_obj(self):
         try:
+            print(self.host)
             self.conn = tds.MSSQL(self.host, self.args.port, rowsPrinter=self.logger)
             self.conn.connect()
         except socket.error:
@@ -157,6 +158,36 @@ class mssql(connection):
             return False
 
         return True
+
+    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        print(username, password, domain)
+        res = self.conn.kerberosLogin(None, username, password, domain, None, aesKey, kdcHost=kdcHost)
+        try:
+            
+            if res is not True:
+                self.conn.printReplies()
+                return False
+
+            self.password = password
+            self.username = username
+            self.domain = domain
+            self.check_if_admin()
+
+            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
+                                    username,
+                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            self.logger.success(out)
+            if not self.args.local_auth:
+                add_user_bh(self.username, self.domain, self.logger, self.config)
+            if not self.args.continue_on_success:
+                return True
+        except Exception as e:
+            self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                        e))
+            return False
 
     def plaintext_login(self, domain, username, password):
         try:
