@@ -55,7 +55,8 @@ smb_error_status = [
     "STATUS_PASSWORD_MUST_CHANGE",
     "STATUS_ACCESS_DENIED",
     "STATUS_NO_SUCH_FILE",
-    "KDC_ERR_CLIENT_REVOKED"
+    "KDC_ERR_CLIENT_REVOKED",
+    "KDC_ERR_PREAUTH_FAILED"
 ]
 
 def get_error_string(exception):

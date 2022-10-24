@@ -35,7 +35,8 @@ ldap_error_status = {
     "773":"STATUS_PASSWORD_MUST_CHANGE",
     "775":"USER_ACCOUNT_LOCKED",
     "50":"LDAP_INSUFFICIENT_ACCESS",
-    "KDC_ERR_CLIENT_REVOKED":"KDC_ERR_CLIENT_REVOKED"
+    "KDC_ERR_CLIENT_REVOKED":"KDC_ERR_CLIENT_REVOKED",
+    "KDC_ERR_PREAUTH_FAILED":"KDC_ERR_PREAUTH_FAILED"
 }
 
 
@@ -292,7 +293,7 @@ class ldap(connection):
                                                 self.username,
                                                 " from ccache" if useCache
                                                 else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                str(e)),
+                                                str(error)),
                                                 color='magenta' if error in ldap_error_status else 'red')
             return False
         except KeyError as e:
@@ -356,7 +357,7 @@ class ldap(connection):
                                                         self.username,
                                                         " from ccache" if useCache
                                                         else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                        str(e)),
+                                                        str(error)),
                                                         color='magenta' if error in ldap_error_status else 'red')
                     return False
             else:
