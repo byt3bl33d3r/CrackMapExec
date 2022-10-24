@@ -11,9 +11,9 @@ from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
-from impacket.dcerpc.v5 import transport, lsat, lsad
+from impacket.dcerpc.v5 import transport, lsat, lsad, scmr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.dcerpc.v5.transport import DCERPCTransportFactory
+from impacket.dcerpc.v5.transport import DCERPCTransportFactory, SMBTransport
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
 from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
@@ -360,17 +360,8 @@ class smb(connection):
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
+            self.check_if_admin()
 
-            # self.check_if_admin() # currently pywerview does not support kerberos auth
-            
-        except (SessionError, Exception) as e:
-            error = e
-        try:
-            self.conn.connectTree("C$")
-            self.admin_privs = True
-        except SessionError as e:
-            pass
-        if not error:
             out = u'{}\\{} {}'.format(self.domain,
                                     self.conn.getCredentials()[0],
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
@@ -379,19 +370,17 @@ class smb(connection):
                 add_user_bh(self.conn.getCredentials()[0], domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
-        else:
+            elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
+        except (SessionError, Exception) as e:
             self.logger.error(u'{} {} {}'.format(self.domain, 
-                                                 error, 
+                                                 str(e), 
                                                  '({})'.format(desc) if self.args.verbose else ''))
             return False
-
-        # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-        if self.signing:
-            try:
-                self.conn.logoff()
-            except:
-                pass
-            self.create_conn_obj()
 
     def plaintext_login(self, domain, username, password):
         #Re-connect since we logged off
@@ -545,15 +534,23 @@ class smb(connection):
         return False
 
     def check_if_admin(self):
-        lmhash = ''
-        nthash = ''
-
-        if self.hash:
-            if self.hash.find(':') != -1:
-                lmhash, nthash = self.hash.split(':')
-            else:
-                nthash = self.hash
-        self.admin_privs = invoke_checklocaladminaccess(self.host, self.domain, self.username, self.password, lmhash, nthash)
+        rpctransport = SMBTransport(self.conn.getRemoteHost(), 445, r'\svcctl', smb_connection=self.conn)
+        dce = rpctransport.get_dce_rpc()
+        try:
+            dce.connect()
+        except:
+            pass
+        else:
+            dce.bind(scmr.MSRPC_UUID_SCMR)
+            try:
+                # 0xF003F - SC_MANAGER_ALL_ACCESS
+                # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
+                ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
+                self.admin_privs = True
+            except scmr.DCERPCException as e:
+                self.admin_privs = False
+                pass
+        return
 
     def gen_relay_list(self):
         if self.server_os.lower().find('windows') != -1 and self.signing is False:
