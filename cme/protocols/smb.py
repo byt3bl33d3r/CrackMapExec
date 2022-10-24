@@ -54,7 +54,8 @@ smb_error_status = [
     "STATUS_PASSWORD_EXPIRED",
     "STATUS_PASSWORD_MUST_CHANGE",
     "STATUS_ACCESS_DENIED",
-    "STATUS_NO_SUCH_FILE"
+    "STATUS_NO_SUCH_FILE",
+    "KDC_ERR_CLIENT_REVOKED"
 ]
 
 def get_error_string(exception):
@@ -344,8 +345,6 @@ class smb(connection):
         self.create_conn_obj()
         lmhash = ''
         nthash = ''
-        # dirty code to check if user is admin but pywerview does not support kerberos auth ...
-        error = ''
         try:
             if not self.args.laps:
                 self.password = password
@@ -377,9 +376,18 @@ class smb(connection):
                     pass
                 self.create_conn_obj()
         except (SessionError, Exception) as e:
-            self.logger.error(u'{} {} {}'.format(self.domain, 
-                                                 str(e), 
-                                                 '({})'.format(desc) if self.args.verbose else ''))
+            error, desc = e.getErrorString()
+            self.logger.error(u'{}\\{}:{} {} {}'.format(domain,
+                                                        self.username,
+                                                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                        error,
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')
+            if error not in smb_error_status:
+                self.inc_failed_login(username)
+                return False
+            if not self.args.continue_on_success:
+                return True
             return False
 
     def plaintext_login(self, domain, username, password):
