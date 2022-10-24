@@ -19,6 +19,7 @@ from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
 from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
+from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.servers.smb import CMESMBServer
@@ -366,7 +367,7 @@ class smb(connection):
                                     self.username,
                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                     " from ccache" if useCache
-                                    else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
@@ -388,7 +389,7 @@ class smb(connection):
                                                         self.username,
                                                         # Show what was used between cleartext, nthash, aesKey and ccache
                                                         " from ccache" if useCache
-                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '' or sub != None or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')

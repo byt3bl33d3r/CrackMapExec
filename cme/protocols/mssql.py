@@ -191,7 +191,7 @@ class mssql(connection):
                                     username,
                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                     " from ccache" if useCache
-                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
@@ -203,7 +203,7 @@ class mssql(connection):
                                                     username,
                                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                                     " from ccache" if useCache
-                                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                     e))
             return False
 

