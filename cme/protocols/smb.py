@@ -395,8 +395,6 @@ class smb(connection):
             if error not in smb_error_status:
                 self.inc_failed_login(username)
                 return False
-            if not self.args.continue_on_success:
-                return True
             return False
 
     def plaintext_login(self, domain, username, password):
@@ -443,8 +441,6 @@ class smb(connection):
             if error not in smb_error_status: 
                 self.inc_failed_login(username)
                 return False
-            if not self.args.continue_on_success:
-                return True  
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.error('Connection Error: {}'.format(e))
             return False
@@ -508,8 +504,6 @@ class smb(connection):
             if error not in smb_error_status: 
                 self.inc_failed_login(self.username)
                 return False
-            if not self.args.continue_on_success:
-                return True 
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.error('Connection Error: {}'.format(e))
             return False
