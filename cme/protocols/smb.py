@@ -380,6 +380,14 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
+        except SessionKeyDecryptionError:
+            # for PRE-AUTH account
+            self.logger.error(u'{}\\{}{} {}'.format(domain,
+                                                    self.username,
+                                                    " account vulnerable to asreproast attack",
+                                                    ""),
+                                                    color='yellow')
+            return False
         except FileNotFoundError as e:
             self.logger.error('CCache Error: {}'.format(e))
             return False
