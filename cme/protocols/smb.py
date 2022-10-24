@@ -361,16 +361,15 @@ class smb(connection):
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
 
-            getCreds = self.conn.getCredentials()
             out = u'{}\\{}{} {}'.format(self.domain,
-                                    getCreds[0],
+                                    self.username,
                                     # Show what was used between cleartext, nthash, aesKey and ccache
-                                    " from ccache" if getCreds[6] is not None
-                                    else ":%s" % (next(sub for sub in [binascii.hexlify(getCreds[4]).decode(), getCreds[1], getCreds[5]] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    " from ccache" if useCache
+                                    else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
-                add_user_bh(self.conn.getCredentials()[0], domain, self.logger, self.config)
+                add_user_bh(self.username, domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
             elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
@@ -383,8 +382,9 @@ class smb(connection):
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}{} {} {}'.format(domain,
                                                         self.username,
-                                                        " from ccache" if getCreds[6] is not None
-                                                        else ":%s" % (next(sub for sub in [binascii.hexlify(getCreds[4]).decode(), getCreds[1], getCreds[5]] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        # Show what was used between cleartext, nthash, aesKey and ccache
+                                                        " from ccache" if useCache
+                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
