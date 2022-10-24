@@ -166,13 +166,16 @@ class mssql(connection):
         self.create_conn_obj()
         logging.getLogger("impacket").disabled = True
         try:
+            nthash = ''
             hashes = None
             if ntlm_hash != '':
                 if ntlm_hash.find(':') != -1:
-                    hashes = ntlm_hash.split(':')
+                    hashes = ntlm_hash
+                    nthash = ntlm_hash.split(':')[1]
                 else:
                     # only nt hash
                     hashes = ':%s' % ntlm_hash
+                    nthash = ntlm_hash
 
             res = self.conn.kerberosLogin(None, username, password, domain, hashes, aesKey, kdcHost=kdcHost, useCache=useCache)
             if res is not True:
@@ -184,8 +187,11 @@ class mssql(connection):
             self.domain = domain
             self.check_if_admin()
 
-            out = u'{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
+            out = u'{}{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                     username,
+                                    # Show what was used between cleartext, nthash, aesKey and ccache
+                                    " from ccache" if useCache
+                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
@@ -193,9 +199,12 @@ class mssql(connection):
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
-            self.logger.error(u'{}\\{} {}'.format(domain,
-                                                        username,
-                                                        e))
+            self.logger.error(u'{}\\{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
+                                                    username,
+                                                    # Show what was used between cleartext, nthash, aesKey and ccache
+                                                    " from ccache" if useCache
+                                                    else ":%s" % (next(sub for sub in [nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                    e))
             return False
 
     def plaintext_login(self, domain, username, password):

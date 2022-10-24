@@ -270,10 +270,12 @@ class ldap(connection):
 
             self.check_if_admin()
 
-            # Prepare success credential text
-            out = u'{}\\{} {}'.format(domain,
-                                     self.username,
-                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}\\{}{} {}'.format(domain,
+                                    self.username,
+                                    # Show what was used between cleartext, nthash, aesKey and ccache
+                                    " from ccache" if useCache
+                                    else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
@@ -284,16 +286,18 @@ class ldap(connection):
             if not self.args.continue_on_success:
                 return True
         except SessionError as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+            self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
-                                                self.password,
+                                                " from ccache" if useCache
+                                                else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                 str(e)),
                                                 color='red')
             return False
         except KeyError as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+            self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
-                                                '',
+                                                " from ccache" if useCache
+                                                else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                 ''),
                                                 color='red')
         except ldap_impacket.LDAPSessionError as e:
@@ -310,8 +314,10 @@ class ldap(connection):
                 self.check_if_admin()
 
                 # Prepare success credential text
-                out = u'{}\\{} {}'.format(domain,
+                out = u'{}\\{}{} {}'.format(domain,
                                          self.username,
+                                         " from ccache" if useCache
+                                         else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                          highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
                 
                 self.logger.extra['protocol'] = "LDAPS"
@@ -324,9 +330,10 @@ class ldap(connection):
                     return True
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(u'{}\\{}:{} {}'.format(self.domain,
+                self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                  self.username,
-                                                 self.password,
+                                                 " from ccache" if useCache
+                                                 else ":%s" % (next(sub for sub in [self.nthash, password, aesKey] if sub != '') if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
                                                  color='magenta' if errorCode in ldap_error_status else 'red')
 
