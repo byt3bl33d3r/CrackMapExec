@@ -32,6 +32,7 @@ class wmi(connection):
     def proto_args(parser, std_parser, module_parser):
         wmi_parser = parser.add_parser('wmi', help="own stuff using WMI", parents=[std_parser, module_parser], conflict_handler='resolve')
         wmi_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
+        wmi_parser.add_argument("--port", type=int, default=135, help="WMI port (default: 135)")
         wmi_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         wmi_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
@@ -63,7 +64,7 @@ class wmi(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'SMB',
                                         'host': self.host,
-                                        'port': '135',
+                                        'port': self.args.port,
                                         'hostname': 'NONE'})
     
 
