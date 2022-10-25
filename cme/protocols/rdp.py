@@ -69,6 +69,7 @@ class rdp(connection):
 
         egroup = rdp_parser.add_argument_group("Screenshot", "Remote Desktop Screenshot")
         egroup.add_argument("--screenshot", action="store_true", help="Screenshot RDP if connection success")
+        egroup.add_argument("--nla-screenshot", action="store_true", help="Screenshot RDP login prompt if NLA is disabled")
         egroup.add_argument('--screentime', type=int, default=10, help='Time to wait for desktop image')
         egroup.add_argument('--res', default='1024x768', help='Resolution in "WIDTHxHEIGHT" format. Default: "1024x768"')
 
@@ -78,6 +79,10 @@ class rdp(connection):
         if self.create_conn_obj():
             self.proto_logger()
             self.print_host_info()
+
+            if self.args.nla_screenshot:
+                self.nla_screenshot()
+
             if self.login():
                 if hasattr(self.args, 'module') and self.args.module:
                     self.call_modules()
@@ -209,3 +214,39 @@ class rdp(connection):
     def screenshot(self):
         asyncio.run(self.screen())
         
+    async def nla_screen(self):
+        iosettings = RDPIOSettings()
+        iosettings.channels = []
+        iosettings.video_width = 1024
+        iosettings.video_height = 768
+        iosettings.video_bpp_min = 15
+        iosettings.video_bpp_max = 32
+        iosettings.video_out_format = VIDEO_FORMAT.PNG
+        iosettings.clipboard_use_pyperclip = False
+
+        connection = None
+        try:
+            url = 'rdp+ntlm-password://' + self.host + ':' + str(self.args.port)
+            rdpurl = RDPConnectionURL(url)
+            connection = rdpurl.create_connection_newtarget(self.host, iosettings)
+            _, err = await connection.connect()
+
+            if err is not None:
+                raise err
+            
+            await asyncio.sleep(5)
+
+        except asyncio.CancelledError:
+            print("asyncio.CancelledError")
+            return
+        except Exception as e:
+            print(e)
+        finally:
+            if connection is not None and connection.desktop_buffer_has_data is True:
+                buffer = connection.get_desktop_buffer(VIDEO_FORMAT.PIL)
+                filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+                buffer.save(filename,'png')
+                print("NLA screenshot saved {}".format(filename + ".png"))
+    
+    def nla_screenshot(self):
+        asyncio.run(self.nla_screen())
