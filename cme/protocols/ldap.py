@@ -535,33 +535,34 @@ class ldap(connection):
         attributes= ["objectSid"]
         resp = self.search(searchFilter, attributes,  sizeLimit=0)
         answers = []
-        for attribute in resp[0][1]:
-            if str(attribute['type']) == 'objectSid':
-                sid = self.sid_to_str(attribute['vals'][0])
-                sid_domaine = '-'.join(sid.split('-')[:-1])
+        if resp and self.password != '' and self.username != '':
+            for attribute in resp[0][1]:
+                if str(attribute['type']) == 'objectSid':
+                    sid = self.sid_to_str(attribute['vals'][0])
+                    sid_domaine = '-'.join(sid.split('-')[:-1])
 
-        # 2. get all group cn name
-        searchFilter = "(|(objectSid="+sid_domaine+"-512)(objectSid="+sid_domaine+"-544)(objectSid="+sid_domaine+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
-        attributes= ["distinguishedName"]
-        resp = self.search(searchFilter, attributes,  sizeLimit=0)
-        answers = []
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            for attribute in item['attributes']:
-                if str(attribute['type']) == 'distinguishedName':
-                    answers.append(str("(memberOf:1.2.840.113556.1.4.1941:=" + attribute['vals'][0] + ")"))
+            # 2. get all group cn name
+            searchFilter = "(|(objectSid="+sid_domaine+"-512)(objectSid="+sid_domaine+"-544)(objectSid="+sid_domaine+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
+            attributes= ["distinguishedName"]
+            resp = self.search(searchFilter, attributes,  sizeLimit=0)
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                for attribute in item['attributes']:
+                    if str(attribute['type']) == 'distinguishedName':
+                        answers.append(str("(memberOf:1.2.840.113556.1.4.1941:=" + attribute['vals'][0] + ")"))
 
-        # 3. get memeber of these groups
-        searchFilter = "(&(objectCategory=user)(sAMAccountName=" + self.username + ")(|" + ''.join(answers) + "))"
-        attributes= [""]
-        resp = self.search(searchFilter, attributes,  sizeLimit=0)
-        answers = []
-        for item in resp:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            if item:
-                self.admin_privs = True
+            # 3. get memeber of these groups
+            searchFilter = "(&(objectCategory=user)(sAMAccountName=" + self.username + ")(|" + ''.join(answers) + "))"
+            attributes= [""]
+            resp = self.search(searchFilter, attributes,  sizeLimit=0)
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                if item:
+                    self.admin_privs = True
 
     def getUnixTime(self, t):
         t -= 116444736000000000
@@ -570,10 +571,12 @@ class ldap(connection):
 
     def search(self, searchFilter, attributes, sizeLimit=0):
         try:
-            logging.debug('Search Filter=%s' % searchFilter)
-            resp = self.ldapConnection.search(searchFilter=searchFilter,
-                                                attributes=attributes,
-                                                sizeLimit=sizeLimit)
+            if self.ldapConnection:
+                logging.debug('Search Filter=%s' % searchFilter)
+                resp = self.ldapConnection.search(searchFilter=searchFilter,
+                                                    attributes=attributes,
+                                                    sizeLimit=sizeLimit)                    
+                return resp 
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
                 self.logger.error('sizeLimitExceeded exception caught, giving up and processing the data received')
@@ -584,7 +587,7 @@ class ldap(connection):
             else:
                 self.logger.error(e)
                 return False
-        return resp 
+        return False
 
     def users(self):
         # Building the search filter
