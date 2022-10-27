@@ -16,17 +16,18 @@ from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
 logger.setLevel(logging.CRITICAL)
 
 rdp_error_status = {
-    '-1073741711': 'STATUS_PASSWORD_EXPIRED',
-    '-1073741260': 'STATUS_ACCOUNT_LOCKED_OUT',
-    '-1073741710' : 'STATUS_ACCOUNT_DISABLED',
-    '-1073741421' : 'STATUS_ACCOUNT_EXPIRED',
-    '-1073741714' : 'STATUS_ACCOUNT_RESTRICTION',
-    '-1073741713' : 'STATUS_INVALID_LOGON_HOURS',
-    '-1073741712' : 'STATUS_INVALID_WORKSTATION',
-    '-1073741477' : 'STATUS_LOGON_TYPE_NOT_GRANTED',
-    '-1073741276' : 'STATUS_PASSWORD_MUST_CHANGE',
-    '-1073741790' : 'STATUS_ACCESS_DENIED',
-    '-1073741715' : 'STATUS_LOGON_FAILURE'
+    '0xc0000071': 'STATUS_PASSWORD_EXPIRED',
+    '0xc0000234': 'STATUS_ACCOUNT_LOCKED_OUT',
+    '0xc0000072' : 'STATUS_ACCOUNT_DISABLED',
+    '0xc0000193' : 'STATUS_ACCOUNT_EXPIRED',
+    '0xc000006E' : 'STATUS_ACCOUNT_RESTRICTION',
+    '0xc000006F' : 'STATUS_INVALID_LOGON_HOURS',
+    '0xc0000070' : 'STATUS_INVALID_WORKSTATION',
+    '0xc000015B' : 'STATUS_LOGON_TYPE_NOT_GRANTED',
+    '0xc0000224' : 'STATUS_PASSWORD_MUST_CHANGE',
+    '0xc0000022' : 'STATUS_ACCESS_DENIED',
+    '0xc000006d' : 'STATUS_LOGON_FAILURE',
+    '0xc000006a' : 'STATUS_WRONG_PASSWORD '
 }
 
 class rdp(connection):
@@ -170,6 +171,7 @@ class rdp(connection):
     def hash_login(self, domain, username, ntlm_hash):
         try:
             self.url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host + ':' + str(self.args.port)
+            print(self.url)
             asyncio.run(self.connect_rdp(self.url))
 
             self.admin_privs = True
@@ -187,6 +189,8 @@ class rdp(connection):
             for word in rdp_error_status.keys():
                 if word in str(e):
                     reason = rdp_error_status[word]
+            if "cannot unpack non-iterable NoneType object" == str(e):
+                reason = "User valid but cannot connect"
             
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     username,
