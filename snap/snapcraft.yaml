@@ -79,6 +79,7 @@ parts:
       snapcraftctl build
       virtualenv -p py .venv
       poetry config virtualenvs.create false --local
+      poetry lock --no-update
       poetry install
       chmod 644 ./poetry.toml
       cp -r ./* ./.v* $SNAPCRAFT_PRIME/
