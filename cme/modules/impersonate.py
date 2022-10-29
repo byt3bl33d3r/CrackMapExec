@@ -1,3 +1,8 @@
+# Impersonate module for CME 
+# Author of the module : https://twitter.com/Defte_
+# Impersonate: [ REPO TO ADD ]
+# Token manipulation internals blog post [ LINK ]
+
 from base64 import b64decode
 from sys import exit
 from os import path
