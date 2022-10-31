@@ -93,8 +93,6 @@ parts:
       rm -rf .venv/lib/python3.8/site-packages/pip*
       rm -rf .venv/lib/python3.8/site-packages/setuptools*
       rm -rf .venv/src/*
-
-    prime:
-      - -share/python-wheels
-      - -lib/python3.8/site-packages/pip*
-      - -lib/python3.8/site-packages/setuptools*
+      rm -rf share/python-wheels
+      rm -rf lib/python3.8/site-packages/pip*
+      rm -rf lib/python3.8/site-packages/setuptools*
