@@ -347,6 +347,11 @@ class smb(connection):
         self.create_conn_obj()
         lmhash = ''
         nthash = ''
+        if not all('' == s for s in [self.nthash, password, aesKey]):
+            kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
+        else:
+            kerb_pass = ''
+
         try:
             if not self.args.laps:
                 self.password = password
@@ -367,7 +372,7 @@ class smb(connection):
                                     self.username,
                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                     " from ccache" if useCache
-                                    else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '' or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
             if not self.args.local_auth:
@@ -397,7 +402,7 @@ class smb(connection):
                                                         self.username,
                                                         # Show what was used between cleartext, nthash, aesKey and ccache
                                                         " from ccache" if useCache
-                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if sub != '' or sub != None or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if (sub != '' and sub != None) or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
