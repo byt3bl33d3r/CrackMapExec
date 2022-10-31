@@ -11,14 +11,15 @@ from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
-from impacket.dcerpc.v5 import transport, lsat, lsad
+from impacket.dcerpc.v5 import transport, lsat, lsad, scmr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.dcerpc.v5.transport import DCERPCTransportFactory
+from impacket.dcerpc.v5.transport import DCERPCTransportFactory, SMBTransport
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
 from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
+from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.servers.smb import CMESMBServer
@@ -54,7 +55,9 @@ smb_error_status = [
     "STATUS_PASSWORD_EXPIRED",
     "STATUS_PASSWORD_MUST_CHANGE",
     "STATUS_ACCESS_DENIED",
-    "STATUS_NO_SUCH_FILE"
+    "STATUS_NO_SUCH_FILE",
+    "KDC_ERR_CLIENT_REVOKED",
+    "KDC_ERR_PREAUTH_FAILED"
 ]
 
 def get_error_string(exception):
@@ -253,13 +256,16 @@ class smb(connection):
 
         try:
             self.conn.login('' , '')
-        except:
-            #if "STATUS_ACCESS_DENIED" in e:
+            self.domain    = self.conn.getServerDNSDomainName()
+            self.hostname  = self.conn.getServerName()
+            self.server_os = self.conn.getServerOS()
+        except Exception as e:
+            if "STATUS_NOT_SUPPORTED" in str(e):
+                # no ntlm supported
+                self.domain = self.args.domain
+                self.hostname = self.host
             pass
 
-        self.domain    = self.conn.getServerDNSDomainName()
-        self.hostname  = self.conn.getServerName()
-        self.server_os = self.conn.getServerOS()
         try:
             self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
         except:
@@ -335,40 +341,75 @@ class smb(connection):
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
         return True
 
-    def kerberos_login(self, domain, aesKey, kdcHost):
+    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        logging.getLogger("impacket").disabled = True
         #Re-connect since we logged off
         self.create_conn_obj()
-        # dirty code to check if user is admin but pywerview does not support kerberos auth ...
-        error = ''
+        lmhash = ''
+        nthash = ''
+        if not all('' == s for s in [self.nthash, password, aesKey]):
+            kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
+        else:
+            kerb_pass = ''
+
         try:
-            self.conn.kerberosLogin('', '', self.domain, self.lmhash, self.nthash, aesKey, kdcHost)
-            # self.check_if_admin() # currently pywerview does not support kerberos auth
-        except SessionError as e:
-            error = e
-        try:
-            self.conn.connectTree("C$")
-            self.admin_privs = True
-        except SessionError as e:
-            pass
-        if not error:
-            out = u'{}\\{} {}'.format(self.domain,
-                                    self.conn.getCredentials()[0],
+            if not self.args.laps:
+                self.password = password
+                self.username = username
+            #This checks to see if we didn't provide the LM Hash
+            if ntlm_hash.find(':') != -1:
+                lmhash, nthash = ntlm_hash.split(':')
+                self.hash = nthash
+            else:
+                nthash = ntlm_hash
+                self.hash = ntlm_hash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+            self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
+            self.check_if_admin()
+
+            out = u'{}\\{}{} {}'.format(self.domain,
+                                    self.username,
+                                    # Show what was used between cleartext, nthash, aesKey and ccache
+                                    " from ccache" if useCache
+                                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.success(out)
-            return True
-        else:
-            self.logger.error(u'{} {} {}'.format(self.domain, 
-                                                 error, 
-                                                 '({})'.format(desc) if self.args.verbose else ''))
+            if not self.args.local_auth:
+                add_user_bh(self.username, domain, self.logger, self.config)
+            if not self.args.continue_on_success:
+                return True
+            elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
+                try:
+                    self.conn.logoff()
+                except:
+                    pass
+                self.create_conn_obj()
+        except SessionKeyDecryptionError:
+            # for PRE-AUTH account
+            self.logger.error(u'{}\\{}{} {}'.format(domain,
+                                                    self.username,
+                                                    " account vulnerable to asreproast attack",
+                                                    ""),
+                                                    color='yellow')
             return False
-
-        # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-        if self.signing:
-            try:
-                self.conn.logoff()
-            except:
-                pass
-            self.create_conn_obj()
+        except FileNotFoundError as e:
+            self.logger.error('CCache Error: {}'.format(e))
+            return False
+        except (SessionError, Exception) as e:
+            error, desc = e.getErrorString()
+            self.logger.error(u'{}\\{}{} {} {}'.format(domain,
+                                                        self.username,
+                                                        # Show what was used between cleartext, nthash, aesKey and ccache
+                                                        " from ccache" if useCache
+                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if (sub != '' and sub != None) or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        error,
+                                                        '({})'.format(desc) if self.args.verbose else ''),
+                                                        color='magenta' if error in smb_error_status else 'red')
+            if error not in smb_error_status:
+                self.inc_failed_login(username)
+                return False
+            return False
 
     def plaintext_login(self, domain, username, password):
         #Re-connect since we logged off
@@ -414,8 +455,6 @@ class smb(connection):
             if error not in smb_error_status: 
                 self.inc_failed_login(username)
                 return False
-            if not self.args.continue_on_success:
-                return True  
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.error('Connection Error: {}'.format(e))
             return False
@@ -479,8 +518,6 @@ class smb(connection):
             if error not in smb_error_status: 
                 self.inc_failed_login(self.username)
                 return False
-            if not self.args.continue_on_success:
-                return True 
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.error('Connection Error: {}'.format(e))
             return False
@@ -522,15 +559,23 @@ class smb(connection):
         return False
 
     def check_if_admin(self):
-        lmhash = ''
-        nthash = ''
-
-        if self.hash:
-            if self.hash.find(':') != -1:
-                lmhash, nthash = self.hash.split(':')
-            else:
-                nthash = self.hash
-        self.admin_privs = invoke_checklocaladminaccess(self.host, self.domain, self.username, self.password, lmhash, nthash)
+        rpctransport = SMBTransport(self.conn.getRemoteHost(), 445, r'\svcctl', smb_connection=self.conn)
+        dce = rpctransport.get_dce_rpc()
+        try:
+            dce.connect()
+        except:
+            pass
+        else:
+            dce.bind(scmr.MSRPC_UUID_SCMR)
+            try:
+                # 0xF003F - SC_MANAGER_ALL_ACCESS
+                # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
+                ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
+                self.admin_privs = True
+            except scmr.DCERPCException as e:
+                self.admin_privs = False
+                pass
+        return
 
     def gen_relay_list(self):
         if self.server_os.lower().find('windows') != -1 and self.signing is False:

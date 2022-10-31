@@ -162,120 +162,150 @@ class connection(object):
         return False
 
     def login(self):
-        if self.args.kerberos:
-            if self.kerberos_login(self.domain, self.aesKey, self.kdcHost): return True
-        else:
-            for cred_id in self.args.cred_id:
-                with sem:
-                    if cred_id.lower() == 'all':
-                        creds = self.db.get_credentials()
-                    else:
-                        creds = self.db.get_credentials(filterTerm=int(cred_id))
+        for cred_id in self.args.cred_id:
+            with sem:
+                if cred_id.lower() == 'all':
+                    creds = self.db.get_credentials()
+                else:
+                    creds = self.db.get_credentials(filterTerm=int(cred_id))
+                for cred in creds:
+                    logging.debug(cred)
+                    try:
+                        c_id, domain, username, password, credtype, pillaged_from = cred
 
-                    for cred in creds:
-                        logging.debug(cred)
-                        try:
-                            c_id, domain, username, password, credtype, pillaged_from = cred
+                        if credtype and password:
 
-                            if credtype and password:
+                            if not domain: domain = self.domain
 
-                                if not domain: domain = self.domain
+                            if self.args.local_auth:
+                                domain = self.domain
+                            elif self.args.domain:
+                                domain = self.args.domain
 
-                                if self.args.local_auth:
-                                    domain = self.domain
-                                elif self.args.domain:
-                                    domain = self.args.domain
+                            if credtype == 'hash' and not self.over_fail_limit(username):
+                                if self.args.kerberos:
+                                    if self.kerberos_login(domain, username, '', password, '', self.kdcHost, False): return True
+                                elif self.hash_login(domain, username, password): return True
 
-                                if credtype == 'hash' and not self.over_fail_limit(username):
-                                    if self.hash_login(domain, username, password): return True
+                            elif credtype == 'plaintext' and not self.over_fail_limit(username):
+                                if self.args.kerberos:
+                                    if self.kerberos_login(domain, username, password, '' , '', self.kdcHost, False): return True
+                                elif self.plaintext_login(domain, username, password): return True
 
-                                elif credtype == 'plaintext' and not self.over_fail_limit(username):
-                                    if self.plaintext_login(domain, username, password): return True
+                    except IndexError:
+                        self.logger.error("Invalid database credential ID!")
+        if self.args.use_kcache:
+            with sem:
+                if self.kerberos_login(self.domain, '', '', '', '', self.kdcHost, True): return True
+        for user in self.args.username:
+            if isfile(user):
+                with open(user, 'r') as user_file:
+                    for usr in user_file:
+                        if "\\" in usr:
+                            tmp = usr
+                            usr = tmp.split('\\')[1].strip()
+                            self.domain = tmp.split('\\')[0]
+                        if hasattr(self.args, 'hash') and self.args.hash:
+                            with sem:
+                                for ntlm_hash in self.args.hash:
+                                    if isfile(ntlm_hash):
+                                        with open(ntlm_hash, 'r') as ntlm_hash_file:
+                                            if self.args.no_bruteforce == False:
+                                                for f_hash in ntlm_hash_file:
+                                                    if not self.over_fail_limit(usr.strip()):
+                                                        if self.args.kerberos:
+                                                            if self.kerberos_login(self.domain, usr.strip(), '', f_hash.strip(), '', self.kdcHost, False): return True
+                                                        elif self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
+                                            elif self.args.no_bruteforce == True:
+                                                user_file.seek(0) # HACK: this should really not be in the usr for loop
+                                                for usr, f_hash in zip(user_file, ntlm_hash_file):
+                                                    if not self.over_fail_limit(usr.strip()):
+                                                        if self.args.kerberos:
+                                                            if self.kerberos_login(self.domain, usr.strip(), '', f_hash.strip(), '', self.kdcHost, False): return True
+                                                        elif self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
+                                    else: # ntlm_hash is a string
+                                        if not self.over_fail_limit(usr.strip()):
+                                            if self.args.kerberos:
+                                                if self.kerberos_login(self.domain, usr.strip(), '', ntlm_hash.strip(), '', self.kdcHost, False): return True
+                                            elif self.hash_login(self.domain, usr.strip(), ntlm_hash.strip()): return True
 
-                        except IndexError:
-                            self.logger.error("Invalid database credential ID!")
+                        elif self.args.password:
+                            with sem:
+                                for password in self.args.password:
+                                    if isfile(password):
+                                        with open(password, 'r') as password_file:
+                                            if self.args.no_bruteforce == False:
+                                                for f_pass in password_file:
+                                                    if not self.over_fail_limit(usr.strip()):
+                                                        if hasattr(self.args, 'domain'):
+                                                            if self.args.kerberos:
+                                                                if self.kerberos_login(self.domain, usr.strip(), f_pass.strip(), '', '', self.kdcHost, False): return True
+                                                            elif self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                        else:
+                                                            if self.plaintext_login(usr.strip(), f_pass.strip()): return True
+                                            elif self.args.no_bruteforce == True:
+                                                user_file.seek(0) # HACK: this should really not be in the usr for loop
+                                                for usr, f_pass in zip(user_file, password_file):
+                                                    if not self.over_fail_limit(usr.strip()):
+                                                        if hasattr(self.args, 'domain'):
+                                                            if self.args.kerberos:
+                                                                if self.kerberos_login(self.domain, usr.strip(), f_pass.strip(), '', '', self.kdcHost, False): return True
+                                                            elif self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
+                                                        else:
+                                                            if self.plaintext_login(usr.strip(), f_pass.strip()): return True
+                                    else: # password is a string
+                                        if not self.over_fail_limit(usr.strip()):
+                                            if hasattr(self.args, 'domain'):
+                                                if self.args.kerberos:
+                                                    if self.kerberos_login(self.domain, usr.strip(), password, '', '', self.kdcHost, False): return True
+                                                elif self.plaintext_login(self.domain, usr.strip(), password): return True
+                                            else:
+                                                if self.plaintext_login(usr.strip(), password): return True
 
-            for user in self.args.username:
-                if isfile(user):
-                    with open(user, 'r') as user_file:
-                        for usr in user_file:
-                            if "\\" in usr:
-                                tmp = usr
-                                usr = tmp.split('\\')[1].strip()
-                                self.domain = tmp.split('\\')[0]
-                            if hasattr(self.args, 'hash') and self.args.hash:
-                                with sem:
-                                    for ntlm_hash in self.args.hash:
-                                        if isfile(ntlm_hash):
-                                            with open(ntlm_hash, 'r') as ntlm_hash_file:
-                                                if self.args.no_bruteforce == False:
-                                                    for f_hash in ntlm_hash_file:
-                                                        if not self.over_fail_limit(usr.strip()):
-                                                            if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
-                                                elif self.args.no_bruteforce == True:
-                                                    user_file.seek(0) # HACK: this should really not be in the usr for loop
-                                                    for usr, f_hash in zip(user_file, ntlm_hash_file):
-                                                        if not self.over_fail_limit(usr.strip()):
-                                                            if self.hash_login(self.domain, usr.strip(), f_hash.strip()): return True
-                                        else: # ntlm_hash is a string
-                                            if not self.over_fail_limit(usr.strip()):
-                                                if self.hash_login(self.domain, usr.strip(), ntlm_hash.strip()): return True
+            else: # user is a string
+                if hasattr(self.args, 'hash') and self.args.hash:
+                    with sem:
+                        for ntlm_hash in self.args.hash:
+                            if isfile(ntlm_hash):
+                                with open(ntlm_hash, 'r') as ntlm_hash_file:
+                                    for f_hash in ntlm_hash_file:
+                                        if not self.over_fail_limit(user):
+                                            if self.args.kerberos:
+                                                if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False): return True
+                                            elif self.hash_login(self.domain, user, f_hash.strip()): return True
+                            else: # ntlm_hash is a string
+                                if not self.over_fail_limit(user):
+                                    if self.args.kerberos:
+                                        if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False): return True
+                                    elif self.hash_login(self.domain, user, ntlm_hash.strip()): return True
 
-                            elif self.args.password:
-                                with sem:
-                                    for password in self.args.password:
-                                        if isfile(password):
-                                            with open(password, 'r') as password_file:
-                                                if self.args.no_bruteforce == False:
-                                                    for f_pass in password_file:
-                                                        if not self.over_fail_limit(usr.strip()):
-                                                            if hasattr(self.args, 'domain'):
-                                                                if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
-                                                            else:
-                                                                if self.plaintext_login(usr.strip(), f_pass.strip()): return True
-                                                elif self.args.no_bruteforce == True:
-                                                    user_file.seek(0) # HACK: this should really not be in the usr for loop
-                                                    for usr, f_pass in zip(user_file, password_file):
-                                                        if not self.over_fail_limit(usr.strip()):
-                                                            if hasattr(self.args, 'domain'):
-                                                                if self.plaintext_login(self.domain, usr.strip(), f_pass.strip()): return True
-                                                            else:
-                                                                if self.plaintext_login(usr.strip(), f_pass.strip()): return True
-                                        else: # password is a string
-                                            if not self.over_fail_limit(usr.strip()):
-                                                if hasattr(self.args, 'domain'):
-                                                    if self.plaintext_login(self.domain, usr.strip(), password): return True
-                                                else:
-                                                    if self.plaintext_login(usr.strip(), password): return True
+                elif self.args.password:
+                    with sem:
+                        for password in self.args.password:
+                            if isfile(password):
+                                with open(password, 'r') as password_file:
+                                    for f_pass in password_file:
+                                        if not self.over_fail_limit(user):
+                                            if hasattr(self.args, 'domain'):
+                                                if self.args.kerberos:
+                                                    if self.kerberos_login(self.domain, user, f_pass.strip(), '', '', self.kdcHost, False): return True
+                                                elif self.plaintext_login(self.domain, user, f_pass.strip()): return True
+                                            else:
+                                                if self.plaintext_login(user, f_pass.strip()): return True
+                            else: # password is a string
+                                if not self.over_fail_limit(user):
+                                    if hasattr(self.args, 'domain'):
+                                        if self.args.kerberos:
+                                            if self.kerberos_login(self.domain, user, password, '', '', self.kdcHost, False): return True
+                                        elif self.plaintext_login(self.domain, user, password): return True
+                                    else:
+                                        if self.plaintext_login(user, password): return True
 
-                else: # user is a string
-                    if hasattr(self.args, 'hash') and self.args.hash:
-                        with sem:
-                            for ntlm_hash in self.args.hash:
-                                if isfile(ntlm_hash):
-                                    with open(ntlm_hash, 'r') as ntlm_hash_file:
-                                        for f_hash in ntlm_hash_file:
-                                            if not self.over_fail_limit(user):
-                                                if self.hash_login(self.domain, user, f_hash.strip()): return True
-                                else: # ntlm_hash is a string
-                                    if not self.over_fail_limit(user):
-                                        if self.hash_login(self.domain, user, ntlm_hash.strip()): return True
+                elif self.args.aesKey:
+                    with sem:
+                        for aesKey in self.args.aesKey:
+                            if not self.over_fail_limit(user):
+                                if self.kerberos_login(self.domain, user, '', '', aesKey.strip(), self.kdcHost, False): return True
 
-                    elif self.args.password:
-                        with sem:
-                            for password in self.args.password:
-                                if isfile(password):
-                                    with open(password, 'r') as password_file:
-                                        for f_pass in password_file:
-                                            if not self.over_fail_limit(user):
-                                                if hasattr(self.args, 'domain'):
-                                                    if self.plaintext_login(self.domain, user, f_pass.strip()): return True
-                                                else:
-                                                    if self.plaintext_login(user, f_pass.strip()): return True
-                                else: # password is a string
-                                    if not self.over_fail_limit(user):
-                                        if hasattr(self.args, 'domain'):
-                                            if self.plaintext_login(self.domain, user, password): return True
-                                        else:
-                                            if self.plaintext_login(user, password): return True
+                
 
