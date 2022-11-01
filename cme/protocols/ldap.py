@@ -27,6 +27,7 @@ from pywerview.cli.helpers import *
 from re import sub, I
 
 ldap_error_status = {
+    "1":"STATUS_NOT_SUPPORTED",
     "533":"STATUS_ACCOUNT_DISABLED",
     "701":"STATUS_ACCOUNT_EXPIRED",
     "531":"STATUS_ACCOUNT_RESTRICTION",
@@ -66,6 +67,7 @@ class ldap(connection):
         self.lmhash = ''
         self.nthash = ''
         self.baseDN = ''
+        self.target = ''
         self.targetDomain = ''
         self.remote_ops = None
         self.bootkey = None
@@ -74,6 +76,8 @@ class ldap(connection):
         self.signing = False
         self.smb_share_name = smb_share_name
         self.admin_privs = False
+        self.no_ntlm = False
+        self.sid_domain = ""
 
         connection.__init__(self, args, db, host)
 
@@ -102,6 +106,7 @@ class ldap(connection):
         vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
         vgroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
+        vgroup.add_argument("--get-sid", action="store_true", help="Get domain sid")
 
         return parser
 
@@ -178,21 +183,25 @@ class ldap(connection):
         return ''
 
     def enum_host_info(self):
+        self.target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
+        self.hostname = self.target
+        self.domain = self.targetDomain
         # smb no open, specify the domain
         if self.args.no_smb:
             self.domain = self.args.domain
-            #self.logger.extra['hostname'] = self.hostname
         else:
             self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
 
             try:
                 self.conn.login('' , '')
-            except:
-                #if "STATUS_ACCESS_DENIED" in e:
-                pass
+            except Exception as e:
+                if "STATUS_NOT_SUPPORTED" in str(e):
+                    self.no_ntlm = True
 
-            self.domain    = self.conn.getServerDNSDomainName()
-            self.hostname  = self.conn.getServerName()
+                pass
+            if not self.no_ntlm:
+                self.domain    = self.conn.getServerDNSDomainName()
+                self.hostname  = self.conn.getServerName()
             self.server_os = self.conn.getServerOS()
             self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
             self.os_arch   = self.get_os_arch()
@@ -228,7 +237,8 @@ class ldap(connection):
             self.logger.info(u"Connecting to LDAP {}".format(self.hostname))
             #self.logger.info(self.endpoint)
         else:
-            self.logger.extra['protocol'] = "SMB"
+            self.logger.extra['protocol'] = "SMB" if not self.no_ntlm else "LDAP"
+            self.logger.extra['port'] = "445" if not self.no_ntlm else "389"
             self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(self.server_os,
                                                                                             ' x{}'.format(self.os_arch) if self.os_arch else '',
                                                                                             self.hostname,
@@ -244,8 +254,6 @@ class ldap(connection):
         self.username = username
         self.password = password
         self.domain = domain
-        # Get ldap info (target, targetDomain, baseDN)
-        target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
 
         lmhash = ''
         nthash = ''
@@ -276,7 +284,7 @@ class ldap(connection):
         try:
             # Connect to LDAP
             proto = "ldaps" if self.args.gmsa else "ldap"
-            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
                                                 aesKey, kdcHost=kdcHost, useCache=useCache)
 
@@ -330,7 +338,7 @@ class ldap(connection):
                 # We need to try SSL
                 try:
                     # Connect to LDAPS
-                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN)
+                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.target, self.baseDN)
                     self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
                                                     aesKey, kdcHost=kdcHost, useCache=useCache)
                 
@@ -396,9 +404,6 @@ class ldap(connection):
         self.password = password
         self.domain = domain
 
-        # Get ldap info (target, targetDomain, baseDN)
-        target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
-
         if self.password == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
             if hash_TGT:
@@ -410,7 +415,7 @@ class ldap(connection):
         try:
             # Connect to LDAP
             proto = "ldaps" if self.args.gmsa else "ldap"
-            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
 
@@ -434,7 +439,7 @@ class ldap(connection):
                 # We need to try SSL
                 try:
                     # Connect to LDAPS
-                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN)
+                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.target, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.check_if_admin()
 
@@ -457,14 +462,14 @@ class ldap(connection):
                                                     self.username, 
                                                     self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if errorCode in ldap_error_status else 'red')
+                                                    color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if errorCode in ldap_error_status else 'red')
+                                                 color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
             return False
 
         except OSError as e:
@@ -494,9 +499,6 @@ class ldap(connection):
         self.username = username
         self.domain = domain
 
-        # Get ldap info (target, targetDomain, baseDN)
-        target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
-
         if self.hash == '' and self.args.asreproast:
             hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
             if hash_TGT:
@@ -508,7 +510,7 @@ class ldap(connection):
         try:
             # Connect to LDAP
             proto = "ldaps" if self.args.gmsa else "ldap"
-            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % target, self.baseDN)
+            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
             
@@ -529,7 +531,7 @@ class ldap(connection):
             if str(e).find('strongerAuthRequired') >= 0:
                 try:
                     # We need to try SSL
-                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % target, self.baseDN)
+                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.target, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.check_if_admin()
                     
@@ -552,14 +554,14 @@ class ldap(connection):
                                                     self.username, 
                                                     nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if errorCode in ldap_error_status else 'red')
+                                                    color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if errorCode in ldap_error_status else 'red')
+                                                 color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
             return False
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
@@ -604,6 +606,9 @@ class ldap(connection):
         else:
             return True
 
+    def get_sid(self):
+        self.logger.highlight('Domain SID {}'.format(self.sid_domain))
+
     def sid_to_str(self, sid):
 
         try:
@@ -630,7 +635,6 @@ class ldap(connection):
     def check_if_admin(self):
 
         # 1. get SID of the domaine
-        sid_domaine = ""
         searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=8192)"
         attributes= ["objectSid"]
         resp = self.search(searchFilter, attributes,  sizeLimit=0)
@@ -639,10 +643,10 @@ class ldap(connection):
             for attribute in resp[0][1]:
                 if str(attribute['type']) == 'objectSid':
                     sid = self.sid_to_str(attribute['vals'][0])
-                    sid_domaine = '-'.join(sid.split('-')[:-1])
+                    self.sid_domain = '-'.join(sid.split('-')[:-1])
 
             # 2. get all group cn name
-            searchFilter = "(|(objectSid="+sid_domaine+"-512)(objectSid="+sid_domaine+"-544)(objectSid="+sid_domaine+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
+            searchFilter = "(|(objectSid="+self.sid_domain+"-512)(objectSid="+self.sid_domain+"-544)(objectSid="+self.sid_domain+"-519)(objectSid=S-1-5-32-549)(objectSid=S-1-5-32-551))"
             attributes= ["distinguishedName"]
             resp = self.search(searchFilter, attributes,  sizeLimit=0)
             answers = []
@@ -675,7 +679,7 @@ class ldap(connection):
                 logging.debug('Search Filter=%s' % searchFilter)
                 resp = self.ldapConnection.search(searchFilter=searchFilter,
                                                     attributes=attributes,
-                                                    sizeLimit=sizeLimit)                    
+                                                    sizeLimit=sizeLimit)
                 return resp 
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
