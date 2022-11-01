@@ -1067,7 +1067,6 @@ class smb(connection):
 
         return entries
 
-    @requires_admin
     def put_file(self):
         self.logger.info('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
         with open(self.args.put_file[0], 'rb') as file:
@@ -1077,7 +1076,6 @@ class smb(connection):
             except Exception as e:
                 self.logger.error('Error writing file to share {}: {}'.format(self.args.share, e))
 
-    @requires_admin
     def get_file(self):
         self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
         with open(self.args.get_file[1], 'wb+') as file:
