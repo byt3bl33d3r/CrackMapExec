@@ -66,6 +66,8 @@ class rdp(connection):
         rdp_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         rdp_parser.add_argument("--port", type=int, default=3389, help="Custom RDP port")
         rdp_parser.add_argument("--rdp-timeout", type=int, default=1, help="RDP timeout on socket connection")
+        rdp_parser.add_argument("--nla-screenshot", action="store_true", help="Screenshot RDP login prompt if NLA is disabled")
+
         dgroup = rdp_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -81,11 +83,12 @@ class rdp(connection):
         if self.create_conn_obj():
             self.proto_logger()
             self.print_host_info()
-            if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
-                    self.call_modules()
-                else:
-                    self.call_cmd_args()
+            self.login()
+
+            if hasattr(self.args, 'module') and self.args.module:
+                self.call_modules()
+            else:
+                self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'RDP',
@@ -236,3 +239,22 @@ class rdp(connection):
     def screenshot(self):
         asyncio.run(self.screen())
         
+    async def nla_screen(self):
+        # Otherwise it crash
+        self.iosettings.supported_protocols = None
+
+        # Anonymous auth: https://github.com/skelsec/asyauth/pull/1
+        self.url = 'rdp+simple-password://' + self.host + ':' + str(self.args.port)
+        
+        await self.connect_rdp(self.url)
+        await asyncio.sleep(int(self.args.screentime))
+
+        if self.conn is not None and self.conn.desktop_buffer_has_data is True:
+            buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
+            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+            buffer.save(filename,'png')
+            self.logger.highlight("NLA Screenshot saved {}".format(filename))
+
+    def nla_screenshot(self):
+        if not self.nla:
+            asyncio.run(self.nla_screen())
