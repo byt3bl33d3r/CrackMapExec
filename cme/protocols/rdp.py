@@ -39,7 +39,8 @@ class rdp(connection):
         self.iosettings.channels = []
         self.iosettings.video_out_format = VIDEO_FORMAT.RAW
         self.iosettings.clipboard_use_pyperclip = False
-        self.protoflags = self.protoflags = [SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID_EX]
+        self.protoflags_nla = [SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.RDP]
+        self.protoflags = [SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL, SUPP_PROTOCOLS.RDP, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID, SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.HYBRID_EX]
         width, height = args.res.upper().split('X')
         height = int(height)
         width = int(width)
@@ -102,13 +103,12 @@ class rdp(connection):
                                                                 self.nla))
 
     def create_conn_obj(self):
-        for proto in self.protoflags:
+        self.check_nla()
+        for proto in reversed(self.protoflags):
             try:
                 self.iosettings.supported_protocols = proto
-                self .url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host + ':' + str(self.args.port)
+                self.url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host + ':' + str(self.args.port)
                 asyncio.run(self.connect_rdp(self.url))
-                if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
-                    self.nla = False
             except OSError as e:
                 if "Errno 104" not in str(e):
                     return False
@@ -133,6 +133,18 @@ class rdp(connection):
 
         return True
 
+    def check_nla(self):
+        for proto in self.protoflags_nla:
+            try:
+                self.iosettings.supported_protocols = proto
+                self.url = 'rdp+ntlm-password://FAKE\\user:pass@' + self.host + ':' + str(self.args.port)
+                asyncio.run(self.connect_rdp(self.url))
+                if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
+                    self.nla = False
+                    return
+            except:
+                pass
+
     async def connect_rdp(self, url):
         connectionfactory = RDPConnectionFactory.from_url(url, self.iosettings)
         self.conn = connectionfactory.create_connection_newtarget(self.hostname, self.iosettings)
@@ -156,16 +168,21 @@ class rdp(connection):
                 return True
 
         except Exception as e:
-            reason = None
-            for word in rdp_error_status.keys():
-                if word in str(e):
-                    reason = rdp_error_status[word]
-
-            self.logger.error(u'{}\\{}:{} {}'.format(domain,
-                                                    username,
-                                                    password,
-                                                    '({})'.format(reason) if reason else ''),
-                                                    color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
+            if "Authentication failed!" in str(e):
+                self.logger.success(u'{}\\{}:{} {}'.format(domain,
+                                                            username,
+                                                            password,
+                                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            else:
+                reason = None
+                for word in rdp_error_status.keys():
+                    if word in str(e):
+                        reason = rdp_error_status[word]
+                self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        password,
+                                                        '({})'.format(reason) if reason else ''),
+                                                        color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -185,18 +202,24 @@ class rdp(connection):
                 return True
 
         except Exception as e:
-            reason = None
-            for word in rdp_error_status.keys():
-                if word in str(e):
-                    reason = rdp_error_status[word]
-            if "cannot unpack non-iterable NoneType object" == str(e):
-                reason = "User valid but cannot connect"
-            
-            self.logger.error(u'{}\\{}:{} {}'.format(domain,
-                                                    username,
-                                                    ntlm_hash,
-                                                    '({})'.format(reason) if reason else ''),
-                                                    color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
+            if "Authentication failed!" in str(e):
+                self.logger.success(u'{}\\{}:{} {}'.format(domain,
+                                                            username,
+                                                            ntlm_hash,
+                                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            else:
+                reason = None
+                for word in rdp_error_status.keys():
+                    if word in str(e):
+                        reason = rdp_error_status[word]
+                if "cannot unpack non-iterable NoneType object" == str(e):
+                    reason = "User valid but cannot connect"
+                
+                self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        ntlm_hash,
+                                                        '({})'.format(reason) if reason else ''),
+                                                        color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
 
             return False
 
