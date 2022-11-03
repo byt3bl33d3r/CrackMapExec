@@ -233,7 +233,7 @@ class smb(connection):
             transport = DCERPCTransportFactory(stringBinding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
-            if self.args.kerberos:
+            if self.kerberos:
                 dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:

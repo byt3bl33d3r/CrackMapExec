@@ -47,7 +47,7 @@ class connection(object):
         self.logger = None
         self.password = ''
         self.username = ''
-        self.kerberos = True if self.args.kerberos else False
+        self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
         self.export = None if not self.args.export else self.args.export
