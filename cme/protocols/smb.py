@@ -253,18 +253,18 @@ class smb(connection):
 
     def enum_host_info(self):
         self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
-
+        no_ntlm = False
         try:
             self.conn.login('' , '')
-            self.domain    = self.conn.getServerDNSDomainName()
-            self.hostname  = self.conn.getServerName()
-            self.server_os = self.conn.getServerOS()
         except Exception as e:
             if "STATUS_NOT_SUPPORTED" in str(e):
                 # no ntlm supported
-                self.domain = self.args.domain
-                self.hostname = self.host
+                no_ntlm = True
             pass
+
+        self.domain    = self.conn.getServerDNSDomainName() if not no_ntlm else self.args.domain
+        self.hostname  = self.conn.getServerName() if not no_ntlm else self.host
+        self.server_os = self.conn.getServerOS()
 
         try:
             self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']

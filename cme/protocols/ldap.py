@@ -197,7 +197,6 @@ class ldap(connection):
             except Exception as e:
                 if "STATUS_NOT_SUPPORTED" in str(e):
                     self.no_ntlm = True
-
                 pass
             if not self.no_ntlm:
                 self.domain    = self.conn.getServerDNSDomainName()
