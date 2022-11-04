@@ -931,7 +931,6 @@ class smb(connection):
     def pass_pol(self):
         return PassPolDump(self).dump()
 
-    @requires_admin
     def wmi(self, wmi_query=None, namespace=None):
         records = []
         if not namespace:
