@@ -3,9 +3,9 @@
 
 import ldap3
 import ssl
-from msldap.commons.url import MSLDAPURLDecoder, MSLDAPClientConnection
 import asyncio
-
+from msldap.connection import MSLDAPClientConnection
+from msldap.commons.factory import LDAPConnectionFactory
 
 class CMEModule:
     '''
@@ -70,7 +70,7 @@ class CMEModule:
         async def run_ldaps_withEPA(inputUser, inputPassword, dcTarget):
             try:
                 url = 'ldaps+ntlm-password://'+inputUser + ':' + inputPassword +'@' + dcTarget
-                conn_url = MSLDAPURLDecoder(url)
+                conn_url = LDAPConnectionFactory.from_url(url)
                 ldaps_client = conn_url.get_client()
                 ldapsClientConn = MSLDAPClientConnection(ldaps_client.target, ldaps_client.creds)
                 _, err = await ldapsClientConn.connect()
