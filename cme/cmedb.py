@@ -213,7 +213,7 @@ class DatabaseNavigator(cmd.Cmd):
         Writes a CSV file with the provided parameters.
         """
         with open(os.path.expanduser(filename), 'w') as export_file:
-            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n')
+            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n',escapechar="\\")
             csvFile.writerow(headers)
             for entry in entries:
                 csvFile.writerow(entry)
