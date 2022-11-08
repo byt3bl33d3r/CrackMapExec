@@ -181,6 +181,8 @@ class rdp(connection):
                 for word in rdp_error_status.keys():
                     if word in str(e):
                         reason = rdp_error_status[word]
+                if "cannot unpack non-iterable NoneType object" == str(e):
+                    reason = "User valid but cannot connect"
                 self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                         username,
                                                         password,
