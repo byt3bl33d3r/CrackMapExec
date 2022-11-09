@@ -74,7 +74,9 @@ class CMEModule:
             with session.begin_transaction() as tx:
                 result = tx.run(
                     "MATCH (c:Computer {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(host_fqdn))
-        if len(result.value()) > 0:
+                record = result.single()
+                value = record.value()
+        if len(value) > 0:
             context.log.success("Node {} successfully set as owned in BloodHound".format(host_fqdn))
         else:
             context.log.error(
