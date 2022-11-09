@@ -20,6 +20,7 @@ from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
+from impacket.krb5.types import KerberosException
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.servers.smb import CMESMBServer
@@ -393,7 +394,7 @@ class smb(connection):
                                                     ""),
                                                     color='yellow')
             return False
-        except FileNotFoundError as e:
+        except (FileNotFoundError, KerberosException) as e:
             self.logger.error('CCache Error: {}'.format(e))
             return False
         except (SessionError, Exception) as e:

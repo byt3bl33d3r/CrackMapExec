@@ -17,7 +17,7 @@ from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
 from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS, SessionKeyDecryptionError
-from impacket.krb5.types import KerberosTime, Principal
+from impacket.krb5.types import KerberosTime, Principal, KerberosException
 from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
@@ -324,7 +324,7 @@ class ldap(connection):
                                                 str(error)),
                                                 color='magenta' if error in ldap_error_status else 'red')
             return False
-        except KeyError as e:
+        except (KeyError, KerberosException) as e:
             self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
                                                 " from ccache" if useCache
