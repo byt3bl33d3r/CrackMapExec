@@ -329,7 +329,7 @@ class ldap(connection):
                                                 self.username,
                                                 " from ccache" if useCache
                                                 else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                ''),
+                                                str(e)),
                                                 color='red')
             return False
         except ldap_impacket.LDAPSessionError as e:
