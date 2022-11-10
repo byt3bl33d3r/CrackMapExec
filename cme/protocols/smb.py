@@ -298,8 +298,16 @@ class smb(connection):
             self.domain = self.hostname
 
     def laps_search(self, username, password, ntlm_hash, domain):
+        self.logger.extra['protocol'] = "LDAP"
+        self.logger.extra['port'] = "389"
         ldapco = LDAPConnect(self.domain, "389", self.domain)
-        connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
+        if self.kerberos:
+            if self.kdcHost == None:
+                self.logger.error('Provide --kdcHost parameter')
+                return False
+            connection = ldapco.kerberos_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '', self.kdcHost, self.aesKey)
+        else:
+            connection = ldapco.plaintext_login(domain, username[0] if username else '', password[0] if password else '', ntlm_hash[0] if ntlm_hash else '' )
         if connection == False:
             logging.debug('LAPS connection failed with account {}'.format(username))
             return False
@@ -323,12 +331,14 @@ class smb(connection):
         self.username = self.args.laps
         self.password = msMCSAdmPwd
         if msMCSAdmPwd == '':
-            logging.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.error('msMCSAdmPwd is empty or account cannot read LAPS property for {}'.format(self.hostname))
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
             self.hash = binascii.hexlify(hash_ntlm).decode()
         self.domain = self.hostname
+        self.logger.extra['protocol'] = "SMB"
+        self.logger.extra['port'] = "445"
         return True
 
     def print_host_info(self):
@@ -403,7 +413,7 @@ class smb(connection):
                                                         self.username,
                                                         # Show what was used between cleartext, nthash, aesKey and ccache
                                                         " from ccache" if useCache
-                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if (sub != '' and sub != None) or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         str(e),
                                                         '',
                                                         color='red'))
@@ -413,7 +423,7 @@ class smb(connection):
                                                         self.username,
                                                         # Show what was used between cleartext, nthash, aesKey and ccache
                                                         " from ccache" if useCache
-                                                        else ":%s" % (next(sub for sub in [nthash,password,aesKey] if (sub != '' and sub != None) or sub != None) if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         error,
                                                         '({})'.format(desc) if self.args.verbose else ''),
                                                         color='magenta' if error in smb_error_status else 'red')
