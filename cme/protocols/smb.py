@@ -345,8 +345,8 @@ class smb(connection):
     def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
         logging.getLogger("impacket").disabled = True
         #Re-connect since we logged off
-        kdchost = self.hostname if not self.kdcHost else self.kdcHost
-        self.create_conn_obj(kdchost)
+        fqdn_host = self.hostname + "." + self.domain
+        self.create_conn_obj(fqdn_host)
         lmhash = ''
         nthash = ''
         if not all('' == s for s in [self.nthash, password, aesKey]):
