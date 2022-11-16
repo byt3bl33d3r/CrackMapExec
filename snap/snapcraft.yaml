@@ -90,9 +90,6 @@ parts:
 # Cleanup
     override-prime: |
       snapcraftctl prime
-      rm -rf .venv/lib/python3.8/site-packages/pip*
-      rm -rf .venv/lib/python3.8/site-packages/setuptools*
+      rm -rf {lib,.venv/lib}/python3.8/site-packages/{pip*,setuptools*}
       rm -rf .venv/src/*
       rm -rf share/python-wheels
-      rm -rf lib/python3.8/site-packages/pip*
-      rm -rf lib/python3.8/site-packages/setuptools*
