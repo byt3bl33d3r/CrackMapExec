@@ -369,6 +369,11 @@ class smb(connection):
             if nthash: self.nthash = nthash
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
+            
+            if username == '':
+                self.username = self.conn.getCredentials()[0]
+            else:
+                self.username = username
 
             out = u'{}\\{}{} {}'.format(self.domain,
                                     self.username,
