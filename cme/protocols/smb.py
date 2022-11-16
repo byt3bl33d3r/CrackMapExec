@@ -367,10 +367,7 @@ class smb(connection):
         try:
             if not self.args.laps:
                 self.password = password
-                if username == '':
-                    self.username = self.conn.getCredentials()[0]
-                else:
-                    self.username = username
+                self.username = username
             #This checks to see if we didn't provide the LM Hash
             if ntlm_hash.find(':') != -1:
                 lmhash, nthash = ntlm_hash.split(':')
@@ -382,6 +379,11 @@ class smb(connection):
             if nthash: self.nthash = nthash
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
+            
+            if username == '':
+                self.username = self.conn.getCredentials()[0]
+            else:
+                self.username = username
 
             out = u'{}\\{}{} {}'.format(self.domain,
                                     self.username,
