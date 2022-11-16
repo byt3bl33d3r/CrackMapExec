@@ -12,6 +12,7 @@ from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
 import configparser
+from impacket.krb5.ccache import CCache
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
     TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
@@ -189,7 +190,13 @@ class mssql(connection):
                 return False
 
             self.password = password
-            self.username = username
+            if username == '' and useCache:
+                ccache = CCache.loadFile(os.getenv('KRB5CCNAME'))
+                principal = ccache.principal.toPrincipal()
+                self.username = principal.components[0]
+                username = principal.components[0]
+            else:
+                self.username = username
             self.domain = domain
             self.check_if_admin()
 
