@@ -357,7 +357,10 @@ class smb(connection):
         try:
             if not self.args.laps:
                 self.password = password
-                self.username = username
+                if username == '':
+                    self.username = self.conn.getCredentials()[0]
+                else:
+                    self.username = username
             #This checks to see if we didn't provide the LM Hash
             if ntlm_hash.find(':') != -1:
                 lmhash, nthash = ntlm_hash.split(':')
