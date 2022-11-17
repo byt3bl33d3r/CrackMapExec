@@ -44,6 +44,7 @@ pywerview = "^0.3.3"
 minikerberos = "0.3.3"
 aardwolf = { git = "https://github.com/skelsec/aardwolf.git", branch = "main" }
 masky = "^0.1.1"
+dploot = "^2.1.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
