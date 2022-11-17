@@ -1,5 +1,5 @@
 name: crackmapexec
-base: core20
+base: core22
 adopt-info: crackmapexec
 
 license: GPL-3.0-or-later
@@ -48,15 +48,6 @@ apps:
 
 
 parts:
-  openssl3:
-    plugin: autotools
-    source: https://github.com/openssl/openssl.git
-    override-build: |
-      ./Configure --prefix=/usr/local/ssl --openssldir=/usr/local/ssl '-Wl,--enable-new-dtags,-rpath,$(LIBRPATH)'
-      make && make install
-      mkdir -p $SNAPCRAFT_PART_INSTALL/lib
-      cp ./*.so* $SNAPCRAFT_PART_INSTALL/lib/
-
   crackmapexec:
     plugin: python
     source: https://github.com/Porchetta-Industries/CrackMapExec.git
@@ -90,6 +81,5 @@ parts:
 # Cleanup
     override-prime: |
       snapcraftctl prime
-      rm -rf {lib,.venv/lib}/python3.8/site-packages/{pip*,setuptools*}
+      rm -rf {lib,.venv/lib}/python3.10/site-packages/{pip*,setuptools*}
       rm -rf .venv/src/*
-      rm -rf share/python-wheels
