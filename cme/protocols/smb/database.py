@@ -271,16 +271,16 @@ class database:
         logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, cur.lastrowid))
 
         return cur.lastrowid
-    '''
+    
     def remove_credentials(self, credIDs):
         """
         Removes a credential ID from the database
         """
         for credID in credIDs:
             cur = self.conn.cursor()
-            cur.execute("DELETE FROM credentials WHERE id=?", [credID])
+            cur.execute("DELETE FROM users WHERE id=?", [credID])
             cur.close()
-    '''
+            
     def add_admin_user(self, credtype, domain, username, password, host, userid=None):
 
         domain = domain.split('.')[0].upper()
