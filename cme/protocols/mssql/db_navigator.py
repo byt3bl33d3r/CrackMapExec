@@ -14,10 +14,10 @@ class navigator(DatabaseNavigator):
         for cred in creds:
 
             credID = cred[0]
-            domain = cred[1]
-            username = cred[2]
-            password = cred[3]
-            credtype = cred[4]
+            credtype = cred[1]
+            domain = cred[2]
+            username = cred[3]
+            password = cred[4]
             # pillaged_from = cred[5]
 
             links = self.db.get_admin_relations(userID=credID)
