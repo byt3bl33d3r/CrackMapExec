@@ -1186,9 +1186,10 @@ class smb(connection):
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1
-            if "Enabled" in ntds_hash and self.args.enabled:
-                ntds_hash = ntds_hash.split(" ")[0]
-                self.logger.highlight(ntds_hash)
+            if self.args.enabled:
+                if "Enabled" in ntds_hash:
+                    ntds_hash = ntds_hash.split(" ")[0]
+                    self.logger.highlight(ntds_hash)
             else:
                 ntds_hash = ntds_hash.split(" ")[0]
                 self.logger.highlight(ntds_hash)
@@ -1239,6 +1240,8 @@ class smb(connection):
             self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
             NTDS.dump()
             self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
+            self.logger.info("To extract only enabled accounts from the output file, run the following command: ")
+            self.logger.info("cat {} | grep -iv disabled | cut -d ':' -f1".format(self.output_filename + '.ntds'))
         except Exception as e:
             #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
                 # We don't store the resume file if this error happened, since this error is related to lack
