@@ -75,7 +75,10 @@ class CMEModule:
                 result = tx.run(
                     "MATCH (c:Computer {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(host_fqdn))
                 record = result.single()
-                value = record.value()
+                try:
+                    value = record.value()
+                except AttributeError:
+                    value = []
         if len(value) > 0:
             context.log.success("Node {} successfully set as owned in BloodHound".format(host_fqdn))
         else:
