@@ -152,6 +152,7 @@ class smb(connection):
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
         smb_parser.add_argument("--port", type=int, choices={445, 139}, default=445, help="SMB port (default: 445)")
         smb_parser.add_argument("--share", metavar="SHARE", default="C$", help="specify a share (default: C$)")
+        smb_parser.add_argument("--only-read-write", action='store_true', help="display only read write shares")
         smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
@@ -735,11 +736,20 @@ class smb(connection):
             self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
             self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
             for share in permissions:
-                name   = share['name']
-                remark = share['remark']
-                perms  = share['access']
+                if self.args.only_read_write == True:
+                    if len(share['access']) == 0:
+                        pass # no read/write
+                    else:
+                        name = share['name']
+                        remark = share['remark']
+                        perms  = share['access']
+                        self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+                else:
+                    name = share['name']
+                    remark = share['remark']
+                    perms  = share['access']
+                    self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
 
-                self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         except Exception as e:
             error = get_error_string(e)
             self.logger.error('Error enumerating shares: {}'.format(error),
