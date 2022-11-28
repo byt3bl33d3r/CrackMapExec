@@ -7,7 +7,7 @@ readme = "README.md"
 homepage = "https://github.com/Porchetta-Industries/CrackMapExec"
 repository = "https://github.com/Porchetta-Industries/CrackMapExec"
 exclude = []
-include = ["LICENSE", "cme/data/*", "cme/modules/*"]
+include = ["cme/data/*", "cme/modules/*"]
 license = "BSD-2-Clause"
 classifiers = [
     'Environment :: Console',
