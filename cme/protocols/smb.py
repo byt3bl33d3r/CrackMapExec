@@ -359,10 +359,6 @@ class smb(connection):
         self.create_conn_obj(fqdn_host)
         lmhash = ''
         nthash = ''
-        if not all('' == s for s in [self.nthash, password, aesKey]):
-            kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
-        else:
-            kerb_pass = ''
 
         try:
             if not self.args.laps:
@@ -377,6 +373,12 @@ class smb(connection):
                 self.hash = ntlm_hash
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
+
+            if not all('' == s for s in [self.nthash, password, aesKey]):
+                kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
+            else:
+                kerb_pass = ''
+
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
             
