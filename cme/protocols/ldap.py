@@ -324,7 +324,7 @@ class ldap(connection):
                                                 str(error)),
                                                 color='magenta' if error in ldap_error_status else 'red')
             return False
-        except (KeyError, KerberosException) as e:
+        except (KeyError, KerberosException, OSError) as e:
             self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
                                                 " from ccache" if useCache
