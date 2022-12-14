@@ -111,7 +111,8 @@ class connection(object):
                     logging.debug('Calling {}()'.format(k))
                     r = getattr(self, k)()
                     if self.export:
-                        write_log(str(r), self.export[0])
+                        r2 = str(r).replace("'", '"')
+                        write_log(str(r2), self.export[0])
 
     def call_modules(self):
         module_logger = CMEAdapter(extra={
