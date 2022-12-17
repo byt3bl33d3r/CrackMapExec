@@ -67,19 +67,20 @@ parts:
       - cargo
 
     override-build: |
-      snapcraftctl build
+      craftctl default
       virtualenv -p py .venv
       poetry config virtualenvs.create false --local
       poetry lock --no-update
       poetry install
       chmod 644 ./poetry.toml
-      cp -r ./* ./.v* $SNAPCRAFT_PRIME/
-      echo -e '#!/bin/sh \n\nset -e\n\ncd $SNAP && poetry run "$@"' > $SNAPCRAFT_PART_INSTALL/run
-      chmod +x $SNAPCRAFT_PART_INSTALL/run
-      snapcraftctl set-version $(git describe --tags)
+      cp -r ./* ./.v* $CRAFT_PRIME/
+      echo -e '#!/bin/sh \n\nset -e\n\ncd $SNAP && poetry run "$@"' > $CRAFT_PART_INSTALL/run
+      chmod +x $CRAFT_PART_INSTALL/run
+      craftctl set version=$(git describe --tags)
       
 # Cleanup
     override-prime: |
-      snapcraftctl prime
-      rm -rf {lib,.venv/lib}/python3.10/site-packages/{pip*,setuptools*}
+      craftctl default
+      /bin/bash -O extglob
+      rm -rf {lib,.venv/lib}/python3.10/site-packages/{pip*,setuptools*,wheel*,!(poetry*).dist-info}
       rm -rf .venv/src/*
