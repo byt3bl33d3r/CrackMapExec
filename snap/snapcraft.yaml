@@ -10,16 +10,15 @@ summary:  A swiss army knife for pentesting networks
 description: |
   CrackMapExec (a.k.a CME) is a post-exploitation tool that helps automate assessing the security of large Active Directory networks. Built with stealth in mind, CME follows the concept of "Living off the Land": abusing built-in Active Directory features/protocols to achieve it's functionality and allowing it to evade most endpoint protection/IDS/IPS solutions.
 
-  CME makes heavy use of the impacket library (developed by @asolino) for working with network protocols and performing a variety of post-exploitation techniques.
+  CME makes heavy use of the impacket library (developed by **@asolino**) for working with network protocols and performing a variety of post-exploitation techniques.
 
   Although meant to be used primarily for offensive purposes (e.g. red teams, internal pentest), CME can be used by blue teams as well to assess account privileges, find possible misconfigurations and simulate attack scenarios.
 
-  CrackMapExec is developed by @byt3bl33d3r and @mpgn
+  CrackMapExec is developed by **@byt3bl33d3r** and **@mpgn**
 
 
 grade: stable
 confinement: strict
-#compression: lzo
 
 architectures:
   - build-on: amd64
@@ -31,19 +30,18 @@ architectures:
 environment:
   LC_ALL: C.UTF-8
   LANG: C.UTF-8
-  POETRY_VIRTUALENVS_PATH: $SNAP/.venv
 
 apps:
   crackmapexec:
-    command: run crackmapexec
+    command: bin/crackmapexec
     plugs: [home, network, network-bind]
 
   cme:
-    command: run crackmapexec
+    command: bin/cme
     plugs: [home, network, network-bind]
 
   cmedb:
-    command: run cmedb
+    command: bin/cmedb
     plugs: [home]
 
 
@@ -51,8 +49,6 @@ parts:
   crackmapexec:
     plugin: python
     source: https://github.com/Porchetta-Industries/CrackMapExec.git
-    python-packages:
-      - poetry
 
     build-packages:
       - build-essential
@@ -67,20 +63,9 @@ parts:
       - cargo
 
     override-build: |
+      python3 -m pip install dephell[full]
+      dephell deps convert --from-path pyproject.toml --from-format poetry --to-path setup.py --to-format setuppy
       craftctl default
-      virtualenv -p py .venv
-      poetry config virtualenvs.create false --local
-      poetry lock --no-update
-      poetry install
-      chmod 644 ./poetry.toml
-      cp -r ./* ./.v* $CRAFT_PRIME/
-      echo -e '#!/bin/sh \n\nset -e\n\ncd $SNAP && poetry run "$@"' > $CRAFT_PART_INSTALL/run
-      chmod +x $CRAFT_PART_INSTALL/run
       craftctl set version=$(git describe --tags)
+      rm -rf $CRAFT_PART_INSTALL/lib/python3.10/site-packages/{pip,setuptools,wheel,pkg_resources,*.dist-info}
       
-# Cleanup
-    override-prime: |
-      craftctl default
-      /bin/bash -O extglob
-      rm -rf {lib,.venv/lib}/python3.10/site-packages/{pip*,setuptools*,wheel*,!(poetry*).dist-info}
-      rm -rf .venv/src/*
