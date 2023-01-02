@@ -10,7 +10,7 @@ from termcolor import colored
 
 def gen_cli_args():
 
-    VERSION  = '5.4.2'
+    VERSION  = '5.4.3'
     CODENAME = "Indestructible G0thm0g"
 
     p_loader =  protocol_loader()
