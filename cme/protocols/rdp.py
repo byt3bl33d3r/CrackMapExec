@@ -148,13 +148,62 @@ class rdp(connection):
             except:
                 pass
 
-    async def connect_rdp(self, url):
+    async def connect_rdp(self, url, host = None):
         connectionfactory = RDPConnectionFactory.from_url(url, self.iosettings)
-        self.conn = connectionfactory.create_connection_newtarget(self.hostname, self.iosettings)
+        self.conn = connectionfactory.create_connection_newtarget(self.host if not host else host, self.iosettings)
         _, err = await self.conn.connect()
         if err is not None:
             raise err
         return True
+
+    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+        lmhash = ''
+        nthash = ''
+        try:
+            #This checks to see if we didn't provide the LM Hash
+            if ntlm_hash.find(':') != -1:
+                lmhash, nthash = ntlm_hash.split(':')
+                self.hash = nthash
+            else:
+                nthash = ntlm_hash
+                self.hash = ntlm_hash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
+
+            fqdn_host = self.hostname + "." + self.domain
+            prefix = 'rdp+kerberos-password://' if not nthash else 'rdp+kerberos-rc4://'
+            password = password if password else nthash
+            self.url = prefix + domain + '\\' + username + ':' + password + '@' + fqdn_host + ':' + str(self.args.port) + '/?dc=' + str(self.domain)
+            asyncio.run(self.connect_rdp(self.url, fqdn_host))
+            self.admin_privs = True
+            self.logger.success(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        password,
+                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            if not self.args.local_auth:
+                add_user_bh(username, domain, self.logger, self.config)
+            if not self.args.continue_on_success:
+                return True
+
+        except Exception as e:
+            if "Authentication failed!" in str(e):
+                self.logger.success(u'{}\\{}:{} {}'.format(domain,
+                                                            username,
+                                                            password,
+                                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            else:
+                reason = None
+                for word in rdp_error_status.keys():
+                    if word in str(e):
+                        reason = rdp_error_status[word]
+                if "cannot unpack non-iterable NoneType object" == str(e):
+                    reason = "User valid but cannot connect"
+                self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                                                        username,
+                                                        password,
+                                                        '({})'.format(reason) if reason else ''),
+                                                        color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
+            return False
 
     def plaintext_login(self, domain, username, password):
         try:
@@ -193,7 +242,6 @@ class rdp(connection):
     def hash_login(self, domain, username, ntlm_hash):
         try:
             self.url = 'rdp+ntlm-nt://' + domain + '\\' + username + ':' + ntlm_hash + '@' + self.host + ':' + str(self.args.port)
-            print(self.url)
             asyncio.run(self.connect_rdp(self.url))
 
             self.admin_privs = True
