@@ -303,7 +303,7 @@ class CMEModule:
             EXCLUDE_EXTS        Extension file to exclude (Default: ico,lnk)
             EXCLUDE_DIR         Directory to exclude (Default: print$)
             MAX_FILE_SIZE       Max file size allowed to dump (Default: 51200)
-            OUTPUT_FOLDER       Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
+            OUTPUT              Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
         """
 
         self.read_only = module_options.get('READ_ONLY', True)
