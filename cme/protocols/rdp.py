@@ -79,16 +79,15 @@ class rdp(connection):
 
         return parser
 
-    def proto_flow(self):
-        if self.create_conn_obj():
-            self.proto_logger()
-            self.print_host_info()
-            self.login()
-
-            if hasattr(self.args, 'module') and self.args.module:
-                self.call_modules()
-            else:
-                self.call_cmd_args()
+    # def proto_flow(self):
+    #     if self.create_conn_obj():
+    #         self.proto_logger()
+    #         self.print_host_info()
+    #         if self.login() or (self.username == '' and self.password == ''):
+    #             if hasattr(self.args, 'module') and self.args.module:
+    #                 self.call_modules()
+    #             else:
+    #                 self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'RDP',
@@ -104,6 +103,7 @@ class rdp(connection):
                                                                 self.hostname,
                                                                 self.domain,
                                                                 self.nla))
+        return True
 
     def create_conn_obj(self):
         self.check_nla()
@@ -277,7 +277,10 @@ class rdp(connection):
             return False
 
     async def screen(self):
-        await self.connect_rdp(self.url)
+        try:
+            await self.connect_rdp(self.url)
+        except:
+            return
         await asyncio.sleep(int(self.args.screentime))
 
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
