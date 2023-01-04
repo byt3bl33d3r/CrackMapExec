@@ -32,6 +32,9 @@ class CMEModule:
         
         inputUser = connection.domain + '\\' + connection.username
         inputPassword = connection.password
+        if connection.password == '' and connection.nthash is not None:
+            context.log.debug("Using NT(LM) hash for authentication")
+            inputPassword = "aad3b435b51404eeaad3b435b51404ee:" + connection.nthash
         dcTarget = connection.conn.getRemoteHost()
         
         #Conduct a bind to LDAPS and determine if channel
