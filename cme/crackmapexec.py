@@ -34,6 +34,12 @@ import logging
 setup_logger()
 logger = CMEAdapter()
 
+try:
+    import librlers
+except:
+    print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
+    sys.exit()
+
 async def monitor_threadpool(pool, targets):
     logging.debug('Started thread poller')
 

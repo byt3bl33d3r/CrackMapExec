@@ -19,9 +19,9 @@ from shiv.cli import __version__ as VERSION
 def build_cme():
     print("building CME")
     try:
-        shutil.rmtree("build")
         shutil.rmtree("bin")
-    except:
+        shutil.rmtree("build")
+    except Exception as e:
         pass
 
     try:
@@ -55,7 +55,7 @@ def build_cme():
     create_archive(
         [Path("build").absolute()],
         Path("bin/cme"),
-        "/usr/bin/env -S python3 -sE",
+        "/usr/bin/env -S python -sE",
         "_bootstrap:bootstrap",
         env,
         True,
@@ -76,7 +76,7 @@ def build_cmedb():
     create_archive(
         [Path("build").absolute()],
         Path("bin/cmedb"),
-        "/usr/bin/env -S python3 -sE",
+        "/usr/bin/env -S python -sE",
         "_bootstrap:bootstrap",
         env,
         True,
