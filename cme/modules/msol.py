@@ -2,7 +2,6 @@
 # Author of the module : https://twitter.com/Daahtk
 # Based on the article : https://blog.xpnsec.com/azuread-connect-for-redteam/
 
-import subprocess
 from base64 import b64decode
 from sys import exit
 from os import path
@@ -58,7 +57,7 @@ class CMEModule:
             except Exception as e:
                context.log.error(f"Error writing file to share {self.tmp_share}: {e}")
                return
-# jusque la on a juste upload le fichier
+               
         try:
             if self.cmd == "":
                 context.log.info(f"Executing the script")
