@@ -16,6 +16,8 @@ from cme.logger import CMEAdapter
 from cme.helpers.logger import highlight
 from cme.protocols.wmi.wmiexec_regout import WMIEXEC_REGOUT
 
+WMI_ERROR_STATUS = ['rpc_s_access_denied']
+
 class wmi(connection):
 
     def __init__(self, args, db, host):
@@ -32,22 +34,25 @@ class wmi(connection):
     def proto_args(parser, std_parser, module_parser):
         wmi_parser = parser.add_parser('wmi', help="own stuff using WMI", parents=[std_parser, module_parser], conflict_handler='resolve')
         wmi_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
-        wmi_parser.add_argument("--port", type=int, default=135, help="WMI port (default: 135)")
         wmi_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        wmi_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        wmi_parser.add_argument("--continue-on-success", action='store_true', help="Continues authentication attempts even after successes")
+        wmi_parser.add_argument("--port", default=135, type=int, metavar='PORT', help='WMI port (default: 135)')
+        no_smb_arg = wmi_parser.add_argument("--no-smb", action=get_conditional_action(_StoreTrueAction), make_required=[], help='No smb connection')
 
         # For domain options
         dgroup = wmi_parser.add_mutually_exclusive_group()
-        dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, type=str, help="domain to authenticate to")
-        dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+        domain_arg = dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', default=None, type=str, help="Domain to authenticate to")
+        dgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
+        no_smb_arg.make_required = [domain_arg]
 
         egroup = wmi_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
-        egroup.add_argument("-q", metavar='QUERY', dest='query',type=str, help='issues the specified WMI query')
+        egroup.add_argument("-q", metavar='QUERY', dest='wmi_query',type=str, help='Issues the specified WMI query')
         egroup.add_argument("--namespace", metavar='NAMESPACE', type=str, default='root\\cimv2', help='WMI Namespace (default: root\\cimv2)')
 
         cgroup = wmi_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument("-x", metavar='EXECUTE', dest='execute', type=str, help='creates a new powershell process and executes the specified command with output')
-    
+        cgroup.add_argument("-x", metavar='EXECUTE', dest='execute', type=str, help='Creates a new powershell process and executes the specified command with output')
+        cgroup.add_argument("--interval-time", default=5 ,metavar='INTERVAL_TIME', dest='interval_time', type=int, help='Set interval time(seconds) when executing command, unrecommend set it lower than 5')
+
         return parser
     
     def proto_flow(self):
@@ -79,7 +84,7 @@ class wmi(connection):
     
     def enum_host_info(self):
         # smb no open, specify the domain
-        if self.args.domain:
+        if self.args.no_smb:
             self.domain = self.args.domain
             self.logger.extra['hostname'] = self.hostname
         else:
@@ -112,14 +117,19 @@ class wmi(connection):
                 self.domain = self.hostname
 
     def print_host_info(self):
-        if self.args.domain:
+        if self.args.no_smb:
             self.logger.extra['protocol'] = "WMI"
+            self.logger.extra['port'] = self.args.port
+            self.logger.info(u"Connecting to WMI {}".format(self.hostname))
         else:
             self.logger.extra['protocol'] = "SMB"
+            self.logger.extra['port'] = "445"
             self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
                                                             self.hostname,
                                                             self.domain))
-        self.logger.extra['protocol'] = "WMI"
+            self.logger.extra['protocol'] = "WMI"
+            self.logger.extra['port'] = self.args.port
+            self.logger.info(u"Connecting to WMI {}".format(self.hostname))
         return True
 
     def plaintext_login(self, domain, username, password):
@@ -140,7 +150,7 @@ class wmi(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     self.username,
                                                     self.password,
-                                                    e))
+                                                    e),color='magenta' if str(e) not in WMI_ERROR_STATUS else 'red')
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -176,42 +186,47 @@ class wmi(connection):
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
                                                     self.username,
                                                     ntlm_hash,
-                                                    e))
+                                                    e),color='magenta' if str(e) not in WMI_ERROR_STATUS else 'red')
             return False
 
-    def query(self, WQL=None, namespace=None):
-        records = []
-        if not namespace:
-            namespace = self.args.namespace
+    def wmi_query(self):
+        WQL = self.args.wmi_query
+        if not WQL:
+            self.logger.error("Missing WQL syntax in wmi query!")
+            return False
+        self.logger.success('Executing WQL: {}'.format(WQL))
         try:
             dcom = DCOMConnection(self.host, self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
-            iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
+            iWbemServices= iWbemLevel1Login.NTLMLogin(self.args.namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
-            if WQL:
-                iEnumWbemClassObject = iWbemServices.ExecQuery(WQL.strip('\n'))
-            else:
-                iEnumWbemClassObject = iWbemServices.ExecQuery(self.args.query.strip('\n'))
+            iEnumWbemClassObject = iWbemServices.ExecQuery(WQL.strip('\n'))
         except Exception as e:
-            self.logger.error('Execute WQL error {}'.format(e))
-        while True:
-            try:
-                wmi_results = iEnumWbemClassObject.Next(0xffffffff, 1)[0]
-                record = wmi_results.getProperties()
-                records.append(record)
-                for k,v in record.items():
-                    self.logger.highlight('{} => {}'.format(k,v['value']))
-                self.logger.highlight('')
-            except Exception as e:
-                if str(e).find('S_FALSE') < 0:
-                    raise e
-                else:
-                    break
-        iEnumWbemClassObject.RemRelease()
-        return records
+            self.logger.error('Execute WQL error: {}'.format(e))
+            iWbemServices.RemRelease()
+            dcom.disconnect()
+        else:
+            records = []
+            while True:
+                try:
+                    wmi_results = iEnumWbemClassObject.Next(0xffffffff, 1)[0]
+                    record = wmi_results.getProperties()
+                    records.append(record)
+                    for k,v in record.items():
+                        self.logger.highlight('{} => {}'.format(k,v['value']))
+                    self.logger.highlight('')
+                except Exception as e:
+                    if str(e).find('S_FALSE') < 0:
+                        raise e
+                    else:
+                        break
+            iEnumWbemClassObject.RemRelease()
+            iWbemServices.RemRelease()
+            dcom.disconnect()
+            return records
 
-    def execute(self, command=None):
+    def execute(self):
         command = self.args.execute
         if not command:
             self.logger.error("Missing command in wmiexec!")
@@ -223,9 +238,12 @@ class wmi(connection):
             iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
             iWbemLevel1Login.RemRelease()
             win32Process, _ = iWbemServices.GetObject('Win32_Process')
-            executor = WMIEXEC_REGOUT(win32Process, iWbemServices, self.host, self.logger)
+            executor = WMIEXEC_REGOUT(win32Process, iWbemServices, self.host, self.logger, self.args.interval_time)
             executor.execute_remote(command)
+            dcom.disconnect()
         except Exception as e:
             self.logger.error('Execute command error: {}'.format(e))
+            iWbemServices.RemRelease()
+            dcom.disconnect()
         
         
