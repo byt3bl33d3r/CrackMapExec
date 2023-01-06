@@ -150,7 +150,7 @@ class rdp(connection):
 
     async def connect_rdp(self, url):
         connectionfactory = RDPConnectionFactory.from_url(url, self.iosettings)
-        self.conn = connectionfactory.create_connection_newtarget(self.hostname, self.iosettings)
+        self.conn = connectionfactory.create_connection_newtarget(self.host, self.iosettings)
         _, err = await self.conn.connect()
         if err is not None:
             raise err

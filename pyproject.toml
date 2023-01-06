@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "crackmapexec"
-version = "5.4.0"
+version = "5.4.1"
 description = "A swiss army knife for pentesting networks"
 authors = ["Marcello Salvati <byt3bl33d3r@pm.com>", "Martial Puygrenier <mpgn@protonmail.com>"]
 readme = "README.md"
 homepage = "https://github.com/Porchetta-Industries/CrackMapExec"
 repository = "https://github.com/Porchetta-Industries/CrackMapExec"
 exclude = []
-include = ["LICENSE", "cme/data/*", "cme/modules/*"]
+include = ["cme/data/*", "cme/modules/*"]
 license = "BSD-2-Clause"
 classifiers = [
     'Environment :: Console',
@@ -35,7 +35,7 @@ neo4j = "^4.1.1"
 pylnk3 = "^0.4.2"
 pypsrp = "^0.7.0"
 paramiko = "^2.7.2"
-impacket =  { git = "https://github.com/SecureAuthCorp/impacket.git", branch = "master" }
+impacket =  { git = "https://github.com/mpgn/impacket.git", branch = "master" }
 dsinternals = "^1.2.4"
 xmltodict = "^0.12.0"
 terminaltables = "^3.1.0"

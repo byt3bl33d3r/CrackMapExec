@@ -25,7 +25,7 @@ dsinternals==1.2.4; python_version >= "3.4"
 flask==2.2.2; python_version >= "3.7"
 future==0.18.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" and python_version >= "3.6"
 idna==3.4; python_version >= "3.7" and python_version < "4"
-impacket @ git+https://github.com/SecureAuthCorp/impacket.git@master
+impacket @ git+https://github.com/mpgn/impacket.git@master
 importlib-metadata==4.2.0; python_version < "3.8" and python_version >= "3.7"
 itsdangerous==2.1.2; python_version >= "3.7"
 jinja2==3.1.2; python_version >= "3.7"
