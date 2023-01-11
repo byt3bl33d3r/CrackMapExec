@@ -1,6 +1,6 @@
 $SqlDatabaseName = "REPLACE_ME_SqlDatabase"
-$SqlInstanceName = "REPLACE_ME_SqlInstance"
 $SqlServerName = "REPLACE_ME_SqlServer"
+$SqlInstanceName = "REPLACE_ME_SqlInstance"
 
 #Forming the connection string
 $SQL = "SELECT [user_name] AS 'User name',[password] AS 'Password' FROM [$SqlDatabaseName].[dbo].[Credentials] WHERE password <> ''" #Filter empty passwords
@@ -18,13 +18,13 @@ try {
 	$connection.Close()
 }
 catch {
-	Write-Host "Can't connect to DB, exit."
+	Write-Host "Can't connect to DB! Exiting..."
 	exit -1
 }
 
 $rows=($dataset.Tables | Select-Object -Expand Rows)
 if ($rows.count -eq 0) {
-	Write-Host"No passwords found!"
+	Write-Host "No passwords found!"
 	exit
 }
 

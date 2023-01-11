@@ -76,7 +76,13 @@ class CMEModule:
             output = self.stripXmlOutput(context, output)
 
         # Stripping whitespaces and newlines
-        output_stripped = [" ".join(line.strip().split()) for line in output.split("\r\n") if line.strip()]
+        output_stripped = [" ".join(line.split()) for line in output.split("\r\n") if line.strip()]
+
+        # Error handling
+        if "Can't connect to DB! Exiting..." in output_stripped or "No passwords found!" in output_stripped:
+            context.log.error(output_stripped[0])
+            return
+
         for account in output_stripped:
             user, password = account.split(" ", 1)
             context.log.highlight(user + ":" + password)
@@ -86,5 +92,5 @@ class CMEModule:
         SqlDatabase, SqlInstance, SqlServer = self.checkVeeamInstalled(context, connection)
 
         if SqlDatabase and SqlInstance and SqlServer:
-            context.log.success("Found Veeam DB \"{}\" on SQL Server \"{}\\{}\"! Extracting stored credentials...".format(SqlDatabase, SqlInstance, SqlServer))
+            context.log.success("Found Veeam DB \"{}\" on SQL Server \"{}\\{}\"! Extracting stored credentials...".format(SqlDatabase, SqlServer, SqlInstance))
             self.extractCreds(context, connection, SqlDatabase, SqlInstance, SqlServer)
