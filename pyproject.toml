@@ -42,7 +42,7 @@ terminaltables = "^3.1.0"
 aioconsole = "^0.3.3"
 pywerview = "^0.3.3"
 minikerberos = "0.3.3"
-aardwolf = { git = "https://github.com/skelsec/aardwolf.git", branch = "main" }
+aardwolf = { git = "https://github.com/skelsec/aardwolf.git", rev = "34cf53a"  }
 masky = "^0.1.1"
 
 [tool.poetry.dev-dependencies]
