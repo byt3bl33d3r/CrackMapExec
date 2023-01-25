@@ -127,10 +127,39 @@ def setup_debug_logger():
     root_logger.addHandler(streamHandler)
     #root_logger.addHandler(fileHandler)
     root_logger.setLevel(logging.DEBUG)
-    return root_logger
+
+# Filter Example for future use cases
+class ExactLogLevelFilter(object):
+    """
+    Filter for one specific log level
+
+    Example: logging.getLogger('mylogger').addFilter(ExactLogLevelFilter(logging.INFO))
+    """
+    def __init__(self, level):
+        self.__level = level
+
+    def filter(self, logRecord):
+        return logRecord.levelno == self.__level
+
+class RangeLogLevelFilter(object):
+    """
+    Allow log records which have a level between \"level_min\" and \"level_max\"
+
+    Example: logging.getLogger('mylogger').addFilter(RangeLogLevelFilter(logging.INFO, logging.WARNING))
+    """
+    def __init__(self, level_min, level_max):
+        self.__level_min = level_min
+        self.__level_max = level_max
+
+    def filter(self, logRecord):
+        return (self.__level_min <= logRecord.levelno <= self.__level_max)
+
+def setup_success_logger(logger_name='CME'):
+    cme_logger = logging.getLogger(logger_name)
+    cme_logger.addFilter(RangeLogLevelFilter(logging.SUCCESS, logging.HIGHLIGHT))
+
 
 def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
-
     formatter = logging.Formatter("%(message)s")
 
     if log_to_file:
@@ -152,5 +181,3 @@ def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_
         cme_logger.addHandler(fileHandler)
 
     cme_logger.setLevel(level)
-
-    return cme_logger
