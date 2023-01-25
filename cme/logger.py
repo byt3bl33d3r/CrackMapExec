@@ -115,14 +115,13 @@ def setup_debug_logger():
     streamHandler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
-    root_logger.propagate = False
+    root_logger.handlers = []
     root_logger.addHandler(streamHandler)
     #root_logger.addHandler(fileHandler)
     root_logger.setLevel(logging.DEBUG)
     return root_logger
 
 def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
-
     formatter = logging.Formatter("%(message)s")
 
     if log_to_file:
