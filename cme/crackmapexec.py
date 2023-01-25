@@ -137,8 +137,10 @@ def main():
 
     if args.verbose:
         setup_debug_logger()
+    elif args.success:
+        setup_success_logger()
 
-    logging.debug('Passed args:\n' + pformat(vars(args)))
+    logger.debug('Passed args:\n' + pformat(vars(args)))
 
     if args.jitter:
         if '-' in args.jitter:

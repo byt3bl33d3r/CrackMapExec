@@ -34,6 +34,12 @@ class CMEAdapter(logging.LoggerAdapter):
         self.logger = logging.getLogger(logger_name)
         self.extra = extra
 
+        # Adding the costum loglevel 'SUCCESS' and 'HIGHLIGHT'
+        logging.addLevelName(23, 'SUCCESS')
+        logging.addLevelName(27, 'HIGHLIGHT')
+        logging.SUCCESS = 23
+        logging.HIGHLIGHT = 27
+
     def process(self, msg, kwargs):
         if self.extra is None:
             return u'{}'.format(msg), kwargs
@@ -87,7 +93,8 @@ class CMEAdapter(logging.LoggerAdapter):
             pass
 
         msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        self.logger._log(23, msg, args, **kwargs)
+    setattr(logging.getLoggerClass(), 'success', success)
 
     def highlight(self, msg, *args, **kwargs):
         try:
@@ -97,7 +104,8 @@ class CMEAdapter(logging.LoggerAdapter):
             pass
 
         msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        self.logger._log(27, msg, args, **kwargs)
+    setattr(logging.getLoggerClass(), 'highlight', highlight)
 
     # For Impacket's TDS library
     def logMessage(self,message):
