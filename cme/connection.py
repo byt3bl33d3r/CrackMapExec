@@ -197,7 +197,10 @@ class connection(object):
                         self.logger.error("Invalid database credential ID!")
         if self.args.use_kcache:
             with sem:
-                if self.kerberos_login(self.domain, '', '', '', '', self.kdcHost, True): return True
+                username = self.args.username[0] if len(self.args.username) else ''
+                password = self.args.password[0] if len(self.args.password) else ''
+                self.kerberos_login(self.domain, username, password, '', '', self.kdcHost, True)
+                return True
         for user in self.args.username:
             if isfile(user):
                 with open(user, 'r') as user_file:

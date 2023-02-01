@@ -3,6 +3,7 @@
 
 import logging
 import asyncio
+from os import getenv
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
@@ -27,7 +28,9 @@ rdp_error_status = {
     '0xc0000224' : 'STATUS_PASSWORD_MUST_CHANGE',
     '0xc0000022' : 'STATUS_ACCESS_DENIED',
     '0xc000006d' : 'STATUS_LOGON_FAILURE',
-    '0xc000006a' : 'STATUS_WRONG_PASSWORD '
+    '0xc000006a' : 'STATUS_WRONG_PASSWORD ',
+    'KDC_ERR_CLIENT_REVOKED':'KDC_ERR_CLIENT_REVOKED',
+    'KDC_ERR_PREAUTH_FAILED':'KDC_ERR_PREAUTH_FAILED'
 }
 
 class rdp(connection):
@@ -170,15 +173,34 @@ class rdp(connection):
             if lmhash: self.lmhash = lmhash
             if nthash: self.nthash = nthash
 
+            if not all('' == s for s in [nthash, password, aesKey]):
+                kerb_pass = next(s for s in [nthash, password, aesKey] if s)
+            else:
+                kerb_pass = ''
+
             fqdn_host = self.hostname + "." + self.domain
             prefix = 'rdp+kerberos-password://' if not nthash else 'rdp+kerberos-rc4://'
+            prefix = 'rdp+kerberos-ccache://' if useCache else prefix
             password = password if password else nthash
+            if useCache:
+                if not password:
+                    password = getenv('KRB5CCNAME') if not password else password
+                    if "/" in password:
+                        self.logger.error("Kerberos ticket need to be on the local directory")
+                        return False
+                    ccache = CCache.loadFile(getenv('KRB5CCNAME'))
+                    ticketCreds = ccache.credentials[0]
+                    username = ticketCreds['client'].prettyPrint().decode().split('@')[0]
+
             self.url = prefix + domain + '\\' + username + ':' + password + '@' + fqdn_host + ':' + str(self.args.port) + '/?dc=' + str(self.domain)
+            logging.debug(self.url)
             asyncio.run(self.connect_rdp(self.url, fqdn_host))
             self.admin_privs = True
-            self.logger.success(u'{}\\{}:{} {}'.format(domain,
+            self.logger.success(u'{}\\{}{} {}'.format(domain,
                                                         username,
-                                                        password,
+                                                        # Show what was used between cleartext, nthash, aesKey and ccache
+                                                        " from ccache" if useCache
+                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
@@ -186,11 +208,25 @@ class rdp(connection):
                 return True
 
         except Exception as e:
-            if "Authentication failed!" in str(e):
+            if "KDC_ERR" in str(e):
+                reason = None
+                for word in rdp_error_status.keys():
+                    if word in str(e):
+                        reason = rdp_error_status[word]
+                self.logger.error(u'{}\\{}{} {}'.format(domain,
+                                                        username,
+                                                        # Show what was used between cleartext, nthash, aesKey and ccache
+                                                        " from ccache" if useCache
+                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                        '({})'.format(reason) if reason else str(e)),
+                                                        color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN") else 'red')
+            elif "Authentication failed!" in str(e):
                 self.logger.success(u'{}\\{}:{} {}'.format(domain,
                                                             username,
                                                             password,
                                                             highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            elif "No such file" in str(e):
+                self.logger.error(str(e))
             else:
                 reason = None
                 for word in rdp_error_status.keys():
@@ -198,9 +234,11 @@ class rdp(connection):
                         reason = rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
-                self.logger.error(u'{}\\{}:{} {}'.format(domain,
+                self.logger.error(u'{}\\{}{} {}'.format(domain,
                                                         username,
-                                                        password,
+                                                        # Show what was used between cleartext, nthash, aesKey and ccache
+                                                        " from ccache" if useCache
+                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         '({})'.format(reason) if reason else ''),
                                                         color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
             return False
