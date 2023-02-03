@@ -34,5 +34,5 @@ class CMEModule:
         context.log.highlight("TGT without PAC size " + str(len(tgt_no_pac)))
         if len(tgt_no_pac) < len(tgt_with_pac):
             context.log.highlight("")
-            context.log.highlight("VULNEABLE")
+            context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/Ridter/noPac")
