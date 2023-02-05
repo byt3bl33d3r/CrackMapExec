@@ -1173,7 +1173,7 @@ class smb(connection):
                 ntlm_hash = MD4.new ()
                 ntlm_hash.update (currentPassword)
                 passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
-                self.logger.highlight("ID: {:<20} NTLM: {}".format(gmsa_id, passwd))
+                self.logger.highlight("GMSA ID: {:<20} NTLM: {}".format(gmsa_id, passwd))
         add_lsa_secret.secrets = 0
 
         if self.remote_ops and self.bootkey:
