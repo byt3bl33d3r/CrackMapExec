@@ -41,7 +41,7 @@ class CMEModule:
     multiple_hosts = False
 
     def on_login(self, context, connection):
-        dn = ','.join(["DC=%s" % part for part in connection.domain.split('.')])
+        dn = ','.join(["DC=%s" % part for part in connection.domain.split('.')][-2:])
 
         context.log.info('Getting the Sites and Subnets from domain')
 
