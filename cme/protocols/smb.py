@@ -1204,9 +1204,9 @@ class smb(connection):
 
         plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
         nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in self.db.get_credentials(credtype="hash")}
-        if self.password == '' or self.password is None:
+        if self.password != '':
             plaintexts[self.username] = self.password
-        if self.nthash == '' or self.nthash is None:
+        if self.nthash != '':
             nthashes[self.username] = self.nthash
 
         # Collect User and Machine masterkeys
