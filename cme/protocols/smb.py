@@ -1186,25 +1186,29 @@ class smb(connection):
                 self.logger.error(str(e))
 
         if pvkbytes is None:
-            dc_target = Target.create(
-                domain=self.domain,
-                username=self.username,
-                password=self.password,
-                target=self.domain,
-                lmhash=self.lmhash,
-                nthash=self.nthash,
-                do_kerberos=self.kerberos,
-                aesKey=self.aesKey,
-                use_kcache=self.use_kcache,
-            )
-
-            dc_conn = DPLootSMBConnection(dc_target) 
-            dc_conn.connect() # Connect to DC
-            if dc_conn.is_admin:
-                self.logger.info("User is Domain Administrator, exporting domain backupkey...")
-                backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
-                backupkey = backupkey_triage.triage_backupkey()
-                pvkbytes = backupkey.backupkey_v2
+            try:
+                dc_target = Target.create(
+                    domain=self.domain,
+                    username=self.username,
+                    password=self.password,
+                    target=self.domain,
+                    lmhash=self.lmhash,
+                    nthash=self.nthash,
+                    do_kerberos=self.kerberos,
+                    aesKey=self.aesKey,
+                    no_pass=True,
+                    use_kcache=self.use_kcache,
+                )
+                dc_conn = DPLootSMBConnection(dc_target) 
+                dc_conn.connect() # Connect to DC
+                if dc_conn.is_admin:
+                    self.logger.info("User is Domain Administrator, exporting domain backupkey...")
+                    backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
+                    backupkey = backupkey_triage.triage_backupkey()
+                    pvkbytes = backupkey.backupkey_v2
+            except Exception as e:
+                logging.debug("Error trying to get domain backupkey {}".format(e))
+                pass
 
         target = Target.create(
             domain=self.domain,
@@ -1215,13 +1219,13 @@ class smb(connection):
             nthash=self.nthash,
             do_kerberos=self.kerberos,
             aesKey=self.aesKey,
+            no_pass=True,
             use_kcache=self.use_kcache,
         )
 
         conn = DPLootSMBConnection(target) 
-        conn.connect()
-
-        
+        # conn.connect()
+        conn.smb_session = self.conn
 
         self.logger.info("Gathering masterkeys")
 
