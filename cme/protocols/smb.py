@@ -1263,7 +1263,7 @@ class smb(connection):
             NTDS.dump()
             self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
             self.logger.info("To extract only enabled accounts from the output file, run the following command: ")
-            self.logger.info("cat {} | grep -iv disabled | cut -d ':' -f1".format(self.output_filename + '.ntds'))
+            self.logger.info("grep -iv disabled {} | cut -d ':' -f1".format(self.output_filename + '.ntds'))
         except Exception as e:
             #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
                 # We don't store the resume file if this error happened, since this error is related to lack
