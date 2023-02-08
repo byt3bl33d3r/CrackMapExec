@@ -84,7 +84,7 @@ class PassPolDump:
         self.lmhash = ''
         self.nthash = ''
         self.aesKey = None
-        self.doKerberos = False
+        self.doKerberos = connection.kerberos
         self.protocols = PassPolDump.KNOWN_PROTOCOLS.keys()
         self.pass_pol = {}
 
