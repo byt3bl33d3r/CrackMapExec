@@ -1207,7 +1207,7 @@ class smb(connection):
                     backupkey = backupkey_triage.triage_backupkey()
                     pvkbytes = backupkey.backupkey_v2
             except Exception as e:
-                logging.debug("Could not get domain backupkey: {}".format(e))
+                self.logger.debug("Could not get domain backupkey: {}".format(e))
                 pass
 
         target = Target.create(
@@ -1242,7 +1242,7 @@ class smb(connection):
             masterkeys += masterkeys_triage.triage_masterkeys()
             masterkeys += masterkeys_triage.triage_system_masterkeys()
         except Exception as e:
-            logging.debug("Could not get masterkeys: {}".format(e))
+            self.logger.debug("Could not get masterkeys: {}".format(e))
 
         if len(masterkeys) == 0:
             self.logger.error("No masterkeys looted")
@@ -1260,7 +1260,7 @@ class smb(connection):
             for credential in system_credentials:
                 self.logger.highlight("[CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
         except Exception as e:
-            logging.debug("Error while looting credentials: {}".format(e))
+            self.logger.debug("Error while looting credentials: {}".format(e))
 
         try:
             # Collect Chrome Based Browser stored secrets
@@ -1269,7 +1269,7 @@ class smb(connection):
             for credential in browser_credentials:
                 self.logger.highlight("[%s] %s - %s:%s" % (credential.browser.upper(), credential.url, credential.username, credential.password))
         except Exception as e:
-            logging.debug("Error while looting browsers: {}".format(e))
+            self.logger.debug("Error while looting browsers: {}".format(e))
 
         try:
             # Collect User Internet Explorer stored secrets
@@ -1279,7 +1279,7 @@ class smb(connection):
                 if vault.type == 'Internet Explorer':
                     self.logger.highlight("[Internet Explorer] %s - %s:%s" % (vault.resource, vault.username, vault.password))
         except Exception as e:
-            logging.debug("Error while looting vaults: {}".format(e))
+            self.logger.debug("Error while looting vaults: {}".format(e))
 
         try:
             # Collect User and Machine certificates with private keys
@@ -1299,7 +1299,7 @@ class smb(connection):
                     with open(filename, "wb") as f:
                         f.write(certificate.pfx)
         except Exception as e:
-            logging.debug("Error while looting certificates: {}".format(e))
+            self.logger.debug("Error while looting certificates: {}".format(e))
 
     @requires_admin
     def lsa(self):
