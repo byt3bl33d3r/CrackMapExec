@@ -75,7 +75,7 @@ class PassPolDump:
 
     def __init__(self, connection):
         self.logger = connection.logger
-        self.addr = connection.host
+        self.addr = connection.host if not connection.kerberos else connection.hostname
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
