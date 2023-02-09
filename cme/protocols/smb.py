@@ -1265,7 +1265,7 @@ class smb(connection):
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
             browser_credentials, _ = browser_triage.triage_browsers()
             for credential in browser_credentials:
-                self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), '- '+credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+                self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
         except Exception as e:
             self.logger.debug("Error while looting browsers: {}".format(e))
 
@@ -1275,7 +1275,7 @@ class smb(connection):
             vaults = vaults_triage.triage_vaults()
             for vault in vaults:
                 if vault.type == 'Internet Explorer':
-                    self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource, vault.username, vault.password))
+                    self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
         except Exception as e:
             self.logger.debug("Error while looting vaults: {}".format(e))
 
