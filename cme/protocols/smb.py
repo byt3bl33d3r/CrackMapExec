@@ -36,7 +36,6 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
-from dploot.triage.certificates import CertificatesTriage
 from dploot.triage.vaults import VaultsTriage
 from dploot.triage.browser import BrowserTriage
 from dploot.triage.credentials import CredentialsTriage
@@ -1224,7 +1223,6 @@ class smb(connection):
         )
 
         conn = DPLootSMBConnection(target) 
-        # conn.connect()
         conn.smb_session = self.conn
 
         plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
