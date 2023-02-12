@@ -627,7 +627,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host if (not self.args.kerberos and not self.args.use_kcache) else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -637,7 +637,7 @@ class smb(connection):
 
             elif method == 'mmcexec':
                 try:
-                    exec_method = MMCEXEC(self.host if (not self.args.kerberos and not self.args.use_kcache) else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash)
+                    exec_method = MMCEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash)
                     logging.debug('Executed command via mmcexec')
                     break
                 except:
@@ -647,7 +647,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host if (not self.args.kerberos and not self.args.use_kcache) else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -657,7 +657,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host if (not self.args.kerberos and not self.args.use_kcache) else self.hostname + '.' + self.domain, self.smb_share_name, self.conn, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.conn, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
