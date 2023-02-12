@@ -11,7 +11,7 @@ from termcolor import colored
 def gen_cli_args():
 
     VERSION  = '5.4.4'
-    CODENAME = "Indestructible G0thm0g v2"
+    CODENAME = "Bruce Wayne"
 
     p_loader =  protocol_loader()
     protocols = p_loader.get_protocols()
