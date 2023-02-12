@@ -185,7 +185,8 @@ class ldap(connection):
 
     def get_ldap_info(self, host):
         try:
-            ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % host)
+            proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
+            ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % host)
 
             resp = ldapConnection.search(scope=ldapasn1_impacket.Scope('baseObject'), attributes=['defaultNamingContext', 'dnsHostName'], sizeLimit=0)
             for item in resp:
