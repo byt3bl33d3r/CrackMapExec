@@ -19,7 +19,7 @@ class UserSamrDump:
 
     def __init__(self, connection):
         self.logger = connection.logger
-        self.addr = connection.host if not connection.kerberos else connection.hostname
+        self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
