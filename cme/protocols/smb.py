@@ -172,7 +172,7 @@ class smb(connection):
 
         egroup = smb_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
-        egroup.add_argument("--only-read-write", action='store_true', help="display only read or write shares")
+        egroup.add_argument("--filter-shares", nargs='+', help="Filter share by access, option 'read' 'write' or 'read,write'")
         egroup.add_argument("--sessions", action='store_true', help='enumerate active sessions')
         egroup.add_argument('--disks', action='store_true', help='enumerate disks')
         egroup.add_argument("--loggedon-users-filter",action='store',help='only search for specific user, works with regex')
@@ -752,7 +752,7 @@ class smb(connection):
                 remark = share['remark']
                 perms  = share['access']
 
-                if self.args.only_read_write and len(share['access']) == 0:
+                if self.args.filter_shares and self.args.filter_shares != perms:
                     continue
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         except Exception as e:
