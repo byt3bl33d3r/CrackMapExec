@@ -20,7 +20,7 @@ class CMEModule:
     '''
         Module by @NeffIsBack
     '''
-    name = 'winscp_dump'
+    name = 'winscp'
     description = 'Looks for WinSCP.ini files in the registry and default locations and tries to extract credentials.'
     supported_protocols = ['smb']
     opsec_safe = True

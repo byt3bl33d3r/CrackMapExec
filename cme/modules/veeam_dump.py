@@ -15,7 +15,7 @@ class CMEModule:
         Module by @NeffIsBack
 
     '''
-    name = 'veeam_dump'
+    name = 'veeam'
     description = 'Extracts credentials from local Veeam SQL Database'
     supported_protocols = ['smb']
     opsec_safe= True 
