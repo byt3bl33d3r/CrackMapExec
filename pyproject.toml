@@ -45,6 +45,7 @@ minikerberos = "0.3.5"
 aardwolf = "0.2.5"
 masky = "^0.1.1"
 dploot = "^2.1.14"
+pyDes = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
