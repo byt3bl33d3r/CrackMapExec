@@ -43,9 +43,9 @@ aioconsole = "^0.3.3"
 pywerview = "^0.3.3"
 minikerberos = "0.3.5"
 aardwolf = "0.2.5"
-masky = "^0.1.1"
 dploot = "^2.1.14"
 pyDes = "^2.0.1"
+masky = "^0.2.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
