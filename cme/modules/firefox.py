@@ -43,10 +43,10 @@ class CMEModule:
             use_kcache=use_kcache,
         )
 
-        FirefoxTriage(target=target, logger=context.log)
         try:
             # Collect Firefox stored secrets
             firefox_triage = FirefoxTriage(target=target, logger=context.log)
+            firefox_triage.upgrade_connection(connection=connection.conn)
             firefox_credentials = firefox_triage.run()
             for credential in firefox_credentials:
                 context.log.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
