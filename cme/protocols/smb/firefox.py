@@ -7,8 +7,7 @@ import json
 import ntpath
 import sqlite3
 import tempfile
-from pyDes import triple_des, CBC
-from Cryptodome.Cipher import AES
+from Cryptodome.Cipher import AES,DES3
 from pyasn1.codec.der import decoder
 from dploot.lib.smb import DPLootSMBConnection
 
@@ -175,7 +174,8 @@ class FirefoxTriage:
         """
         Decrypt ciphered data (user / password) using the key previously found
         """
-        data = triple_des(key, CBC, iv).decrypt(ciphertext)
+        cipher = DES3.new(key=key, mode=DES3.MODE_CBC, iv=iv)
+        data = cipher.decrypt(ciphertext)
         nb = data[-1]
         try:
             return data[:-nb]
@@ -203,7 +203,8 @@ class FirefoxTriage:
             k = k1 + k2
             iv = k[-8:]
             key = k[:24]
-            return triple_des(key=key, mode=CBC, IV=iv).decrypt(cipher_t)
+            cipher = DES3.new(key=key, mode=DES3.MODE_CBC, iv=iv)
+            return cipher.decrypt(cipher_t)
         elif pbeAlgo == '1.2.840.113549.1.5.13': # pkcs5 pbes2
 
             assert str(decoded_item[0][0][1][0][0]) == '1.2.840.113549.1.5.12'
