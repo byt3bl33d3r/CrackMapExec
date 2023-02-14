@@ -17,10 +17,13 @@ class CMEModule:
         CA              Certificate Authority Name (CA_SERVER\CA_NAME)
         TEMPLATE        Template name allowing users to authenticate with (default: User)
         DC_IP           IP Address of the domain controller
+        AGENT_EXE       Path to a custom executable masky agent to be deployed
         """
         self.template = "User"
         self.ca = None
         self.dc_ip = None
+        self.agent_exe = None
+        self.file_args = False
 
         if "CA" in module_options:
             self.ca = module_options["CA"]
@@ -30,6 +33,10 @@ class CMEModule:
 
         if "DC_IP" in module_options:
             self.dc_ip = module_options["DC_IP"]
+
+        if "AGENT_EXE" in module_options:
+            self.agent_exe = module_options["AGENT_EXE"]
+            self.file_args = True
 
     def on_admin_login(self, context, connection):
         if not self.ca:
@@ -55,6 +62,8 @@ class CMEModule:
             password=password,
             hashes=f"{lmhash}:{nthash}",
             kerberos=kerberos,
+            exe_path=self.agent_exe,
+            file_args=self.file_args,
         )
 
         context.log.info("Running Masky on the targeted host")
@@ -114,8 +123,8 @@ class CMEModule:
             context.log.error("Fail to clean files related to Masky")
             context.log.error(
                 (
-                    f"Please remove the files named '{tracker.agent_filename}', '{tracker.error_filename}'"
-                    f" & '{tracker.output_filename}' within the folder '\\Windows\\Temp\\'"
+                    f"Please remove the files named '{tracker.agent_filename}', '{tracker.error_filename}', "
+                    f"'{tracker.output_filename}' & '{tracker.args_filename}' within the folder '\\Windows\\Temp\\'"
                 )
             )
             ret = False
