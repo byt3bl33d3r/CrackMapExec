@@ -1243,9 +1243,6 @@ class ldap(connection):
 
     def bloodhound(self):
 
-        print(self.args.use_kcache)
-
-        print(self.username, self.password, self.domain, self.lmhash, self.nthash, self.aesKey, self.kdcHost)
         auth = ADAuthentication(username=self.username, password=self.password, domain=self.domain, lm_hash=self.nthash, nt_hash=self.nthash, aeskey=self.aesKey, kdc=self.kdcHost, auth_method='auto')
         ad = AD(auth=auth, domain=self.domain, nameserver=self.args.nameserver, dns_tcp=False, dns_timeout=3)
         collect = resolve_collection_methods('Default' if not self.args.collection else self.args.collection)
