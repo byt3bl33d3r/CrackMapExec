@@ -147,6 +147,7 @@ class smb(connection):
         self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
+        self.pvkbytes = None
 
         connection.__init__(self, args, db, host)
 
@@ -1174,10 +1175,10 @@ class smb(connection):
     @requires_admin
     def dpapi(self):
         logging.getLogger("dploot").disabled = True
-        pvkbytes = None
+        
         if self.args.pvk is not None:
             try:
-                pvkbytes = open(self.args.pvk, 'rb').read()
+                self.pvkbytes = open(self.args.pvk, 'rb').read()
             except Exception as e:
                 logging.error(str(e))
 
@@ -1188,19 +1189,19 @@ class smb(connection):
             except Exception as e:
                 self.logger.error(str(e))
 
-        if pvkbytes is None:
+        if self.pvkbytes is None:
             try:
                 dc_target = Target.create(
-                    domain=self.domain,
-                    username=self.username,
-                    password=self.password,
-                    target=self.domain,
-                    lmhash=self.lmhash,
-                    nthash=self.nthash,
-                    do_kerberos=self.kerberos,
-                    aesKey=self.aesKey,
-                    no_pass=True,
-                    use_kcache=self.use_kcache,
+                    domain      = self.domain,
+                    username    = self.username,
+                    password    = self.password,
+                    target      = self.domain,
+                    lmhash      = self.lmhash,
+                    nthash      = self.nthash,
+                    do_kerberos = self.kerberos,
+                    aesKey      = self.aesKey,
+                    no_pass     = True,
+                    use_kcache  = self.use_kcache,
                 )
                 dc_conn = DPLootSMBConnection(dc_target) 
                 dc_conn.connect() # Connect to DC
@@ -1208,22 +1209,22 @@ class smb(connection):
                     self.logger.success("User is Domain Administrator, exporting domain backupkey...")
                     backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
                     backupkey = backupkey_triage.triage_backupkey()
-                    pvkbytes = backupkey.backupkey_v2
+                    self.pvkbytes = backupkey.backupkey_v2
             except Exception as e:
                 self.logger.debug("Could not get domain backupkey: {}".format(e))
                 pass
 
         target = Target.create(
-            domain=self.domain,
-            username=self.username,
-            password=self.password,
-            target=self.hostname + "." + self.domain,
-            lmhash=self.lmhash,
-            nthash=self.nthash,
-            do_kerberos=self.kerberos,
-            aesKey=self.aesKey,
-            no_pass=True,
-            use_kcache=self.use_kcache,
+            domain      = self.domain,
+            username    = self.username,
+            password    = self.password,
+            target      = self.hostname + "." + self.domain if self.kerberos else self.host,
+            lmhash      = self.lmhash,
+            nthash      = self.nthash,
+            do_kerberos = self.kerberos,
+            aesKey      = self.aesKey,
+            no_pass     = True,
+            use_kcache  = self.use_kcache,
         )
 
         try:
@@ -1242,7 +1243,7 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
-            masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=pvkbytes, passwords=plaintexts, nthashes=nthashes)
+            masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=self.pvkbytes, passwords=plaintexts, nthashes=nthashes)
             masterkeys += masterkeys_triage.triage_masterkeys()
             masterkeys += masterkeys_triage.triage_system_masterkeys()
         except Exception as e:
