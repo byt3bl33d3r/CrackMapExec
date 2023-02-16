@@ -8,8 +8,11 @@ from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 
 from aardwolf import logger
-from aardwolf.commons.factory import RDPConnectionFactory
+from aardwolf.vncconnection import VNCConnection
 from aardwolf.commons.iosettings import RDPIOSettings
+
+from asyauth.common.credentials import UniCredential
+from asyauth.common.constants import asyauthSecret, asyauthProtocol
 
 logger.setLevel(logging.CRITICAL)
 
@@ -21,11 +24,13 @@ class vnc(connection):
         self.iosettings.video_out_format = VIDEO_FORMAT.RAW
         self.iosettings.clipboard_use_pyperclip = False
         self.url = None
+        self.target = None
+        self.credential = None
         connection.__init__(self, args, db, host)
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        vnc_parser = parser.add_parser('vnc', help="own stuff using VPN", parents=[std_parser, module_parser])
+        vnc_parser = parser.add_parser('vnc', help="own stuff using VNC", parents=[std_parser, module_parser])
         vnc_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         vnc_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         vnc_parser.add_argument("--port", type=int, default=5900, help="Custom VNC port")
@@ -58,31 +63,33 @@ class vnc(connection):
 
     def create_conn_obj(self):
         try:
-            self.url = 'vnc+plain://@' + self.host + ':' + str(self.args.port)
-            asyncio.run(self.connect_vnc(self.url, True))
+            self.target = RDPTarget(ip=self.host, port=self.args.port)
+            credential = UniCredential(protocol=asyauthProtocol.PLAIN, stype=asyauthSecret.NONE)
+            self.conn = VNCConnection(target=self.target, credentials=credential, iosettings=self.iosettings)
+            asyncio.run(self.connect_vnc(True))
         except Exception as e:
+            logging.debug(str(e))
             if "Server supports:" not in str(e):
                 return False
         return True
 
-    async def connect_vnc(self, url, discover=False):
-        connectionfactory = RDPConnectionFactory.from_url(url, self.iosettings)
-        self.conn = connectionfactory.create_connection_newtarget(self.host, self.iosettings)
+    async def connect_vnc(self, discover=False):
         _, err = await self.conn.connect()
         if err is not None:
             if not discover:
                 await asyncio.sleep(self.args.vnc_sleep)
             raise err
-
         return True
 
     def plaintext_login(self, username, password):
         try:
-            if ":" in password:
-                password = ":" + password
-            self.url = 'vnc+plain-password://' + password + '@' + self.host + ':' + str(self.args.port)
-            self.logger.debug(self.url)
-            asyncio.run(self.connect_vnc(self.url))
+            stype=asyauthSecret.PASS
+            if password == "":
+                stype = stype=asyauthSecret.NONE
+            self.credential = UniCredential(secret=password, protocol=asyauthProtocol.PLAIN, stype=stype)
+            self.conn = VNCConnection(target=self.target, credentials=self.credential, iosettings=self.iosettings)
+            asyncio.run(self.connect_vnc())
+
             self.admin_privs = True
             self.logger.success(u'{} {}'.format(password,
                                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
@@ -90,6 +97,7 @@ class vnc(connection):
                 return True
 
         except Exception as e:
+            logging.debug(str(e))
             if "Server supports: 1" in str(e):
                 self.logger.success(u'{} {}'.format("No password seems to be accepted by the server",
                                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))                
@@ -99,7 +107,8 @@ class vnc(connection):
             return False
 
     async def screen(self):
-        await self.connect_vnc(self.url)
+        self.conn = VNCConnection(target=self.target, credentials=self.credential, iosettings=self.iosettings)
+        await self.connect_vnc()
         await asyncio.sleep(int(self.args.screentime))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
