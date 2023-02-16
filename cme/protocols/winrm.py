@@ -93,8 +93,6 @@ class winrm(connection):
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
 
-                self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-
                 try:
                     smb_conn.logoff()
                 except:
@@ -108,6 +106,9 @@ class winrm(connection):
 
             if self.args.local_auth:
                 self.domain = self.hostname
+
+        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+        self.output_filename = self.output_filename.replace(":", "-")
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldapco = LDAPConnect(self.domain, "389", self.domain)

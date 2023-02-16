@@ -4,8 +4,13 @@
 import ldap3
 import ssl
 import asyncio
+
 from msldap.connection import MSLDAPClientConnection
-from msldap.commons.factory import LDAPConnectionFactory
+from msldap.commons.target import MSLDAPTarget
+
+from asyauth.common.constants import asyauthProtocol, asyauthSecret
+from asyauth.common.credentials.ntlm import NTLMCredential
+from asyauth.common.credentials.kerberos import KerberosCredential
 
 class CMEModule:
     '''
@@ -17,7 +22,7 @@ class CMEModule:
     name = 'ldap-checker'
     description = 'Checks whether LDAP signing and binding are required and / or enforced'
     supported_protocols = ['ldap']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True 
 
     def options(self, context, module_options):
@@ -32,6 +37,9 @@ class CMEModule:
         
         inputUser = connection.domain + '\\' + connection.username
         inputPassword = connection.password
+        if connection.password == '' and connection.nthash is not None:
+            context.log.debug("Using NT(LM) hash for authentication")
+            inputPassword = "aad3b435b51404eeaad3b435b51404ee:" + connection.nthash
         dcTarget = connection.conn.getRemoteHost()
         
         #Conduct a bind to LDAPS and determine if channel
@@ -67,28 +75,27 @@ class CMEModule:
         #you can determine whether the policy is set to "never" or
         #if it's set to "when supported" based on the potential
         #error recieved from the bind attempt.
-        async def run_ldaps_withEPA(inputUser, inputPassword, dcTarget):
-            try:
-                url = 'ldaps+ntlm-password://'+inputUser + ':' + inputPassword +'@' + dcTarget
-                conn_url = LDAPConnectionFactory.from_url(url)
-                ldaps_client = conn_url.get_client()
-                ldapsClientConn = MSLDAPClientConnection(ldaps_client.target, ldaps_client.creds)
-                _, err = await ldapsClientConn.connect()
-                if err is not None:
-                    context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
-                #forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
-                ldapsClientConn.cb_data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                _, err = await ldapsClientConn.bind()
-                if "data 80090346" in str(err):
-                    return True
-                elif "data 52e" in str(err):
-                    return False
-                elif err is not None:
-                    context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
-                elif err is None:
-                    return False
-            except Exception as e:
-                context.log.error("something went wrong during ldaps_withEPA bind:" + str(e))
+        async def run_ldaps_withEPA(inputUser, inputPassword, dcTarget): 
+            target = MSLDAPTarget(ip=connection.host, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
+            stype = asyauthSecret.PASS if not connection.nthash else asyauthSecret.NT
+            secret = connection.password if not connection.nthash else connection.nthash
+            credential = NTLMCredential(secret=secret, username=connection.username, domain=connection.domain, stype=stype)
+            ldapsClientConn = MSLDAPClientConnection(target, credential)
+            _, err = await ldapsClientConn.connect()
+            if err is not None:
+                context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
+            #forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
+            ldapsClientConn.cb_data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            _, err = await ldapsClientConn.bind()
+            if "data 80090346" in str(err):
+                return True
+            elif "data 52e" in str(err):
+                return False
+            elif err is not None:
+                context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
+            elif err is None:
+                return False
+
 
         #Domain Controllers do not have a certificate setup for
         #LDAPS on port 636 by default. If this has not been setup,
@@ -142,27 +149,24 @@ class CMEModule:
                 exit()
 
         #Run trough all our code blocks to determine LDAP signing and channel binding settings.
-        try:
-            
-            ldapIsProtected = run_ldap(inputUser, inputPassword, dcTarget)
-            
-            if ldapIsProtected == False:
-                context.log.highlight("LDAP Signing NOT Enforced!")
-            elif ldapIsProtected == True:
-                context.log.error("LDAP Signing IS Enforced")
-            if DoesLdapsCompleteHandshake(dcTarget) == True:
-                ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
-                ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
-                if ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == True:
-                    context.log.highlight('Channel Binding is set to \"when supported\" - Success of Attacks depends on client settings')
-                elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
-                    context.log.highlight('Channel Binding is set to \"NEVER\" - Time to PWN!')
-                elif ldapsChannelBindingAlwaysCheck == True:
-                    context.log.error('Channel Binding is set to \"Required\" - Meeeehhhh :(')
-                else:
-                    context.log.error("\nSomething went wrong...")
-                    exit()          
+
+        ldapIsProtected = run_ldap(inputUser, inputPassword, dcTarget)
+        
+        if ldapIsProtected == False:
+            context.log.highlight("LDAP Signing NOT Enforced!")
+        elif ldapIsProtected == True:
+            context.log.error("LDAP Signing IS Enforced")
+        if DoesLdapsCompleteHandshake(dcTarget) == True:
+            ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
+            ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
+            if ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == True:
+                context.log.highlight('Channel Binding is set to \"when supported\" - Success of Attacks depends on client settings')
+            elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
+                context.log.highlight('Channel Binding is set to \"NEVER\" - Time to PWN!')
+            elif ldapsChannelBindingAlwaysCheck == True:
+                context.log.error('Channel Binding is set to \"Required\" - Meeeehhhh :(')
             else:
-                context.log.error(dcTarget + " - cannot complete TLS handshake, cert likely not configured")
-        except Exception as e:
-            context.log.error("ERROR: " + str(e))
+                context.log.error("\nSomething went wrong...")
+                exit()          
+        else:
+            context.log.error(dcTarget + " - cannot complete TLS handshake, cert likely not configured")

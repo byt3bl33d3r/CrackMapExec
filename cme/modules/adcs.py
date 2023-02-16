@@ -43,19 +43,20 @@ class CMEModule:
 
         try:
             sc = ldap.SimplePagedResultsControl()
+            baseDN_root=",".join(connection.ldapConnection._baseDN.split(",")[-2:])
 
             if self.server is None:
                 resp = connection.ldapConnection.search(searchFilter=search_filter,
                                             attributes=[],
                                             sizeLimit=0, searchControls=[sc],
                                             perRecordCallback=self.process_servers,
-                                            searchBase='CN=Configuration,' + connection.ldapConnection._baseDN)
+                                            searchBase='CN=Configuration,' + baseDN_root)
             else:
-                resp = connection.ldapConnection.search(searchFilter=search_filter + connection.ldapConnection._baseDN + ')',
+                resp = connection.ldapConnection.search(searchFilter=search_filter + baseDN_root + ')',
                                             attributes=['certificateTemplates'],
                                             sizeLimit=0, searchControls=[sc],
                                             perRecordCallback=self.process_templates,
-                                            searchBase='CN=Configuration,' + connection.ldapConnection._baseDN)
+                                            searchBase='CN=Configuration,' + baseDN_root)
 
         except LDAPSearchError as e:
             context.log.error('Obtained unexpected exception: {}'.format(str(e)))

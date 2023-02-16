@@ -85,19 +85,19 @@ def first_run_setup(logger):
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
             shutil.copy(default_path, CME_PATH)
 
-    if not os.path.exists(CERT_PATH):
-        logger.info('Generating SSL certificate')
-        try:
-            check_output(['openssl', 'help'], stderr=PIPE)
-            if os.name != 'nt':
-                os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
-            else:
-                os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US"'.format(path=CERT_PATH))
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                logger.error('OpenSSL command line utility is not installed, could not generate certificate, using default certificate')
-                default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'default.pem')
-                shutil.copy(default_path, CERT_PATH)                
-            else:
-                logger.error('Error while generating SSL certificate: {}'.format(e))
-                sys.exit(1)
+    # if not os.path.exists(CERT_PATH):
+    #     logger.info('Generating SSL certificate')
+    #     try:
+    #         check_output(['openssl', 'help'], stderr=PIPE)
+    #         if os.name != 'nt':
+    #             os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US" > /dev/null 2>&1'.format(path=CERT_PATH))
+    #         else:
+    #             os.system('openssl req -new -x509 -keyout {path} -out {path} -days 365 -nodes -subj "/C=US"'.format(path=CERT_PATH))
+    #     except OSError as e:
+    #         if e.errno == errno.ENOENT:
+    #             logger.error('OpenSSL command line utility is not installed, could not generate certificate, using default certificate')
+    #             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'default.pem')
+    #             shutil.copy(default_path, CERT_PATH)                
+    #         else:
+    #             logger.error('Error while generating SSL certificate: {}'.format(e))
+    #             sys.exit(1)

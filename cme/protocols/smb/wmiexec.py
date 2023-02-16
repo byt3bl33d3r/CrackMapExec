@@ -63,7 +63,6 @@ class WMIEXEC:
     def cd(self, s):
         self.execute_remote('cd ' + s)
         if len(self.__outputBuffer.strip('\r\n')) > 0:
-            print(self.__outputBuffer)
             self.__outputBuffer = b''
         else:
             self.__pwd = ntpath.normpath(ntpath.join(self.__pwd, s))
@@ -90,7 +89,7 @@ class WMIEXEC:
 
         command = self.__shell + data
         if self.__retOutput:
-            command += ' 1> ' + '\\\\127.0.0.1\\%s' % self.__share + self.__output  + ' 2>&1'
+            command += ' 1> ' + '%s' % self.__output  + ' 2>&1'
 
         logging.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)

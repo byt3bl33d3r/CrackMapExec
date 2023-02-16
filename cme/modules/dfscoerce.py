@@ -24,7 +24,7 @@ class CMEModule:
 
     def on_login(self, context, connection):
         trigger = TriggerAuth()
-        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host)
+        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
 
         if dce is not None: 
             logging.debug("Target is vulnerable to DFSCoerce")
@@ -78,13 +78,13 @@ class NetrDfsAddRootResponse(NDRCALL):
      )
 
 class TriggerAuth():
-    def connect(self, username, password, domain, lmhash, nthash, target):
+    def connect(self, username, password, domain, lmhash, nthash, target, doKerberos, dcHost):
         rpctransport = transport.DCERPCTransportFactory(r'ncacn_np:%s[\PIPE\netdfs]' % target)
         if hasattr(rpctransport, 'set_credentials'):
             rpctransport.set_credentials(username=username, password=password, domain=domain, lmhash=lmhash, nthash=nthash)
 
-        #if doKerberos:
-        #    rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
+        if doKerberos:
+            rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
         #if target:
         #    rpctransport.setRemoteHost(target)
         

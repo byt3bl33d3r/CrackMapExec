@@ -4,15 +4,16 @@
 # https://troopers.de/downloads/troopers19/TROOPERS19_AD_Fun_With_LDAP.pdf
 
 import logging
-from argparse import _StoreTrueAction
-from binascii import b2a_hex, unhexlify, hexlify
+import hmac
+
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
 from cme.protocols.ldap.kerberos import KerberosAttacks
-from Cryptodome.Hash import MD4
+from cme.protocols.ldap.bloodhound import BloodHound
+
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
@@ -22,9 +23,17 @@ from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5 import constants
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap.ldaptypes import SR_SECURITY_DESCRIPTOR
+
+from bloodhound.ad.domain import AD
+from bloodhound.ad.authentication import ADAuthentication
+
+from argparse import _StoreTrueAction
+from binascii import b2a_hex, unhexlify, hexlify
+from Cryptodome.Hash import MD4
 from io import StringIO
 from pywerview.cli.helpers import *
 from re import sub, I
+from zipfile import ZipFile
 
 ldap_error_status = {
     "1":"STATUS_NOT_SUPPORTED",
@@ -39,6 +48,53 @@ ldap_error_status = {
     "KDC_ERR_CLIENT_REVOKED":"KDC_ERR_CLIENT_REVOKED",
     "KDC_ERR_PREAUTH_FAILED":"KDC_ERR_PREAUTH_FAILED"
 }
+
+def resolve_collection_methods(methods):
+    """
+    Convert methods (string) to list of validated methods to resolve
+    """
+    valid_methods = ['group', 'localadmin', 'session', 'trusts', 'default', 'all', 'loggedon',
+                     'objectprops', 'experimental', 'acl', 'dcom', 'rdp', 'psremote', 'dconly',
+                     'container']
+    default_methods = ['group', 'localadmin', 'session', 'trusts']
+    # Similar to SharpHound, All is not really all, it excludes loggedon
+    all_methods = ['group', 'localadmin', 'session', 'trusts', 'objectprops', 'acl', 'dcom', 'rdp', 'psremote', 'container']
+    # DC only, does not collect to computers
+    dconly_methods = ['group', 'trusts', 'objectprops', 'acl', 'container']
+    if ',' in methods:
+        method_list = [method.lower() for method in methods.split(',')]
+        validated_methods = []
+        for method in method_list:
+            if method not in valid_methods:
+                logging.error('Invalid collection method specified: %s', method)
+                return False
+
+            if method == 'default':
+                validated_methods += default_methods
+            elif method == 'all':
+                validated_methods += all_methods
+            elif method == 'dconly':
+                validated_methods += dconly_methods
+            else:
+                validated_methods.append(method)
+        return set(validated_methods)
+    else:
+        validated_methods = []
+        # It is only one
+        method = methods.lower()
+        if method in valid_methods:
+            if method == 'default':
+                validated_methods += default_methods
+            elif method == 'all':
+                validated_methods += all_methods
+            elif method == 'dconly':
+                validated_methods += dconly_methods
+            else:
+                validated_methods.append(method)
+            return set(validated_methods)
+        else:
+            logging.error('Invalid collection method specified: %s', method)
+            return False
 
 
 def get_conditional_action(baseAction):
@@ -105,8 +161,17 @@ class ldap(connection):
         vgroup.add_argument("--admin-count", action="store_true", help="Get objets that had the value adminCount=1")
         vgroup.add_argument("--users", action="store_true", help="Enumerate enabled domain users")
         vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
-        vgroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
         vgroup.add_argument("--get-sid", action="store_true", help="Get domain sid")
+
+        ggroup = ldap_parser.add_argument_group("Retrevie gmsa on the remote DC", "Options to play with gmsa")
+        ggroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
+        ggroup.add_argument("--gmsa-convert-id", help="Get the secret name of specific gmsa or all gmsa if no gmsa provided")
+        ggroup.add_argument("--gmsa-decrypt-lsa", help="Decrypt the gmsa encrypted value from LSA")
+
+        bgroup = ldap_parser.add_argument_group("Bloodhound scan", "Options to play with bloodhoud")
+        bgroup.add_argument("--bloodhound", action="store_true", help="Perform bloodhound scan")
+        bgroup.add_argument("-ns", '--nameserver', help="Custom DNS IP")
+        bgroup.add_argument("-c", "--collection", help="Which information to collect. Supported: Group, LocalAdmin, Session, Trusts, Default, DCOnly, DCOM, RDP, PSRemote, LoggedOn, Container, ObjectProps, ACL, All. You can specify more than one by separating them with a comma. (default: Default)'")   
 
         return parser
 
@@ -120,7 +185,8 @@ class ldap(connection):
 
     def get_ldap_info(self, host):
         try:
-            ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % host)
+            proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
+            ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % host)
 
             resp = ldapConnection.search(scope=ldapasn1_impacket.Scope('baseObject'), attributes=['defaultNamingContext', 'dnsHostName'], sizeLimit=0)
             for item in resp:
@@ -205,9 +271,6 @@ class ldap(connection):
             self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
             self.os_arch   = self.get_os_arch()
 
-            self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-            self.output_filename = self.output_filename.replace(":", "-")
-
             if not self.domain:
                 self.domain = self.hostname
 
@@ -228,6 +291,8 @@ class ldap(connection):
 
             #Re-connect since we logged off
             self.create_conn_obj()
+        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+        self.output_filename = self.output_filename.replace(":", "-")
 
     def print_host_info(self):
         if self.args.no_smb:
@@ -253,6 +318,8 @@ class ldap(connection):
         self.username = username
         self.password = password
         self.domain = domain
+        self.kdcHost = kdcHost
+        self.aesKey = aesKey
 
         lmhash = ''
         nthash = ''
@@ -282,7 +349,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.args.gmsa else "ldap"
+            proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
                                                 aesKey, kdcHost=kdcHost, useCache=useCache)
@@ -300,7 +367,7 @@ class ldap(connection):
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
+            self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -324,7 +391,7 @@ class ldap(connection):
                                                 str(error)),
                                                 color='magenta' if error in ldap_error_status else 'red')
             return False
-        except (KeyError, KerberosException) as e:
+        except (KeyError, KerberosException, OSError) as e:
             self.logger.error(u'{}\\{}{} {}'.format(self.domain,
                                                 self.username,
                                                 " from ccache" if useCache
@@ -413,7 +480,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.args.gmsa else "ldap"
+            proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -425,7 +492,7 @@ class ldap(connection):
                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
 
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
+            self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -461,14 +528,14 @@ class ldap(connection):
                                                     self.username, 
                                                     self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
+                                                    color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
+                                                 color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
             return False
 
         except OSError as e:
@@ -508,7 +575,7 @@ class ldap(connection):
 
         try:
             # Connect to LDAP
-            proto = "ldaps" if self.args.gmsa else "ldap"
+            proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -519,7 +586,7 @@ class ldap(connection):
                                     self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
             self.logger.extra['protocol'] = "LDAP"
-            self.logger.extra['port'] = "389" if not self.args.gmsa else "636"
+            self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -553,14 +620,14 @@ class ldap(connection):
                                                     self.username, 
                                                     nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                     ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
+                                                    color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
                                                  self.username, 
                                                  nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                  ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if errorCode and errorCode != 1 in ldap_error_status else 'red')
+                                                 color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
             return False
         except OSError as e:
             self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
@@ -1079,7 +1146,7 @@ class ldap(connection):
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
                 sAMAccountName =  ''
-                managedPassword = ''
+                passwd = ''
                 for attribute in item['attributes']:
                     if str(attribute['type']) == 'sAMAccountName':
                         sAMAccountName = str(attribute['vals'][0])
@@ -1091,5 +1158,142 @@ class ldap(connection):
                         ntlm_hash = MD4.new ()
                         ntlm_hash.update (currentPassword)
                         passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
-                        self.logger.highlight("Account: {:<20} NTLM: {}".format(sAMAccountName, passwd))
+                self.logger.highlight("Account: {:<20} NTLM: {}".format(sAMAccountName, passwd))
         return True
+
+    def decipher_gmsa_name(self, domain_name=None, account_name=None):
+        # https://aadinternals.com/post/gmsa/
+        gmsa_account_name = (domain_name + account_name).upper()
+        self.logger.debug(f"GMSA name for {gmsa_account_name}")
+        bin_account_name = gmsa_account_name.encode("utf-16le")
+        bin_hash = hmac.new(bytes('' , 'latin-1'), msg = bin_account_name, digestmod = hashlib.sha256).digest()
+        hex_letters = "0123456789abcdef"
+        str_hash = ""
+        for b in bin_hash:
+            str_hash += hex_letters[b & 0x0f]
+            str_hash += hex_letters[b >> 0x04]
+        self.logger.debug(f"Hash2: {str_hash}")
+        return str_hash
+
+    def gmsa_convert_id(self):
+        if self.args.gmsa_convert_id:
+            if len(self.args.gmsa_convert_id) != 64:
+                self.logger.error("Length of the gmsa id not correct :'(")
+            else:
+                # getting the gmsa account
+                search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
+                gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
+                                            attributes=['sAMAccountName'],
+                                            sizeLimit=0,
+                                            searchBase=self.baseDN)
+                if gmsa_accounts:
+                    answers = []
+                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+
+                    for item in gmsa_accounts:
+                        if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                            continue
+                        sAMAccountName =  ''
+                        for attribute in item['attributes']:
+                            if str(attribute['type']) == 'sAMAccountName':
+                                sAMAccountName = str(attribute['vals'][0])
+                                if self.decipher_gmsa_name(self.domain.split('.')[0], sAMAccountName[:-1]) == self.args.gmsa_convert_id:
+                                    self.logger.highlight("Account: {:<20} ID: {}".format(sAMAccountName, self.args.gmsa_convert_id))
+                                    break
+        else:
+            self.logger.error("No string provided :'(")
+
+    def gmsa_decrypt_lsa(self):
+        if self.args.gmsa_decrypt_lsa:
+            if "_SC_GMSA_{84A78B8C" in self.args.gmsa_decrypt_lsa:
+                gmsa = self.args.gmsa_decrypt_lsa.split("_")[4].split(":")
+                gmsa_id = gmsa[0]
+                gmsa_pass = gmsa[1]
+                # getting the gmsa account
+                search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
+                gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
+                                            attributes=['sAMAccountName'],
+                                            sizeLimit=0,
+                                            searchBase=self.baseDN)
+                if gmsa_accounts:
+                    answers = []
+                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+
+                    for item in gmsa_accounts:
+                        if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                            continue
+                        sAMAccountName =  ''
+                        for attribute in item['attributes']:
+                            if str(attribute['type']) == 'sAMAccountName':
+                                sAMAccountName = str(attribute['vals'][0])
+                                if self.decipher_gmsa_name(self.domain.split('.')[0], sAMAccountName[:-1]) == gmsa_id:
+                                    gmsa_id = sAMAccountName
+                                    break
+                # convert to ntlm
+                data = bytes.fromhex(gmsa_pass)
+                blob = MSDS_MANAGEDPASSWORD_BLOB()
+                blob.fromString(data)
+                currentPassword = blob['CurrentPassword'][:-2]
+                ntlm_hash = MD4.new ()
+                ntlm_hash.update (currentPassword)
+                passwd = hexlify(ntlm_hash.digest()).decode("utf-8")
+                self.logger.highlight("Account: {:<20} NTLM: {}".format(gmsa_id, passwd))
+        else:
+            self.logger.error("No string provided :'(")
+
+    def bloodhound(self):
+
+        auth = ADAuthentication(username=self.username, password=self.password, domain=self.domain, lm_hash=self.nthash, nt_hash=self.nthash, aeskey=self.aesKey, kdc=self.kdcHost, auth_method='auto')
+        ad = AD(auth=auth, domain=self.domain, nameserver=self.args.nameserver, dns_tcp=False, dns_timeout=3)
+        collect = resolve_collection_methods('Default' if not self.args.collection else self.args.collection)
+        if not collect:
+            return
+        self.logger.highlight('Resolved collection methods: %s', ', '.join(list(collect)))
+
+        logging.debug('Using DNS to retrieve domain information')
+        ad.dns_resolve(domain=self.domain)
+
+        if self.args.kerberos:
+            self.logger.highlight("Using kerberos auth without ccache, getting TGT")
+            auth.get_tgt()
+        if self.args.use_kcache:
+            self.logger.highlight("Using kerberos auth from ccache")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S") + "_"
+        bloodhound = BloodHound(ad, self.hostname, self.host, self.args.port)
+        bloodhound.connect()
+
+        # root_logger = logging.getLogger()
+        # root_logger.setLevel(logging.INFO)
+
+        # bad bad coding but it's late and I don't have much time
+        from termcolor import colored
+        debug_output_string = "{:<24} {:<15} {:<6} {:<16} \033[1m\x1b[33;20m%(message)s \x1b[0m".format(colored(self.logger.extra['protocol'], 'blue', attrs=['bold']),
+                                                                    self.logger.extra['host'],
+                                                                    self.logger.extra['port'],
+                                                                    self.logger.extra['hostname'] if self.logger.extra['hostname'] else 'NONE')
+        formatter = logging.Formatter(debug_output_string)
+        streamHandler = logging.StreamHandler()
+        streamHandler.setFormatter(formatter)
+
+        root_logger = logging.getLogger()
+        root_logger.handlers = []
+        root_logger.addHandler(streamHandler)
+        root_logger.setLevel(logging.INFO)
+
+
+        bloodhound.run(collect=collect,
+                    num_workers=10,
+                    disable_pooling=False,
+                    timestamp=timestamp,
+                    computerfile=None,
+                    cachefile=None,
+                    exclude_dcs=False)
+
+        self.logger.highlight("Compressing output into " + self.output_filename + "bloodhound.zip")
+        list_of_files = os.listdir(os.getcwd())
+        with ZipFile(self.output_filename + "bloodhound.zip",'w') as zip:
+            for each_file in list_of_files:
+                if each_file.startswith(timestamp) and each_file.endswith("json"):
+                    zip.write(each_file)
+                    os.remove(each_file)
