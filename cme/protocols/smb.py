@@ -148,6 +148,7 @@ class smb(connection):
         self.signing = False
         self.smb_share_name = smb_share_name
         self.pvkbytes = None
+        self.no_da = None
 
         connection.__init__(self, args, db, host)
 
@@ -1189,7 +1190,7 @@ class smb(connection):
             except Exception as e:
                 self.logger.error(str(e))
 
-        if self.pvkbytes is None:
+        if self.pvkbytes is None and self.no_da == None:
             try:
                 dc_target = Target.create(
                     domain      = self.domain,
@@ -1210,6 +1211,8 @@ class smb(connection):
                     backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
                     backupkey = backupkey_triage.triage_backupkey()
                     self.pvkbytes = backupkey.backupkey_v2
+                else:
+                    self.no_da = False
             except Exception as e:
                 self.logger.debug("Could not get domain backupkey: {}".format(e))
                 pass
