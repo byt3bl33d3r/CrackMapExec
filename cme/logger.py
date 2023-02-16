@@ -154,6 +154,10 @@ class RangeLogLevelFilter(object):
     def filter(self, logRecord):
         return (self.__level_min <= logRecord.levelno <= self.__level_max)
 
+def setup_info_logger(logger_name='CME'):
+    cme_logger = logging.getLogger(logger_name)
+    cme_logger.addFilter(RangeLogLevelFilter(logging.INFO, logging.HIGHLIGHT))
+
 def setup_success_logger(logger_name='CME'):
     cme_logger = logging.getLogger(logger_name)
     cme_logger.addFilter(RangeLogLevelFilter(logging.SUCCESS, logging.HIGHLIGHT))

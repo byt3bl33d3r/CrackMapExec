@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from cme.logger import setup_logger, setup_debug_logger, setup_success_logger, CMEAdapter
+from cme.logger import setup_logger, setup_debug_logger, setup_info_logger, setup_success_logger, CMEAdapter
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
@@ -137,7 +137,9 @@ def main():
 
     if args.verbose:
         setup_debug_logger()
-    elif args.success:
+    elif args.no_error:
+        setup_info_logger()
+    elif args.success_only:
         setup_success_logger()
 
     logger.debug('Passed args:\n' + pformat(vars(args)))
