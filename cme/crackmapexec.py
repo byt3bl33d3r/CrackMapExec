@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from cme.logger import setup_logger, setup_debug_logger, setup_info_logger, setup_success_logger, CMEAdapter
+from cme.logger import *
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
@@ -135,12 +135,15 @@ def main():
     server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
     current_workspace = config.get('CME', 'workspace')
 
+    # Logger setup
     if args.verbose:
         setup_debug_logger()
     elif args.no_error:
         setup_info_logger()
     elif args.success_only:
         setup_success_logger()
+    if args.output_file:
+        logger_set_output_file(args.output_file)
 
     logger.debug('Passed args:\n' + pformat(vars(args)))
 

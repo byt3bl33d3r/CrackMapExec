@@ -43,6 +43,7 @@ def gen_cli_args():
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
     parser.add_argument("--no-error", action='store_true', help="surpress error and warning log output")
     parser.add_argument("--success-only", action='store_true', help="surpress error, warning and info log output")
+    parser.add_argument("--output-file", type=str, help="append console output to a file (default: None)")
 
     subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
 

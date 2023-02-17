@@ -11,7 +11,7 @@ from datetime import datetime
 #The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
 #There must be a better way of doing this, but this way we might save some penguins!
 
-ansi_escape = re.compile(r'\x1b[^m]*m')
+ansi_escape = re.compile(r'\x1b\[[0-9;]*m')
 
 def antiansi_emit(self, record):
 
@@ -116,6 +116,17 @@ class CMEAdapter(logging.LoggerAdapter):
         CMEAdapter.message = ''
         return out
 
+def logger_set_output_file(output_file):
+    formatter = logging.Formatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
+
+    fileHandler = logging.FileHandler(output_file)
+    fileHandler.setFormatter(formatter)
+
+    cme_logger = logging.getLogger('CME')
+    cme_logger.addHandler(fileHandler)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(fileHandler)
+
 def setup_debug_logger():
     debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
     formatter = logging.Formatter(debug_output_string)
@@ -125,7 +136,6 @@ def setup_debug_logger():
     root_logger = logging.getLogger()
     root_logger.handlers = []
     root_logger.addHandler(streamHandler)
-    #root_logger.addHandler(fileHandler)
     root_logger.setLevel(logging.DEBUG)
 
 # Filter Example for future use cases
