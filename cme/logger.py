@@ -123,7 +123,7 @@ def setup_debug_logger():
     streamHandler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
-    root_logger.propagate = False
+    root_logger.handlers = []
     root_logger.addHandler(streamHandler)
     #root_logger.addHandler(fileHandler)
     root_logger.setLevel(logging.DEBUG)
