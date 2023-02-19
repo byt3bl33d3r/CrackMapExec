@@ -1246,6 +1246,7 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
+            self.logger.success("Collecting User and Machine masterkeys, grab a coffee and be patient...")
             masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=self.pvkbytes, passwords=plaintexts, nthashes=nthashes)
             masterkeys += masterkeys_triage.triage_masterkeys()
             masterkeys += masterkeys_triage.triage_system_masterkeys()
