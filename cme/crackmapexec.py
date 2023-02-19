@@ -31,7 +31,7 @@ import os
 import sys
 import logging
 
-setup_logger(log_to_file=True)
+setup_logger()
 logger = CMEAdapter()
 
 try:
