@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import os
+import os.path
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
