@@ -3,6 +3,7 @@
 
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap import ldap as ldap_impacket
+import os
 
 class CMEModule:
     '''
@@ -19,11 +20,8 @@ class CMEModule:
         pass
 
     def on_login(self, context, connection):
-        '''
-        Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection
-        '''
-        # Building the search filter
-        search_filter = "(&(objectclass=computer)(|(operatingSystem=*Windows 6*)(operatingSystem=*Windows 2000*)(operatingSystem=*Windows XP*)(operatingSystem=*Windows Vista*)(operatingSystem=*Windows 7*)(operatingSystem=*Windows 8*)(operatingSystem=*Windows 8.1*)(operatingSystem=*Windows Server 2003*)(operatingSystem=*Windows Server 2008*)(operatingSystem=*Windows Server 2012*)))"
+    
+        search_filter = "(&(objectclass=computer)(|(operatingSystem=*Windows 6*)(operatingSystem=*Windows 2000*)(operatingSystem=*Windows XP*)(operatingSystem=*Windows Vista*)(operatingSystem=*Windows 7*)(operatingSystem=*Windows 8*)(operatingSystem=*Windows 8.1*)(operatingSystem=*Windows Server 2003*)(operatingSystem=*Windows Server 2008*)))"
         attributes = ['name', 'operatingSystem']
 
         try:
@@ -63,6 +61,10 @@ class CMEModule:
             context.log.success('Found the following obsolete operating systems:')
             for answer in answers:
                 context.log.highlight(u'Obsolete System: {} : {}'.format(answer[0], answer[1]))
+                
+                filename = '/tmp/obsoletehosts.txt'
+                with open(filename, 'a') as f:
+                    f.write(answer[0] + '\n')
 
         return True
 
