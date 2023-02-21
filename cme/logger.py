@@ -113,10 +113,11 @@ class CMEAdapter(logging.LoggerAdapter):
     def setup_logfile(self):
         formatter = logging.Formatter("%(message)s")
         self.outputfile = init_log_file()
-        open(self.outputfile, 'x')
+        if not os.path.isfile(self.outputfile):
+            open(self.outputfile, 'x')
         fileHandler = logging.FileHandler(filename=self.outputfile, mode="a")
         with fileHandler._open() as f:
-            f.write("> %s\n\n" % " ".join(sys.argv))
+            f.write("\n> %s\n\n" % " ".join(sys.argv))
         fileHandler.setFormatter(formatter)
         self.logger.addHandler(fileHandler)
 
@@ -146,5 +147,5 @@ def setup_logger(level=logging.INFO, logger_name='CME'):
     return cme_logger
 
 def init_log_file():
-    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs','full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')))
+    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs','full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
     return log_filename

@@ -80,6 +80,7 @@ def first_run_setup(logger):
             config.get('CME', 'pwn3d_label')
             config.get('CME', 'audit_mode')
             config.get('BloodHound', 'bh_enabled')
+            config.get('CME', 'log_mode')
         except (NoSectionError, NoOptionError):
             logger.info('Old configuration file detected, replacing with new version')
             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
