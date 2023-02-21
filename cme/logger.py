@@ -110,9 +110,9 @@ class CMEAdapter(logging.LoggerAdapter):
         CMEAdapter.message = ''
         return out
     
-    def setup_logfile(self):
+    def setup_logfile(self, log_file=None):
         formatter = logging.Formatter("%(message)s")
-        self.outputfile = init_log_file()
+        self.outputfile = init_log_file() if log_file == None else log_file
         if not os.path.isfile(self.outputfile):
             open(self.outputfile, 'x')
         fileHandler = logging.FileHandler(filename=self.outputfile, mode="a")

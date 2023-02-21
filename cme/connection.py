@@ -50,9 +50,13 @@ class connection(object):
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
+        self.log = None if not self.args.log else self.args.log
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
+
+        if self.log:
+            CMEAdapter().setup_logfile(self.log[0])
 
         try:
             self.host = gethost_addrinfo(self.hostname)
