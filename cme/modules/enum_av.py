@@ -69,20 +69,21 @@ class CMEModule:
         except Exception as e:
             context.log.error(str(e))
 
-        self.dump_results(results, connection.host, success, context)
+        self.dump_results(results, connection.hostname, success, context)
 
     def dump_results(self, results, remoteName, success, context):
-        out1 = "On host {} found".format(remoteName)
+        # out1 = "On host {} found".format(remoteName)
+        out1 = ""
         for item in results:
             out = out1
             if 'services' in results[item]:
-                out += " {} INSTALLED".format(item)
+                out += "{} INSTALLED".format(item)
                 if 'pipes' in results[item]:
                     out += " and it seems to be RUNNING".format()
-                else:
-                    for product in conf['products']:
-                        if (item == product['name']) and (len(product['pipes']) == 0):
-                            out += " (NamedPipe for this service was not provided in config)"
+                # else:
+                #     for product in conf['products']:
+                #         if (item == product['name']) and (len(product['pipes']) == 0):
+                #             out += " (NamedPipe for this service was not provided in config)"
             elif 'pipes' in results[item]:
                 out += " {} RUNNING".format(item)
             context.log.highlight(out)
