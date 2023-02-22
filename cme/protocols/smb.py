@@ -1192,7 +1192,11 @@ class smb(connection):
                 self.logger.error(str(e))
 
         if self.pvkbytes is None and self.no_da == None:
-            results = self.db.get_domain_backupkey(self.domain)
+            try:
+                results = self.db.get_domain_backupkey(self.domain)
+            except:
+                self.logger.error("Your version of CMEDB is not up to date, run cmedb and create a new workspace: 'workspace create dpapi' then re-run the dpapi option")
+                return False
             if len(results) > 0:
                 self.logger.success("Loading domain backupkey from cmedb...")
                 self.pvkbytes = results[0][2]
