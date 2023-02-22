@@ -76,6 +76,17 @@ class database:
             UNIQUE(computerid, userid, name)
         )''')
 
+        db_conn.execute('''CREATE TABLE "dpapi_secrets" (
+            "id" integer PRIMARY KEY,
+            "computer" text,
+            "dpapi_type" text,
+            "windows_user" text,
+            "username" text,
+            "password" text,
+            "url" text,
+            UNIQUE(computer, dpapi_type, windows_user, username, password, url)
+        )''')
+
         db_conn.execute('''CREATE TABLE "dpapi_backupkey" (
             "id" integer PRIMARY KEY,
             "domain" text,
@@ -563,7 +574,7 @@ class database:
 
         cur.close()
 
-        logging.debug('add_domain_backupkey(domain={}, pvk={}[...]) => {}'.format(domain, pvk_encoded[:20], cur.lastrowid))
+        logging.debug('add_domain_backupkey(domain={}, pvk={}) => {}'.format(domain, pvk_encoded, cur.lastrowid))
 
     def get_domain_backupkey(self, domain:str = None):
         """
@@ -582,4 +593,51 @@ class database:
         if len(results) >0:
             import base64
             results = [(idkey, domain, base64.b64decode(pvk)) for idkey, domain, pvk in results]
+        return results
+    
+    def is_dpapi_secret_valid(self, dpapiSecretID):
+        """
+        Check if this group ID is valid.
+        :dpapiSecretID is a primary id
+        """
+        cur = self.conn.cursor()
+        cur.execute('SELECT * FROM dpapi_secrets WHERE id=? LIMIT 1', [dpapiSecretID])
+        results = cur.fetchall()
+        cur.close()
+
+        logging.debug('is_dpapi_secret_valid(groupID={}) => {}'.format(dpapiSecretID, True if len(results) else False))
+        return len(results) > 0
+
+    def add_dpapi_secrets(self, computer:str, dpapi_type:str, windows_user:str, username:str, password:str, url:str=''):
+        """
+        Add dpapi secrets to cmedb
+        """
+        cur = self.conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO dpapi_secrets (computer, dpapi_type, windows_user, username, password, url) VALUES (?,?,?,?,?,?)", [computer, dpapi_type, windows_user, username, password, url])
+        cur.close()
+
+        logging.debug('add_dpapi_secrets(computer={}, dpapi_type={}, windows_user={}, username={}, password={}, url={}) => {}'.format(computer, dpapi_type, windows_user, username, password, url, cur.lastrowid))
+
+    def get_dpapi_secrets(self, filterTerm=None, computer:str=None, dpapi_type:str=None, windows_user:str=None, username:str=None, url:str=None):
+        """
+        Get dpapi secrets from cmedb
+        """
+        cur = self.conn.cursor()
+        if self.is_dpapi_secret_valid(filterTerm):
+            cur.execute("SELECT * FROM dpapi_secrets WHERE id=? LIMIT 1", [filterTerm])
+        elif computer:
+            cur.execute("SELECT * FROM dpapi_secrets WHERE computer=? LIMIT 1", [computer])
+        elif dpapi_type:
+            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(dpapi_type)=LOWER(?)', [dpapi_type])
+        elif windows_user:
+            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(windows_user) LIKE LOWER(?)', [windows_user])
+        elif username:
+            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(windows_user) LIKE LOWER(?)', [username])
+        elif url:
+            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(url)=LOWER(?)', [url])
+        else:
+            cur.execute("SELECT * FROM dpapi_secrets")
+        results = cur.fetchall()
+        cur.close()
+        logging.debug('get_dpapi_secrets(filterTerm={}, computer={}, dpapi_type={}, windows_user={}, username={}, url={}) => {}'.format(filterTerm, computer, dpapi_type, windows_user, username, url, results))
         return results

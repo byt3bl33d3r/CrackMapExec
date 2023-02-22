@@ -1274,9 +1274,10 @@ class smb(connection):
             self.logger.debug("Error while looting credentials: {}".format(e))
         for credential in credentials:
             self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (credential.winuser, credential.target, credential.username, credential.password))
+            self.db.add_dpapi_secrets(target.address, 'CREDENTIAL', credential.winuser, credential.username, credential.password, credential.target)
         for credential in system_credentials:
             self.logger.highlight("[SYSTEM][CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
-        
+            self.db.add_dpapi_secrets(target.address, 'CREDENTIAL', 'SYSTEM', credential.username, credential.password, credential.target)
 
         try:
             # Collect Chrome Based Browser stored secrets
@@ -1286,6 +1287,7 @@ class smb(connection):
             self.logger.debug("Error while looting browsers: {}".format(e))
         for credential in browser_credentials:
             self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+            self.db.add_dpapi_secrets(target.address, credential.browser.upper(), credential.winuser, credential.username, credential.password, credential.url)
         
         try:
             # Collect User Internet Explorer stored secrets
@@ -1296,7 +1298,7 @@ class smb(connection):
         for vault in vaults:
             if vault.type == 'Internet Explorer':
                 self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
-        
+                self.db.add_dpapi_secrets(target.address, 'IEX', vault.winuser, vault.username, vault.password, vault.resource)
 
         try:
             # Collect Firefox stored secrets
@@ -1306,7 +1308,7 @@ class smb(connection):
             self.logger.debug("Error while looting firefox: {}".format(e))
         for credential in firefox_credentials:
             self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
-        
+            self.db.add_dpapi_secrets(target.address, 'FIREFOX', credential.winuser, credential.username, credential.password, credential.url)
 
     @requires_admin
     def lsa(self):
