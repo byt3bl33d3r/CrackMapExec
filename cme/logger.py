@@ -9,6 +9,7 @@ from cme.helpers.logger import AnsiRemoveFormatter
 from termcolor import colored
 from datetime import datetime
 
+
 class CMEAdapter(logging.LoggerAdapter):
 
     # For Impacket's TDS library
@@ -32,25 +33,25 @@ class CMEAdapter(logging.LoggerAdapter):
             if len(self.extra['module']) > 8:
                 self.extra['module'] = self.extra['module'][:8] + '...'
 
-        #If the logger is being called when hooking the 'options' module function
+        # If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ('module' in self.extra.keys()):
             return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
 
-        #If the logger is being called from CMEServer
+        # If the logger is being called from CMEServer
         if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
             return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
-        #If the logger is being called from a protocol
+        # If the logger is being called from a protocol
         if 'module' in self.extra.keys():
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
         return u'{:<24} {:<15} {:<6} {:<16} {}'.format(module_name,
-                                                    self.extra['host'],
-                                                    self.extra['port'],
-                                                    self.extra['hostname'] if self.extra['hostname'] else 'NONE',
-                                                    msg), kwargs
+                                                       self.extra['host'],
+                                                       self.extra['port'],
+                                                       self.extra['hostname'] if self.extra['hostname'] else 'NONE',
+                                                       msg), kwargs
 
     def info(self, msg, *args, **kwargs):
         try:
@@ -92,13 +93,14 @@ class CMEAdapter(logging.LoggerAdapter):
     setattr(logging.getLoggerClass(), 'highlight', highlight)
 
     # For Impacket's TDS library
-    def logMessage(self,message):
+    def logMessage(self, message):
         CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
 
     def getMessage(self):
         out = CMEAdapter.message
         CMEAdapter.message = ''
         return out
+
 
 def logger_set_output_file(output_file):
     formatter = logging.Formatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -112,6 +114,7 @@ def logger_set_output_file(output_file):
     cme_logger.addHandler(fileHandler)
     root_logger = logging.getLogger()
     root_logger.addHandler(fileHandler)
+
 
 def setup_debug_logger():
     debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
@@ -131,11 +134,13 @@ class ExactLogLevelFilter(object):
 
     Example: logging.getLogger('mylogger').addFilter(ExactLogLevelFilter(logging.INFO))
     """
+
     def __init__(self, level):
         self.__level = level
 
     def filter(self, logRecord):
         return logRecord.levelno == self.__level
+
 
 class RangeLogLevelFilter(object):
     """
@@ -143,6 +148,7 @@ class RangeLogLevelFilter(object):
 
     Example: logging.getLogger('mylogger').addFilter(RangeLogLevelFilter(logging.INFO, logging.WARNING))
     """
+
     def __init__(self, level_min, level_max):
         self.__level_min = level_min
         self.__level_max = level_max
@@ -150,9 +156,11 @@ class RangeLogLevelFilter(object):
     def filter(self, logRecord):
         return (self.__level_min <= logRecord.levelno <= self.__level_max)
 
+
 def setup_info_logger(logger_name='CME'):
     cme_logger = logging.getLogger(logger_name)
     cme_logger.addFilter(RangeLogLevelFilter(logging.INFO, logging.HIGHLIGHT))
+
 
 def setup_success_logger(logger_name='CME'):
     cme_logger = logging.getLogger(logger_name)
