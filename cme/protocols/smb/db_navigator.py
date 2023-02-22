@@ -289,7 +289,7 @@ class navigator(DatabaseNavigator):
             secrets += self.db.get_dpapi_secrets(dpapi_type="IEX")
             secrets += self.db.get_dpapi_secrets(dpapi_type="FIREFOX")
             if len(secrets) > 0:
-                secrets.insert(0,["Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
                 self.print_table(secrets, title='DPAPI Secrets')
         elif filterTerm.split()[0].lower() == "chrome":
             secrets = self.db.get_dpapi_secrets(dpapi_type="GOOGLE CHROME")
