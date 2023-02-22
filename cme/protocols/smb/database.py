@@ -76,6 +76,13 @@ class database:
             UNIQUE(computerid, userid, name)
         )''')
 
+        db_conn.execute('''CREATE TABLE "dpapi_backupkey" (
+            "id" integer PRIMARY KEY,
+            "domain" text,
+            "pvk" text,
+            UNIQUE(domain)
+        )''')
+
         #db_conn.execute('''CREATE TABLE "ntds_dumps" (
         #    "id" integer PRIMARY KEY,
         #    "computerid", integer,
@@ -536,4 +543,43 @@ class database:
         results = cur.fetchall()
         cur.close()
         logging.debug('get_groups(filterTerm={}, groupName={}, groupDomain={}) => {}'.format(filterTerm, groupName, groupDomain, results))
+        return results
+    
+    def add_domain_backupkey(self, domain:str, pvk:bytes):
+        """
+        Add domain backupkey
+        :domain is the domain fqdn
+        :pvk is the domain backupkey
+        """
+        cur = self.conn.cursor()
+
+        cur.execute("SELECT * FROM dpapi_backupkey WHERE LOWER(domain)=LOWER(?)", [domain])
+        results = cur.fetchall()
+
+        if not len(results):
+            import base64
+            pvk_encoded = base64.b64encode(pvk)
+            cur.execute("INSERT INTO dpapi_backupkey (domain, pvk) VALUES (?,?)", [domain, pvk_encoded])
+
+        cur.close()
+
+        logging.debug('add_domain_backupkey(domain={}, pvk={}[...]) => {}'.format(domain, pvk_encoded[:20], cur.lastrowid))
+
+    def get_domain_backupkey(self, domain:str = None):
+        """
+        Get domain backupkey
+        :domain is the domain fqdn
+        """
+        cur = self.conn.cursor()
+
+        if domain is not None:
+            cur.execute("SELECT * FROM dpapi_backupkey WHERE LOWER(domain)=LOWER(?)", [domain])
+        else:
+            cur.execute("SELECT * FROM dpapi_backupkey", [domain])
+        results = cur.fetchall()
+        cur.close()
+        logging.debug('get_domain_backupkey(domain={}) => {}'.format(domain, results))
+        if len(results) >0:
+            import base64
+            results = [(idkey, domain, base64.b64decode(pvk)) for idkey, domain, pvk in results]
         return results

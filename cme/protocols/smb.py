@@ -1180,6 +1180,7 @@ class smb(connection):
         if self.args.pvk is not None:
             try:
                 self.pvkbytes = open(self.args.pvk, 'rb').read()
+                self.logger.success("Loading domain backupkey from {}".format(self.args.pvk))
             except Exception as e:
                 logging.error(str(e))
 
@@ -1191,31 +1192,37 @@ class smb(connection):
                 self.logger.error(str(e))
 
         if self.pvkbytes is None and self.no_da == None:
-            try:
-                dc_target = Target.create(
-                    domain      = self.domain,
-                    username    = self.username,
-                    password    = self.password,
-                    target      = self.domain,
-                    lmhash      = self.lmhash,
-                    nthash      = self.nthash,
-                    do_kerberos = self.kerberos,
-                    aesKey      = self.aesKey,
-                    no_pass     = True,
-                    use_kcache  = self.use_kcache,
-                )
-                dc_conn = DPLootSMBConnection(dc_target) 
-                dc_conn.connect() # Connect to DC
-                if dc_conn.is_admin:
-                    self.logger.success("User is Domain Administrator, exporting domain backupkey...")
-                    backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
-                    backupkey = backupkey_triage.triage_backupkey()
-                    self.pvkbytes = backupkey.backupkey_v2
-                else:
-                    self.no_da = False
-            except Exception as e:
-                self.logger.debug("Could not get domain backupkey: {}".format(e))
-                pass
+            results = self.db.get_domain_backupkey(self.domain)
+            if len(results) > 0:
+                self.logger.success("Loading domain backupkey from cmedb...")
+                self.pvkbytes = results[0][2]
+            else: 
+                try:
+                    dc_target = Target.create(
+                        domain      = self.domain,
+                        username    = self.username,
+                        password    = self.password,
+                        target      = self.domain,
+                        lmhash      = self.lmhash,
+                        nthash      = self.nthash,
+                        do_kerberos = self.kerberos,
+                        aesKey      = self.aesKey,
+                        no_pass     = True,
+                        use_kcache  = self.use_kcache,
+                    )
+                    dc_conn = DPLootSMBConnection(dc_target) 
+                    dc_conn.connect() # Connect to DC
+                    if dc_conn.is_admin:
+                        self.logger.success("User is Domain Administrator, exporting domain backupkey...")
+                        backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
+                        backupkey = backupkey_triage.triage_backupkey()
+                        self.pvkbytes = backupkey.backupkey_v2
+                        self.db.add_domain_backupkey(self.domain, self.pvkbytes)
+                    else:
+                        self.no_da = False
+                except Exception as e:
+                    self.logger.debug("Could not get domain backupkey: {}".format(e))
+                    pass
 
         target = Target.create(
             domain      = self.domain,
