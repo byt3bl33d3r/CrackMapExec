@@ -103,12 +103,10 @@ class CMEAdapter(logging.LoggerAdapter):
 
 
 def logger_set_output_file(output_file):
-    formatter = logging.Formatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
-    ansi_remove = AnsiRemoveFormatter("%(message)s)")
+    formatter = AnsiRemoveFormatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
 
     fileHandler = logging.FileHandler(output_file)
     fileHandler.setFormatter(formatter)
-    fileHandler.setFormatter(ansi_remove)
 
     cme_logger = logging.getLogger('CME')
     cme_logger.addHandler(fileHandler)
