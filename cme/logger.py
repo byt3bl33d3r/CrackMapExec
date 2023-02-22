@@ -5,25 +5,9 @@ import logging
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
+from cme.helpers.logger import AnsiRemoveFormatter
 from termcolor import colored
 from datetime import datetime
-
-#The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
-#There must be a better way of doing this, but this way we might save some penguins!
-
-ansi_escape = re.compile(r'\x1b\[[0-9;]*m')
-
-def antiansi_emit(self, record):
-
-    if self.stream is None:
-        self.stream = self._open()
-
-    record.msg = ansi_escape.sub('', record.message)
-    logging.StreamHandler.emit(self, record)
-
-logging.FileHandler.emit = antiansi_emit
-
-####################################################################
 
 class CMEAdapter(logging.LoggerAdapter):
 
@@ -118,9 +102,11 @@ class CMEAdapter(logging.LoggerAdapter):
 
 def logger_set_output_file(output_file):
     formatter = logging.Formatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
+    ansi_remove = AnsiRemoveFormatter("%(message)s)")
 
     fileHandler = logging.FileHandler(output_file)
     fileHandler.setFormatter(formatter)
+    fileHandler.setFormatter(ansi_remove)
 
     cme_logger = logging.getLogger('CME')
     cme_logger.addHandler(fileHandler)
