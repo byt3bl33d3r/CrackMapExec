@@ -113,11 +113,16 @@ class CMEAdapter(logging.LoggerAdapter):
     def setup_logfile(self, log_file=None):
         formatter = logging.Formatter("%(message)s")
         self.outputfile = init_log_file() if log_file == None else log_file
+        file_creation = False
         if not os.path.isfile(self.outputfile):
             open(self.outputfile, 'x')
+            file_creation = True
         fileHandler = logging.FileHandler(filename=self.outputfile, mode="a")
         with fileHandler._open() as f:
-            f.write("\n> %s\n\n" % " ".join(sys.argv))
+            if file_creation:
+                f.write("[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
+            else:
+                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
         fileHandler.setFormatter(formatter)
         self.logger.addHandler(fileHandler)
 
