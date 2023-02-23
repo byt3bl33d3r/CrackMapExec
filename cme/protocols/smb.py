@@ -1216,7 +1216,7 @@ class smb(connection):
                     )
                     dc_conn = DPLootSMBConnection(dc_target) 
                     dc_conn.connect() # Connect to DC
-                    if dc_conn.is_admin:
+                    if dc_conn.is_admin():
                         self.logger.success("User is Domain Administrator, exporting domain backupkey...")
                         backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
                         backupkey = backupkey_triage.triage_backupkey()
