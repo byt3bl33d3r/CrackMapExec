@@ -16,7 +16,7 @@ class CMEModule:
     '''
     Checks whether LDAP signing and channelbinding are required.
 
-    Module by LuemmelSec (@theluemmel)
+    Module by LuemmelSec (@theluemmel), updated by @zblurx
     Original work thankfully taken from @zyn3rgy's Ldap Relay Scan project: https://github.com/zyn3rgy/LdapRelayScan
     '''
     name = 'ldap-checker'
@@ -139,10 +139,10 @@ class CMEModule:
                 if "stronger" in str(ldapConn.result):
                     return True #because LDAP server signing requirements ARE enforced
                 elif "data 52e" or "data 532" in str(ldapConn.result):
-                    context.log.error("[!!!] invalid credentials - aborting to prevent unnecessary authentication")
-                    exit()
+                    context.log.debug("Not connected")
+                    return 
                 else:
-                    context.log.error("UNEXPECTED ERROR: " + str(ldapConn.result))
+                    context.log.debug("UNEXPECTED ERROR: " + str(ldapConn.result))
             else:
                 #LDAPS bind successful
                 return False #because LDAP server signing requirements are not enforced
@@ -160,11 +160,11 @@ class CMEModule:
             ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
             ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
             if ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == True:
-                context.log.highlight('Channel Binding is set to \"when supported\" - Success of Attacks depends on client settings')
+                context.log.highlight('LDAPS Channel Binding is set to \"When Supported\"')
             elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
-                context.log.highlight('Channel Binding is set to \"NEVER\" - Time to PWN!')
+                context.log.highlight('LDAPS Channel Binding is set to \"NEVER\"')
             elif ldapsChannelBindingAlwaysCheck == True:
-                context.log.error('Channel Binding is set to \"Required\" - Meeeehhhh :(')
+                context.log.error('LDAPS Channel Binding is set to \"Required\"')
             else:
                 context.log.error("\nSomething went wrong...")
                 exit()          
