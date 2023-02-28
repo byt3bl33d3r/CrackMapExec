@@ -358,6 +358,55 @@ conf = {
         }
       ],
       "pipes": []
+    },
+    {
+      "name": "Cybereason",
+      "services": [
+        {
+          "name": "CybereasonActiveProbe",
+          "description": "Cybereason Active Probe"
+        },
+        {
+          "name": "CybereasonCRS",
+          "description": "Cybereason Anti-Ransomware"
+        },
+        {
+          "name": "CybereasonBlocki",
+          "description": "Cybereason Execution Prevention"
+        }
+      ],
+      "pipes": [
+        {
+          "name": "CybereasonAPConsoleMinionHostIpc_*",
+          "processes": [
+            "minionhost.exe"
+          ]
+        },
+        {
+          "name": "CybereasonAPServerProxyIpc_*",
+          "processes": [
+            "minionhost.exe"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Symantec Endpoint Protection",
+      "services": [
+        {
+          "name": "SepMasterService",
+          "description": "Symantec Endpoint Protection"
+        },
+        {
+          "name": "SepScanService",
+          "description": "Symantec Endpoint Protection Scan Services"
+        },
+        {
+          "name": "SNAC",
+          "description": "Symantec Network Access Control"
+        }
+      ],
+      "pipes": []
     }
   ]
 }
