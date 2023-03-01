@@ -51,6 +51,7 @@ class connection(object):
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
         self.export = None if not self.args.export else self.args.export
+        self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
 
