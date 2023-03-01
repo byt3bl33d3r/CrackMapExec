@@ -4,7 +4,7 @@ adopt-info: crackmapexec
 
 license: GPL-3.0-or-later
 source-code: https://github.com/Porchetta-Industries/CrackMapExec
-issues: https://github.com/JitPatro/crackmapexec/issues
+issues: https://github.com/Porchetta-Industries/CrackMapExec/issues/new/choose
 
 summary:  A swiss army knife for pentesting networks
 description: |
