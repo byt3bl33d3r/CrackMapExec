@@ -8,23 +8,13 @@ import shutil
 import cme
 import configparser
 from configparser import ConfigParser, NoSectionError, NoOptionError
-from cme.loaders.protocol_loader import protocol_loader
+from cme.paths import CME_PATH, CONFIG_PATH, CERT_PATH, TMP_PATH
+from cmedb import initialize_db
 from subprocess import check_output, PIPE
 import sys
 
-CME_PATH = os.path.expanduser('~/.cme')
-TMP_PATH = os.path.join('/tmp', 'cme_hosted')
-if os.name == 'nt':
-    TMP_PATH = os.getenv('LOCALAPPDATA') + '\\Temp\\cme_hosted'
-if hasattr(sys, 'getandroidapilevel'):
-    TMP_PATH = os.path.join('/data','data', 'com.termux', 'files', 'usr', 'tmp', 'cme_hosted')
-WS_PATH = os.path.join(CME_PATH, 'workspaces')
-CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
-CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
-
 
 def first_run_setup(logger):
-
     if not os.path.exists(TMP_PATH):
         os.mkdir(TMP_PATH)
 
@@ -36,36 +26,10 @@ def first_run_setup(logger):
     folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
+            logger.info("Creating missing folder {}".format(folder))
             os.mkdir(os.path.join(CME_PATH, folder))
 
-    if not os.path.exists(os.path.join(WS_PATH, 'default')):
-        logger.info('Creating default workspace')
-        os.mkdir(os.path.join(WS_PATH, 'default'))
-
-    p_loader = protocol_loader()
-    protocols = p_loader.get_protocols()
-    for protocol in protocols.keys():
-        try:
-            protocol_object = p_loader.load_protocol(protocols[protocol]['dbpath'])
-        except KeyError:
-            continue
-
-        proto_db_path = os.path.join(WS_PATH, 'default', protocol + '.db')
-
-        if not os.path.exists(proto_db_path):
-            logger.info('Initializing {} protocol database'.format(protocol.upper()))
-            conn = sqlite3.connect(proto_db_path)
-            c = conn.cursor()
-
-            # try to prevent some of the weird sqlite I/O errors
-            c.execute('PRAGMA journal_mode = OFF')
-            c.execute('PRAGMA foreign_keys = 1')
-
-            getattr(protocol_object, 'database').db_schema(c)
-
-            # commit the changes and close everything off
-            conn.commit()
-            conn.close()
+    initialize_db(logger)
 
     if not os.path.exists(CONFIG_PATH):
         logger.info('Copying default configuration file')

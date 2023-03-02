@@ -10,6 +10,7 @@ from time import sleep
 from terminaltables import AsciiTable
 import configparser
 from cme.loaders.protocol_loader import protocol_loader
+from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
 import csv
 
@@ -389,15 +390,48 @@ class CMEDBMenu(cmd.Cmd):
         sys.exit(0)
 
 
-def main():
-    config_path = os.path.expanduser('~/.cme/cme.conf')
+def initialize_db(logger):
+    if not os.path.exists(os.path.join(WS_PATH, 'default')):
+        logger.info('Creating default workspace')
+        os.mkdir(os.path.join(WS_PATH, 'default'))
 
-    if not os.path.exists(config_path):
+    p_loader = protocol_loader()
+    protocols = p_loader.get_protocols()
+    for protocol in protocols.keys():
+        try:
+            protocol_object = p_loader.load_protocol(protocols[protocol]['dbpath'])
+        except KeyError:
+            continue
+
+        proto_db_path = os.path.join(WS_PATH, 'default', protocol + '.db')
+
+        if not os.path.exists(proto_db_path):
+            logger.info('Initializing {} protocol database'.format(protocol.upper()))
+            conn = sqlite3.connect(proto_db_path)
+            c = conn.cursor()
+
+            # try to prevent some of the weird sqlite I/O errors
+            c.execute('PRAGMA journal_mode = OFF')
+            c.execute('PRAGMA foreign_keys = 1')
+
+            getattr(protocol_object, 'database').db_schema(c)
+
+            # commit the changes and close everything off
+            conn.commit()
+            conn.close()
+
+
+def main():
+    if not os.path.exists(CONFIG_PATH):
         print("[-] Unable to find config file")
         sys.exit(1)
 
     try:
-        cmedbnav = CMEDBMenu(config_path)
+        cmedbnav = CMEDBMenu(CONFIG_PATH)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()
