@@ -13,9 +13,11 @@ from cme.loaders.module_loader import module_loader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
+from cme.paths import CME_PATH
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
+import time
 import asyncio
 import aioconsole
 import functools
@@ -116,6 +118,7 @@ async def start_threadpool(protocol_obj, args, db, targets, jitter):
         monitor_task.cancel()
         pool.shutdown(wait=True)
 
+
 def main():
     first_run_setup(logger)
 
@@ -128,10 +131,8 @@ def main():
         except:
             sys.exit(1)
 
-    cme_path = os.path.expanduser('~/.cme')
-
     config = configparser.ConfigParser()
-    config.read(os.path.join(cme_path, 'cme.conf'))
+    config.read(os.path.join(CME_PATH, 'cme.conf'))
 
     module = None
     module_server = None
@@ -197,7 +198,7 @@ def main():
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
 
-    db_path = os.path.join(cme_path, 'workspaces', current_workspace, args.protocol + '.db')
+    db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     # set the database connection to autocommit w/ isolation level
     db_connection = sqlite3.connect(db_path, check_same_thread=False)
     db_connection.text_factory = str
