@@ -22,10 +22,15 @@ confinement: strict
 
 architectures:
   - build-on: amd64
-  - build-on: arm64
-  - build-on: armhf
-  - build-on: ppc64el
-  - build-on: s390x
+    build-for: amd64
+  - build-on: amd64
+    build-for: arm64
+  - build-on: amd64
+    build-for: armhf
+  - build-on: amd64
+    build-for: ppc64el
+  - build-on: amd64
+    build-for: s390x
   
 environment:
   LC_ALL: C.UTF-8
