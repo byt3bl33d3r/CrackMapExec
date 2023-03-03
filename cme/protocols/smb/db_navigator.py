@@ -43,13 +43,17 @@ class navigator(DatabaseNavigator):
     #pull/545
     def display_hosts(self, hosts):
 
-        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing']]
+        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing', 'Spooler', 'Zerologon', 'PetitPotam']]
     
         for host in hosts:
             hostID = host[0]
             ip = host[1]
             hostname = host[2]
             domain = host[3]
+            spooler = host[5]
+            zerologon = host[6]
+            petitpotam = host[7]
+
             try:
                 os = host[4].decode()
             except:
@@ -58,7 +62,7 @@ class navigator(DatabaseNavigator):
                 smbv1 = host[6]
                 signing = host[7]
                 links = self.db.get_admin_relations(hostID=hostID)
-                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing])
+                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
             except:
                 links = self.db.get_admin_relations(hostID=hostID)
                 data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os])

@@ -19,7 +19,10 @@ class database:
             "os" text,
             "dc" boolean,
             "smbv1" boolean,
-            "signing" boolean
+            "signing" boolean,
+            "spooler" boolean,
+            "zerologon" boolean,
+            "petitpotam" boolean
             )''')
 
         # type = hash, plaintext
@@ -153,7 +156,7 @@ class database:
         return results
 
     #pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing, dc=None):
+    def add_computer(self, ip, hostname, domain, os, smbv1, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
         Check if this host has already been added to the database, if not add it in.
         """
