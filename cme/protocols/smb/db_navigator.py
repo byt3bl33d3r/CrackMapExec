@@ -50,9 +50,6 @@ class navigator(DatabaseNavigator):
             ip = host[1]
             hostname = host[2]
             domain = host[3]
-            spooler = host[5]
-            zerologon = host[6]
-            petitpotam = host[7]
 
             try:
                 os = host[4].decode()
@@ -61,11 +58,19 @@ class navigator(DatabaseNavigator):
             try:
                 smbv1 = host[6]
                 signing = host[7]
-                links = self.db.get_admin_relations(hostID=hostID)
-                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
-            except:
-                links = self.db.get_admin_relations(hostID=hostID)
-                data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os])
+            except IndexError:
+                smbv1 = ''
+                signing = ''
+            try:
+                spooler = host[8]
+                zerologon = host[9]
+                petitpotam = host[10]
+            except IndexError:
+                spooler = ''
+                zerologon = ''
+                petitpotam = ''
+            links = self.db.get_admin_relations(hostID=hostID)
+            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
             
         self.print_table(data, title='Hosts')
     
