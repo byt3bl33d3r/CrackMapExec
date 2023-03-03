@@ -31,7 +31,12 @@ import random
 import os
 import sys
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData, text
+
+from sqlalchemy.ext.declarative import DeferredReflection
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+Base = declarative_base()
 
 setup_logger()
 logger = CMEAdapter()
@@ -41,6 +46,9 @@ try:
 except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     sys.exit()
+
+class Computers(DeferredReflection, Base):
+    __tablename__ = "computers"
 
 async def monitor_threadpool(pool, targets):
     logging.debug('Started thread poller')
@@ -192,14 +200,18 @@ def main():
     if hasattr(args, 'obfs') and args.obfs:
         powershell.obfuscate_ps_scripts = True
 
+    logging.debug(f"Protocol: {args.protocol}")
     p_loader = protocol_loader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
+    logging.debug(f"Protocol Path: {protocol_path}")
     protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
+    logging.debug(f"Protocol DB Path: {protocol_db_path}")
 
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
+    logging.debug(f"DB Path: {db_path}")
     # set the database connection to autocommit w/ isolation level
     # db_connection = sqlite3.connect(db_path, check_same_thread=False)
     # db_connection.text_factory = str
@@ -209,14 +221,45 @@ def main():
     db_engine = create_engine(f"sqlite:///{db_path}")
     db_engine.execution_options(isolation_level="AUTOCOMMIT")
     db_engine.connect().connection.text_factory = str
-    db_connection = db_engine.raw_connection()
-    db = protocol_db_object(db_connection)
+    # db_connection = db_engine.raw_connection()
+    # db = protocol_db_object(db_connection)
+    # print(f"db: {db}")
+    # print(f"db methods: {dir(db)}")
+
+    metadata = MetaData()
+    metadata.reflect(bind=db_engine)
+    # print(computers_table)
+    # print(type(computers_table))
+    # print(dir(computers_table))
+    # print(computers_table.info)
+    # print(computers_table.select())
+    # print(f"Type: {type(computers_table.select())}")
+
+    Session = sessionmaker(bind=db_engine)
+    session = Session()
+    # test123 = session.execute(text("SELECT * from computers"))
+    # res123 = test123.fetchall()
+    # print(f"res123: {res123}")
+    # query = session.query(computers_table).all()
+    # print(f"Q type: {type(query)}")
+    # print(f"* QUERY: {query}")
+
+    db = protocol_db_object(session, metadata=metadata)
+    # print(f"db: {db}")
+    # print(f"db methods: {dir(db)}")
+
+    # test_cur = db.conn.cursor()
+    # test_cur.execute('''SELECT * from computers''')
+    # res = test_cur.fetchone()
+    # print(f"RES: {res}")
 
     setattr(protocol_object, 'config', config)
 
     if hasattr(args, 'module'):
 
         loader = module_loader(args, db, logger)
+        print(loader)
+        print(loader.db)
 
         if args.list_modules:
             modules = loader.get_modules()

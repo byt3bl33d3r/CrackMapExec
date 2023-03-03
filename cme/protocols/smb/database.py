@@ -6,8 +6,15 @@ import logging
 
 class database:
 
-    def __init__(self, conn):
+    def __init__(self, conn, metadata=None):
+        # this is still named "conn" when it is the Session object, TODO: rename
         self.conn = conn
+        self.metadata = metadata
+        self.computers_table = metadata.tables["computers"]
+
+        self.users_table = metadata.tables["users"]
+        self.groups_table = metadata.tables["groups"]
+        self.shares_table = metadata.tables["shares"]
 
     @staticmethod
     def db_schema(db_conn):
@@ -174,35 +181,56 @@ class database:
         return results
 
     #pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
+    def add_computer(self, ip, hostname, domain, os, smbv1, signing=None, spooler=0, zerologon=0, petitpotam=0, dc=None):
         """
         Check if this host has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
-        cur = self.conn.cursor()
+        # cur = self.conn.cursor()
+        sess = self.conn
 
-        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [ip])
-        results = cur.fetchall()
+        results = sess.query(self.computers_table).all()
+        print(f"RESULTS: {results}")
+        print(f"IP: {ip}")
+        print(f"Hostname: {hostname}")
+        print(f"Domain: {domain}")
+        print(f"OS: {os}")
+        print(f"SMB: {smbv1}")
+        print(f"Signing: {signing}")
+        print(f"DC: {dc}")
 
         if not len(results):
             try:
-                cur.execute("INSERT INTO computers (ip, hostname, domain, os, dc, smbv1, signing) VALUES (?,?,?,?,?,?,?)", [ip, hostname, domain, os, dc, smbv1, signing])
-            except:
-                cur.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
+                sess.execute("INSERT INTO computers (ip, hostname, domain, os, dc, smbv1, signing) VALUES (?,?,?,?,?,?,?,?,?,?)", [ip, hostname, domain, os, dc, smbv1, signing, spooler, zerologon, petitpotam])
+            except Exception as e:
+                print(f"Exception: {e}")
+                sess.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
         else:
             for host in results:
                 try:
                     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]) or (smbv1 != host[6]) or (signing != host[7]):
-                        cur.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=? WHERE id=?", [hostname, domain, os, smbv1, signing, host[0]])
+                        sess.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=?, spooler=?, zerologon=?, petitpotam=? WHERE id=?", [hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam, host[0]])
                 except:
                     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
-                        cur.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
+                        sess.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
                 if dc != None and (dc != host[5]):
-                    cur.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
+                    sess.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
+        sess.execute('''SELECT * from computers''')
+        res2 = sess.fetchall()
+        print(f"inside res: {res2}")
+        self.conn.commit()
+        sess.close()
 
-        cur.close()
+        return sess.lastrowid
 
-        return cur.lastrowid
+    def update_computer(self, host_id, hostname=None, domain=None, os=None, smbv1=None, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
+        data = {
+            "id": host_id,
+            "spooler": spooler
+        }
+        cur = self.conn.cursor()
+        Computers.Update(data)
+        cur.execute(Computers.Update(data))
 
     def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
         """
