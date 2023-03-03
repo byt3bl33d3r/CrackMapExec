@@ -31,6 +31,7 @@ import random
 import os
 import sys
 import logging
+from sqlalchemy import create_engine
 
 setup_logger()
 logger = CMEAdapter()
@@ -193,9 +194,15 @@ def main():
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     # set the database connection to autocommit w/ isolation level
-    db_connection = sqlite3.connect(db_path, check_same_thread=False)
-    db_connection.text_factory = str
-    db_connection.isolation_level = None
+    # db_connection = sqlite3.connect(db_path, check_same_thread=False)
+    # db_connection.text_factory = str
+    # db_connection.isolation_level = None
+    # db = protocol_db_object(db_connection)
+
+    db_engine = create_engine(f"sqlite:///{db_path}")
+    db_engine.execution_options(isolation_level="AUTOCOMMIT")
+    db_engine.connect().connection.text_factory = str
+    db_connection = db_engine.raw_connection()
     db = protocol_db_object(db_connection)
 
     setattr(protocol_object, 'config', config)
