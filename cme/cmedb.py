@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import cmd
+import logging
 import sqlite3
 import sys
 import os
@@ -13,6 +14,8 @@ from cme.loaders.protocol_loader import protocol_loader
 from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
 import csv
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.orm import sessionmaker
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -300,11 +303,22 @@ class CMEDBMenu(cmd.Cmd):
         if self.db:
             self.do_proto(self.db)
 
+    # TODO: move this to init
     def open_proto_db(self, db_path):
         # Set the database connection to autocommit w/ isolation level
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.text_factory = str
-        self.conn.isolation_level = None
+        # self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        # self.conn.text_factory = str
+        # self.conn.isolation_level = None
+        self.engine = create_engine(f"sqlite:///{db_path}")
+        self.engine.execution_options(isolation_level="AUTOCOMMIT")
+        self.engine.connect().connection.text_factory = str
+
+        self.metadata = MetaData()
+        self.metadata.reflect(bind=self.engine)
+
+        Session = sessionmaker(bind=self.engine)
+        session = Session()
+        self.conn = session
 
     def write_configfile(self):
         with open(self.config_path, 'w') as configfile:
@@ -318,12 +332,21 @@ class CMEDBMenu(cmd.Cmd):
         if os.path.exists(proto_db_path):
             self.open_proto_db(proto_db_path)
             db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
+            # db_nav_object: <module 'protocol' from '/home/kali/pentest/tools/ad_and_windows/CrackMapExec/cme/protocols/smb/db_navigator.py'>
+            print(f"db_nav_object: {db_nav_object}\ntype: {type(db_nav_object)}")
             db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
+            # db_object: <module 'protocol' from '/home/kali/pentest/tools/ad_and_windows/CrackMapExec/cme/protocols/smb/database.py'>
+            print(f"db_object: {db_object}\ntype: {type(db_object)}")
             self.config.set('CME', 'last_used_db', proto)
             self.write_configfile()
 
             try:
-                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn), proto)
+                print(f"getattr navigator: {getattr(db_nav_object, 'navigator')}")
+                print(f"getattr db_object: {getattr(db_object, 'database')}")
+                print(f"self.conn: {self.conn}")
+                print(f"proto: {proto}")
+                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn, metadata=self.metadata), proto)
+                print((f"ProtoMenu: {proto_menu}"))
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
