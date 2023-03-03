@@ -9,7 +9,7 @@ import cme
 import configparser
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from cme.paths import CME_PATH, CONFIG_PATH, CERT_PATH, TMP_PATH
-from cmedb import initialize_db
+from cme.cmedb import initialize_db
 from subprocess import check_output, PIPE
 import sys
 
