@@ -40,7 +40,7 @@ class DatabaseNavigator(cmd.Cmd):
     def do_back(self, line):
         raise UserExitedProto
 
-    def do_exit(self, line):
+    def do_exit(self):
         sys.exit(0)
 
     def print_table(self, data, title=None):
@@ -68,110 +68,82 @@ class DatabaseNavigator(cmd.Cmd):
             
             filename = line[2]
             creds = self.db.get_credentials()
-            csv_header = ["id","domain","username","password","credtype","pillaged_from"]
+            csv_header = ["id", "domain", "username", "password", "credtype", "pillaged_from"]
             
             if line[1].lower() == "simple":
-                self.write_csv(filename,csv_header,creds)
+                self.write_csv(filename, csv_header, creds)
                 
             elif line[1].lower() == "detailed":
-                formattedCreds = []
+                formatted_creds = []
                
                 for cred in creds:
-                    entry = []
-                    
-                    entry.append(cred[0]) # ID
-                    entry.append(cred[1]) # Domain
-                    entry.append(cred[2]) # Username
-                    entry.append(cred[3]) # Password/Hash
-                    entry.append(cred[4]) # Cred Type
-                    
-                    
-                    if cred[5] == None:
+                    # ID, Domain, Username, Password/Hash, Cred Type
+                    entry = [cred[0], cred[1], cred[2], cred[3], cred[4]]
+
+                    if cred[5] is None:
                         entry.append("")
                     else:
                         entry.append(self.db.get_computers(cred[5])[0][2])
-                    formattedCreds.append(entry)
-                self.write_csv(filename,csv_header,formattedCreds)
+                    formatted_creds.append(entry)
+                self.write_csv(filename, csv_header, formatted_creds)
             print('[+] creds exported')
 
-        #Hosts
+        # Hosts
         elif line[0].lower() == 'hosts':
             if len(line) < 3:
                 print("[-] invalid arguments, export hosts <simple/detailed> <filename>")
                 return
             hosts = self.db.get_computers()
-            csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
+            csv_header = ["id", "ip", "hostname", "domain", "os", "dc", "smbv1", "signing"]
             filename = line[2]
             
             if line[1].lower() == 'simple':
-                self.write_csv(filename,csv_header,hosts)
+                self.write_csv(filename, csv_header, hosts)
             
-            #TODO, maybe add more detail like who is an admin on it, shares discovered, ect
+            # TODO: maybe add more detail like who is an admin on it, shares discovered, ect
             elif line[1].lower() == 'detailed':
-                self.write_csv(filename,csv_header,hosts)
-            
-            
+                self.write_csv(filename, csv_header, hosts)
+
             print('[+] hosts exported')
 
-        #Shares
+        # Shares
         elif line[0].lower() == 'shares':
             if len(line) < 3:
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
             
             shares = self.db.get_shares()
-            csv_header = ["id","computer","userid","name","remark","read","write"]
+            csv_header = ["id", "computer", "userid", "name", "remark", "read", "write"]
             filename = line[2]
             
             if line[1].lower() == 'simple':
-
-                self.write_csv(filename,csv_header,shares)
-                
-                
-                print('[+] shares exported')  
-                    
-            elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
-                formattedShares = []
+                self.write_csv(filename, csv_header, shares)
+                print('[+] shares exported')
+            # Detailed view gets hostsname, and usernames, and true false statement
+            elif line[1].lower() == 'detailed':
+                formatted_shares = []
                 for share in shares:
                     entry = []
-                    #shareID
+                    # shareID
                     entry.append(share[0])
-                    
-                    #computer
+                    # computer
                     entry.append(self.db.get_computers(share[1])[0][2])
-                    
-                    #userID
+                    # userID
                     user = self.db.get_users(share[2])[0]
                     entry.append(f"{user[1]}\{user[2]}")
-                    
-                    #name
+                    # name
                     entry.append(share[3])
-                    
-                    #remark
+                    # remark
                     entry.append(share[4])
-                    
-                    #read
+                    # read
                     entry.append(bool(share[5]))
-                    
-                    #write
+                    # write
                     entry.append(bool(share[6]))
-                    
-                    formattedShares.append(entry)
-                
-                self.write_csv(filename,csv_header,formattedShares)
-
-
-                        #Format is domain\user
-                        #prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
-
-
-                        #Format is hostname
-                        #prettyhost = f"{}"
-
-                        
+                    formatted_shares.append(entry)
+                self.write_csv(filename,csv_header,formatted_shares)
                 print('[+] shares exported')
             
-        #Local Admin
+        # Local Admin
         elif line[0].lower() == 'local_admins':
             if len(line) < 3:
                 print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
@@ -180,47 +152,38 @@ class DatabaseNavigator(cmd.Cmd):
 
             # These Values don't change between simple and detailed
             local_admins = self.db.get_admin_relations()
-            csv_header = ["id","userid","computer"]
+            csv_header = ["id", "userid", "computer"]
             filename = line[2]
             
             if line[1].lower() == 'simple':
-                self.write_csv(filename,csv_header,local_admins)
-            
+                self.write_csv(filename, csv_header, local_admins)
             elif line[1].lower() == 'detailed':
-                
-                formattedLocalAdmins = []
-                
+                formatted_local_admins = []
                 for entry in local_admins:
-                    formattedEntry = [] # Can't modify a tuple which is what self.db.get_admin_relations() returns.
-                    
-                    #Entry ID
-                    formattedEntry.append(entry[0])
-                    
-                    #DOMAIN/Username
+                    # Can't modify a tuple which is what self.db.get_admin_relations() returns.
+                    formatted_entry = []
+                    # Entry ID
+                    formatted_entry.append(entry[0])
+                    # DOMAIN/Username
                     user = self.db.get_users(filterTerm=entry[1])[0]
-                    formattedEntry.append(f"{user[1]}/{user[2]}")
-                    
-                    #Hostname
-                    formattedEntry.append(self.db.get_computers(filterTerm=entry[2])[0][2]) 
-                    
-                    
-                    formattedLocalAdmins.append(formattedEntry)
-                    
-                self.write_csv(filename,csv_header,formattedLocalAdmins)
+                    formatted_entry.append(f"{user[1]}/{user[2]}")
+                    # Hostname
+                    formatted_entry.append(self.db.get_computers(filterTerm=entry[2])[0][2])
+                    formatted_local_admins.append(formatted_entry)
+                self.write_csv(filename,csv_header,formatted_local_admins)
                 print('[+] Local Admins exported')
-                     
         else:
             print('[-] invalid argument, specify creds, hosts, local_admins or shares')
             
-    def write_csv(self,filename,headers,entries):
+    def write_csv(self, filename, headers, entries):
         """
         Writes a CSV file with the provided parameters.
         """
         with open(os.path.expanduser(filename), 'w') as export_file:
-            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n',escapechar="\\")
-            csvFile.writerow(headers)
+            csv_file = csv.writer(export_file, delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n', escapechar="\\")
+            csv_file.writerow(headers)
             for entry in entries:
-                csvFile.writerow(entry)
+                csv_file.writerow(entry)
         
     def do_import(self, line):
         if not line:
@@ -228,11 +191,9 @@ class DatabaseNavigator(cmd.Cmd):
 
         if line == 'empire':
             headers = {'Content-Type': 'application/json'}
-
             # Pull the username and password from the config file
             payload = {'username': self.config.get('Empire', 'username'),
                        'password': self.config.get('Empire', 'password')}
-
             # Pull the host and port from the config file
             base_url = 'https://{}:{}'.format(self.config.get('Empire', 'api_host'), self.config.get('Empire', 'api_port'))
 
@@ -240,7 +201,6 @@ class DatabaseNavigator(cmd.Cmd):
                 r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
                 if r.status_code == 200:
                     token = r.json()['token']
-
                     url_params = {'token': token}
                     r = requests.get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
                     creds = r.json()
@@ -248,30 +208,27 @@ class DatabaseNavigator(cmd.Cmd):
                     for cred in creds['creds']:
                         if cred['credtype'] == 'token' or cred['credtype'] == 'krbtgt' or cred['username'].endswith('$'):
                             continue
-
                         self.db.add_credential(cred['credtype'], cred['domain'], cred['username'], cred['password'])
-
                     print("[+] Empire credential import successful")
                 else:
                     print("[-] Error authenticating to Empire's RESTful API server!")
-
             except ConnectionError as e:
                 print("[-] Unable to connect to Empire's RESTful API server: {}".format(e))
 
-    def complete_import(self, text, line, begidx, endidx):
-        "Tab-complete 'import' commands."
-
+    def complete_import(self, text, line):
+        """
+        Tab-complete 'import' commands
+        """
         commands = ["empire", "metasploit"]
-
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
-    def complete_export(self, text, line, begidx, endidx):
-        "Tab-complete 'creds' commands."
-
+    def complete_export(self, text, line):
+        """
+        Tab-complete 'creds' commands.
+        """
         commands = ["creds", "plaintext", "hashes"]
-
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
@@ -342,16 +299,15 @@ class CMEDBMenu(cmd.Cmd):
                 pass
 
     def do_workspace(self, line):
-        helpString = "[-] workspace create <targetName> | workspace list | workspace <targetName>"
+        help_string = "[-] workspace create <targetName> | workspace list | workspace <targetName>"
         if not line:
-            print(helpString)
+            print(help_string)
             return
 
         line = line.strip()
 
         if line.split()[0] == 'create':
             new_workspace = line.split()[1].strip()
-
             print("[*] Creating workspace '{}'".format(new_workspace))
             os.mkdir(os.path.join(self.workspace_dir, new_workspace))
 
@@ -360,7 +316,6 @@ class CMEDBMenu(cmd.Cmd):
                     protocol_object = self.p_loader.load_protocol(self.protocols[protocol]['dbpath'])
                 except KeyError:
                     continue
-
                 proto_db_path = os.path.join(self.workspace_dir, new_workspace, protocol + '.db')
 
                 if not os.path.exists(proto_db_path):
@@ -368,7 +323,7 @@ class CMEDBMenu(cmd.Cmd):
                     conn = sqlite3.connect(proto_db_path)
                     c = conn.cursor()
 
-                    # try to prevent some of the weird sqlite I/O errors
+                    # try to prevent some weird sqlite I/O errors
                     c.execute('PRAGMA journal_mode = OFF')
                     c.execute('PRAGMA foreign_keys = 1')
 
@@ -377,30 +332,21 @@ class CMEDBMenu(cmd.Cmd):
                     # commit the changes and close everything off
                     conn.commit()
                     conn.close()
-
             self.do_workspace(new_workspace)
-
         elif line.split()[0] == 'list':
             print("[*] Enumerating Workspaces")
             for workspace in os.listdir(os.path.join(self.workspace_dir)):
-                if(workspace==self.workspace):
+                if workspace == self.workspace:
                     print("==> "+workspace)
                 else:
-                    print(workspace)        
-
+                    print(workspace)
         elif os.path.exists(os.path.join(self.workspace_dir, line)):
             self.config.set('CME', 'workspace', line)
             self.write_configfile()
-
             self.workspace = line
             self.prompt = 'cmedb ({}) > '.format(line)
-        
         else:
-            print(helpString)
-
-
-    def do_exit(self, line):
-        sys.exit(0)
+            print(help_string)
 
 
 def initialize_db(logger):
@@ -423,7 +369,7 @@ def initialize_db(logger):
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
 
-            # try to prevent some of the weird sqlite I/O errors
+            # try to prevent some weird sqlite I/O errors
             c.execute('PRAGMA journal_mode = OFF')
             c.execute('PRAGMA foreign_keys = 1')
 
