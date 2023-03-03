@@ -332,27 +332,17 @@ class CMEDBMenu(cmd.Cmd):
         if os.path.exists(proto_db_path):
             self.open_proto_db(proto_db_path)
             db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
-            # db_nav_object: <module 'protocol' from '/home/kali/pentest/tools/ad_and_windows/CrackMapExec/cme/protocols/smb/db_navigator.py'>
-            print(f"db_nav_object: {db_nav_object}\ntype: {type(db_nav_object)}")
             db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
-            # db_object: <module 'protocol' from '/home/kali/pentest/tools/ad_and_windows/CrackMapExec/cme/protocols/smb/database.py'>
-            print(f"db_object: {db_object}\ntype: {type(db_object)}")
             self.config.set('CME', 'last_used_db', proto)
             self.write_configfile()
-
             try:
-                print(f"getattr navigator: {getattr(db_nav_object, 'navigator')}")
-                print(f"getattr db_object: {getattr(db_object, 'database')}")
-                print(f"self.conn: {self.conn}")
-                print(f"proto: {proto}")
                 proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn, metadata=self.metadata), proto)
-                print((f"ProtoMenu: {proto_menu}"))
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
 
     def do_workspace(self, line):
-        helpString = "[-] wordkspace create <targetName> | workspace list | workspace <targetName>"
+        helpString = "[-] workspace create <targetName> | workspace list | workspace <targetName>"
         if not line:
             print(helpString)
             return
