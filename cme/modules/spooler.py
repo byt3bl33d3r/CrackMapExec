@@ -8,6 +8,7 @@ from impacket.dcerpc.v5 import transport, epm
 from impacket.dcerpc.v5.rpch import RPC_PROXY_INVALID_RPC_PORT_ERR, \
     RPC_PROXY_CONN_A1_0X6BA_ERR, RPC_PROXY_CONN_A1_404_ERR, \
     RPC_PROXY_RPC_OUT_DATA_404_ERR
+from cme.protocols.smb.database import database
 
 KNOWN_PROTOCOLS = {
     135: {'bindstr': r'ncacn_ip_tcp:%s[135]'},
@@ -89,6 +90,8 @@ class CMEModule:
                     logging.debug("          %s" % binding)
                 logging.debug("")
                 context.log.highlight('Spooler service enabled')
+                host_id = context.db.get_computers(connection.host)[0][0]
+                database.update_computer(context.db, host_id, spooler=True)
                 break
 
         if entries:

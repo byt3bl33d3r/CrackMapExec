@@ -31,7 +31,7 @@ import random
 import os
 import sys
 import logging
-from sqlalchemy import create_engine, MetaData, text
+from sqlalchemy import create_engine, MetaData
 
 from sqlalchemy.ext.declarative import DeferredReflection
 from sqlalchemy.orm import declarative_base, sessionmaker

@@ -96,7 +96,7 @@ class database:
         #    )''')
 
     def add_share(self, computerid, userid, name, remark, read, write):
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute("INSERT OR IGNORE INTO shares (computerid, userid, name, remark, read, write) VALUES (?,?,?,?,?,?)", [computerid, userid, name, remark, read, write])
         cur.close()
 
@@ -105,7 +105,7 @@ class database:
         Check if this share ID is valid.
         """
 
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT * FROM shares WHERE id=? LIMIT 1', [shareID])
         results = cur.fetchall()
         cur.close()
@@ -114,7 +114,7 @@ class database:
         return len(results) > 0
     
     def get_shares(self, filterTerm = None):
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if self.is_share_valid(filterTerm):
             cur.execute("SELECT * FROM shares WHERE id=?", [filterTerm])
@@ -127,7 +127,7 @@ class database:
         return results
 
     def get_shares_by_access(self, permissions, shareID=None):
-        cur = self.conn.cursor()
+        cur = self.conn
         permissions = permissions.lower()
 
         if shareID:
@@ -149,7 +149,7 @@ class database:
         return results
 
     def get_users_with_share_access(self, computerID, share_name, permissions):
-        cur = self.conn.cursor()
+        cur = self.conn
         permissions = permissions.lower()
 
         if permissions == "r":
@@ -171,7 +171,19 @@ class database:
         # cur = self.conn.cursor()
         sess = self.conn
 
-        results = sess.query(self.computers_table).all()
+        results = sess.query(self.computers_table).filter(self.computers_table.c.ip == ip).all()
+        host = {
+            "ip": ip,
+            "hostname": hostname,
+            "domain": domain,
+            "os": os,
+            "dc": dc,
+            "smbv1": smbv1,
+            "signing": signing,
+            "spooler": spooler,
+            "zerologon": zerologon,
+            "petitpotam": petitpotam
+        }
         print(f"RESULTS: {results}")
         print(f"IP: {ip}")
         print(f"Hostname: {hostname}")
@@ -180,6 +192,10 @@ class database:
         print(f"SMB: {smbv1}")
         print(f"Signing: {signing}")
         print(f"DC: {dc}")
+
+        if not results:
+            # host doesn't exist in the DB
+            pass
 
         if not len(results):
             try:
@@ -210,7 +226,7 @@ class database:
             "id": host_id,
             "spooler": spooler
         }
-        cur = self.conn.cursor()
+        cur = self.conn
         Computers.Update(data)
         cur.execute(Computers.Update(data))
 
@@ -221,7 +237,7 @@ class database:
 
         domain = domain.split('.')[0].upper()
         user_rowid = None
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if groupid and not self.is_group_valid(groupid):
             cur.close()
@@ -260,7 +276,7 @@ class database:
 
         domain = domain.split('.')[0].upper()
         user_rowid = None
-        cur = self.conn.cursor()
+        cur = self.conn
 
         cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = cur.fetchall()
@@ -289,7 +305,7 @@ class database:
     def add_group(self, domain, name):
 
         domain = domain.split('.')[0].upper()
-        cur = self.conn.cursor()
+        cur = self.conn
 
         cur.execute("SELECT * FROM groups WHERE LOWER(domain)=LOWER(?) AND LOWER(name)=LOWER(?)", [domain, name])
         results = cur.fetchall()
@@ -308,14 +324,14 @@ class database:
         Removes a credential ID from the database
         """
         for credID in credIDs:
-            cur = self.conn.cursor()
+            cur = self.conn
             cur.execute("DELETE FROM users WHERE id=?", [credID])
             cur.close()
             
     def add_admin_user(self, credtype, domain, username, password, host, userid=None):
 
         domain = domain.split('.')[0].upper()
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if userid:
             cur.execute("SELECT * FROM users WHERE id=?", [userid])
@@ -343,7 +359,7 @@ class database:
 
     def get_admin_relations(self, userID=None, hostID=None):
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if userID:
             cur.execute("SELECT * FROM admin_relations WHERE userid=?", [userID])
@@ -361,7 +377,7 @@ class database:
 
     def get_group_relations(self, userID=None, groupID=None):
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if userID and groupID:
             cur.execute("SELECT * FROM group_relations WHERE userid=? and groupid=?", [userID, groupID])
@@ -379,7 +395,7 @@ class database:
 
     def remove_admin_relation(self, userIDs=None, hostIDs=None):
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if userIDs:
             for userID in userIDs:
@@ -393,7 +409,7 @@ class database:
 
     def remove_group_relations(self, userID=None, groupID=None):
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if userID:
             cur.execute("DELETE FROM group_relations WHERE userid=?", [userID])
@@ -410,14 +426,14 @@ class database:
         """
         Check if this credential ID is valid.
         """
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1', [credentialID])
         results = cur.fetchall()
         cur.close()
         return len(results) > 0
 
     def is_credential_local(self, credentialID):
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT domain FROM users WHERE id=?', [credentialID])
         user_domain = cur.fetchall()
 
@@ -432,7 +448,7 @@ class database:
         Return credentials from the database.
         """
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         # if we're returning a single credential by ID
         if self.is_credential_valid(filterTerm):
@@ -457,7 +473,7 @@ class database:
         """
         Check if this User ID is valid.
         """
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT * FROM users WHERE id=? LIMIT 1', [userID])
         results = cur.fetchall()
         cur.close()
@@ -465,7 +481,7 @@ class database:
 
     def get_users(self, filterTerm=None):
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if self.is_user_valid(filterTerm):
             cur.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filterTerm])
@@ -482,7 +498,7 @@ class database:
         return results
 
     def get_user(self, domain, username):
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = cur.fetchall()
         cur.close()
@@ -492,7 +508,7 @@ class database:
         """
         Check if this host ID is valid.
         """
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT * FROM computers WHERE id=? LIMIT 1', [hostID])
         results = cur.fetchall()
         cur.close()
@@ -503,7 +519,7 @@ class database:
         Return hosts from the database.
         """
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         # if we're returning a single host by ID
         if self.is_computer_valid(filterTerm):
@@ -535,7 +551,7 @@ class database:
         """
         Check if this group ID is valid.
         """
-        cur = self.conn.cursor()
+        cur = self.conn
         cur.execute('SELECT * FROM groups WHERE id=? LIMIT 1', [groupID])
         results = cur.fetchall()
         cur.close()
@@ -550,7 +566,7 @@ class database:
         if groupDomain:
             groupDomain = groupDomain.split('.')[0].upper()
 
-        cur = self.conn.cursor()
+        cur = self.conn
 
         if self.is_group_valid(filterTerm):
             cur.execute("SELECT * FROM groups WHERE id=? LIMIT 1", [filterTerm])
