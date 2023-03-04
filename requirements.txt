@@ -57,7 +57,7 @@ pyopenssl==23.0.0 ; python_full_version >= "3.7.0" and python_full_version < "4.
 pyparsing==3.0.9 ; python_version >= "3.7" and python_full_version < "4.0.0"
 pyperclip==1.8.2 ; python_version >= "3.7" and python_full_version < "4.0.0"
 pypsrp==0.7.0 ; python_full_version >= "3.7.0" and python_version < "4.0"
-pypykatz==0.6.5 ; python_full_version >= "3.7.0" and python_full_version < "4.0.0"
+pypykatz==0.6.6 ; python_full_version >= "3.7.0" and python_full_version < "4.0.0"
 pyspnego==0.8.0 ; python_version >= "3.7" and python_version < "4.0"
 pytz==2022.7.1 ; python_full_version >= "3.7.0" and python_full_version < "4.0.0"
 pywerview==0.3.3 ; python_full_version >= "3.7.0" and python_full_version < "4.0.0"
