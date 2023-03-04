@@ -20,7 +20,7 @@ class navigator(DatabaseNavigator):
             credtype = cred[4]
             # pillaged_from = cred[5]
 
-            links = self.db.get_admin_relations(userID=credID)
+            links = self.db.get_admin_relations(user_id=credID)
 
             data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
 
@@ -34,7 +34,7 @@ class navigator(DatabaseNavigator):
             groupID = group[0]
             domain = group[1]
             name = group[2]
-            members = len(self.db.get_group_relations(groupID=groupID))
+            members = len(self.db.get_group_relations(group_id=groupID))
 
             data.append([groupID, domain, name, members])
 
@@ -69,7 +69,7 @@ class navigator(DatabaseNavigator):
                 spooler = ''
                 zerologon = ''
                 petitpotam = ''
-            links = self.db.get_admin_relations(hostID=hostID)
+            links = self.db.get_admin_relations(host_id=hostID)
             data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
             
         print_table(data, title='Hosts')
@@ -217,7 +217,7 @@ class navigator(DatabaseNavigator):
                 data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
 
                 for group in groups:
-                    members = self.db.get_group_relations(groupID=group[0])
+                    members = self.db.get_group_relations(group_id=group[0])
 
                     for member in members:
                         _,userid,_ = member
@@ -267,7 +267,7 @@ class navigator(DatabaseNavigator):
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:
-                    links = self.db.get_admin_relations(hostID=hostID)
+                    links = self.db.get_admin_relations(host_id=hostID)
 
                     for link in links:
                         linkID, credID, hostID = link
@@ -368,7 +368,7 @@ class navigator(DatabaseNavigator):
 
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
                 for credID in credIDList:
-                    links = self.db.get_admin_relations(userID=credID)
+                    links = self.db.get_admin_relations(user_id=credID)
 
                     for link in links:
                         linkID, credID, hostID = link
