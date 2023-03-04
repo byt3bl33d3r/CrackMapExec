@@ -197,7 +197,7 @@ class navigator(DatabaseNavigator):
             self.display_groups(groups)
 
         else:
-            groups = self.db.get_groups(filterTerm=filterTerm)
+            groups = self.db.get_groups(filter_term=filterTerm)
 
             if len(groups) > 1:
                 self.display_groups(groups)

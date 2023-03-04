@@ -818,7 +818,7 @@ class smb(connection):
                             domain, name = group.name.split('/')
                             self.logger.highlight('{}\\{}'.format(domain.upper(), name))
                             try:
-                                group_id = self.db.get_groups(groupName=self.args.local_groups, groupDomain=domain)[0][0]
+                                group_id = self.db.get_groups(group_name=self.args.local_groups, group_domain=domain)[0][0]
                             except IndexError:
                                 group_id = self.db.add_group(domain, self.args.local_groups)
 
@@ -867,7 +867,7 @@ class smb(connection):
                         self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
 
                         try:
-                            group_id = self.db.get_groups(groupName=self.args.groups, groupDomain=group.groupdomain)[0][0]
+                            group_id = self.db.get_groups(group_name=self.args.groups, group_domain=group.groupdomain)[0][0]
                         except IndexError:
                             group_id = self.db.add_group(group.groupdomain, self.args.groups)
 
