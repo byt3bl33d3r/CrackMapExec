@@ -628,16 +628,24 @@ class database:
         """
         # if we're returning a single host by ID
         if self.is_computer_valid(filter_term):
-            self.conn.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filter_term])
+            results = self.conn.query(self.computers_table).filter(self.computers_table.c.id == filter_term).first()
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             if domain:
-                self.conn.execute("SELECT * FROM computers WHERE dc=1 AND LOWER(domain)=LOWER(?)", [domain])
+                results = self.conn.query(self.computers_table).filter(
+                    self.computers_table.c.dc == 1,
+                    func.lower(self.computers_table.c.domain) == func.lower(domain)
+                ).all()
             else:
-                self.conn.execute("SELECT * FROM computers WHERE dc=1")
+                results = self.conn.query(self.computers_table).filter(
+                    self.computers_table.c.dc == 1
+                ).all()
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            self.conn.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filter_term), '%{}%'.format(filter_term)])
+            results = self.conn.query(self.computers_table).filter((
+                func.lower(self.computers_table.c.ip).like(func.lower(f"%{filter_term}%")) |
+                func.lower(self.computers_table.c.hostname).like(func.lower(f"%{filter_term}"))
+            )).all()
         # otherwise return all computers
         else:
             results = self.conn.query(self.computers_table).all()
