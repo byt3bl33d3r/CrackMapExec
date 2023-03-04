@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from sqlalchemy import func
 
 
 class database:
@@ -401,12 +402,11 @@ class database:
 
         return results
 
-    def is_credential_valid(self, credentialID):
+    def is_credential_valid(self, credential_id):
         """
         Check if this credential ID is valid.
         """
-        self.conn.execute('SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1', [credentialID])
-        results = self.conn.fetchall()
+        results = self.conn.query(self.users_table).filter(self.users_table.c.id == credential_id, self.users_table.c.password is not None).all()
         self.conn.commit()
         self.conn.close()
         return len(results) > 0
@@ -422,26 +422,22 @@ class database:
             self.conn.close()
             return len(results) > 0
 
-    def get_credentials(self, filterTerm=None, credtype=None):
+    def get_credentials(self, filter_term=None, cred_type=None):
         """
         Return credentials from the database.
         """
         # if we're returning a single credential by ID
-        if self.is_credential_valid(filterTerm):
-            self.conn.execute("SELECT * FROM users WHERE id=?", [filterTerm])
-
-        elif credtype:
-            self.conn.execute("SELECT * FROM users WHERE credtype=?", [credtype])
-
+        if self.is_credential_valid(filter_term):
+            results = self.conn.query(self.users_table).filter(self.users_table.c.id == filter_term).all()
+        elif cred_type:
+            results = self.conn.query(self.users_table).filter(self.users_table.c.credtype == cred_type).all()
         # if we're filtering by username
-        elif filterTerm and filterTerm != '':
-            self.conn.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm)])
-
+        elif filter_term and filter_term != '':
+            results = self.conn.query(self.users_table).filter(func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))).all()
         # otherwise return all credentials
         else:
-            self.conn.execute("SELECT * FROM users")
+            results = self.conn.query(self.users_table).all()
 
-        results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
         return results

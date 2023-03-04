@@ -167,7 +167,7 @@ class connection(object):
                 if cred_id.lower() == 'all':
                     creds = self.db.get_credentials()
                 else:
-                    creds = self.db.get_credentials(filterTerm=int(cred_id))
+                    creds = self.db.get_credentials(filter_term=int(cred_id))
                 for cred in creds:
                     logging.debug(cred)
                     try:

@@ -80,7 +80,7 @@ class navigator(DatabaseNavigator):
 
                     for link in links:
                         linkID, credID, hostID = link
-                        creds = self.db.get_credentials(filterTerm=credID)
+                        creds = self.db.get_credentials(filter_term=credID)
 
                         for cred in creds:
                             credID = cred[0]
@@ -127,15 +127,15 @@ class navigator(DatabaseNavigator):
                 self.db.remove_links(credIDs=args)
 
         elif filterTerm.split()[0].lower() == "plaintext":
-            creds = self.db.get_credentials(credtype="plaintext")
+            creds = self.db.get_credentials(cred_type="plaintext")
             self.display_creds(creds)
 
         elif filterTerm.split()[0].lower() == "hash":
-            creds = self.db.get_credentials(credtype="hash")
+            creds = self.db.get_credentials(cred_type="hash")
             self.display_creds(creds)
 
         else:
-            creds = self.db.get_credentials(filterTerm=filterTerm)
+            creds = self.db.get_credentials(filter_term=filterTerm)
 
             data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
             credIDList = []
