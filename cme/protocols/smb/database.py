@@ -292,14 +292,6 @@ class database:
 
         return cid
 
-    def update_computer(self, host_id, hostname=None, domain=None, os=None, smbv1=None, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
-        data = {
-            "id": host_id,
-            "spooler": spooler
-        }
-        # Computers.Update(data)
-        # self.conn.execute(Computers.Update(data))
-
     def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
