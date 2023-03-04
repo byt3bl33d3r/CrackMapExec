@@ -61,9 +61,10 @@ smb_error_status = [
     "KDC_ERR_PREAUTH_FAILED"
 ]
 
+
 def get_error_string(exception):
     if hasattr(exception, 'getErrorString'):
-        es =  exception.getErrorString()
+        es = exception.getErrorString()
         if type(es) is tuple:
             return es[0]
         else:
@@ -703,13 +704,14 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
-        #computer_id = self.db.get_computers(filterTerm=self.host)[0][0]
         try:
             user_id = self.db.get_user(
                 self.domain.split('.')[0].upper(),
                 self.username
             )[0][0]
-        except:
+        except Exception as e:
+            error = get_error_string(e)
+            self.logger.error(f"Error getting user: {error}")
             pass
         permissions = []
 
@@ -724,7 +726,9 @@ class smb(connection):
                     self.conn.listPath(share_name, '*')
                     read = True
                     share_info['access'].append('READ')
-                except SessionError:
+                except SessionError as e:
+                    error = get_error_string(e)
+                    logging.debug(f"Error checking READ access on share: {error}")
                     pass
 
                 try:
@@ -732,30 +736,34 @@ class smb(connection):
                     self.conn.deleteDirectory(share_name, temp_dir)
                     write = True
                     share_info['access'].append('WRITE')
-                except SessionError:
+                except SessionError as e:
+                    error = get_error_string(e)
+                    logging.debug(f"Error checking WRITE access on share: {error}")
                     pass
 
                 permissions.append(share_info)
 
                 if share_name != "IPC$":
                     try:
+                        # TODO: check if this already exists in DB before adding
                         self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
-                    except:
+                    except Exception as e:
+                        error = get_error_string(e)
+                        logging.debug(f"Error adding share: {error}")
                         pass
 
             self.logger.success('Enumerated shares')
             self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
             self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
             for share in permissions:
-                name   = share['name']
+                name = share['name']
                 remark = share['remark']
-                perms  = share['access']
+                perms = share['access']
 
                 self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         except Exception as e:
             error = get_error_string(e)
-            self.logger.error('Error enumerating shares: {}'.format(error),
-                            color='magenta' if error in smb_error_status else 'red')
+            logging.debug(f'Error enumerating shares: {error}')
 
         return permissions
 
