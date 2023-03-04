@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from cme.helpers.misc import validate_ntlm
-from cme.cmedb import DatabaseNavigator
+from cme.cmedb import DatabaseNavigator, print_table
 
 
 class navigator(DatabaseNavigator):
@@ -24,7 +24,7 @@ class navigator(DatabaseNavigator):
 
             data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
 
-        self.print_table(data, title='Credentials')
+        print_table(data, title='Credentials')
 
     def display_groups(self, groups):
 
@@ -38,7 +38,7 @@ class navigator(DatabaseNavigator):
 
             data.append([groupID, domain, name, members])
 
-        self.print_table(data, title='Groups')
+        print_table(data, title='Groups')
 
     #pull/545
     def display_hosts(self, hosts):
@@ -72,7 +72,7 @@ class navigator(DatabaseNavigator):
             links = self.db.get_admin_relations(hostID=hostID)
             data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
             
-        self.print_table(data, title='Hosts')
+        print_table(data, title='Hosts')
     
     def display_shares(self, shares):
 
@@ -99,7 +99,7 @@ class navigator(DatabaseNavigator):
 
             data.append([shareID, computerid, name, remark, f"{len(users_r_access)} User(s)", f"{len(users_w_access)} Users"])
 
-        self.print_table(data)
+        print_table(data)
 
     def do_shares(self, line):
         filterTerm = line.strip()
@@ -135,7 +135,7 @@ class navigator(DatabaseNavigator):
 
                 data.append([shareID, name, remark])
             
-                self.print_table(data, title='Share')
+                print_table(data, title='Share')
 
                 host = self.db.get_computers(filterTerm=computerID)[0]
 
@@ -151,7 +151,7 @@ class navigator(DatabaseNavigator):
 
                 data.append([hostID, ip, hostname, domain, os, dc])
 
-                self.print_table(data, title='Share Location')
+                print_table(data, title='Share Location')
 
                 if users_r_access:
                     data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
@@ -168,7 +168,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([credID, credtype, domain, username, password])
 
-                    self.print_table(data, title='Users(s) with Read Access')
+                    print_table(data, title='Users(s) with Read Access')
 
                 if users_w_access:
                     data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
@@ -185,7 +185,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([credID, credtype, domain, username, password])
 
-                    self.print_table(data, title='Users(s) with Write Access')
+                    print_table(data, title='Users(s) with Write Access')
 
 
     def do_groups(self, line):
@@ -212,7 +212,7 @@ class navigator(DatabaseNavigator):
 
                     data.append([groupID, domain, name])
 
-                self.print_table(data, title='Group')
+                print_table(data, title='Group')
 
                 data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
 
@@ -233,7 +233,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([credID, credtype, pillaged_from, domain, username, password])
 
-                self.print_table(data, title='Member(s)')
+                print_table(data, title='Member(s)')
 
     def do_hosts(self, line):
 
@@ -263,7 +263,7 @@ class navigator(DatabaseNavigator):
 
                     data.append([hostID, ip, hostname, domain, os, dc])
 
-                self.print_table(data, title='Host')
+                print_table(data, title='Host')
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:
@@ -283,7 +283,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([credID, credtype, domain, username, password])
 
-                self.print_table(data, title='Credential(s) with Admin Access')
+                print_table(data, title='Credential(s) with Admin Access')
 
     def do_dpapi(self, line):
         filterTerm = line.strip()
@@ -393,7 +393,7 @@ class navigator(DatabaseNavigator):
 
                     data.append([credID, credtype, pillaged_from, domain, username, password])
 
-                self.print_table(data, title='Credential(s)')
+                print_table(data, title='Credential(s)')
 
                 data = [['GroupID', 'Domain', 'Name']]
                 for credID in credIDList:
@@ -410,7 +410,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([groupID, domain, name])
 
-                self.print_table(data, title='Member of Group(s)')
+                print_table(data, title='Member of Group(s)')
 
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
                 for credID in credIDList:
@@ -429,7 +429,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([hostID, ip, hostname, domain, os])
 
-                self.print_table(data, title='Admin Access to Host(s)')
+                print_table(data, title='Admin Access to Host(s)')
 
     def complete_hosts(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from cme.helpers.misc import validate_ntlm
-from cme.cmedb import DatabaseNavigator
+from cme.cmedb import DatabaseNavigator, print_table
 
 
 class navigator(DatabaseNavigator):
@@ -24,7 +24,7 @@ class navigator(DatabaseNavigator):
 
             data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
 
-        self.print_table(data, title='Credentials')
+        print_table(data, title='Credentials')
 
     def display_hosts(self, hosts):
 
@@ -43,7 +43,7 @@ class navigator(DatabaseNavigator):
 
             data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, instances])
 
-        self.print_table(data, title='Hosts')
+        print_table(data, title='Hosts')
 
     def do_hosts(self, line):
 
@@ -72,7 +72,7 @@ class navigator(DatabaseNavigator):
 
                     data.append([hostID, ip, hostname, domain, os])
 
-                self.print_table(data, title='Host(s)')
+                print_table(data, title='Host(s)')
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:
@@ -92,7 +92,7 @@ class navigator(DatabaseNavigator):
 
                             data.append([credID, credtype, domain, username, password])
 
-                self.print_table(data, title='Credential(s) with Admin Access')
+                print_table(data, title='Credential(s) with Admin Access')
 
     def do_creds(self, line):
 
@@ -151,7 +151,7 @@ class navigator(DatabaseNavigator):
 
                 data.append([credID, credType, domain, username, password])
 
-            self.print_table(data, title='Credential(s)')
+            print_table(data, title='Credential(s)')
 
             data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
             for credID in credIDList:
@@ -170,7 +170,7 @@ class navigator(DatabaseNavigator):
 
                         data.append([hostID, ip, hostname, domain, os])
 
-            self.print_table(data, title='Admin Access to Host(s)')
+            print_table(data, title='Admin Access to Host(s)')
 
     def complete_hosts(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
