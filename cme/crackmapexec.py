@@ -78,6 +78,8 @@ async def run_protocol(loop, protocol_obj, args, db, target, jitter):
         thread.cancel()
     except sqlite3.OperationalError as e:
         logging.debug("Sqlite error - sqlite3.operationalError - {}".format(str(e)))
+    except Exception as e:
+        logger.critical("Unhandled Exception while processing target {}".format(target), exc_info=True)
 
 async def start_threadpool(protocol_obj, args, db, targets, jitter):
     pool = ThreadPoolExecutor(max_workers=args.threads + 1)

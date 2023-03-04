@@ -92,6 +92,11 @@ class CMEAdapter(logging.LoggerAdapter):
         self.logger._log(27, msg, args, **kwargs)
     setattr(logging.getLoggerClass(), 'highlight', highlight)
 
+    # Use this for exception handling
+    def critical(self, msg, *args, **kwargs):
+        msg, kwargs = self.process(u'{} {}'.format(colored("[!]", 'red', attrs=['bold']), msg), kwargs)
+        self.logger.critical(msg, *args, **kwargs)
+
     # For Impacket's TDS library
     def logMessage(self, message):
         CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
