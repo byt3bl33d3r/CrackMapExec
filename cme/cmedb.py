@@ -107,11 +107,11 @@ class DatabaseNavigator(cmd.Cmd):
                
                 for cred in creds:
                     entry = [
-                        cred[0], # ID
-                        cred[1], # Domain
-                        cred[2], # Username
-                        cred[3], # Password/Hash
-                        cred[4], # Cred Type
+                        cred[0],  # ID
+                        cred[1],  # Domain
+                        cred[2],  # Username
+                        cred[3],  # Password/Hash
+                        cred[4],  # Cred Type
                     ]
                     if cred[5] is None:
                         entry.append("")
@@ -132,13 +132,11 @@ class DatabaseNavigator(cmd.Cmd):
             
             if line[1].lower() == 'simple':
                 write_csv(filename, csv_header, hosts)
-            
             # TODO: maybe add more detail like who is an admin on it, shares discovered, etc
             elif line[1].lower() == 'detailed':
                 write_csv(filename, csv_header, hosts)
 
             print('[+] hosts exported')
-
         # Shares
         elif line[0].lower() == 'shares':
             if len(line) < 3:
