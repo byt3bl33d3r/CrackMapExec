@@ -248,18 +248,8 @@ class database:
             data["petitpotam"] = petitpotam
         if dc is not None:
             data["dc"] = dc
-        print(f"DATA: {data}")
-
-        print(f"RESULTS: {results}")
 
         if not results:
-            print(f"IP: {ip}")
-            print(f"Hostname: {hostname}")
-            print(f"Domain: {domain}")
-            print(f"OS: {os}")
-            print(f"SMB: {smbv1}")
-            print(f"Signing: {signing}")
-            print(f"DC: {dc}")
 
             new_host = {
                 "ip": ip,
@@ -279,13 +269,9 @@ class database:
                     [new_host]
                 )
             except Exception as e:
-                print(f"Exception: {e}")
-                #self.conn.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
+                logging.error(f"Exception: {e}")
         else:
             for host in results:
-                print(host.id)
-                print(f"Host: {host}")
-                print(f"Host Type: {type(host)}")
                 try:
                     cid = self.conn.execute(
                         self.computers_table.update().values(
@@ -296,18 +282,9 @@ class database:
                     )
                     self.conn.commit()
                 except Exception as e:
-                    print(f"Exception: {e}")
-                # try:
-                #     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]) or (smbv1 != host[6]) or (signing != host[7]):
-                #         self.conn.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=?, spooler=?, zerologon=?, petitpotam=? WHERE id=?", [hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam, host[0]])
-                # except:
-                #     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
-                #         self.conn.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
-                # if dc != None and (dc != host[5]):
-                #     self.conn.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
+                    logging.error(f"Exception: {e}")
         self.conn.commit()
         self.conn.close()
-
         return cid
 
     def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
@@ -340,19 +317,16 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_computerid": pillaged_from,
             }
-            #self.conn.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, password, credtype, pillaged_from])
             user_rowid = self.conn.execute(
                 self.users_table.insert(),
                 [data]
             )
             logging.debug(f"User RowID: {user_rowid}")
-            #user_rowid = self.conn.lastrowid
             if groupid:
                 gr_data = {
                     "userid": user_rowid,
                     "groupid": groupid,
                 }
-                #self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
                 self.conn.execute(
                     self.group_relations_table.insert(),
                     [gr_data]
@@ -368,9 +342,7 @@ class database:
 
         self.conn.commit()
         self.conn.close()
-
         logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
-
         return user_rowid
 
     def add_user(self, domain, username, groupid=None):
