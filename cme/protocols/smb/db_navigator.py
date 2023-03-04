@@ -157,7 +157,7 @@ class navigator(DatabaseNavigator):
                     data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                     for user in users_r_access:
                         userid = user[0]
-                        creds = self.db.get_credentials(filterTerm=userid)
+                        creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
                             credID = cred[0]
@@ -174,7 +174,7 @@ class navigator(DatabaseNavigator):
                     data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                     for user in users_w_access:
                         userid = user[0]
-                        creds = self.db.get_credentials(filterTerm=userid)
+                        creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
                             credID = cred[0]
@@ -221,7 +221,7 @@ class navigator(DatabaseNavigator):
 
                     for member in members:
                         _,userid,_ = member
-                        creds = self.db.get_credentials(filterTerm=userid)
+                        creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
                             credID = cred[0]
@@ -271,7 +271,7 @@ class navigator(DatabaseNavigator):
 
                     for link in links:
                         linkID, credID, hostID = link
-                        creds = self.db.get_credentials(filterTerm=credID)
+                        creds = self.db.get_credentials(filter_term=credID)
 
                         for cred in creds:
                             credID = cred[0]
@@ -366,15 +366,15 @@ class navigator(DatabaseNavigator):
                 self.db.remove_admin_relation(userIDs=args)
 
         elif filterTerm.split()[0].lower() == "plaintext":
-            creds = self.db.get_credentials(credtype="plaintext")
+            creds = self.db.get_credentials(cred_type="plaintext")
             self.display_creds(creds)
 
         elif filterTerm.split()[0].lower() == "hash":
-            creds = self.db.get_credentials(credtype="hash")
+            creds = self.db.get_credentials(cred_type="hash")
             self.display_creds(creds)
 
         else:
-            creds = self.db.get_credentials(filterTerm=filterTerm)
+            creds = self.db.get_credentials(filter_term=filterTerm)
             if len(creds) != 1:
                 self.display_creds(creds)
             elif len(creds) == 1:
