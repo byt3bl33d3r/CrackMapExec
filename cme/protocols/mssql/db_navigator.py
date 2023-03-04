@@ -172,6 +172,9 @@ class navigator(DatabaseNavigator):
 
             print_table(data, title='Admin Access to Host(s)')
 
+    def do_clear_database(self, line):
+        self.db.clear_database()
+
     def complete_hosts(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
 
