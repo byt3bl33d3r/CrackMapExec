@@ -5,4 +5,5 @@ from cme.cmedb import DatabaseNavigator
 
 
 class navigator(DatabaseNavigator):
-    pass
+    def do_clear_database(self, line):
+        self.db.clear_database()

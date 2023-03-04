@@ -3,6 +3,7 @@
 
 from cme.helpers.misc import validate_ntlm
 from cme.cmedb import DatabaseNavigator, print_table
+from sqlalchemy.sql import text
 
 
 class navigator(DatabaseNavigator):
@@ -86,13 +87,13 @@ class navigator(DatabaseNavigator):
             remark = share[4]
 
             users_r_access = self.db.get_users_with_share_access(
-                computerID=computerid,
+                computer_id=computerid,
                 share_name=name,
                 permissions='r'
             )
 
             users_w_access = self.db.get_users_with_share_access(
-                computerID=computerid,
+                computer_id=computerid,
                 share_name=name,
                 permissions='w'
             )
@@ -108,7 +109,7 @@ class navigator(DatabaseNavigator):
             shares = self.db.get_shares()
             self.display_shares(shares)
         else:
-            shares = self.db.get_shares(filterTerm=filterTerm)
+            shares = self.db.get_shares(filter_term=filterTerm)
 
             if len(shares) > 1:
                 self.display_shares(shares)
@@ -120,13 +121,13 @@ class navigator(DatabaseNavigator):
                 remark = share[4]
 
                 users_r_access = self.db.get_users_with_share_access(
-                    computerID=computerID,
+                    computer_id=computerID,
                     share_name=name,
                     permissions='r'
                 )
 
                 users_w_access = self.db.get_users_with_share_access(
-                    computerID=computerID,
+                    computer_id=computerID,
                     share_name=name,
                     permissions='w'
                 )
@@ -430,6 +431,9 @@ class navigator(DatabaseNavigator):
                             data.append([hostID, ip, hostname, domain, os])
 
                 print_table(data, title='Admin Access to Host(s)')
+
+    def do_clear_database(self, line):
+        self.db.clear_database()
 
     def complete_hosts(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."

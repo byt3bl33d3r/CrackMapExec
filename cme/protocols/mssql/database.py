@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 
 class database:
-
-    def __init__(self, conn):
+    def __init__(self, conn, metadata=None):
+        # this is still named "conn" when it is the Session object, TODO: rename
         self.conn = conn
+        self.metadata = metadata
+        self.credentials_table = metadata.tables["credentials"]
+        self.admin_relations_table = metadata.tables["admin_relations"]
+        self.users_table = metadata.tables["users"]
 
     @staticmethod
     def db_schema(db_conn):
@@ -220,3 +224,8 @@ class database:
         results = cur.fetchall()
         cur.close()
         return results
+
+    def clear_database(self):
+        for table in self.metadata.tables:
+            self.conn.query(self.metadata.tables[table]).delete()
+        self.conn.commit()
