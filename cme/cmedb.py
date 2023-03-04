@@ -185,12 +185,12 @@ class DatabaseNavigator(cmd.Cmd):
             elif line[1].lower() == 'detailed':
                 formatted_local_admins = []
                 for entry in local_admins:
-                    user = self.db.get_users(filterTerm=entry[1])[0]
+                    user = self.db.get_users(filter_term=entry[1])[0]
                     
                     formatted_entry = [
                         entry[0],                                           # Entry ID
                         f"{user[1]}/{user[2]}",                             # DOMAIN/Username
-                        self.db.get_computers(filterTerm=entry[2])[0][2]    # Hostname
+                        self.db.get_computers(filter_term=entry[2])[0][2]    # Hostname
                     ]
                     # Can't modify a tuple which is what self.db.get_admin_relations() returns
                     formatted_local_admins.append(formatted_entry)
