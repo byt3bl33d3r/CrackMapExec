@@ -17,7 +17,6 @@ from cme.paths import CME_PATH
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
-import time
 import asyncio
 import aioconsole
 import functools
@@ -45,6 +44,7 @@ logger = CMEAdapter()
 class Computers(DeferredReflection, Base):
     __tablename__ = "computers"
 
+
 async def monitor_threadpool(pool, targets):
     logging.debug('Started thread poller')
 
@@ -59,6 +59,7 @@ async def monitor_threadpool(pool, targets):
         except asyncio.CancelledError:
             logging.debug("Stopped thread poller")
             break
+
 
 async def run_protocol(loop, protocol_obj, args, db, target, jitter):
     try:
@@ -89,6 +90,7 @@ async def run_protocol(loop, protocol_obj, args, db, target, jitter):
         thread.cancel()
     except sqlite3.OperationalError as e:
         logging.debug("Sqlite error - sqlite3.operationalError - {}".format(str(e)))
+
 
 async def start_threadpool(protocol_obj, args, db, targets, jitter):
     pool = ThreadPoolExecutor(max_workers=args.threads + 1)
@@ -205,51 +207,22 @@ def main():
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     logging.debug(f"DB Path: {db_path}")
-    # set the database connection to autocommit w/ isolation level
-    # db_connection = sqlite3.connect(db_path, check_same_thread=False)
-    # db_connection.text_factory = str
-    # db_connection.isolation_level = None
-    # db = protocol_db_object(db_connection)
 
     db_engine = create_engine(f"sqlite:///{db_path}")
     db_engine.execution_options(isolation_level="AUTOCOMMIT")
     db_engine.connect().connection.text_factory = str
-    # db_connection = db_engine.raw_connection()
-    # db = protocol_db_object(db_connection)
-    # print(f"db: {db}")
-    # print(f"db methods: {dir(db)}")
 
     metadata = MetaData()
     metadata.reflect(bind=db_engine)
-    # print(computers_table)
-    # print(type(computers_table))
-    # print(dir(computers_table))
-    # print(computers_table.info)
-    # print(computers_table.select())
-    # print(f"Type: {type(computers_table.select())}")
 
     Session = sessionmaker(bind=db_engine)
     session = Session()
-    # test123 = session.execute(text("SELECT * from computers"))
-    # res123 = test123.fetchall()
-    # print(f"res123: {res123}")
-    # query = session.query(computers_table).all()
-    # print(f"Q type: {type(query)}")
-    # print(f"* QUERY: {query}")
 
     db = protocol_db_object(session, metadata=metadata)
-    # print(f"db: {db}")
-    # print(f"db methods: {dir(db)}")
-
-    # test_cur = db.conn.cursor()
-    # test_cur.execute('''SELECT * from computers''')
-    # res = test_cur.fetchone()
-    # print(f"RES: {res}")
 
     setattr(protocol_object, 'config', config)
 
     if hasattr(args, 'module'):
-
         loader = module_loader(args, db, logger)
         print(loader)
         print(loader.db)
@@ -313,6 +286,7 @@ def main():
     finally:
         if module_server:
             module_server.shutdown()
+
 
 if __name__ == '__main__':
     main()
