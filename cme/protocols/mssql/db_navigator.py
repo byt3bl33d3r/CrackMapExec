@@ -20,7 +20,7 @@ class navigator(DatabaseNavigator):
             password = cred[4]
             # pillaged_from = cred[5]
 
-            links = self.db.get_admin_relations(userID=credID)
+            links = self.db.get_admin_relations(user_id=credID)
 
             data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
 
@@ -39,7 +39,7 @@ class navigator(DatabaseNavigator):
             os = host[4]
             instances = host[5]
 
-            links = self.db.get_admin_relations(hostID=hostID)
+            links = self.db.get_admin_relations(host_id=hostID)
 
             data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, instances])
 
@@ -76,7 +76,7 @@ class navigator(DatabaseNavigator):
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
                 for hostID in hostIDList:
-                    links = self.db.get_admin_relations(hostID=hostID)
+                    links = self.db.get_admin_relations(host_id=hostID)
 
                     for link in links:
                         linkID, credID, hostID = link
@@ -155,7 +155,7 @@ class navigator(DatabaseNavigator):
 
             data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
             for credID in credIDList:
-                links = self.db.get_admin_relations(userID=credID)
+                links = self.db.get_admin_relations(user_id=credID)
 
                 for link in links:
                     linkID, credID, hostID = link

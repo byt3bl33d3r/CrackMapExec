@@ -11,10 +11,12 @@ class database:
         self.conn = conn
         self.metadata = metadata
         self.computers_table = metadata.tables["computers"]
-
         self.users_table = metadata.tables["users"]
         self.groups_table = metadata.tables["groups"]
         self.shares_table = metadata.tables["shares"]
+        self.admin_relations_table = metadata.tables["admin_relations"]
+        self.group_relations_table = metadata.tables["group_relations"]
+        self.loggedin_relations = metadata.tables["loggedin_relations"]
 
     @staticmethod
     def db_schema(db_conn):
@@ -363,31 +365,28 @@ class database:
         self.conn.commit()
         self.conn.close()
 
-    def get_admin_relations(self, userID=None, hostID=None):
-        if userID:
-            self.conn.execute("SELECT * FROM admin_relations WHERE userid=?", [userID])
-
-        elif hostID:
-            self.conn.execute("SELECT * FROM admin_relations WHERE computerid=?", [hostID])
-
+    def get_admin_relations(self, user_id=None, host_id=None):
+        if user_id:
+            results = self.conn.query(self.admin_relations_table).filter(self.admin_relations_table.c.userid == user_id).all()
+        elif host_id:
+            results = self.conn.query(self.admin_relations_table).filter(
+                self.admin_relations_table.c.computerid == host_id).all()
         else:
-            self.conn.execute("SELECT * FROM admin_relations")
+            results = self.conn.query(self.admin_relations_table).all()
 
-        results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
-
         return results
 
-    def get_group_relations(self, userID=None, groupID=None):
-        if userID and groupID:
-            self.conn.execute("SELECT * FROM group_relations WHERE userid=? and groupid=?", [userID, groupID])
+    def get_group_relations(self, user_id=None, group_id=None):
+        if user_id and group_id:
+            self.conn.execute("SELECT * FROM group_relations WHERE userid=? and groupid=?", [user_id, group_id])
 
-        elif userID:
-            self.conn.execute("SELECT * FROM group_relations WHERE userid=?", [userID])
+        elif user_id:
+            self.conn.execute("SELECT * FROM group_relations WHERE userid=?", [user_id])
 
-        elif groupID:
-            self.conn.execute("SELECT * FROM group_relations WHERE groupid=?", [groupID])
+        elif group_id:
+            self.conn.execute("SELECT * FROM group_relations WHERE groupid=?", [group_id])
 
         results = self.conn.fetchall()
         self.conn.commit()
@@ -514,23 +513,19 @@ class database:
         # if we're returning a single host by ID
         if self.is_computer_valid(filterTerm):
             self.conn.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
-
         # if we're filtering by domain controllers
         elif filterTerm == 'dc':
             if domain:
                 self.conn.execute("SELECT * FROM computers WHERE dc=1 AND LOWER(domain)=LOWER(?)", [domain])
             else:
                 self.conn.execute("SELECT * FROM computers WHERE dc=1")
-
         # if we're filtering by ip/hostname
         elif filterTerm and filterTerm != "":
             self.conn.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm), '%{}%'.format(filterTerm)])
-
         # otherwise return all computers
         else:
-            self.conn.execute("SELECT * FROM computers")
+            results = self.conn.query(self.computers_table).all()
 
-        results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
         return results
