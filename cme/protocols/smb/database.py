@@ -280,7 +280,6 @@ class database:
                             self.computers_table.c.id == host.id
                         )
                     )
-                    self.conn.commit()
                 except Exception as e:
                     logging.error(f"Exception: {e}")
         self.conn.commit()
@@ -345,7 +344,6 @@ class database:
                     self.group_relations_table.insert(),
                     [gr_data]
                 )
-            self.conn.commit()
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
@@ -357,14 +355,12 @@ class database:
                             self.users_table.c.id == user[0]
                         )
                     )
-                    self.conn.commit()
                     if group_id and not len(self.get_group_relations(user_rowid, group_id)):
                         self.conn.execute(
                             self.group_relations_table.update().values(
                                 {"userid": user_rowid, "groupid": group_id}
                             )
                         )
-                        self.conn.commit()
         self.conn.commit()
         self.conn.close()
         logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, group_id, pillaged_from, user_rowid))
@@ -425,7 +421,7 @@ class database:
         """
         for cred_id in creds_id:
             self.conn.execute("DELETE FROM users WHERE id=?", [cred_id])
-            self.conn.commit()
+        self.conn.commit()
         self.conn.close()
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
@@ -465,7 +461,6 @@ class database:
                         self.admin_relations_table.insert(),
                         [{"userid": user_id, "computerid": host_id}]
                     )
-                    self.conn.commit()
 
         self.conn.commit()
         self.conn.close()
