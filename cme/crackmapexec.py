@@ -231,9 +231,6 @@ def main():
 
     if hasattr(args, 'module'):
         loader = module_loader(args, db, logger)
-        print(loader)
-        print(loader.db)
-
         if args.list_modules:
             modules = loader.get_modules()
 
