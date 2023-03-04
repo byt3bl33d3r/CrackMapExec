@@ -115,6 +115,7 @@ class database:
 
     def add_share(self, computerid, userid, name, remark, read, write):
         self.conn.execute("INSERT OR IGNORE INTO shares (computerid, userid, name, remark, read, write) VALUES (?,?,?,?,?,?)", [computerid, userid, name, remark, read, write])
+        self.conn.commit()
         self.conn.close()
 
     def is_share_valid(self, shareID):
@@ -123,6 +124,7 @@ class database:
         """
         self.conn.execute('SELECT * FROM shares WHERE id=? LIMIT 1', [shareID])
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
 
         logging.debug(f"is_share_valid(shareID={shareID}) => {len(results) > 0}")
@@ -179,9 +181,8 @@ class database:
         Check if this host has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
-        sess = self.conn
 
-        results = sess.query(self.computers_table).filter(self.computers_table.c.ip == ip).all()
+        results = self.conn.query(self.computers_table).filter(self.computers_table.c.ip == ip).all()
         host = {
             "ip": ip,
             "hostname": hostname,
@@ -209,27 +210,24 @@ class database:
 
         if not len(results):
             try:
-                sess.execute("INSERT INTO computers (ip, hostname, domain, os, dc, smbv1, signing) VALUES (?,?,?,?,?,?,?,?,?,?)", [ip, hostname, domain, os, dc, smbv1, signing, spooler, zerologon, petitpotam])
+                self.conn.execute("INSERT INTO computers (ip, hostname, domain, os, dc, smbv1, signing) VALUES (?,?,?,?,?,?,?,?,?,?)", [ip, hostname, domain, os, dc, smbv1, signing, spooler, zerologon, petitpotam])
             except Exception as e:
                 print(f"Exception: {e}")
-                sess.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
+                self.conn.execute("INSERT INTO computers (ip, hostname, domain, os, dc) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, dc])
         else:
             for host in results:
                 try:
                     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]) or (smbv1 != host[6]) or (signing != host[7]):
-                        sess.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=?, spooler=?, zerologon=?, petitpotam=? WHERE id=?", [hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam, host[0]])
+                        self.conn.execute("UPDATE computers SET hostname=?, domain=?, os=?, smbv1=?, signing=?, spooler=?, zerologon=?, petitpotam=? WHERE id=?", [hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam, host[0]])
                 except:
                     if (hostname != host[2]) or (domain != host[3]) or (os != host[4]):
-                        sess.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
+                        self.conn.execute("UPDATE computers SET hostname=?, domain=?, os=? WHERE id=?", [hostname, domain, os, host[0]])
                 if dc != None and (dc != host[5]):
-                    sess.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
-        sess.execute('''SELECT * from computers''')
-        res2 = sess.fetchall()
-        print(f"inside res: {res2}")
+                    self.conn.execute("UPDATE computers SET dc=? WHERE id=?", [dc, host[0]])
         self.conn.commit()
-        sess.close()
+        self.conn.close()
 
-        return sess.lastrowid
+        return self.conn.lastrowid
 
     def update_computer(self, host_id, hostname=None, domain=None, os=None, smbv1=None, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
         data = {
@@ -247,10 +245,12 @@ class database:
         user_rowid = None
 
         if groupid and not self.is_group_valid(groupid):
+            self.conn.commit()
             self.conn.close()
             return
 
         if pillaged_from and not self.is_computer_valid(pillaged_from):
+            self.conn.commit()
             self.conn.close()
             return
 
@@ -270,6 +270,7 @@ class database:
                     if groupid and not len(self.get_group_relations(user_rowid, groupid)):
                         self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
+        self.conn.commit()
         self.conn.close()
 
         logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
@@ -301,6 +302,7 @@ class database:
                 if groupid and not len(self.get_group_relations(user_rowid, groupid)):
                     self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
 
+        self.conn.commit()
         self.conn.close()
 
         logging.debug('add_user(domain={}, username={}, groupid={}) => {}'.format(domain, username, groupid, user_rowid))
@@ -316,6 +318,7 @@ class database:
         if not len(results):
             self.conn.execute("INSERT INTO groups (domain, name) VALUES (?,?)", [domain, name])
 
+        self.conn.commit()
         self.conn.close()
 
         logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, self.conn.lastrowid))
@@ -329,6 +332,7 @@ class database:
         for credID in credIDs:
 
             self.conn.execute("DELETE FROM users WHERE id=?", [credID])
+            self.conn.commit()
             self.conn.close()
 
     def add_admin_user(self, credtype, domain, username, password, host, userid=None):
@@ -356,6 +360,7 @@ class database:
                 if not len(links):
                     self.conn.execute("INSERT INTO admin_relations (userid, computerid) VALUES (?,?)", [userid, hostid])
 
+        self.conn.commit()
         self.conn.close()
 
     def get_admin_relations(self, userID=None, hostID=None):
@@ -369,6 +374,7 @@ class database:
             self.conn.execute("SELECT * FROM admin_relations")
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
 
         return results
@@ -384,6 +390,7 @@ class database:
             self.conn.execute("SELECT * FROM group_relations WHERE groupid=?", [groupID])
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
 
         return results
@@ -397,6 +404,7 @@ class database:
             for hostID in hostIDs:
                 self.conn.execute("DELETE FROM admin_relations WHERE hostid=?", [hostID])
 
+        self.conn.commit()
         self.conn.close()
 
     def remove_group_relations(self, userID=None, groupID=None):
@@ -407,6 +415,7 @@ class database:
             self.conn.execute("DELETE FROM group_relations WHERE groupid=?", [groupID])
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
 
         return results
@@ -417,6 +426,7 @@ class database:
         """
         self.conn.execute('SELECT * FROM users WHERE id=? AND password IS NOT NULL LIMIT 1', [credentialID])
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
@@ -427,6 +437,7 @@ class database:
         if user_domain:
             self.conn.execute('SELECT * FROM computers WHERE LOWER(hostname)=LOWER(?)', [user_domain])
             results = self.conn.fetchall()
+            self.conn.commit()
             self.conn.close()
             return len(results) > 0
 
@@ -450,6 +461,7 @@ class database:
             self.conn.execute("SELECT * FROM users")
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return results
 
@@ -459,6 +471,7 @@ class database:
         """
         self.conn.execute('SELECT * FROM users WHERE id=? LIMIT 1', [userID])
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
@@ -474,12 +487,14 @@ class database:
             self.conn.execute("SELECT * FROM users")
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return results
 
     def get_user(self, domain, username):
         self.conn.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return results
 
@@ -487,8 +502,8 @@ class database:
         """
         Check if this host ID is valid.
         """
-        self.conn.execute('SELECT * FROM computers WHERE id=? LIMIT 1', [hostID])
-        results = self.conn.fetchall()
+        results = self.conn.query(self.computers_table).filter(self.computers_table.c.id == hostID).all()
+        self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
@@ -516,6 +531,7 @@ class database:
             self.conn.execute("SELECT * FROM computers")
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         return results
 
@@ -528,6 +544,7 @@ class database:
         """
         self.conn.execute('SELECT * FROM groups WHERE id=? LIMIT 1', [groupID])
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
 
         logging.debug('is_group_valid(groupID={}) => {}'.format(groupID, True if len(results) else False))
@@ -553,6 +570,7 @@ class database:
             self.conn.execute("SELECT * FROM groups")
 
         results = self.conn.fetchall()
+        self.conn.commit()
         self.conn.close()
         logging.debug('get_groups(filterTerm={}, groupName={}, groupDomain={}) => {}'.format(filterTerm, groupName, groupDomain, results))
         return results
