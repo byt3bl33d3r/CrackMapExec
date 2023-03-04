@@ -1218,7 +1218,7 @@ class smb(connection):
     @requires_admin
     def sam(self):
         self.enable_remoteops()
-        host_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        host_id = self.db.get_computers(filter_term=self.host)[0][0]
 
         def add_sam_hash(sam_hash, host_id):
             add_sam_hash.sam_hashes += 1
@@ -1278,7 +1278,7 @@ class smb(connection):
         self.enable_remoteops()
         use_vss_method = False
         NTDSFileName = None
-        host_id = self.db.get_computers(filterTerm=self.host)[0][0]
+        host_id = self.db.get_computers(filter_term=self.host)[0][0]
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1

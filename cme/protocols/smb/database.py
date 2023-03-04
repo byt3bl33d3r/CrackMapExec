@@ -97,10 +97,10 @@ class database:
         #    FOREIGN KEY(computerid) REFERENCES computers(id)
         #    )''')
 
-    def add_share(self, computerid, userid, name, remark, read, write):
+    def add_share(self, computer_id, user_id, name, remark, read, write):
         data = {
-            "computerid": computerid,
-            "userid": userid,
+            "computerid": computer_id,
+            "userid": user_id,
             "name": name,
             "remark": remark,
             "read": read,
@@ -209,27 +209,27 @@ class database:
         results = self.conn.query(self.computers_table).filter(
             self.computers_table.c.ip == ip
         ).all()
-        data = {}
+        computer_data = {}
         if ip is not None:
-            data["ip"] = ip
+            computer_data["ip"] = ip
         if hostname is not None:
-            data["hostname"] = hostname
+            computer_data["hostname"] = hostname
         if domain is not None:
-            data["domain"] = domain
+            computer_data["domain"] = domain
         if os is not None:
-            data["os"] = os
+            computer_data["os"] = os
         if smbv1 is not None:
-            data["smbv1"] = smbv1
+            computer_data["smbv1"] = smbv1
         if signing is not None:
-            data["signing"] = signing
+            computer_data["signing"] = signing
         if spooler is not None:
-            data["spooler"] = spooler
+            computer_data["spooler"] = spooler
         if zerologon is not None:
-            data["zerologon"] = zerologon
+            computer_data["zerologon"] = zerologon
         if petitpotam is not None:
-            data["petitpotam"] = petitpotam
+            computer_data["petitpotam"] = petitpotam
         if dc is not None:
-            data["dc"] = dc
+            computer_data["dc"] = dc
 
         if not results:
 
@@ -257,7 +257,7 @@ class database:
                 try:
                     cid = self.conn.execute(
                         self.computers_table.update().values(
-                            data
+                            computer_data
                         ).where(
                             self.computers_table.c.id == host.id
                         )
@@ -269,20 +269,34 @@ class database:
         self.conn.close()
         return cid
 
-    def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
+    def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
         user_rowid = None
 
-        if groupid and not self.is_group_valid(groupid):
+        if group_id and not self.is_group_valid(group_id):
             self.conn.close()
             return
 
         if pillaged_from and not self.is_computer_valid(pillaged_from):
             self.conn.close()
             return
+
+        credential_data = {}
+        if credtype is not None:
+            credential_data["credtype"] = credtype
+        if domain is not None:
+            credential_data["domain"] = domain
+        if username is not None:
+            credential_data["username"] = username
+        if password is not None:
+            credential_data["password"] = password
+        if group_id is not None:
+            credential_data["groupid"] = group_id
+        if pillaged_from is not None:
+            credential_data["pillaged_from"] = pillaged_from
 
         results = self.conn.query(self.users_table).filter(
             func.lower(self.users_table.c.domain) == func.lower(domain),
@@ -292,7 +306,7 @@ class database:
         logging.debug(f"Credential results: {results}")
 
         if not results:
-            data = {
+            user_data = {
                 "domain": domain,
                 "username": username,
                 "password": password,
@@ -301,13 +315,13 @@ class database:
             }
             user_rowid = self.conn.execute(
                 self.users_table.insert(),
-                [data]
+                [user_data]
             )
             logging.debug(f"User RowID: {user_rowid}")
-            if groupid:
+            if group_id:
                 gr_data = {
                     "userid": user_rowid,
-                    "groupid": groupid,
+                    "groupid": group_id,
                 }
                 self.conn.execute(
                     self.group_relations_table.insert(),
@@ -316,19 +330,31 @@ class database:
             self.conn.commit()
         else:
             for user in results:
+                # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    self.conn.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credtype, pillaged_from, user[0]])
-                    user_rowid = self.conn.lastrowid
-                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-                        self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
-
+                    user_rowid = self.conn.execute(
+                        self.users_table.update().values(
+                            credential_data
+                        ).where(
+                            self.users_table.c.id == user[0]
+                        )
+                    )
+                    self.conn.commit()
+                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
+                        self.conn.execute(
+                            self.group_relations_table.update().values(
+                                {"userid": user_rowid, "groupid": group_id}
+                            )
+                        )
+                        self.conn.commit()
         self.conn.commit()
         self.conn.close()
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, group_id, pillaged_from, user_rowid))
+
         return user_rowid
 
-    def add_user(self, domain, username, groupid=None):
-        if groupid and not self.is_group_valid(groupid):
+    def add_user(self, domain, username, group_id=None):
+        if group_id and not self.is_group_valid(group_id):
             return
 
         domain = domain.split('.')[0].upper()
@@ -340,8 +366,8 @@ class database:
         if not len(results):
             self.conn.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, '', '', ''])
             user_rowid = self.conn.lastrowid
-            if groupid:
-                self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+            if group_id:
+                self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, group_id])
         else:
             for user in results:
                 if (domain != user[1]) and (username != user[2]):
@@ -349,13 +375,13 @@ class database:
                     user_rowid = self.conn.lastrowid
 
                 if not user_rowid: user_rowid = user[0]
-                if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-                    self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+                if group_id and not len(self.get_group_relations(user_rowid, group_id)):
+                    self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, group_id])
 
         self.conn.commit()
         self.conn.close()
 
-        logging.debug('add_user(domain={}, username={}, groupid={}) => {}'.format(domain, username, groupid, user_rowid))
+        logging.debug('add_user(domain={}, username={}, groupid={}) => {}'.format(domain, username, group_id, user_rowid))
 
         return user_rowid
 
@@ -458,24 +484,24 @@ class database:
 
         return results
 
-    def remove_admin_relation(self, userIDs=None, hostIDs=None):
-        if userIDs:
-            for userID in userIDs:
-                self.conn.execute("DELETE FROM admin_relations WHERE userid=?", [userID])
+    def remove_admin_relation(self, user_ids=None, host_ids=None):
+        if user_ids:
+            for user_id in user_ids:
+                self.conn.execute("DELETE FROM admin_relations WHERE userid=?", [user_id])
 
-        elif hostIDs:
-            for hostID in hostIDs:
-                self.conn.execute("DELETE FROM admin_relations WHERE hostid=?", [hostID])
+        elif host_ids:
+            for host_id in host_ids:
+                self.conn.execute("DELETE FROM admin_relations WHERE hostid=?", [host_id])
 
         self.conn.commit()
         self.conn.close()
 
-    def remove_group_relations(self, userID=None, groupID=None):
-        if userID:
-            self.conn.execute("DELETE FROM group_relations WHERE userid=?", [userID])
+    def remove_group_relations(self, user_id=None, group_id=None):
+        if user_id:
+            self.conn.execute("DELETE FROM group_relations WHERE userid=?", [user_id])
 
-        elif groupID:
-            self.conn.execute("DELETE FROM group_relations WHERE groupid=?", [groupID])
+        elif group_id:
+            self.conn.execute("DELETE FROM group_relations WHERE groupid=?", [group_id])
 
         results = self.conn.fetchall()
         self.conn.commit()
@@ -495,8 +521,8 @@ class database:
         self.conn.close()
         return len(results) > 0
 
-    def is_credential_local(self, credentialID):
-        self.conn.execute('SELECT domain FROM users WHERE id=?', [credentialID])
+    def is_credential_local(self, credential_id):
+        self.conn.execute('SELECT domain FROM users WHERE id=?', [credential_id])
         user_domain = self.conn.fetchall()
 
         if user_domain:
@@ -532,23 +558,23 @@ class database:
         self.conn.close()
         return results
 
-    def is_user_valid(self, userID):
+    def is_user_valid(self, user_id):
         """
         Check if this User ID is valid.
         """
-        self.conn.execute('SELECT * FROM users WHERE id=? LIMIT 1', [userID])
+        self.conn.execute('SELECT * FROM users WHERE id=? LIMIT 1', [user_id])
         results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
-    def get_users(self, filterTerm=None):
-        if self.is_user_valid(filterTerm):
-            self.conn.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filterTerm])
+    def get_users(self, filter_term=None):
+        if self.is_user_valid(filter_term):
+            self.conn.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filter_term])
 
         # if we're filtering by username
-        elif filterTerm and filterTerm != '':
-            self.conn.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm)])
+        elif filter_term and filter_term != '':
+            self.conn.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filter_term)])
 
         else:
             self.conn.execute("SELECT * FROM users")
@@ -567,33 +593,33 @@ class database:
         self.conn.close()
         return results
 
-    def is_computer_valid(self, hostID):
+    def is_computer_valid(self, host_id):
         """
         Check if this host ID is valid.
         """
         results = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.id == hostID
+            self.computers_table.c.id == host_id
         ).all()
         self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
-    def get_computers(self, filterTerm=None, domain=None):
+    def get_computers(self, filter_term=None, domain=None):
         """
         Return hosts from the database.
         """
         # if we're returning a single host by ID
-        if self.is_computer_valid(filterTerm):
-            self.conn.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
+        if self.is_computer_valid(filter_term):
+            self.conn.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filter_term])
         # if we're filtering by domain controllers
-        elif filterTerm == 'dc':
+        elif filter_term == 'dc':
             if domain:
                 self.conn.execute("SELECT * FROM computers WHERE dc=1 AND LOWER(domain)=LOWER(?)", [domain])
             else:
                 self.conn.execute("SELECT * FROM computers WHERE dc=1")
         # if we're filtering by ip/hostname
-        elif filterTerm and filterTerm != "":
-            self.conn.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm), '%{}%'.format(filterTerm)])
+        elif filter_term and filter_term != "":
+            self.conn.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filter_term), '%{}%'.format(filter_term)])
         # otherwise return all computers
         else:
             results = self.conn.query(self.computers_table).all()
@@ -603,7 +629,7 @@ class database:
         return results
 
     def get_domain_controllers(self, domain=None):
-        return self.get_computers(filterTerm='dc', domain=domain)
+        return self.get_computers(filter_term='dc', domain=domain)
 
     def is_group_valid(self, group_id):
         """

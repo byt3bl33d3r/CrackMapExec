@@ -53,7 +53,7 @@ class navigator(DatabaseNavigator):
             hosts = self.db.get_computers()
             self.display_hosts(hosts)
         else:
-            hosts = self.db.get_computers(filterTerm=filterTerm)
+            hosts = self.db.get_computers(filter_term=filterTerm)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)

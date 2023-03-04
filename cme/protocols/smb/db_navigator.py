@@ -138,7 +138,7 @@ class navigator(DatabaseNavigator):
             
                 print_table(data, title='Share')
 
-                host = self.db.get_computers(filterTerm=computerID)[0]
+                host = self.db.get_computers(filter_term=computerID)[0]
 
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
   
@@ -244,7 +244,7 @@ class navigator(DatabaseNavigator):
             hosts = self.db.get_computers()
             self.display_hosts(hosts)
         else:
-            hosts = self.db.get_computers(filterTerm=filterTerm)
+            hosts = self.db.get_computers(filter_term=filterTerm)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
@@ -318,7 +318,7 @@ class navigator(DatabaseNavigator):
                 return
             else:
                 self.db.remove_credentials(args)
-                self.db.remove_admin_relation(userIDs=args)
+                self.db.remove_admin_relation(user_ids=args)
 
         elif filterTerm.split()[0].lower() == "plaintext":
             creds = self.db.get_credentials(cred_type="plaintext")
