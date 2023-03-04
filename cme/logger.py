@@ -3,7 +3,6 @@
 
 import logging
 import sys
-import re
 from cme.helpers.misc import called_from_cmd_args
 from cme.helpers.logger import AnsiRemoveFormatter
 from termcolor import colored

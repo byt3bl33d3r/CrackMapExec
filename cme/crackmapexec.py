@@ -16,7 +16,6 @@ from cme.context import Context
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
-import time
 import asyncio
 import aioconsole
 import functools
@@ -147,7 +146,7 @@ def main():
     if args.output_file:
         logger_set_output_file(args.output_file)
 
-    logger.debug('Passed args:\n' + pformat(vars(args)))
+    logging.debug('Passed args:\n' + pformat(vars(args)))
 
     if args.jitter:
         if '-' in args.jitter:
