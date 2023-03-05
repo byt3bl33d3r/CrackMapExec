@@ -3,13 +3,10 @@
 
 from cme.helpers.misc import validate_ntlm
 from cme.cmedb import DatabaseNavigator, print_table
-from sqlalchemy.sql import text
 
 
 class navigator(DatabaseNavigator):
-
     def display_creds(self, creds):
-
         data = [['CredID', 'Admin On', 'CredType', 'Domain', 'UserName', 'Password']]
 
         for cred in creds:
@@ -28,7 +25,6 @@ class navigator(DatabaseNavigator):
         print_table(data, title='Credentials')
 
     def display_groups(self, groups):
-
         data = [['GroupID', 'Domain', 'Name', 'Members']]
 
         for group in groups:
@@ -41,9 +37,8 @@ class navigator(DatabaseNavigator):
 
         print_table(data, title='Groups')
 
-    #pull/545
+    # pull/545
     def display_hosts(self, hosts):
-
         data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing', 'Spooler', 'Zerologon', 'PetitPotam']]
     
         for host in hosts:
@@ -76,11 +71,9 @@ class navigator(DatabaseNavigator):
         print_table(data, title='Hosts')
     
     def display_shares(self, shares):
-
         data = [["ShareID", "computer", "Name", "Remark", "Read Access", "Write Access"]]
 
         for share in shares:
-            
             shareID = share[0]
             computerid = share[1]
             name = share[3]
@@ -188,9 +181,7 @@ class navigator(DatabaseNavigator):
 
                     print_table(data, title='Users(s) with Write Access')
 
-
     def do_groups(self, line):
-
         filterTerm = line.strip()
 
         if filterTerm == "":
@@ -237,7 +228,6 @@ class navigator(DatabaseNavigator):
                 print_table(data, title='Member(s)')
 
     def do_hosts(self, line):
-
         filterTerm = line.strip()
 
         if filterTerm == "":
@@ -287,7 +277,6 @@ class navigator(DatabaseNavigator):
                 print_table(data, title='Credential(s) with Admin Access')
 
     def do_creds(self, line):
-
         filterTerm = line.strip()
 
         if filterTerm == "":

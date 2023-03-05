@@ -33,7 +33,7 @@ import logging
 from sqlalchemy import create_engine, MetaData
 
 from sqlalchemy.ext.declarative import DeferredReflection
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -215,10 +215,7 @@ def main():
     metadata = MetaData()
     metadata.reflect(bind=db_engine)
 
-    Session = sessionmaker(bind=db_engine)
-    session = Session()
-
-    db = protocol_db_object(session, metadata=metadata)
+    db = protocol_db_object(db_engine, metadata=metadata)
 
     setattr(protocol_object, 'config', config)
 
