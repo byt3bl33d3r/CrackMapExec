@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
 import logging
 
 
@@ -101,42 +102,86 @@ class database:
         self.conn.close()
         return cid
 
-    def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
+    def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-
         domain = domain.split('.')[0].upper()
         user_rowid = None
-        cur = self.conn.cursor()
 
-        if groupid and not self.is_group_valid(groupid):
-            cur.close()
+        if group_id and not self.is_group_valid(group_id):
+            self.conn.close()
             return
 
         if pillaged_from and not self.is_computer_valid(pillaged_from):
-            cur.close()
+            self.conn.close()
             return
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND LOWER(credtype)=LOWER(?)", [domain, username, credtype])
-        results = cur.fetchall()
+        credential_data = {}
+        if credtype is not None:
+            credential_data["credtype"] = credtype
+        if domain is not None:
+            credential_data["domain"] = domain
+        if username is not None:
+            credential_data["username"] = username
+        if password is not None:
+            credential_data["password"] = password
+        if group_id is not None:
+            credential_data["groupid"] = group_id
+        if pillaged_from is not None:
+            credential_data["pillaged_from"] = pillaged_from
 
-        if not len(results):
-            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, password, credtype, pillaged_from])
-            user_rowid = cur.lastrowid
-            if groupid:
-                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        results = self.conn.query(self.users_table).filter(
+            func.lower(self.users_table.c.domain) == func.lower(domain),
+            func.lower(self.users_table.c.username) == func.lower(username),
+            func.lower(self.users_table.c.credtype) == func.lower(credtype)
+        ).all()
+        logging.debug(f"Credential results: {results}")
+
+        if not results:
+            user_data = {
+                "domain": domain,
+                "username": username,
+                "password": password,
+                "credtype": credtype,
+                "pillaged_from_computerid": pillaged_from,
+            }
+            user_rowid = self.conn.execute(
+                self.users_table.insert(),
+                [user_data]
+            )
+            logging.debug(f"User RowID: {user_rowid}")
+            if group_id:
+                gr_data = {
+                    "userid": user_rowid,
+                    "groupid": group_id,
+                }
+                self.conn.execute(
+                    self.group_relations_table.insert(),
+                    [gr_data]
+                )
         else:
             for user in results:
+                # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credtype, pillaged_from, user[0]])
-                    user_rowid = cur.lastrowid
-                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
-
-        cur.close()
-
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
+                    user_rowid = self.conn.execute(
+                        self.users_table.update().values(
+                            credential_data
+                        ).where(
+                            self.users_table.c.id == user[0]
+                        )
+                    )
+                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
+                        self.conn.execute(
+                            self.group_relations_table.update().values(
+                                {"userid": user_rowid, "groupid": group_id}
+                            )
+                        )
+        self.conn.commit()
+        self.conn.close()
+        logging.debug(
+            'add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
+                credtype, domain, username, password, group_id, pillaged_from, user_rowid))
 
         return user_rowid
 
@@ -150,7 +195,6 @@ class database:
             cur.close()
 
     def add_admin_user(self, credtype, domain, username, password, host):
-
         cur = self.conn.cursor()
 
         cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
@@ -174,12 +218,10 @@ class database:
         cur.close()
 
     def get_admin_relations(self, userID=None, hostID=None):
-
         cur = self.conn.cursor()
 
         if userID:
             cur.execute("SELECT * from admin_relations WHERE userid=?", [userID])
-
         elif hostID:
             cur.execute("SELECT * from admin_relations WHERE computerid=?", [hostID])
 
