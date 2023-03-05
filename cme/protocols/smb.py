@@ -841,24 +841,40 @@ class smb(connection):
                 for group in groups:
                     if group.name:
                         if not self.args.local_groups:
-                            self.logger.highlight('{:<40} membercount: {}'.format(group.name, group.membercount))
-                            self.db.add_group(self.hostname, group.name)
+                            self.logger.highlight('{:<40} membercount: {}'.format(
+                                group.name,
+                                group.membercount
+                            ))
+                            self.db.add_group(
+                                self.hostname,
+                                group.name,
+                                member_count_ad=group.membercount
+                            )
                         else:
                             domain, name = group.name.split('/')
-                            self.logger.highlight('{}\\{}'.format(domain.upper(), name))
+                            self.logger.highlight('{}\\{}'.format(
+                                domain.upper(),
+                                name
+                            ))
                             try:
-                                group_id = self.db.get_groups(group_name=self.args.local_groups, group_domain=domain)[0][0]
+                                group_id = self.db.get_groups(
+                                    group_name=self.args.local_groups,
+                                    group_domain=domain
+                                )[0][0]
                             except IndexError:
-                                group_id = self.db.add_group(domain, self.args.local_groups)
+                                group_id = self.db.add_group(
+                                    domain,
+                                    self.args.local_groups,
+                                    member_count_ad=group.membercount
+                                )
 
                             # yo dawg, I hear you like groups.
                             # So I put a domain group as a member of a local group which is also a member of another local group.
                             # (╯°□°）╯︵ ┻━┻
-
                             if not group.isgroup:
                                 self.db.add_user(domain, name, group_id)
                             elif group.isgroup:
-                                self.db.add_group(domain, name)
+                                self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
             except Exception as e:
                 self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
@@ -905,17 +921,34 @@ class smb(connection):
 
                     self.logger.success('Enumerated members of domain group')
                     for group in groups:
-                        self.logger.highlight('{}\\{}'.format(group.memberdomain, group.membername))
-
+                        member_count = len(group.member) if hasattr(group, 'member') else 0
+                        self.logger.highlight('{}\\{}'.format(
+                            group.memberdomain,
+                            group.membername
+                        ))
                         try:
-                            group_id = self.db.get_groups(group_name=self.args.groups, group_domain=group.groupdomain)[0][0]
+                            group_id = self.db.get_groups(
+                                group_name=self.args.groups,
+                                group_domain=group.groupdomain
+                            )[0][0]
                         except IndexError:
-                            group_id = self.db.add_group(group.groupdomain, self.args.groups)
-
+                            group_id = self.db.add_group(
+                                group.groupdomain,
+                                self.args.groups,
+                                member_count_ad=member_count
+                            )
                         if not group.isgroup:
-                            self.db.add_user(group.memberdomain, group.membername, group_id)
+                            self.db.add_user(
+                                group.memberdomain,
+                                group.membername,
+                                group_id
+                            )
                         elif group.isgroup:
-                            self.db.add_group(group.groupdomain, group.groupname)
+                            self.db.add_group(
+                                group.groupdomain,
+                                group.groupname,
+                                member_count_ad=member_count
+                            )
                     break
                 except Exception as e:
                     self.logger.error('Error enumerating domain group members using dc ip {}: {}'.format(dc_ip, e))
@@ -940,13 +973,21 @@ class smb(connection):
 
                     self.logger.success('Enumerated domain group(s)')
                     for group in groups:
-                        self.logger.highlight('{:<40} membercount: {}'.format(group.samaccountname, len(group.member) if hasattr(group, 'member') else 0))
+                        member_count = len(group.member) if hasattr(group, 'member') else 0
+                        self.logger.highlight('{:<40} membercount: {}'.format(
+                            group.samaccountname,
+                            member_count
+                        ))
 
                         if bool(group.isgroup) is True:
-                            # Since there isn't a groupmemeber attribute on the returned object from get_netgroup
+                            # Since there isn't a groupmember attribute on the returned object from get_netgroup
                             # we grab it from the distinguished name
                             domain = self.domainfromdsn(group.distinguishedname)
-                            self.db.add_group(domain, group.samaccountname)
+                            self.db.add_group(
+                                domain,
+                                group.samaccountname,
+                                member_count_ad=member_count
+                            )
                     break
                 except Exception as e:
                     self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
