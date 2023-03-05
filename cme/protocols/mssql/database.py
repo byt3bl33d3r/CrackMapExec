@@ -185,14 +185,16 @@ class database:
 
         return user_rowid
 
-    def remove_credentials(self, credIDs):
+    def remove_credentials(self, creds_id):
         """
         Removes a credential ID from the database
         """
-        for credID in credIDs:
-            cur = self.conn.cursor()
-            cur.execute("DELETE FROM users WHERE id=?", [credID])
-            cur.close()
+        for cred_id in creds_id:
+            self.conn.query(self.users_table).filter(
+                self.users_table.c.id == cred_id
+            ).delete()
+        self.conn.commit()
+        self.conn.close()
 
     def add_admin_user(self, credtype, domain, username, password, host):
         cur = self.conn.cursor()
