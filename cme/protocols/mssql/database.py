@@ -267,14 +267,16 @@ class database:
         self.conn.commit()
         self.conn.close()
 
-    def is_credential_valid(self, credentialID):
+    def is_credential_valid(self, credential_id):
         """
         Check if this credential ID is valid.
         """
-        cur = self.conn.cursor()
-        cur.execute('SELECT * FROM users WHERE id=? LIMIT 1', [credentialID])
-        results = cur.fetchall()
-        cur.close()
+        results = self.conn.query(self.users_table).filter(
+            self.users_table.c.id == credential_id,
+            self.users_table.c.password is not None
+        ).all()
+        self.conn.commit()
+        self.conn.close()
         return len(results) > 0
 
     def get_credentials(self, filterTerm=None, credtype=None):
