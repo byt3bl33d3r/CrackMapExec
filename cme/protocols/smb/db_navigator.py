@@ -25,14 +25,14 @@ class navigator(DatabaseNavigator):
         data = [['GroupID', 'Domain', 'Name', 'Enumerated Members', 'AD Members', 'Last Query Time']]
 
         for group in groups:
-            groupID = group[0]
+            group_id = group[0]
             domain = group[1]
             name = group[2]
-            members = len(self.db.get_group_relations(group_id=groupID))
+            members = len(self.db.get_group_relations(group_id=group_id))
             ad_members = group[3]
             last_query_time = group[4]
 
-            data.append([groupID, domain, name, members, ad_members, last_query_time])
+            data.append([group_id, domain, name, members, ad_members, last_query_time])
         print_table(data, title='Groups')
 
     # pull/545
@@ -150,8 +150,7 @@ class navigator(DatabaseNavigator):
                     permissions='w'
                 )
 
-                data = [["ShareID", "Name", "Remark"]]
-                data.append([share_id, name, remark])
+                data = [["ShareID", "Name", "Remark"], [share_id, name, remark]]
                 print_table(data, title='Share')
                 host = self.db.get_computers(filter_term=computer_id)[0]
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
