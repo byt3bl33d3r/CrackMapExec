@@ -14,7 +14,6 @@ from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
 import csv
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy.orm import sessionmaker
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -265,16 +264,14 @@ class CMEDBMenu(cmd.Cmd):
         # self.conn = sqlite3.connect(db_path, check_same_thread=False)
         # self.conn.text_factory = str
         # self.conn.isolation_level = None
-        self.engine = create_engine(f"sqlite:///{db_path}")
-        self.engine.execution_options(isolation_level="AUTOCOMMIT")
-        self.engine.connect().connection.text_factory = str
+        engine = create_engine(f"sqlite:///{db_path}")
+        engine.execution_options(isolation_level="AUTOCOMMIT")
+        engine.connect().connection.text_factory = str
 
         self.metadata = MetaData()
-        self.metadata.reflect(bind=self.engine)
+        self.metadata.reflect(bind=engine)
 
-        Session = sessionmaker(bind=self.engine)
-        session = Session()
-        self.conn = session
+        self.conn = engine
 
     def write_configfile(self):
         with open(self.config_path, 'w') as configfile:

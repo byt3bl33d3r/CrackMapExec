@@ -2,13 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from sqlalchemy import func, text
+from sqlalchemy import func
+from sqlalchemy.orm import sessionmaker
 
 
 class database:
-    def __init__(self, conn, metadata=None):
-        # this is still named "conn" when it is the Session object, TODO: rename
-        self.conn = conn
+    def __init__(self, db_engine, metadata=None):
+        Session = sessionmaker(bind=db_engine)
+        # this is still named "conn" when it is the session object; TODO: rename
+        self.conn = Session()
         self.metadata = metadata
         self.computers_table = metadata.tables["computers"]
         self.users_table = metadata.tables["users"]
@@ -227,6 +229,8 @@ class database:
         results = self.conn.query(self.computers_table).filter(
             self.computers_table.c.ip == ip
         ).all()
+        cid = results[0][0]
+
         computer_data = {}
         if ip is not None:
             computer_data["ip"] = ip
@@ -250,7 +254,6 @@ class database:
             computer_data["dc"] = dc
 
         if not results:
-
             new_host = {
                 "ip": ip,
                 "hostname": hostname,

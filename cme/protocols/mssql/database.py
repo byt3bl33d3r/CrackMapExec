@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from sqlalchemy.orm import sessionmaker
+import logging
+
 
 class database:
-    def __init__(self, conn, metadata=None):
-        # this is still named "conn" when it is the Session object, TODO: rename
-        self.conn = conn
+    def __init__(self, db_engine, metadata=None):
+        session = sessionmaker(bind=db_engine)
+        # this is still named "conn" when it is the session object; TODO: rename
+        self.conn = session()
         self.metadata = metadata
         self.credentials_table = metadata.tables["credentials"]
         self.admin_relations_table = metadata.tables["admin_relations"]
