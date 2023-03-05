@@ -196,28 +196,46 @@ class database:
         self.conn.commit()
         self.conn.close()
 
-    def add_admin_user(self, credtype, domain, username, password, host):
-        cur = self.conn.cursor()
+    def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
+        domain = domain.split('.')[0].upper()
 
-        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
-        creds = cur.fetchall()
+        if user_id:
+            users = self.conn.query(self.users_table).filter(
+                self.users_table.c.id == user_id
+            ).all()
+        else:
+            users = self.conn.query(self.users_table).filter(
+                self.users_table.c.credtype == credtype,
+                func.lower(self.users_table.c.domain) == func.lower(domain),
+                func.lower(self.users_table.c.username) == func.lower(username),
+                self.users_table.c.password == password
+            ).all()
+        logging.debug(f"Users: {users}")
 
-        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [host])
-        hosts = cur.fetchall()
+        hosts = self.conn.query(self.computers_table).filter(
+            self.computers_table.c.ip.like(func.lower(f"%{host}%"))
+        )
+        logging.debug(f"Hosts: {hosts}")
 
-        if len(creds) and len(hosts):
-            for cred, host in zip(creds, hosts):
-                userid = cred[0]
-                computerid = host[0]
+        if users is not None and hosts is not None:
+            for user, host in zip(users, hosts):
+                user_id = user[0]
+                host_id = host[0]
 
                 # Check to see if we already added this link
-                cur.execute("SELECT * FROM admin_relations WHERE userid=? AND computerid=?", [userid, computerid])
-                links = cur.fetchall()
+                links = self.conn.query(self.admin_relations_table).filter(
+                    self.admin_relations_table.c.userid == user_id,
+                    self.admin_relations_table.c.computerid == host_id
+                ).all()
 
-                if not len(links):
-                    cur.execute("INSERT INTO admin_relations (userid, computerid) VALUES (?,?)", [userid, computerid])
+                if not links:
+                    self.conn.execute(
+                        self.admin_relations_table.insert(),
+                        [{"userid": user_id, "computerid": host_id}]
+                    )
 
-        cur.close()
+        self.conn.commit()
+        self.conn.close()
 
     def get_admin_relations(self, userID=None, hostID=None):
         cur = self.conn.cursor()
