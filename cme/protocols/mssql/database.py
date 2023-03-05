@@ -253,19 +253,19 @@ class database:
         self.conn.close()
         return results
 
-    def remove_admin_relation(self, userIDs=None, hostIDs=None):
-
-        cur = self.conn.cursor()
-
-        if userIDs:
-            for userID in userIDs:
-                cur.execute("DELETE FROM admin_relations WHERE userid=?", [userID])
-
-        elif hostIDs:
-            for hostID in hostIDs:
-                cur.execute("DELETE FROM admin_relations WHERE computerid=?", [hostID])
-
-        cur.close()
+    def remove_admin_relation(self, user_ids=None, host_ids=None):
+        if user_ids:
+            for user_id in user_ids:
+                self.conn.query(self.admin_relations_table).filter(
+                    self.admin_relations_table.c.userid == user_id
+                ).delete()
+        elif host_ids:
+            for host_id in host_ids:
+                self.conn.query(self.admin_relations_table).filter(
+                    self.admin_relations_table.c.hostid == host_id
+                ).delete()
+        self.conn.commit()
+        self.conn.close()
 
     def is_credential_valid(self, credentialID):
         """
