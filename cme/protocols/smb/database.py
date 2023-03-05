@@ -211,7 +211,10 @@ class database:
         results = self.conn.query(self.computers_table).filter(
             self.computers_table.c.ip == ip
         ).all()
-        cid = results[0][0]
+
+        # initialize the cid to the first (or only) id
+        if len(results) > 0:
+            cid = results[0][0]
 
         computer_data = {}
         if ip is not None:
@@ -267,7 +270,7 @@ class database:
                     )
                 except Exception as e:
                     logging.error(f"Exception: {e}")
-        self.conn.commit()
+        # self.conn.commit()
         self.conn.close()
         return cid
 
