@@ -694,7 +694,9 @@ class database:
         """
         # if we're returning a single host by ID
         if self.is_computer_valid(filter_term):
-            results = self.conn.query(self.computers_table).filter(self.computers_table.c.id == filter_term).first()
+            results = self.conn.query(self.computers_table).filter(
+                self.computers_table.c.id == filter_term
+            ).first()
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             if domain:
