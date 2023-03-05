@@ -4,6 +4,7 @@
 import logging
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
 
 class database:
@@ -50,7 +51,9 @@ class database:
         db_conn.execute('''CREATE TABLE "groups" (
             "id" integer PRIMARY KEY,
             "domain" text,
-            "name" text
+            "name" text,
+            "member_count_ad" integer,
+            "last_query_time" text
             )''')
 
         # This table keeps track of which credential has admin access over which machine and vice-versa
@@ -405,21 +408,46 @@ class database:
 
         return user_rowid
 
-    def add_group(self, domain, name):
+    def add_group(self, domain, name, member_count_ad=None):
         domain = domain.split('.')[0].upper()
 
-        self.conn.execute("SELECT * FROM groups WHERE LOWER(domain)=LOWER(?) AND LOWER(name)=LOWER(?)", [domain, name])
-        results = self.conn.fetchall()
+        results = self.conn.query(self.groups_table).filter(
+            func.lower(self.groups_table.c.domain) == func.lower(domain),
+            func.lower(self.groups_table.c.name) == func.lower(name)
+        ).all()
 
-        if not len(results):
-            self.conn.execute("INSERT INTO groups (domain, name) VALUES (?,?)", [domain, name])
+        group_data = {}
+        if domain is not None:
+            group_data["domain"] = domain
+        if name is not None:
+            group_data["name"] = name
+        if member_count_ad is not None:
+            group_data["member_count_ad"] = member_count_ad
+            today = datetime.now()
+            iso_date = today.isoformat()
+            group_data["last_query_time"] = iso_date
 
+        if results:
+            # initialize the cid to the first (or only) id
+            cid = results[0][0]
+            for group in results:
+                cid = self.conn.execute(
+                    self.groups_table.update().values(
+                        group_data
+                    ).where(
+                        self.groups_table.c.id == group[0]
+                    )
+                )
+        else:
+            cid = self.conn.execute(
+                self.groups_table.insert(),
+                [group_data]
+            )
         self.conn.commit()
         self.conn.close()
 
-        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, self.conn.lastrowid))
-
-        return self.conn.lastrowid
+        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, cid))
+        return cid
 
     def remove_credentials(self, creds_id):
         """
@@ -489,15 +517,19 @@ class database:
 
     def get_group_relations(self, user_id=None, group_id=None):
         if user_id and group_id:
-            self.conn.execute("SELECT * FROM group_relations WHERE userid=? and groupid=?", [user_id, group_id])
-
+            results = self.conn.query(self.group_relations_table).filter(
+                self.group_relations_table.c.id == user_id,
+                self.group_relations_table.c.groupid == group_id
+            ).all()
         elif user_id:
-            self.conn.execute("SELECT * FROM group_relations WHERE userid=?", [user_id])
-
+            results = self.conn.query(self.group_relations_table).filter(
+                self.group_relations_table.c.id == user_id
+            ).all()
         elif group_id:
-            self.conn.execute("SELECT * FROM group_relations WHERE groupid=?", [group_id])
+            results = self.conn.query(self.group_relations_table).filter(
+                self.group_relations_table.c.groupid == group_id
+            ).all()
 
-        results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
 

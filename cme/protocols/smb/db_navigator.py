@@ -22,15 +22,17 @@ class navigator(DatabaseNavigator):
         print_table(data, title='Credentials')
 
     def display_groups(self, groups):
-        data = [['GroupID', 'Domain', 'Name', 'Members']]
+        data = [['GroupID', 'Domain', 'Name', 'Enumerated Members', 'AD Members', 'Last Query Time']]
 
         for group in groups:
             groupID = group[0]
             domain = group[1]
             name = group[2]
             members = len(self.db.get_group_relations(group_id=groupID))
+            ad_members = group[3]
+            last_query_time = group[4]
 
-            data.append([groupID, domain, name, members])
+            data.append([groupID, domain, name, members, ad_members, last_query_time])
         print_table(data, title='Groups')
 
     # pull/545
