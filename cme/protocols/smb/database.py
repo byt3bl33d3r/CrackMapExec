@@ -600,8 +600,9 @@ class database:
         """
         Check if this User ID is valid.
         """
-        self.conn.execute('SELECT * FROM users WHERE id=? LIMIT 1', [user_id])
-        results = self.conn.fetchall()
+        results = self.conn.query(self.users_table).filter(
+            self.users_table.c.id == user_id
+        ).first()
         self.conn.commit()
         self.conn.close()
         return len(results) > 0
