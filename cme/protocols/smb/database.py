@@ -365,24 +365,50 @@ class database:
         domain = domain.split('.')[0].upper()
         user_rowid = None
 
-        self.conn.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?)", [domain, username])
-        results = self.conn.fetchall()
+        user_data = {
+            "password": "",
+            "credtype": "",
+            "pillaged_from_computerid": ""
+        }
+        if domain is not None:
+            user_data["domain"] = domain
+        if username is not None:
+            user_data["username"] = username
+        if group_id is not None:
+            user_data["group_id"] = group_id
+
+        results = self.conn.query(self.users_table).filter(
+            func.lower(self.users_table.c.domain) == func.lower(domain),
+            func.lower(self.users_table.c.username) == func.lower(username)
+        ).all()
 
         if not len(results):
-            self.conn.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, '', '', ''])
-            user_rowid = self.conn.lastrowid
+            user_rowid = self.conn.execute(
+                self.users_table.insert(),
+                [user_data]
+            )
             if group_id:
-                self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, group_id])
+                gr_data = {
+                    "userid": user_rowid,
+                    "groupid": group_id,
+                }
+                self.conn.execute(
+                    self.group_relations_table.insert(),
+                    [gr_data]
+                )
         else:
             for user in results:
                 if (domain != user[1]) and (username != user[2]):
-                    self.conn.execute("UPDATE users SET domain=?, user=? WHERE id=?", [domain, username, user[0]])
-                    user_rowid = self.conn.lastrowid
-
+                    user_rowid = self.conn.execute(self.users_table.update().values(
+                        user_data
+                    ).where(
+                        self.users_table.c.id == user[0]
+                    ))
                 if not user_rowid: user_rowid = user[0]
                 if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                    self.conn.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, group_id])
-
+                    self.conn.execute(self.group_relations_table.update().values(
+                        {"userid": user_rowid, "groupid": group_id}
+                    ))
         self.conn.commit()
         self.conn.close()
 
@@ -609,16 +635,17 @@ class database:
 
     def get_users(self, filter_term=None):
         if self.is_user_valid(filter_term):
-            self.conn.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filter_term])
-
+            results = self.conn.query(self.users_table).filter(
+                self.users_table.c.id == filter_term
+            ).all()
         # if we're filtering by username
         elif filter_term and filter_term != '':
-            self.conn.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filter_term)])
-
+            results = self.conn.query(self.users_table).filter(
+                func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))
+            ).all()
         else:
-            self.conn.execute("SELECT * FROM users")
+            results = self.conn.query(self.users_table).all()
 
-        results = self.conn.fetchall()
         self.conn.commit()
         self.conn.close()
         return results
