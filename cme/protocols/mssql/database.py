@@ -316,27 +316,38 @@ class database:
         self.conn.close()
         return len(results) > 0
 
-    def get_computers(self, filterTerm=None):
+    def get_computers(self, filter_term=None, domain=None):
         """
-        Return computers from the database.
+        Return hosts from the database.
         """
-
-        cur = self.conn.cursor()
-
         # if we're returning a single host by ID
-        if self.is_computer_valid(filterTerm):
-            cur.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
-
+        if self.is_computer_valid(filter_term):
+            results = self.conn.query(self.computers_table).filter(
+                self.computers_table.c.id == filter_term
+            ).first()
+        # if we're filtering by domain controllers
+        elif filter_term == 'dc':
+            if domain:
+                results = self.conn.query(self.computers_table).filter(
+                    self.computers_table.c.dc == 1,
+                    func.lower(self.computers_table.c.domain) == func.lower(domain)
+                ).all()
+            else:
+                results = self.conn.query(self.computers_table).filter(
+                    self.computers_table.c.dc == 1
+                ).all()
         # if we're filtering by ip/hostname
-        elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower()), '%{}%'.format(filterTerm.lower())])
-
-        # otherwise return all credentials
+        elif filter_term and filter_term != "":
+            results = self.conn.query(self.computers_table).filter((
+                    func.lower(self.computers_table.c.ip).like(func.lower(f"%{filter_term}%")) |
+                    func.lower(self.computers_table.c.hostname).like(func.lower(f"%{filter_term}"))
+            )).all()
+        # otherwise return all computers
         else:
-            cur.execute("SELECT * FROM computers")
+            results = self.conn.query(self.computers_table).all()
 
-        results = cur.fetchall()
-        cur.close()
+        self.conn.commit()
+        self.conn.close()
         return results
 
     def clear_database(self):
