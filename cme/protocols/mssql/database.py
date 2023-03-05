@@ -305,14 +305,15 @@ class database:
         self.conn.close()
         return results
 
-    def is_computer_valid(self, hostID):
+    def is_computer_valid(self, host_id):
         """
-        Check if this computer ID is valid.
+        Check if this host ID is valid.
         """
-        cur = self.conn.cursor()
-        cur.execute('SELECT * FROM computers WHERE id=? LIMIT 1', [hostID])
-        results = cur.fetchall()
-        cur.close()
+        results = self.conn.query(self.computers_table).filter(
+            self.computers_table.c.id == host_id
+        ).all()
+        self.conn.commit()
+        self.conn.close()
         return len(results) > 0
 
     def get_computers(self, filterTerm=None):
