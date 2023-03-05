@@ -279,31 +279,30 @@ class database:
         self.conn.close()
         return len(results) > 0
 
-    def get_credentials(self, filterTerm=None, credtype=None):
+    def get_credentials(self, filter_term=None, cred_type=None):
         """
         Return credentials from the database.
         """
-
-        cur = self.conn.cursor()
-
         # if we're returning a single credential by ID
-        if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filterTerm])
-
-        # if we're filtering by credtype
-        elif credtype:
-            cur.execute("SELECT * FROM users WHERE credtype=?", [credtype])
-
+        if self.is_credential_valid(filter_term):
+            results = self.conn.query(self.users_table).filter(
+                self.users_table.c.id == filter_term
+            ).all()
+        elif cred_type:
+            results = self.conn.query(self.users_table).filter(
+                self.users_table.c.credtype == cred_type
+            ).all()
         # if we're filtering by username
-        elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower())])
-
+        elif filter_term and filter_term != '':
+            results = self.conn.query(self.users_table).filter(
+                func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))
+            ).all()
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM users")
+            results = self.conn.query(self.users_table).all()
 
-        results = cur.fetchall()
-        cur.close()
+        self.conn.commit()
+        self.conn.close()
         return results
 
     def is_computer_valid(self, hostID):
