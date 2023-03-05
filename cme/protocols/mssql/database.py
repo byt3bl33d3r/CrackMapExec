@@ -237,16 +237,20 @@ class database:
         self.conn.commit()
         self.conn.close()
 
-    def get_admin_relations(self, userID=None, hostID=None):
-        cur = self.conn.cursor()
+    def get_admin_relations(self, user_id=None, host_id=None):
+        if user_id:
+            results = self.conn.query(self.admin_relations_table).filter(
+                self.admin_relations_table.c.userid == user_id
+            ).all()
+        elif host_id:
+            results = self.conn.query(self.admin_relations_table).filter(
+                self.admin_relations_table.c.computerid == host_id
+            ).all()
+        else:
+            results = self.conn.query(self.admin_relations_table).all()
 
-        if userID:
-            cur.execute("SELECT * from admin_relations WHERE userid=?", [userID])
-        elif hostID:
-            cur.execute("SELECT * from admin_relations WHERE computerid=?", [hostID])
-
-        results = cur.fetchall()
-        cur.close()
+        self.conn.commit()
+        self.conn.close()
         return results
 
     def remove_admin_relation(self, userIDs=None, hostIDs=None):
