@@ -558,12 +558,14 @@ class database:
         return len(results) > 0
 
     def is_credential_local(self, credential_id):
-        self.conn.execute('SELECT domain FROM users WHERE id=?', [credential_id])
-        user_domain = self.conn.fetchall()
+        user_domain = self.conn.query(self.users_table.c.domain).filter(
+            self.users_table.c.id == credential_id
+        ).all()
 
         if user_domain:
-            self.conn.execute('SELECT * FROM computers WHERE LOWER(hostname)=LOWER(?)', [user_domain])
-            results = self.conn.fetchall()
+            results = self.conn.query(self.computers_table).filter(
+                func.lower(self.computers_table.c.id) == func.lower(user_domain)
+            ).all()
             self.conn.commit()
             self.conn.close()
             return len(results) > 0
