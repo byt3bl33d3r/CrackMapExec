@@ -10,7 +10,7 @@ class database:
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = session()
         self.metadata = metadata
-        self.credentials_table = metadata.tables["credentials"]
+        self.computers_table = metadata.tables["computers"]
         self.admin_relations_table = metadata.tables["admin_relations"]
         self.users_table = metadata.tables["users"]
 
@@ -49,15 +49,57 @@ class database:
         """
         Check if this host has already been added to the database, if not add it in.
         """
-        cur = self.conn.cursor()
+        domain = domain.split('.')[0].upper()
 
-        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [ip])
-        results = cur.fetchall()
+        results = self.conn.query(self.computers_table).filter(
+            self.computers_table.c.ip == ip
+        ).all()
 
-        if not len(results):
-            cur.execute("INSERT INTO computers (ip, hostname, domain, os, instances) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, instances])
+        # initialize the cid to the first (or only) id
+        if len(results) > 0:
+            cid = results[0][0]
 
-        cur.close()
+        computer_data = {}
+        if ip is not None:
+            computer_data["ip"] = ip
+        if hostname is not None:
+            computer_data["hostname"] = hostname
+        if domain is not None:
+            computer_data["domain"] = domain
+        if os is not None:
+            computer_data["os"] = os
+        if instances is not None:
+            computer_data["instances"] = instances
+
+        if not results:
+            new_host = {
+                "ip": ip,
+                "hostname": hostname,
+                "domain": domain,
+                "os": os,
+                "instances": instances
+            }
+            try:
+                cid = self.conn.execute(
+                    self.computers_table.insert(),
+                    [new_host]
+                )
+            except Exception as e:
+                logging.error(f"Exception: {e}")
+        else:
+            for host in results:
+                try:
+                    cid = self.conn.execute(
+                        self.computers_table.update().values(
+                            computer_data
+                        ).where(
+                            self.computers_table.c.id == host.id
+                        )
+                    )
+                except Exception as e:
+                    logging.error(f"Exception: {e}")
+        self.conn.close()
+        return cid
 
     def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
         """
