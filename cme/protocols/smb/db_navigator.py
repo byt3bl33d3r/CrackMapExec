@@ -10,18 +10,15 @@ class navigator(DatabaseNavigator):
         data = [['CredID', 'Admin On', 'CredType', 'Domain', 'UserName', 'Password']]
 
         for cred in creds:
-
-            credID = cred[0]
+            cred_id = cred[0]
             domain = cred[1]
             username = cred[2]
             password = cred[3]
             credtype = cred[4]
             # pillaged_from = cred[5]
 
-            links = self.db.get_admin_relations(user_id=credID)
-
-            data.append([credID, str(len(links)) + ' Host(s)', credtype, domain, username, password])
-
+            links = self.db.get_admin_relations(user_id=cred_id)
+            data.append([cred_id, str(len(links)) + ' Host(s)', credtype, domain, username, password])
         print_table(data, title='Credentials')
 
     def display_groups(self, groups):
@@ -34,15 +31,26 @@ class navigator(DatabaseNavigator):
             members = len(self.db.get_group_relations(group_id=groupID))
 
             data.append([groupID, domain, name, members])
-
         print_table(data, title='Groups')
 
     # pull/545
     def display_hosts(self, hosts):
-        data = [['HostID', 'Admins', 'IP', 'Hostname', 'Domain', 'OS', 'SMBv1', 'Signing', 'Spooler', 'Zerologon', 'PetitPotam']]
+        data = [[
+            'HostID',
+            'Admins',
+            'IP',
+            'Hostname',
+            'Domain',
+            'OS',
+            'SMBv1',
+            'Signing',
+            'Spooler',
+            'Zerologon',
+            'PetitPotam'
+        ]]
     
         for host in hosts:
-            hostID = host[0]
+            host_id = host[0]
             ip = host[1]
             hostname = host[2]
             domain = host[3]
@@ -65,86 +73,95 @@ class navigator(DatabaseNavigator):
                 spooler = ''
                 zerologon = ''
                 petitpotam = ''
-            links = self.db.get_admin_relations(host_id=hostID)
-            data.append([hostID, str(len(links)) + ' Cred(s)', ip, hostname, domain, os, smbv1, signing, spooler, zerologon, petitpotam])
-            
+
+            links = self.db.get_admin_relations(host_id=host_id)
+            data.append([
+                host_id,
+                str(len(links)) + ' Cred(s)',
+                ip,
+                hostname,
+                domain,
+                os,
+                smbv1,
+                signing,
+                spooler,
+                zerologon,
+                petitpotam
+            ])
         print_table(data, title='Hosts')
     
     def display_shares(self, shares):
         data = [["ShareID", "computer", "Name", "Remark", "Read Access", "Write Access"]]
 
         for share in shares:
-            shareID = share[0]
-            computerid = share[1]
+            share_id = share[0]
+            computer_id = share[1]
             name = share[3]
             remark = share[4]
 
             users_r_access = self.db.get_users_with_share_access(
-                computer_id=computerid,
+                computer_id=computer_id,
                 share_name=name,
                 permissions='r'
             )
-
             users_w_access = self.db.get_users_with_share_access(
-                computer_id=computerid,
+                computer_id=computer_id,
                 share_name=name,
                 permissions='w'
             )
-
-            data.append([shareID, computerid, name, remark, f"{len(users_r_access)} User(s)", f"{len(users_w_access)} Users"])
-
+            data.append([
+                share_id,
+                computer_id,
+                name,
+                remark,
+                f"{len(users_r_access)} User(s)",
+                f"{len(users_w_access)} Users"
+            ])
         print_table(data)
 
     def do_shares(self, line):
-        filterTerm = line.strip()
+        filter_term = line.strip()
 
-        if filterTerm == "":
+        if filter_term == "":
             shares = self.db.get_shares()
             self.display_shares(shares)
         else:
-            shares = self.db.get_shares(filter_term=filterTerm)
+            shares = self.db.get_shares(filter_term=filter_term)
 
             if len(shares) > 1:
                 self.display_shares(shares)
             elif len(shares) == 1:
                 share = shares[0]
-                shareID = share[0]
-                computerID = share[1]
+                share_id = share[0]
+                computer_id = share[1]
                 name = share[3]
                 remark = share[4]
 
                 users_r_access = self.db.get_users_with_share_access(
-                    computer_id=computerID,
+                    computer_id=computer_id,
                     share_name=name,
                     permissions='r'
                 )
-
                 users_w_access = self.db.get_users_with_share_access(
-                    computer_id=computerID,
+                    computer_id=computer_id,
                     share_name=name,
                     permissions='w'
                 )
 
                 data = [["ShareID", "Name", "Remark"]]
-
-                data.append([shareID, name, remark])
-            
+                data.append([share_id, name, remark])
                 print_table(data, title='Share')
-
-                host = self.db.get_computers(filter_term=computerID)[0]
-
+                host = self.db.get_computers(filter_term=computer_id)[0]
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
-  
-                hostID = host[0]
 
+                host_id = host[0]
                 ip = host[1]
                 hostname = host[2]
                 domain = host[3]
                 os = host[4]
                 dc = host[5]
 
-                data.append([hostID, ip, hostname, domain, os, dc])
-
+                data.append([host_id, ip, hostname, domain, os, dc])
                 print_table(data, title='Share Location')
 
                 if users_r_access:
@@ -154,14 +171,12 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            credID = cred[0]
+                            cred_id = cred[0]
                             domain = cred[1]
                             username = cred[2]
                             password = cred[3]
                             credtype = cred[4]
-
-                            data.append([credID, credtype, domain, username, password])
-
+                            data.append([cred_id, credtype, domain, username, password])
                     print_table(data, title='Users(s) with Read Access')
 
                 if users_w_access:
@@ -171,109 +186,99 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            credID = cred[0]
+                            cred_id = cred[0]
                             domain = cred[1]
                             username = cred[2]
                             password = cred[3]
                             credtype = cred[4]
 
-                            data.append([credID, credtype, domain, username, password])
-
+                            data.append([cred_id, credtype, domain, username, password])
                     print_table(data, title='Users(s) with Write Access')
 
     def do_groups(self, line):
-        filterTerm = line.strip()
+        filter_term = line.strip()
 
-        if filterTerm == "":
+        if filter_term == "":
             groups = self.db.get_groups()
             self.display_groups(groups)
-
         else:
-            groups = self.db.get_groups(filter_term=filterTerm)
+            groups = self.db.get_groups(filter_term=filter_term)
 
             if len(groups) > 1:
                 self.display_groups(groups)
             elif len(groups) == 1:
-
                 data = [['GroupID', 'Domain', 'Name']]
 
                 for group in groups:
-                    groupID = group[0]
+                    group_id = group[0]
                     domain = group[1]
                     name = group[2]
 
-                    data.append([groupID, domain, name])
-
+                    data.append([group_id, domain, name])
                 print_table(data, title='Group')
-
                 data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
 
                 for group in groups:
                     members = self.db.get_group_relations(group_id=group[0])
 
                     for member in members:
-                        _,userid,_ = member
+                        _, userid, _ = member
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            credID = cred[0]
+                            cred_id = cred[0]
                             domain = cred[1]
                             username = cred[2]
                             password = cred[3]
                             credtype = cred[4]
                             pillaged_from = cred[5]
 
-                            data.append([credID, credtype, pillaged_from, domain, username, password])
-
+                            data.append([cred_id, credtype, pillaged_from, domain, username, password])
                 print_table(data, title='Member(s)')
 
     def do_hosts(self, line):
-        filterTerm = line.strip()
+        filter_term = line.strip()
 
-        if filterTerm == "":
+        if filter_term == "":
             hosts = self.db.get_computers()
             self.display_hosts(hosts)
         else:
-            hosts = self.db.get_computers(filter_term=filterTerm)
+            hosts = self.db.get_computers(filter_term=filter_term)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
-                hostIDList = []
+                host_id_list = []
 
                 for host in hosts:
-                    hostID = host[0]
-                    hostIDList.append(hostID)
-
+                    host_id = host[0]
+                    host_id_list.append(host_id)
                     ip = host[1]
                     hostname = host[2]
                     domain = host[3]
                     os = host[4]
                     dc = host[5]
 
-                    data.append([hostID, ip, hostname, domain, os, dc])
-
+                    data.append([host_id, ip, hostname, domain, os, dc])
                 print_table(data, title='Host')
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
-                for hostID in hostIDList:
-                    links = self.db.get_admin_relations(host_id=hostID)
+                for host_id in host_id_list:
+                    links = self.db.get_admin_relations(host_id=host_id)
 
                     for link in links:
-                        linkID, credID, hostID = link
-                        creds = self.db.get_credentials(filter_term=credID)
+                        link_id, cred_id, host_id = link
+                        creds = self.db.get_credentials(filter_term=cred_id)
 
                         for cred in creds:
-                            credID = cred[0]
+                            cred_id = cred[0]
                             domain = cred[1]
                             username = cred[2]
                             password = cred[3]
                             credtype = cred[4]
                             # pillaged_from = cred[5]
-
-                            data.append([credID, credtype, domain, username, password])
-
+                            data.append([cred_id, credtype, domain, username, password])
                 print_table(data, title='Credential(s) with Admin Access')
 
     def do_dpapi(self, line):
@@ -323,16 +328,14 @@ class navigator(DatabaseNavigator):
                 self.print_table(secrets, title='DPAPI Secrets')
 
     def do_creds(self, line):
-        filterTerm = line.strip()
+        filter_term = line.strip()
 
-        if filterTerm == "":
+        if filter_term == "":
             creds = self.db.get_credentials()
             self.display_creds(creds)
-
-        elif filterTerm.split()[0].lower() == "add":
-
+        elif filter_term.split()[0].lower() == "add":
             # add format: "domain username password <notes> <credType> <sid>
-            args = filterTerm.split()[1:]
+            args = filter_term.split()[1:]
 
             if len(args) == 3:
                 domain, username, password = args
@@ -340,102 +343,94 @@ class navigator(DatabaseNavigator):
                     self.db.add_credential("hash", domain, username, password)
                 else:
                     self.db.add_credential("plaintext", domain, username, password)
-
             else:
                 print("[!] Format is 'add domain username password")
                 return
-
-        elif filterTerm.split()[0].lower() == "remove":
-
-            args = filterTerm.split()[1:]
+        elif filter_term.split()[0].lower() == "remove":
+            args = filter_term.split()[1:]
             if len(args) != 1:
                 print("[!] Format is 'remove <credID>'")
                 return
             else:
                 self.db.remove_credentials(args)
                 self.db.remove_admin_relation(user_ids=args)
-
-        elif filterTerm.split()[0].lower() == "plaintext":
+        elif filter_term.split()[0].lower() == "plaintext":
             creds = self.db.get_credentials(cred_type="plaintext")
             self.display_creds(creds)
-
-        elif filterTerm.split()[0].lower() == "hash":
+        elif filter_term.split()[0].lower() == "hash":
             creds = self.db.get_credentials(cred_type="hash")
             self.display_creds(creds)
-
         else:
-            creds = self.db.get_credentials(filter_term=filterTerm)
+            creds = self.db.get_credentials(filter_term=filter_term)
             if len(creds) != 1:
                 self.display_creds(creds)
             elif len(creds) == 1:
                 data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
-                credIDList = []
+                cred_id_list = []
 
                 for cred in creds:
-                    credID = cred[0]
-                    credIDList.append(credID)
-
+                    cred_id = cred[0]
+                    cred_id_list.append(cred_id)
                     domain = cred[1]
                     username = cred[2]
                     password = cred[3]
                     credtype = cred[4]
                     pillaged_from = cred[5]
 
-                    data.append([credID, credtype, pillaged_from, domain, username, password])
-
+                    data.append([cred_id, credtype, pillaged_from, domain, username, password])
                 print_table(data, title='Credential(s)')
 
                 data = [['GroupID', 'Domain', 'Name']]
-                for credID in credIDList:
-                    links = self.db.get_group_relations(userID=credID)
+                for cred_id in cred_id_list:
+                    links = self.db.get_group_relations(userID=cred_id)
 
                     for link in links:
-                        linkID, userID, groupID = link
-                        groups = self.db.get_groups(groupID)
+                        link_id, user_id, group_id = link
+                        groups = self.db.get_groups(group_id)
 
                         for group in groups:
-                            groupID = group[0]
+                            group_id = group[0]
                             domain = group[1]
                             name = group[2]
-
-                            data.append([groupID, domain, name])
+                            data.append([group_id, domain, name])
 
                 print_table(data, title='Member of Group(s)')
 
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
-                for credID in credIDList:
-                    links = self.db.get_admin_relations(user_id=credID)
+                for cred_id in cred_id_list:
+                    links = self.db.get_admin_relations(user_id=cred_id)
 
                     for link in links:
-                        linkID, credID, hostID = link
-                        hosts = self.db.get_computers(hostID)
+                        link_id, cred_id, host_id = link
+                        hosts = self.db.get_computers(host_id)
 
                         for host in hosts:
-                            hostID = host[0]
+                            host_id = host[0]
                             ip = host[1]
                             hostname = host[2]
                             domain = host[3]
                             os = host[4]
 
-                            data.append([hostID, ip, hostname, domain, os])
-
+                            data.append([host_id, ip, hostname, domain, os])
                 print_table(data, title='Admin Access to Host(s)')
 
     def do_clear_database(self, line):
         self.db.clear_database()
 
-    def complete_hosts(self, text, line, begidx, endidx):
-        "Tab-complete 'creds' commands."
-
+    def complete_hosts(self, text, line):
+        """
+        Tab-complete 'creds' commands.
+        """
         commands = ["add", "remove", "dc"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
-    def complete_creds(self, text, line, begidx, endidx):
-        "Tab-complete 'creds' commands."
-
+    def complete_creds(self, text, line):
+        """
+        Tab-complete 'creds' commands.
+        """
         commands = ["add", "remove", "hash", "plaintext"]
 
         mline = line.partition(' ')[2]
