@@ -178,7 +178,7 @@ class database:
         Check if this share ID is valid.
         """
         q = select(self.SharesTable).filter(
-            self.SharesTable.c.ip == share_id
+            self.SharesTable.c.id == share_id
         )
         results = asyncio.run(self.conn.execute(q)).all()
 
@@ -188,7 +188,7 @@ class database:
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
             q = select(self.SharesTable).filter(
-                self.SharesTable.c.ip == filter_term
+                self.SharesTable.c.id == filter_term
             )
         elif filter_term:
             q = select(self.SharesTable).filter(
