@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from sqlalchemy.exc import SAWarning
 
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.logger import highlight
@@ -33,6 +32,7 @@ import sys
 import logging
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.exc import SAWarning
 import warnings
 
 Base = declarative_base()
