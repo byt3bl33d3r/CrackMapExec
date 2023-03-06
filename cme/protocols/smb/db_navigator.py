@@ -374,7 +374,7 @@ class navigator(DatabaseNavigator):
 
     def complete_hosts(self, text, line):
         """
-        Tab-complete 'creds' commands.
+        Tab-complete 'hosts' commands.
         """
         commands = ["add", "remove", "dc"]
 
