@@ -703,35 +703,32 @@ class database:
         """
         Return hosts from the database.
         """
-        print(f"HERE!")
+        q = select(self.ComputersTable)
+
         # if we're returning a single host by ID
         if self.is_computer_valid(filter_term):
-            results = self.conn.query(self.ComputersTable).filter(
+            q.filter(
                 self.ComputersTable.c.id == filter_term
-            ).first()
+            )
+            results = asyncio.run(self.conn.execute(q)).first()
+            return results
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
+            q.filter(
+                self.ComputersTable.c.dc == 1
+            )
             if domain:
-                results = self.conn.query(self.ComputersTable).filter(
-                    self.ComputersTable.c.dc == 1,
+                q.filter(
                     func.lower(self.ComputersTable.c.domain) == func.lower(domain)
-                ).all()
-            else:
-                results = self.conn.query(self.ComputersTable).filter(
-                    self.ComputersTable.c.dc == 1
-                ).all()
+                )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            results = self.conn.query(self.ComputersTable).filter((
-                    func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
-                    func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
-            )).all()
-        # otherwise return all computers
-        else:
-            results = self.conn.query(self.ComputersTable).all()
+            q.filter(
+                func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
+                func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
+            )
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def get_domain_controllers(self, domain=None):
