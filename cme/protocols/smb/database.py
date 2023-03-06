@@ -192,62 +192,20 @@ class database:
         if "w" in permissions:
             q.filter(self.SharesTable.c.write == 1)
         results = asyncio.run(self.conn.execute(q)).all()
-        #
-        # if share_id:
-        #     if permissions == "r":
-        #         q = select(self.SharesTable).filter(
-        #             self.SharesTable.c.id == share_id,
-        #             self.SharesTable.c.read == 1
-        #         )
-        #     elif permissions == "w":
-        #         q = select(self.SharesTable).filter(
-        #             self.SharesTable.c.id == share_id,
-        #             self.SharesTable.c.write == 1
-        #         )
-        #     elif permissions == "rw":
-        #         q = select(self.SharesTable).filter(
-        #             self.SharesTable.c.id == share_id,
-        #             self.SharesTable.c.read == 1,
-        #             self.SharesTable.c.write == 1
-        #         )
-        # else:
-        #     if permissions == "r":
-        #         results = self.conn.query(self.SharesTable).filter(
-        #             self.SharesTable.c.read == 1
-        #         ).all()
-        #     elif permissions == "w":
-        #         results = self.conn.query(self.SharesTable).filter(
-        #             self.SharesTable.c.write == 1
-        #         ).all()
-        #     elif permissions == "rw":
-        #         results = self.conn.query(self.SharesTable).filter(
-        #             self.SharesTable.c.read == 1,
-        #             self.SharesTable.c.write == 1
-        #         ).all()
         return results
 
     def get_users_with_share_access(self, computer_id, share_name, permissions):
         permissions = permissions.lower()
+        q = select(self.SharesTable.c.userid).filter(
+            self.SharesTable.c.name == share_name,
+            self.SharesTable.c.computerid == computer_id
+        )
+        if "r" in permissions:
+            q.filter(self.SharesTable.c.read == 1)
+        if "w" in permissions:
+            q.filter(self.SharesTable.c.write == 1)
+        results = asyncio.run(self.conn.execute(q)).all()
 
-        if permissions == "r":
-            results = self.conn.query(self.SharesTable.c.userid).filter(
-                self.SharesTable.c.computerid == computer_id,
-                self.SharesTable.c.name == share_name,
-                self.SharesTable.c.read == 1
-            ).all()
-        elif permissions == "w":
-            results = self.conn.query(self.SharesTable.c.userid).filter(
-                self.SharesTable.c.computerid == computer_id,
-                self.SharesTable.c.name == share_name,
-                self.SharesTable.c.write == 1
-            ).all()
-        elif permissions == "rw":
-            results = self.conn.query(self.SharesTable.c.userid).filter(
-                self.SharesTable.c.computerid == computer_id,
-                self.SharesTable.c.name == share_name,
-                self.SharesTable.c.read == 1,
-                self.SharesTable.c.write == 1
-            ).all()
         return results
 
     # pull/545
