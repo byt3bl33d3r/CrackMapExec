@@ -180,38 +180,50 @@ class database:
 
     def get_shares_by_access(self, permissions, share_id=None):
         permissions = permissions.lower()
-
+        print(f"Permissions: {permissions}")
+        print(f"Share ID: {share_id}")
+        q = select(self.SharesTable)
         if share_id:
-            if permissions == "r":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.id == share_id,
-                    self.SharesTable.c.read == 1
-                ).all()
-            elif permissions == "w":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.id == share_id,
-                    self.SharesTable.c.write == 1
-                ).all()
-            elif permissions == "rw":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.id == share_id,
-                    self.SharesTable.c.read == 1,
-                    self.SharesTable.c.write == 1
-                ).all()
-        else:
-            if permissions == "r":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.read == 1
-                ).all()
-            elif permissions == "w":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.write == 1
-                ).all()
-            elif permissions == "rw":
-                results = self.conn.query(self.SharesTable).filter(
-                    self.SharesTable.c.read == 1,
-                    self.SharesTable.c.write == 1
-                ).all()
+            q.filter(self.SharesTable.c.id == share_id)
+        if "r" in permissions:
+            q.filter(self.SharesTable.c.read == 1)
+        if "w" in permissions:
+            q.filter(self.SharesTable.c.write == 1)
+        print(f"query: {q}")
+        res = asyncio.run(self.conn.execute(q))
+        results = res.all()
+        #
+        # if share_id:
+        #     if permissions == "r":
+        #         q = select(self.SharesTable).filter(
+        #             self.SharesTable.c.id == share_id,
+        #             self.SharesTable.c.read == 1
+        #         )
+        #     elif permissions == "w":
+        #         q = select(self.SharesTable).filter(
+        #             self.SharesTable.c.id == share_id,
+        #             self.SharesTable.c.write == 1
+        #         )
+        #     elif permissions == "rw":
+        #         q = select(self.SharesTable).filter(
+        #             self.SharesTable.c.id == share_id,
+        #             self.SharesTable.c.read == 1,
+        #             self.SharesTable.c.write == 1
+        #         )
+        # else:
+        #     if permissions == "r":
+        #         results = self.conn.query(self.SharesTable).filter(
+        #             self.SharesTable.c.read == 1
+        #         ).all()
+        #     elif permissions == "w":
+        #         results = self.conn.query(self.SharesTable).filter(
+        #             self.SharesTable.c.write == 1
+        #         ).all()
+        #     elif permissions == "rw":
+        #         results = self.conn.query(self.SharesTable).filter(
+        #             self.SharesTable.c.read == 1,
+        #             self.SharesTable.c.write == 1
+        #         ).all()
         return results
 
     def get_users_with_share_access(self, computer_id, share_name, permissions):
