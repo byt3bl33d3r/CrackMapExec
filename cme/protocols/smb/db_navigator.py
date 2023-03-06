@@ -298,6 +298,15 @@ class navigator(DatabaseNavigator):
                             data.append([cred_id, credtype, domain, username, password])
                 print_table(data, title='Credential(s) with Admin Access')
 
+    def help_hosts(self):
+        help_string = """
+        hosts [filter_term]
+        By default prints all hosts
+        Can use a filter term to filter hosts
+        The filter can be an integer for a specific host id, "dc" for domain controllers, or an ip/hostname
+        """
+        print_help(help_string)
+
     def do_dpapi(self, line):
         filterTerm = line.strip()
 
