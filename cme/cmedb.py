@@ -13,11 +13,16 @@ from cme.loaders.protocol_loader import protocol_loader
 from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.exc import SAWarning
 import csv
+import warnings
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+warnings.filterwarnings("ignore", category=SAWarning)
 
 
 class UserExitedProto(Exception):
