@@ -1,30 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import logging
-from sqlalchemy import func
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import MetaData, func, inspect, Table, select, insert, update, delete
+from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+import asyncio
+import copy
+
+
+def get_table_names(conn):
+    inspector = inspect(conn)
+    return inspector.get_table_names()
 
 
 class database:
-    def __init__(self, db_engine, metadata=None):
-        Session = sessionmaker(bind=db_engine)
+    def __init__(self, db_engine):
+        self.ComputersTable = None
+        self.UsersTable = None
+        self.GroupsTable = None
+        self.SharesTable = None
+        self.AdminRelationsTable = None
+        self.GroupRelationsTable = None
+        self.LoggedinRelationsTable = None
+
+        self.db_engine = db_engine
+        self.metadata = MetaData()
+        asyncio.run(self.reflect_tables())
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False, class_=AsyncSession)
+        # session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False)
+        Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
-        self.metadata = metadata
-        self.computers_table = metadata.tables["computers"]
-        self.users_table = metadata.tables["users"]
-        self.groups_table = metadata.tables["groups"]
-        self.shares_table = metadata.tables["shares"]
-        self.admin_relations_table = metadata.tables["admin_relations"]
-        self.group_relations_table = metadata.tables["group_relations"]
-        self.loggedin_relations = metadata.tables["loggedin_relations"]
+
+    async def reflect_tables(self):
+        async with self.db_engine.connect() as conn:
+            await conn.run_sync(self.metadata.reflect)
+
+            self.ComputersTable = Table("computers", self.metadata, autoload_with=self.db_engine)
+            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+            self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
+            self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
+            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+            self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
+            self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
 
     @staticmethod
     def db_schema(db_conn):
         db_conn.execute('''CREATE TABLE "computers" (
-            "id" integer PRIMARY KEY,
+            "id" integer PRIMARY KEY ON CONFLICT REPLACE,
             "ip" text,
             "hostname" text,
             "domain" text,
@@ -129,10 +154,8 @@ class database:
             "read": read,
             "write": write,
         }
-        self.conn.execute(
-            self.shares_table.insert(),
-            [data]
-        )
+        q = insert(self.SharesTable).values(data)
+        self.conn.execute(q)
         self.conn.commit()
         self.conn.close()
 
@@ -140,9 +163,10 @@ class database:
         """
         Check if this share ID is valid.
         """
-        results = self.conn.query(self.shares_table).filter(
-            self.shares_table.c.id == share_id
+        q = select(self.SharesTable).filter(
+            self.SharesTable.c.id == share_id
         ).all()
+        results = self.conn.execute(q)
         self.conn.commit()
         self.conn.close()
 
@@ -151,15 +175,15 @@ class database:
 
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
-            results = self.conn.query(self.shares_table).filter(
-                self.shares_table.c.id == filter_term
+            results = self.conn.query(self.SharesTable).filter(
+                self.SharesTable.c.id == filter_term
             ).all()
         elif filter_term:
-            results = self.conn.query(self.shares_table).filter(
-                func.lower(self.shares_table.c.name).like(func.lower(f"%{filter_term}%"))
+            results = self.conn.query(self.SharesTable).filter(
+                func.lower(self.SharesTable.c.name).like(func.lower(f"%{filter_term}%"))
             ).all()
         else:
-            results = self.conn.query(self.shares_table).all()
+            results = self.conn.query(self.SharesTable).all()
         return results
 
     def get_shares_by_access(self, permissions, share_id=None):
@@ -167,34 +191,34 @@ class database:
 
         if share_id:
             if permissions == "r":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.id == share_id,
-                    self.shares_table.c.read == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.id == share_id,
+                    self.SharesTable.c.read == 1
                 ).all()
             elif permissions == "w":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.id == share_id,
-                    self.shares_table.c.write == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.id == share_id,
+                    self.SharesTable.c.write == 1
                 ).all()
             elif permissions == "rw":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.id == share_id,
-                    self.shares_table.c.read == 1,
-                    self.shares_table.c.write == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.id == share_id,
+                    self.SharesTable.c.read == 1,
+                    self.SharesTable.c.write == 1
                 ).all()
         else:
             if permissions == "r":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.read == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.read == 1
                 ).all()
             elif permissions == "w":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.write == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.write == 1
                 ).all()
             elif permissions == "rw":
-                results = self.conn.query(self.shares_table).filter(
-                    self.shares_table.c.read == 1,
-                    self.shares_table.c.write == 1
+                results = self.conn.query(self.SharesTable).filter(
+                    self.SharesTable.c.read == 1,
+                    self.SharesTable.c.write == 1
                 ).all()
         return results
 
@@ -202,64 +226,44 @@ class database:
         permissions = permissions.lower()
 
         if permissions == "r":
-            results = self.conn.query(self.shares_table.c.userid).filter(
-                self.shares_table.c.computerid == computer_id,
-                self.shares_table.c.name == share_name,
-                self.shares_table.c.read == 1
+            results = self.conn.query(self.SharesTable.c.userid).filter(
+                self.SharesTable.c.computerid == computer_id,
+                self.SharesTable.c.name == share_name,
+                self.SharesTable.c.read == 1
             ).all()
         elif permissions == "w":
-            results = self.conn.query(self.shares_table.c.userid).filter(
-                self.shares_table.c.computerid == computer_id,
-                self.shares_table.c.name == share_name,
-                self.shares_table.c.write == 1
+            results = self.conn.query(self.SharesTable.c.userid).filter(
+                self.SharesTable.c.computerid == computer_id,
+                self.SharesTable.c.name == share_name,
+                self.SharesTable.c.write == 1
             ).all()
         elif permissions == "rw":
-            results = self.conn.query(self.shares_table.c.userid).filter(
-                self.shares_table.c.computerid == computer_id,
-                self.shares_table.c.name == share_name,
-                self.shares_table.c.read == 1,
-                self.shares_table.c.write == 1
+            results = self.conn.query(self.SharesTable.c.userid).filter(
+                self.SharesTable.c.computerid == computer_id,
+                self.SharesTable.c.name == share_name,
+                self.SharesTable.c.read == 1,
+                self.SharesTable.c.write == 1
             ).all()
         return results
 
     # pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing=None, spooler=None, zerologon=None, petitpotam=None, dc=None):
+    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
         Check if this host has already been added to the database, if not add it in.
         """
+        logging.debug(f"Inside add_computer")
         domain = domain.split('.')[0].upper()
+        update_hosts = []
 
-        results = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.ip == ip
-        ).all()
-
-        # initialize the cid to the first (or only) id
-        if len(results) > 0:
-            cid = results[0][0]
-
-        computer_data = {}
-        if ip is not None:
-            computer_data["ip"] = ip
-        if hostname is not None:
-            computer_data["hostname"] = hostname
-        if domain is not None:
-            computer_data["domain"] = domain
-        if os is not None:
-            computer_data["os"] = os
-        if smbv1 is not None:
-            computer_data["smbv1"] = smbv1
-        if signing is not None:
-            computer_data["signing"] = signing
-        if spooler is not None:
-            computer_data["spooler"] = spooler
-        if zerologon is not None:
-            computer_data["zerologon"] = zerologon
-        if petitpotam is not None:
-            computer_data["petitpotam"] = petitpotam
-        if dc is not None:
-            computer_data["dc"] = dc
+        q = select(self.ComputersTable).filter(
+            self.ComputersTable.c.ip == ip
+        )
+        res = asyncio.run(self.conn.execute(q))
+        results = res.all()
+        logging.debug(f"Results in add_computer: {results}")
 
         if not results:
+            logging.debug(f"Results apparently empty")
             new_host = {
                 "ip": ip,
                 "hostname": hostname,
@@ -273,26 +277,50 @@ class database:
                 "petitpotam": petitpotam
             }
             try:
-                cid = self.conn.execute(
-                    self.computers_table.insert(),
-                    [new_host]
-                )
+                cid = asyncio.run(self.conn.execute(
+                    insert(self.ComputersTable).values(new_host).returning(self.ComputersTable.c.id)
+                )).scalar_one()
             except Exception as e:
                 logging.error(f"Exception: {e}")
         else:
             for host in results:
-                try:
-                    cid = self.conn.execute(
-                        self.computers_table.update().values(
-                            computer_data
-                        ).where(
-                            self.computers_table.c.id == host.id
-                        )
-                    )
-                except Exception as e:
-                    logging.error(f"Exception: {e}")
-        # self.conn.commit()
-        self.conn.close()
+                print(type(host))
+                print(host)
+                print(dir(host))
+                #row_as_dict = {column: str(getattr(host, column)) for column in host.__table__.c.keys()}
+                #print(row_as_dict)
+                computer_data = {"id": host.id}
+                # only update column if it is being passed in
+                if ip is not None:
+                     computer_data["ip"] = ip
+                if hostname is not None:
+                    computer_data["hostname"] = hostname
+                if domain is not None:
+                    computer_data["domain"] = domain
+                if os is not None:
+                    computer_data["os"] = os
+                if smbv1 is not None:
+                    computer_data["smbv1"] = smbv1
+                if signing is not None:
+                    computer_data["signing"] = signing
+                if spooler is not None:
+                    computer_data["spooler"] = spooler
+                if zerologon is not None:
+                    computer_data["zerologon"] = zerologon
+                if petitpotam is not None:
+                    computer_data["petitpotam"] = petitpotam
+                if dc is not None:
+                    computer_data["dc"] = dc
+                update_hosts.append(computer_data)
+            print(f"Update Hosts: {update_hosts}")
+            cid = asyncio.run(
+                self.conn.execute(
+                    sqlite_upsert(self.ComputersTable),
+                    update_hosts
+                )
+            )
+            logging.debug(f"CID: {cid}")
+            logging.debug(f"CID Type: {type(cid)}")
         return cid
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
@@ -324,11 +352,14 @@ class database:
         if pillaged_from is not None:
             credential_data["pillaged_from"] = pillaged_from
 
-        results = self.conn.query(self.users_table).filter(
-            func.lower(self.users_table.c.domain) == func.lower(domain),
-            func.lower(self.users_table.c.username) == func.lower(username),
-            func.lower(self.users_table.c.credtype) == func.lower(credtype)
-        ).all()
+        q = select(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username),
+            func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
+        )
+        res = asyncio.run(self.conn.execute(q))
+        results = res.all()
+
         logging.debug(f"Credential results: {results}")
 
         if not results:
@@ -339,41 +370,71 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_computerid": pillaged_from,
             }
-            user_rowid = self.conn.execute(
-                self.users_table.insert(),
-                [user_data]
-            )
+            # user_rowid = self.conn.execute(
+            #     self.UsersTable.insert(),
+            #     [user_data]
+            # )
+            q = insert(self.UsersTable).values(user_data)
+            res = asyncio.run(self.conn.execute(q))
+            results = res.first()
+            user_rowid = results[0]
+
             logging.debug(f"User RowID: {user_rowid}")
             if group_id:
                 gr_data = {
                     "userid": user_rowid,
                     "groupid": group_id,
                 }
-                self.conn.execute(
-                    self.group_relations_table.insert(),
-                    [gr_data]
-                )
+                q = insert(self.GroupRelationsTable).values(gr_data)
+                asyncio.run(self.conn.execute(q))
+                # self.conn.execute(
+                #     self.GroupRelationsTable.insert(),
+                #     [gr_data]
+                # )
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    user_rowid = self.conn.execute(
-                        self.users_table.update().values(
-                            credential_data
-                        ).where(
-                            self.users_table.c.id == user[0]
-                        )
-                    )
-                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                        self.conn.execute(
-                            self.group_relations_table.update().values(
-                                {"userid": user_rowid, "groupid": group_id}
-                            )
-                        )
-        self.conn.commit()
-        self.conn.close()
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, group_id, pillaged_from, user_rowid))
+                    # user_rowid = self.conn.execute(
+                    #     self.UsersTable.update().values(
+                    #         credential_data
+                    #     ).where(
+                    #         self.UsersTable.c.id == user[0]
+                    #     )
+                    # )
+                    q = update(self.UsersTable).values(credential_data)
+                    res = asyncio.run(self.conn.execute(q))
+                    results = res.first()
+                    user_rowid = results[0]
 
+                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
+                        gr_data = {
+                            "userid": user_rowid,
+                            "groupid": group_id,
+                        }
+                        q = update(self.GroupRelationsTable).values(gr_data)
+                        asyncio.run(self.conn.execute(q))
+                        # self.conn.execute(
+                        #     self.GroupRelationsTable.update().values(
+                        #         {"userid": user_rowid, "groupid": group_id}
+                        #     )
+                        # )
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
+            credtype,
+            domain,
+            username,
+            password,
+            group_id,
+            pillaged_from,
+            user_rowid
+        ))
+
+        # try:
+        #     self.conn.commit()
+        # except Exception as e:
+        #     logging.error(f"Exception while committing to database: {e}")
+        #
+        # self.conn.close()
         return user_rowid
 
     def add_user(self, domain, username, group_id=None):
@@ -395,14 +456,14 @@ class database:
         if group_id is not None:
             user_data["group_id"] = group_id
 
-        results = self.conn.query(self.users_table).filter(
-            func.lower(self.users_table.c.domain) == func.lower(domain),
-            func.lower(self.users_table.c.username) == func.lower(username)
+        results = self.conn.query(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username)
         ).all()
 
         if not len(results):
             user_rowid = self.conn.execute(
-                self.users_table.insert(),
+                self.UsersTable.insert(),
                 [user_data]
             )
             if group_id:
@@ -411,20 +472,20 @@ class database:
                     "groupid": group_id,
                 }
                 self.conn.execute(
-                    self.group_relations_table.insert(),
+                    self.GroupRelationsTable.insert(),
                     [gr_data]
                 )
         else:
             for user in results:
                 if (domain != user[1]) and (username != user[2]):
-                    user_rowid = self.conn.execute(self.users_table.update().values(
+                    user_rowid = self.conn.execute(self.UsersTable.update().values(
                         user_data
                     ).where(
-                        self.users_table.c.id == user[0]
+                        self.UsersTable.c.id == user[0]
                     ))
                 if not user_rowid: user_rowid = user[0]
                 if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                    self.conn.execute(self.group_relations_table.update().values(
+                    self.conn.execute(self.GroupRelationsTable.update().values(
                         {"userid": user_rowid, "groupid": group_id}
                     ))
         self.conn.commit()
@@ -437,9 +498,9 @@ class database:
     def add_group(self, domain, name, member_count_ad=None):
         domain = domain.split('.')[0].upper()
 
-        results = self.conn.query(self.groups_table).filter(
-            func.lower(self.groups_table.c.domain) == func.lower(domain),
-            func.lower(self.groups_table.c.name) == func.lower(name)
+        results = self.conn.query(self.GroupsTable).filter(
+            func.lower(self.GroupsTable.c.domain) == func.lower(domain),
+            func.lower(self.GroupsTable.c.name) == func.lower(name)
         ).all()
 
         group_data = {}
@@ -458,15 +519,15 @@ class database:
             cid = results[0][0]
             for group in results:
                 cid = self.conn.execute(
-                    self.groups_table.update().values(
+                    self.GroupsTable.update().values(
                         group_data
                     ).where(
-                        self.groups_table.c.id == group[0]
+                        self.GroupsTable.c.id == group[0]
                     )
                 )
         else:
             cid = self.conn.execute(
-                self.groups_table.insert(),
+                self.GroupsTable.insert(),
                 [group_data]
             )
         self.conn.commit()
@@ -480,8 +541,8 @@ class database:
         Removes a credential ID from the database
         """
         for cred_id in creds_id:
-            self.conn.query(self.users_table).filter(
-                self.users_table.c.id == cred_id
+            self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.id == cred_id
             ).delete()
         self.conn.commit()
         self.conn.close()
@@ -490,20 +551,20 @@ class database:
         domain = domain.split('.')[0].upper()
 
         if user_id:
-            users = self.conn.query(self.users_table).filter(
-                self.users_table.c.id == user_id
+            users = self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.id == user_id
             ).all()
         else:
-            users = self.conn.query(self.users_table).filter(
-                self.users_table.c.credtype == credtype,
-                func.lower(self.users_table.c.domain) == func.lower(domain),
-                func.lower(self.users_table.c.username) == func.lower(username),
-                self.users_table.c.password == password
+            users = self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.credtype == credtype,
+                func.lower(self.UsersTable.c.domain) == func.lower(domain),
+                func.lower(self.UsersTable.c.username) == func.lower(username),
+                self.UsersTable.c.password == password
             ).all()
         logging.debug(f"Users: {users}")
 
-        hosts = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.ip.like(func.lower(f"%{host}%"))
+        hosts = self.conn.query(self.ComputersTable).filter(
+            self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
         )
         logging.debug(f"Hosts: {hosts}")
 
@@ -513,14 +574,14 @@ class database:
                 host_id = host[0]
 
                 # Check to see if we already added this link
-                links = self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.userid == user_id,
-                    self.admin_relations_table.c.computerid == host_id
+                links = self.conn.query(self.AdminRelationsTable).filter(
+                    self.AdminRelationsTable.c.userid == user_id,
+                    self.AdminRelationsTable.c.computerid == host_id
                 ).all()
 
                 if not links:
                     self.conn.execute(
-                        self.admin_relations_table.insert(),
+                        self.AdminRelationsTable.insert(),
                         [{"userid": user_id, "computerid": host_id}]
                     )
 
@@ -529,15 +590,15 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            results = self.conn.query(self.admin_relations_table).filter(
-                self.admin_relations_table.c.userid == user_id
+            results = self.conn.query(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.userid == user_id
             ).all()
         elif host_id:
-            results = self.conn.query(self.admin_relations_table).filter(
-                self.admin_relations_table.c.computerid == host_id
+            results = self.conn.query(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.computerid == host_id
             ).all()
         else:
-            results = self.conn.query(self.admin_relations_table).all()
+            results = self.conn.query(self.AdminRelationsTable).all()
 
         self.conn.commit()
         self.conn.close()
@@ -545,17 +606,17 @@ class database:
 
     def get_group_relations(self, user_id=None, group_id=None):
         if user_id and group_id:
-            results = self.conn.query(self.group_relations_table).filter(
-                self.group_relations_table.c.id == user_id,
-                self.group_relations_table.c.groupid == group_id
+            results = self.conn.query(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.id == user_id,
+                self.GroupRelationsTable.c.groupid == group_id
             ).all()
         elif user_id:
-            results = self.conn.query(self.group_relations_table).filter(
-                self.group_relations_table.c.id == user_id
+            results = self.conn.query(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.id == user_id
             ).all()
         elif group_id:
-            results = self.conn.query(self.group_relations_table).filter(
-                self.group_relations_table.c.groupid == group_id
+            results = self.conn.query(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.groupid == group_id
             ).all()
 
         self.conn.commit()
@@ -566,25 +627,25 @@ class database:
     def remove_admin_relation(self, user_ids=None, host_ids=None):
         if user_ids:
             for user_id in user_ids:
-                self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.userid == user_id
+                self.conn.query(self.AdminRelationsTable).filter(
+                    self.AdminRelationsTable.c.userid == user_id
                 ).delete()
         elif host_ids:
             for host_id in host_ids:
-                self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.hostid == host_id
+                self.conn.query(self.AdminRelationsTable).filter(
+                    self.AdminRelationsTable.c.hostid == host_id
                 ).delete()
         self.conn.commit()
         self.conn.close()
 
     def remove_group_relations(self, user_id=None, group_id=None):
         if user_id:
-            self.conn.query(self.group_relations_table).filter(
-                self.group_relations_table.c.userid == user_id
+            self.conn.query(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.userid == user_id
             ).delete()
         elif group_id:
-            self.conn.query(self.group_relations_table).filter(
-                self.group_relations_table.c.groupid == group_id
+            self.conn.query(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.groupid == group_id
             ).delete()
         self.conn.commit()
         self.conn.close()
@@ -593,22 +654,22 @@ class database:
         """
         Check if this credential ID is valid.
         """
-        results = self.conn.query(self.users_table).filter(
-            self.users_table.c.id == credential_id,
-            self.users_table.c.password is not None
+        results = self.conn.query(self.UsersTable).filter(
+            self.UsersTable.c.id == credential_id,
+            self.UsersTable.c.password is not None
         ).all()
         self.conn.commit()
         self.conn.close()
         return len(results) > 0
 
     def is_credential_local(self, credential_id):
-        user_domain = self.conn.query(self.users_table.c.domain).filter(
-            self.users_table.c.id == credential_id
+        user_domain = self.conn.query(self.UsersTable.c.domain).filter(
+            self.UsersTable.c.id == credential_id
         ).all()
 
         if user_domain:
-            results = self.conn.query(self.computers_table).filter(
-                func.lower(self.computers_table.c.id) == func.lower(user_domain)
+            results = self.conn.query(self.ComputersTable).filter(
+                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
             ).all()
             self.conn.commit()
             self.conn.close()
@@ -620,21 +681,21 @@ class database:
         """
         # if we're returning a single credential by ID
         if self.is_credential_valid(filter_term):
-            results = self.conn.query(self.users_table).filter(
-                self.users_table.c.id == filter_term
+            results = self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.id == filter_term
             ).all()
         elif cred_type:
-            results = self.conn.query(self.users_table).filter(
-                self.users_table.c.credtype == cred_type
+            results = self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.credtype == cred_type
             ).all()
         # if we're filtering by username
         elif filter_term and filter_term != '':
-            results = self.conn.query(self.users_table).filter(
-                func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))
+            results = self.conn.query(self.UsersTable).filter(
+                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
             ).all()
         # otherwise return all credentials
         else:
-            results = self.conn.query(self.users_table).all()
+            results = self.conn.query(self.UsersTable).all()
 
         self.conn.commit()
         self.conn.close()
@@ -644,8 +705,8 @@ class database:
         """
         Check if this User ID is valid.
         """
-        results = self.conn.query(self.users_table).filter(
-            self.users_table.c.id == user_id
+        results = self.conn.query(self.UsersTable).filter(
+            self.UsersTable.c.id == user_id
         ).first()
         self.conn.commit()
         self.conn.close()
@@ -653,25 +714,25 @@ class database:
 
     def get_users(self, filter_term=None):
         if self.is_user_valid(filter_term):
-            results = self.conn.query(self.users_table).filter(
-                self.users_table.c.id == filter_term
+            results = self.conn.query(self.UsersTable).filter(
+                self.UsersTable.c.id == filter_term
             ).all()
         # if we're filtering by username
         elif filter_term and filter_term != '':
-            results = self.conn.query(self.users_table).filter(
-                func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))
+            results = self.conn.query(self.UsersTable).filter(
+                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
             ).all()
         else:
-            results = self.conn.query(self.users_table).all()
+            results = self.conn.query(self.UsersTable).all()
 
         self.conn.commit()
         self.conn.close()
         return results
 
     def get_user(self, domain, username):
-        results = self.conn.query(self.users_table).filter(
-            func.lower(self.users_table.c.domain) == func.lower(domain),
-            func.lower(self.users_table.c.username) == func.lower(username)
+        results = self.conn.query(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username)
         ).all()
         self.conn.commit()
         self.conn.close()
@@ -681,8 +742,8 @@ class database:
         """
         Check if this host ID is valid.
         """
-        results = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.id == host_id
+        results = self.conn.query(self.ComputersTable).filter(
+            self.ComputersTable.c.id == host_id
         ).all()
         self.conn.commit()
         self.conn.close()
@@ -692,31 +753,32 @@ class database:
         """
         Return hosts from the database.
         """
+        print(f"HERE!")
         # if we're returning a single host by ID
         if self.is_computer_valid(filter_term):
-            results = self.conn.query(self.computers_table).filter(
-                self.computers_table.c.id == filter_term
+            results = self.conn.query(self.ComputersTable).filter(
+                self.ComputersTable.c.id == filter_term
             ).first()
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             if domain:
-                results = self.conn.query(self.computers_table).filter(
-                    self.computers_table.c.dc == 1,
-                    func.lower(self.computers_table.c.domain) == func.lower(domain)
+                results = self.conn.query(self.ComputersTable).filter(
+                    self.ComputersTable.c.dc == 1,
+                    func.lower(self.ComputersTable.c.domain) == func.lower(domain)
                 ).all()
             else:
-                results = self.conn.query(self.computers_table).filter(
-                    self.computers_table.c.dc == 1
+                results = self.conn.query(self.ComputersTable).filter(
+                    self.ComputersTable.c.dc == 1
                 ).all()
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            results = self.conn.query(self.computers_table).filter((
-                func.lower(self.computers_table.c.ip).like(func.lower(f"%{filter_term}%")) |
-                func.lower(self.computers_table.c.hostname).like(func.lower(f"%{filter_term}"))
+            results = self.conn.query(self.ComputersTable).filter((
+                    func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
+                    func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
             )).all()
         # otherwise return all computers
         else:
-            results = self.conn.query(self.computers_table).all()
+            results = self.conn.query(self.ComputersTable).all()
 
         self.conn.commit()
         self.conn.close()
@@ -729,8 +791,8 @@ class database:
         """
         Check if this group ID is valid.
         """
-        results = self.conn.query(self.groups_table).filter(
-            self.groups_table.c.id == group_id
+        results = self.conn.query(self.GroupsTable).filter(
+            self.GroupsTable.c.id == group_id
         ).first()
         self.conn.commit()
         self.conn.close()
@@ -748,20 +810,20 @@ class database:
             group_domain = group_domain.split('.')[0].upper()
 
         if self.is_group_valid(filter_term):
-            results = self.conn.query(self.groups_table).filter(
-                self.groups_table.c.id == filter_term
+            results = self.conn.query(self.GroupsTable).filter(
+                self.GroupsTable.c.id == filter_term
             ).first()
         elif group_name and group_domain:
-            results = self.conn.query(self.groups_table).filter(
-                func.lower(self.groups_table.c.username) == func.lower(group_name),
-                func.lower(self.groups_table.c.domain) == func.lower(group_domain)
+            results = self.conn.query(self.GroupsTable).filter(
+                func.lower(self.GroupsTable.c.username) == func.lower(group_name),
+                func.lower(self.GroupsTable.c.domain) == func.lower(group_domain)
             ).all()
         elif filter_term and filter_term != "":
-            results = self.conn.query(self.groups_table).filter(
-                func.lower(self.groups_table.c.name).like(func.lower(f"%{filter_term}%"))
+            results = self.conn.query(self.GroupsTable).filter(
+                func.lower(self.GroupsTable.c.name).like(func.lower(f"%{filter_term}%"))
             ).all()
         else:
-            results = self.conn.query(self.groups_table).all()
+            results = self.conn.query(self.GroupsTable).all()
 
         self.conn.commit()
         self.conn.close()
