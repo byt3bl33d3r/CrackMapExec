@@ -778,23 +778,26 @@ class database:
             group_domain = group_domain.split('.')[0].upper()
 
         if self.is_group_valid(filter_term):
-            results = self.conn.query(self.GroupsTable).filter(
+            # results = self.conn.query(self.GroupsTable).filter(
+            #     self.GroupsTable.c.id == filter_term
+            # ).first()
+            q = select(self.GroupsTable).filter(
                 self.GroupsTable.c.id == filter_term
-            ).first()
+            )
         elif group_name and group_domain:
-            results = self.conn.query(self.GroupsTable).filter(
+            q = select(self.GroupsTable).filter(
                 func.lower(self.GroupsTable.c.username) == func.lower(group_name),
                 func.lower(self.GroupsTable.c.domain) == func.lower(group_domain)
-            ).all()
+            )
         elif filter_term and filter_term != "":
-            results = self.conn.query(self.GroupsTable).filter(
+            q = select(self.GroupsTable).filter(
                 func.lower(self.GroupsTable.c.name).like(func.lower(f"%{filter_term}%"))
-            ).all()
+            )
         else:
-            results = self.conn.query(self.GroupsTable).all()
+            q = select(self.GroupsTable).filter()
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
+
         logging.debug(f"get_groups(filterTerm={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
         return results
 
