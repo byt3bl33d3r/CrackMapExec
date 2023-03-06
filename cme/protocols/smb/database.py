@@ -693,7 +693,6 @@ class database:
             q.filter(
                 func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
             )
-
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
@@ -727,7 +726,8 @@ class database:
                 self.ComputersTable.c.id == filter_term
             )
             results = asyncio.run(self.conn.execute(q)).first()
-            return results
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             q.filter(
