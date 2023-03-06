@@ -702,11 +702,10 @@ class database:
         """
         Check if this User ID is valid.
         """
-        results = self.conn.query(self.UsersTable).filter(
+        q = select(self.UsersTable).filter(
             self.UsersTable.c.id == user_id
-        ).first()
-        self.conn.commit()
-        self.conn.close()
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
 
     def get_users(self, filter_term=None):
