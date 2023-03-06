@@ -320,13 +320,9 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_computerid": pillaged_from,
             }
-            # user_rowid = self.conn.execute(
-            #     self.UsersTable.insert(),
-            #     [user_data]
-            # )
             q = insert(self.UsersTable).values(user_data)
             results = asyncio.run(self.conn.execute(q)).first()
-            user_rowid = results[0]
+            user_rowid = results.id
 
             logging.debug(f"User RowID: {user_rowid}")
             if group_id:
@@ -336,24 +332,13 @@ class database:
                 }
                 q = insert(self.GroupRelationsTable).values(gr_data)
                 asyncio.run(self.conn.execute(q))
-                # self.conn.execute(
-                #     self.GroupRelationsTable.insert(),
-                #     [gr_data]
-                # )
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    # user_rowid = self.conn.execute(
-                    #     self.UsersTable.update().values(
-                    #         credential_data
-                    #     ).where(
-                    #         self.UsersTable.c.id == user[0]
-                    #     )
-                    # )
                     q = update(self.UsersTable).values(credential_data)
                     results = asyncio.run(self.conn.execute(q)).first()
-                    user_rowid = results[0]
+                    user_rowid = results.id
 
                     if group_id and not len(self.get_group_relations(user_rowid, group_id)):
                         gr_data = {
@@ -362,11 +347,7 @@ class database:
                         }
                         q = update(self.GroupRelationsTable).values(gr_data)
                         asyncio.run(self.conn.execute(q))
-                        # self.conn.execute(
-                        #     self.GroupRelationsTable.update().values(
-                        #         {"userid": user_rowid, "groupid": group_id}
-                        #     )
-                        # )
+
         logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
             credtype,
             domain,
@@ -376,13 +357,6 @@ class database:
             pillaged_from,
             user_rowid
         ))
-
-        # try:
-        #     self.conn.commit()
-        # except Exception as e:
-        #     logging.error(f"Exception while committing to database: {e}")
-        #
-        # self.conn.close()
         return user_rowid
 
     def add_user(self, domain, username, group_id=None):
