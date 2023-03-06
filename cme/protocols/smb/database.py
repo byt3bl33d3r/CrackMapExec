@@ -588,18 +588,17 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            results = self.conn.query(self.AdminRelationsTable).filter(
+            q = select(self.AdminRelationsTable).filter(
                 self.AdminRelationsTable.c.userid == user_id
-            ).all()
+            )
         elif host_id:
-            results = self.conn.query(self.AdminRelationsTable).filter(
+            q = select(self.AdminRelationsTable).filter(
                 self.AdminRelationsTable.c.computerid == host_id
-            ).all()
+            )
         else:
-            results = self.conn.query(self.AdminRelationsTable).all()
+            q = select(self.AdminRelationsTable)
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def get_group_relations(self, user_id=None, group_id=None):
