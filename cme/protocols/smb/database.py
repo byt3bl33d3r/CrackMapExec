@@ -142,7 +142,7 @@ class database:
         #    )''')
 
     def add_share(self, computer_id, user_id, name, remark, read, write):
-        data = {
+        share_data = {
             "computerid": computer_id,
             "userid": user_id,
             "name": name,
@@ -150,10 +150,11 @@ class database:
             "read": read,
             "write": write,
         }
-        q = insert(self.SharesTable).values(data)
-        self.conn.execute(q)
-        self.conn.commit()
-        self.conn.close()
+        share_id = asyncio.run(self.conn.execute(
+            insert(self.SharesTable).values(share_data).returning(self.SharesTable.c.id)
+        )).scalar_one()
+
+        return share_id
 
     def is_share_valid(self, share_id):
         """
