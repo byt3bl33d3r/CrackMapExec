@@ -165,15 +165,17 @@ class database:
 
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
-            results = self.conn.query(self.SharesTable).filter(
-                self.SharesTable.c.id == filter_term
-            ).all()
+            q = select(self.SharesTable).filter(
+                self.SharesTable.c.ip == filter_term
+            )
         elif filter_term:
-            results = self.conn.query(self.SharesTable).filter(
+            q = select(self.SharesTable).filter(
                 func.lower(self.SharesTable.c.name).like(func.lower(f"%{filter_term}%"))
-            ).all()
+            )
         else:
-            results = self.conn.query(self.SharesTable).all()
+            q = select(self.SharesTable)
+        res = asyncio.run(self.conn.execute(q))
+        results = res.all()
         return results
 
     def get_shares_by_access(self, permissions, share_id=None):
