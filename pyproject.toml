@@ -45,6 +45,7 @@ minikerberos = "0.3.5"
 aardwolf = "0.2.5"
 masky = "^0.2.0"
 sqlalchemy = "^2.0.4"
+aiosqlite = "^0.18.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import func
 import logging
+from sqlalchemy import MetaData, func
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class database:
     def __init__(self, db_engine, metadata=None):
-        session = sessionmaker(bind=db_engine)
+        metadata = MetaData()
+        metadata.reflect(bind=db_engine)
+
+        session_factory = sessionmaker(bind=db_engine, expire_on_commit=False, class_=AsyncSession)
+        Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
-        self.conn = session()
+        self.conn = Session()
         self.metadata = metadata
         self.computers_table = metadata.tables["computers"]
         self.admin_relations_table = metadata.tables["admin_relations"]
@@ -86,7 +91,8 @@ class database:
                     [new_host]
                 )
             except Exception as e:
-                logging.error(f"Exception: {e}")
+                pass
+                # logging.error(f"Exception: {e}")
         else:
             for host in results:
                 try:
@@ -98,7 +104,13 @@ class database:
                         )
                     )
                 except Exception as e:
-                    logging.error(f"Exception: {e}")
+                    pass
+                    # logging.error(f"Exception: {e}")
+        try:
+            self.conn.commit()
+        except Exception as e:
+            logging.error(f"Exception while committing to database: {e}")
+
         self.conn.close()
         return cid
 

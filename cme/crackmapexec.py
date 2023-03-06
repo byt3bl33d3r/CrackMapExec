@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from sqlalchemy.exc import SAWarning
 
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.logger import highlight
@@ -30,19 +31,28 @@ import random
 import os
 import sys
 import logging
-from sqlalchemy import create_engine, MetaData
-
-from sqlalchemy.ext.declarative import DeferredReflection
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine
+import warnings
 
 Base = declarative_base()
 
 setup_logger()
 logger = CMEAdapter()
 
+# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+warnings.filterwarnings("ignore", category=SAWarning)
 
-class Computers(DeferredReflection, Base):
-    __tablename__ = "computers"
+
+def create_db_engine(db_path):
+    db_engine = create_async_engine(
+        f"sqlite+aiosqlite:///{db_path}",
+        isolation_level="AUTOCOMMIT",
+        future=True
+    )  # can add echo=True
+    # db_engine.execution_options(isolation_level="AUTOCOMMIT")
+    # db_engine.connect().connection.text_factory = str
+    return db_engine
 
 
 async def monitor_threadpool(pool, targets):
@@ -86,7 +96,7 @@ async def run_protocol(loop, protocol_obj, args, db, target, jitter):
     except asyncio.TimeoutError:
         logging.debug("Thread exceeded timeout")
     except asyncio.CancelledError:
-        logging.debug("Stopping thread")
+        logging.debug("Shutting down DB")
         thread.cancel()
     except sqlite3.OperationalError as e:
         logging.debug("Sqlite error - sqlite3.operationalError - {}".format(str(e)))
@@ -121,11 +131,14 @@ async def start_threadpool(protocol_obj, args, db, targets, jitter):
         logger.info("Shutting down, please wait...")
         logging.debug("Cancelling scan")
     finally:
+        await asyncio.shield(db.shutdown_db())
         monitor_task.cancel()
         pool.shutdown(wait=True)
 
 
 def main():
+    logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
+    logging.getLogger('sqlalchemy.pool.impl.NullPool').setLevel(logging.CRITICAL)
     first_run_setup(logger)
 
     args = gen_cli_args()
@@ -203,19 +216,16 @@ def main():
     logging.debug(f"Protocol DB Path: {protocol_db_path}")
 
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
+    logging.debug(f"Protocol Object: {protocol_object}")
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
+    logging.debug(f"Protocol DB Object: {protocol_object}")
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     logging.debug(f"DB Path: {db_path}")
 
-    db_engine = create_engine(f"sqlite:///{db_path}")
-    db_engine.execution_options(isolation_level="AUTOCOMMIT")
-    db_engine.connect().connection.text_factory = str
+    db_engine = create_db_engine(db_path)
 
-    metadata = MetaData()
-    metadata.reflect(bind=db_engine)
-
-    db = protocol_db_object(db_engine, metadata=metadata)
+    db = protocol_db_object(db_engine)
 
     setattr(protocol_object, 'config', config)
 
@@ -280,6 +290,7 @@ def main():
     finally:
         if module_server:
             module_server.shutdown()
+        asyncio.run(db_engine.dispose())
 
 
 if __name__ == '__main__':

@@ -63,6 +63,17 @@ wcwidth = "*"
 winacl = ">=0.1.5"
 
 [[package]]
+name = "aiosqlite"
+version = "0.18.0"
+description = "asyncio bridge to the standard sqlite3 module"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+typing_extensions = {version = ">=4.0", markers = "python_version < \"3.8\""}
+
+[[package]]
 name = "aiowinreg"
 version = "0.0.9"
 description = "Windows registry file reader"
@@ -1223,7 +1234,7 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.0"
-content-hash = "891ef2102b8ef5e04fb377170dab86aca822ab420f1cb1ac8ba552dc471535c9"
+content-hash = "60f4adf6040782e03179b633b36096915292191bf761639a1834c2903ae4012f"
 
 [metadata.files]
 aardwolf = [
@@ -1246,6 +1257,10 @@ aioconsole = [
 aiosmb = [
     {file = "aiosmb-0.4.4-py3-none-any.whl", hash = "sha256:ed70967243ec6634ac443de4e048c666f372ec863e49e8a2c1e01d640989f95e"},
     {file = "aiosmb-0.4.4.tar.gz", hash = "sha256:20620498cf5e6794fea29ddcb46afbda8cbf714e3cf8e1da149699f03453637f"},
+]
+aiosqlite = [
+    {file = "aiosqlite-0.18.0-py3-none-any.whl", hash = "sha256:c3511b841e3a2c5614900ba1d179f366826857586f78abd75e7cbeb88e75a557"},
+    {file = "aiosqlite-0.18.0.tar.gz", hash = "sha256:faa843ef5fb08bafe9a9b3859012d3d9d6f77ce3637899de20606b7fc39aa213"},
 ]
 aiowinreg = [
     {file = "aiowinreg-0.0.9-py3-none-any.whl", hash = "sha256:8fd39c039021296d47c023f4db863bf6016882c87a50de9870c3471b00ddc148"},

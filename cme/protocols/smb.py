@@ -279,7 +279,7 @@ class smb(connection):
             '''
             self.conn.logoff()
         except Exception as e:
-            logging.debug(e)
+            logging.debug(f"Error logging off system: {e}")
             pass
 
         if self.args.domain:
