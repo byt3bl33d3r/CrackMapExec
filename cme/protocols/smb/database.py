@@ -742,11 +742,10 @@ class database:
         """
         Check if this group ID is valid.
         """
-        results = self.conn.query(self.GroupsTable).filter(
+        q = select(self.GroupsTable).filter(
             self.GroupsTable.c.id == group_id
-        ).first()
-        self.conn.commit()
-        self.conn.close()
+        )
+        results = asyncio.run(self.conn.execute(q)).first()
 
         valid = True if results else False
         logging.debug(f"is_group_valid(groupID={group_id}) => {valid}")
