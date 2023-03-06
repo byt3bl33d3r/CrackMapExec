@@ -173,11 +173,10 @@ class database:
         Check if this share ID is valid.
         """
         q = select(self.SharesTable).filter(
-            self.SharesTable.c.id == share_id
-        ).all()
-        results = self.conn.execute(q)
-        self.conn.commit()
-        self.conn.close()
+            self.SharesTable.c.ip == share_id
+        )
+        res = asyncio.run(self.conn.execute(q))
+        results = res.all()
 
         logging.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
         return len(results) > 0
