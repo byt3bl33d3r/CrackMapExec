@@ -664,20 +664,19 @@ class database:
         return len(results) > 0
 
     def get_users(self, filter_term=None):
+        q = select(self.UsersTable)
+
         if self.is_user_valid(filter_term):
-            results = self.conn.query(self.UsersTable).filter(
+            q.filter(
                 self.UsersTable.c.id == filter_term
-            ).all()
+            )
         # if we're filtering by username
         elif filter_term and filter_term != '':
-            results = self.conn.query(self.UsersTable).filter(
+            q.filter(
                 func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
-            ).all()
-        else:
-            results = self.conn.query(self.UsersTable).all()
+            )
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def get_user(self, domain, username):
