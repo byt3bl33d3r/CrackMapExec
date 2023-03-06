@@ -699,12 +699,11 @@ class database:
         return results
 
     def get_user(self, domain, username):
-        results = self.conn.query(self.UsersTable).filter(
+        q = select(self.UsersTable).filter(
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
             func.lower(self.UsersTable.c.username) == func.lower(username)
-        ).all()
-        self.conn.commit()
-        self.conn.close()
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def is_computer_valid(self, host_id):
