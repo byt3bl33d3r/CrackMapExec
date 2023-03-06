@@ -105,31 +105,9 @@ class CMEAdapter(logging.LoggerAdapter):
         CMEAdapter.message = ''
         return out
 
-
-def logger_set_output_file(output_file):
-    formatter = AnsiRemoveFormatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
-
-    fileHandler = logging.FileHandler(output_file)
-    fileHandler.setFormatter(formatter)
-
-    cme_logger = logging.getLogger('CME')
-    cme_logger.addHandler(fileHandler)
-    root_logger = logging.getLogger()
-    root_logger.addHandler(fileHandler)
-
-
-def setup_debug_logger():
-    debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
-    formatter = logging.Formatter(debug_output_string)
-    streamHandler = logging.StreamHandler(sys.stdout)
-    streamHandler.setFormatter(formatter)
-
-    root_logger = logging.getLogger()
-    root_logger.handlers = []
-    root_logger.addHandler(streamHandler)
-    root_logger.setLevel(logging.DEBUG)
-
 # Filter Example for future use cases
+
+
 class ExactLogLevelFilter(object):
     """
     Filter for one specific log level
@@ -169,16 +147,32 @@ def setup_success_logger(logger_name='CME'):
     cme_logger.addFilter(RangeLogLevelFilter(logging.SUCCESS, logging.HIGHLIGHT))
 
 
-def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
+def logger_set_output_file(output_file):
+    formatter = AnsiRemoveFormatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S")
+
+    fileHandler = logging.FileHandler(output_file)
+    fileHandler.setFormatter(formatter)
+
+    cme_logger = logging.getLogger('CME')
+    cme_logger.addHandler(fileHandler)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(fileHandler)
+
+
+def setup_debug_logger():
+    debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
+    formatter = logging.Formatter(debug_output_string)
+    streamHandler = logging.StreamHandler(sys.stdout)
+    streamHandler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.handlers = []
+    root_logger.addHandler(streamHandler)
+    root_logger.setLevel(logging.DEBUG)
+
+
+def setup_logger(level=logging.INFO, logger_name='CME'):
     formatter = logging.Formatter("%(message)s")
-
-    if log_to_file:
-        if not log_prefix:
-            log_prefix = 'log'
-
-        log_filename = '{}_{}.log'.format(log_prefix.replace('/', '_'), datetime.now().strftime('%Y-%m-%d'))
-        fileHandler = logging.FileHandler('./logs/{}'.format(log_filename))
-        fileHandler.setFormatter(formatter)
 
     streamHandler = logging.StreamHandler(sys.stdout)
     streamHandler.setFormatter(formatter)
@@ -186,8 +180,5 @@ def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_
     cme_logger = logging.getLogger(logger_name)
     cme_logger.propagate = False
     cme_logger.addHandler(streamHandler)
-
-    if log_to_file:
-        cme_logger.addHandler(fileHandler)
 
     cme_logger.setLevel(level)
