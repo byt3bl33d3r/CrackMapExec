@@ -44,8 +44,8 @@ def print_table(data, title=None):
     print("")
 
 
-def do_exit():
-    sys.exit(0)
+# def do_exit():
+#     sys.exit(0)
 
 
 def write_csv(filename, headers, entries):
@@ -82,7 +82,6 @@ def complete_export(text, line):
 class DatabaseNavigator(cmd.Cmd):
     def __init__(self, main_menu, database, proto):
         cmd.Cmd.__init__(self)
-
         self.main_menu = main_menu
         self.config = main_menu.config
         self.proto = proto
@@ -130,7 +129,6 @@ class DatabaseNavigator(cmd.Cmd):
                     formatted_creds.append(entry)
                 write_csv(filename, csv_header, formatted_creds)
             print('[+] creds exported')
-
         # Hosts
         elif line[0].lower() == 'hosts':
             if len(line) < 3:
@@ -178,7 +176,6 @@ class DatabaseNavigator(cmd.Cmd):
                     formatted_shares.append(entry)
                 write_csv(filename,csv_header,formatted_shares)
                 print('[+] shares exported')
-            
         # Local Admin
         elif line[0].lower() == 'local_admins':
             if len(line) < 3:
@@ -214,10 +211,14 @@ class DatabaseNavigator(cmd.Cmd):
             return
 
         if line == 'empire':
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Content-Type': 'application/json'
+            }
             # Pull the username and password from the config file
-            payload = {'username': self.config.get('Empire', 'username'),
-                       'password': self.config.get('Empire', 'password')}
+            payload = {
+                'username': self.config.get('Empire', 'username'),
+                'password': self.config.get('Empire', 'password')
+            }
             # Pull the host and port from the config file
             base_url = 'https://{}:{}'.format(
                 self.config.get('Empire', 'api_host'),
@@ -244,10 +245,8 @@ class DatabaseNavigator(cmd.Cmd):
 
 
 class CMEDBMenu(cmd.Cmd):
-
     def __init__(self, config_path):
         cmd.Cmd.__init__(self)
-
         self.config_path = config_path
 
         try:
@@ -269,14 +268,6 @@ class CMEDBMenu(cmd.Cmd):
         if self.db:
             self.do_proto(self.db)
 
-    # TODO: move this to init
-    def open_proto_db(self, db_path):
-        # Set the database connection to autocommit w/ isolation level
-        # self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        # self.conn.text_factory = str
-        # self.conn.isolation_level = None
-        self.conn = create_db_engine(db_path)
-
     def write_configfile(self):
         with open(self.config_path, 'w') as configfile:
             self.config.write(configfile)
@@ -287,7 +278,7 @@ class CMEDBMenu(cmd.Cmd):
 
         proto_db_path = os.path.join(self.workspace_dir, self.workspace, proto + '.db')
         if os.path.exists(proto_db_path):
-            self.open_proto_db(proto_db_path)
+            self.conn = create_db_engine(proto_db_path)
             db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
             db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
             self.config.set('CME', 'last_used_db', proto)
