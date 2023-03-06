@@ -661,12 +661,11 @@ class database:
         """
         Check if this credential ID is valid.
         """
-        results = self.conn.query(self.UsersTable).filter(
+        q = select(self.UsersTable).filter(
             self.UsersTable.c.id == credential_id,
             self.UsersTable.c.password is not None
-        ).all()
-        self.conn.commit()
-        self.conn.close()
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
 
     def is_credential_local(self, credential_id):
