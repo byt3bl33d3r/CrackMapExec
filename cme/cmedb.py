@@ -12,8 +12,8 @@ import configparser
 from cme.loaders.protocol_loader import protocol_loader
 from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
+from sqlalchemy.ext.asyncio import create_async_engine
 import csv
-from sqlalchemy import create_engine, MetaData
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -22,6 +22,17 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class UserExitedProto(Exception):
     pass
+
+
+def create_db_engine(db_path):
+    db_engine = create_async_engine(
+        f"sqlite+aiosqlite:///{db_path}",
+        isolation_level="AUTOCOMMIT",
+        future=True
+    )  # can add echo=True
+    # db_engine.execution_options(isolation_level="AUTOCOMMIT")
+    # db_engine.connect().connection.text_factory = str
+    return db_engine
 
 
 def print_table(data, title=None):
@@ -264,14 +275,7 @@ class CMEDBMenu(cmd.Cmd):
         # self.conn = sqlite3.connect(db_path, check_same_thread=False)
         # self.conn.text_factory = str
         # self.conn.isolation_level = None
-        engine = create_engine(f"sqlite:///{db_path}")
-        engine.execution_options(isolation_level="AUTOCOMMIT")
-        engine.connect().connection.text_factory = str
-
-        self.metadata = MetaData()
-        self.metadata.reflect(bind=engine)
-
-        self.conn = engine
+        self.conn = create_db_engine(db_path)
 
     def write_configfile(self):
         with open(self.config_path, 'w') as configfile:
@@ -289,7 +293,7 @@ class CMEDBMenu(cmd.Cmd):
             self.config.set('CME', 'last_used_db', proto)
             self.write_configfile()
             try:
-                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn, metadata=self.metadata), proto)
+                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn), proto)
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
