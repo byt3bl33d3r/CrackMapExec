@@ -245,6 +245,14 @@ class navigator(DatabaseNavigator):
                             data.append([cred_id, credtype, pillaged_from, domain, username, password])
                 print_table(data, title='Member(s)')
 
+    def help_groups(self):
+        help_string = """
+        groups [filter_term]
+        By default prints all groups
+        Can use a filter term to filter groups
+        """
+        print_help(help_string)
+
     def do_hosts(self, line):
         filter_term = line.strip()
 
