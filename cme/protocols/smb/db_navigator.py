@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from cme.helpers.misc import validate_ntlm
-from cme.cmedb import DatabaseNavigator, print_table
+from cme.cmedb import DatabaseNavigator, print_table, print_help
 
 
 class navigator(DatabaseNavigator):
@@ -195,6 +195,14 @@ class navigator(DatabaseNavigator):
 
                             data.append([cred_id, credtype, domain, username, password])
                     print_table(data, title='Users(s) with Write Access')
+
+    def help_shares(self):
+        help_string = """
+        shares [filter_term]
+        By default prints all shares
+        Can use a filter term to filter shares
+        """
+        print_help(help_string)
 
     def do_groups(self, line):
         filter_term = line.strip()
