@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import SAWarning
 import csv
 import warnings
+from textwrap import dedent
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -82,6 +83,10 @@ def complete_export(text, line):
     mline = line.partition(' ')[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
+
+
+def print_help(help_string):
+    print(dedent(help_string))
 
 
 class DatabaseNavigator(cmd.Cmd):
