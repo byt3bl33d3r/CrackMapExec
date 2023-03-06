@@ -180,8 +180,7 @@ class database:
         q = select(self.SharesTable).filter(
             self.SharesTable.c.ip == share_id
         )
-        res = asyncio.run(self.conn.execute(q))
-        results = res.all()
+        results = asyncio.run(self.conn.execute(q)).all()
 
         logging.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
         return len(results) > 0
@@ -197,14 +196,11 @@ class database:
             )
         else:
             q = select(self.SharesTable)
-        res = asyncio.run(self.conn.execute(q))
-        results = res.all()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def get_shares_by_access(self, permissions, share_id=None):
         permissions = permissions.lower()
-        print(f"Permissions: {permissions}")
-        print(f"Share ID: {share_id}")
         q = select(self.SharesTable)
         if share_id:
             q.filter(self.SharesTable.c.id == share_id)
@@ -212,9 +208,7 @@ class database:
             q.filter(self.SharesTable.c.read == 1)
         if "w" in permissions:
             q.filter(self.SharesTable.c.write == 1)
-        print(f"query: {q}")
-        res = asyncio.run(self.conn.execute(q))
-        results = res.all()
+        results = asyncio.run(self.conn.execute(q)).all()
         #
         # if share_id:
         #     if permissions == "r":
@@ -284,8 +278,7 @@ class database:
         q = select(self.ComputersTable).filter(
             self.ComputersTable.c.ip == ip
         )
-        res = asyncio.run(self.conn.execute(q))
-        results = res.all()
+        results = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Results in add_computer: {results}")
 
         host = {
@@ -374,8 +367,7 @@ class database:
             func.lower(self.UsersTable.c.username) == func.lower(username),
             func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
         )
-        res = asyncio.run(self.conn.execute(q))
-        results = res.all()
+        results = asyncio.run(self.conn.execute(q)).all()
 
         logging.debug(f"Credential results: {results}")
 
@@ -392,8 +384,7 @@ class database:
             #     [user_data]
             # )
             q = insert(self.UsersTable).values(user_data)
-            res = asyncio.run(self.conn.execute(q))
-            results = res.first()
+            results = asyncio.run(self.conn.execute(q)).first()
             user_rowid = results[0]
 
             logging.debug(f"User RowID: {user_rowid}")
@@ -420,8 +411,7 @@ class database:
                     #     )
                     # )
                     q = update(self.UsersTable).values(credential_data)
-                    res = asyncio.run(self.conn.execute(q))
-                    results = res.first()
+                    results = asyncio.run(self.conn.execute(q)).first()
                     user_rowid = results[0]
 
                     if group_id and not len(self.get_group_relations(user_rowid, group_id)):
@@ -571,8 +561,7 @@ class database:
             q = select(self.UsersTable).filter(
                 self.UsersTable.c.id == user_id
             )
-            res = asyncio.run(self.conn.execute(q))
-            users = res.all()
+            users = asyncio.run(self.conn.execute(q)).all()
         else:
             q = select(self.UsersTable).filter(
                 self.UsersTable.c.credtype == credtype,
@@ -580,15 +569,13 @@ class database:
                 func.lower(self.UsersTable.c.username) == func.lower(username),
                 self.UsersTable.c.password == password
             )
-            res = asyncio.run(self.conn.execute(q))
-            users = res.all()
+            users = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Users: {users}")
 
         q = select(self.ComputersTable).filter(
             self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
         )
-        res = asyncio.run(self.conn.execute(q))
-        hosts = res.all()
+        hosts = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
@@ -605,8 +592,7 @@ class database:
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.computerid == host_id
                 )
-                res = asyncio.run(self.conn.execute(q))
-                links = res.all()
+                links = asyncio.run(self.conn.execute(q)).all()
 
                 if not links:
                     link = {"userid": user_id, "computerid": host_id}
