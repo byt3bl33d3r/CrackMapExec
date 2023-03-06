@@ -621,22 +621,20 @@ class database:
 
     def get_group_relations(self, user_id=None, group_id=None):
         if user_id and group_id:
-            results = self.conn.query(self.GroupRelationsTable).filter(
+            q = select(self.GroupRelationsTable).filter(
                 self.GroupRelationsTable.c.id == user_id,
                 self.GroupRelationsTable.c.groupid == group_id
-            ).all()
+            )
         elif user_id:
-            results = self.conn.query(self.GroupRelationsTable).filter(
+            q = select(self.GroupRelationsTable).filter(
                 self.GroupRelationsTable.c.id == user_id
-            ).all()
+            )
         elif group_id:
-            results = self.conn.query(self.GroupRelationsTable).filter(
+            q = select(self.GroupRelationsTable).filter(
                 self.GroupRelationsTable.c.groupid == group_id
-            ).all()
+            )
 
-        self.conn.commit()
-        self.conn.close()
-
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def remove_admin_relation(self, user_ids=None, host_ids=None):
