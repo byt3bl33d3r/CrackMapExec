@@ -48,6 +48,7 @@ bloodhound = "^1.6.1"
 asyauth = "^0.0.12"
 masky = "^0.2.0"
 sqlalchemy = "^2.0.4"
+aiosqlite = "^0.18.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"

@@ -3,11 +3,11 @@
 import logging
 from sqlalchemy import MetaData, func, inspect, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import asyncio
-import copy
 
 
 def get_table_names(conn):
@@ -28,11 +28,20 @@ class database:
         self.db_engine = db_engine
         self.metadata = MetaData()
         asyncio.run(self.reflect_tables())
-        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False, class_=AsyncSession)
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True, class_=AsyncSession)
         # session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False)
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
+
+    async def shutdown_db(self):
+        try:
+            await asyncio.shield(self.conn.close())
+        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
+        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
+        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
+        except IllegalStateChangeError as e:
+            logging.debug(f"Error while closing session db object: {e}")
 
     async def reflect_tables(self):
         async with self.db_engine.connect() as conn:
@@ -251,7 +260,6 @@ class database:
         """
         Check if this host has already been added to the database, if not add it in.
         """
-        logging.debug(f"Inside add_computer")
         domain = domain.split('.')[0].upper()
         update_hosts = []
 
@@ -262,37 +270,29 @@ class database:
         results = res.all()
         logging.debug(f"Results in add_computer: {results}")
 
+        host = {
+            "ip": ip,
+            "hostname": hostname,
+            "domain": domain,
+            "os": os,
+            "dc": dc,
+            "smbv1": smbv1,
+            "signing": signing,
+            "spooler": spooler,
+            "zerologon": zerologon,
+            "petitpotam": petitpotam
+        }
+
+        # create new computer
         if not results:
-            logging.debug(f"Results apparently empty")
-            new_host = {
-                "ip": ip,
-                "hostname": hostname,
-                "domain": domain,
-                "os": os,
-                "dc": dc,
-                "smbv1": smbv1,
-                "signing": signing,
-                "spooler": spooler,
-                "zerologon": zerologon,
-                "petitpotam": petitpotam
-            }
-            try:
-                cid = asyncio.run(self.conn.execute(
-                    insert(self.ComputersTable).values(new_host).returning(self.ComputersTable.c.id)
-                )).scalar_one()
-            except Exception as e:
-                logging.error(f"Exception: {e}")
+            update_hosts = [host]
+        # update existing hosts data
         else:
             for host in results:
-                print(type(host))
-                print(host)
-                print(dir(host))
-                #row_as_dict = {column: str(getattr(host, column)) for column in host.__table__.c.keys()}
-                #print(row_as_dict)
-                computer_data = {"id": host.id}
+                computer_data = host._asdict()
                 # only update column if it is being passed in
                 if ip is not None:
-                     computer_data["ip"] = ip
+                    computer_data["ip"] = ip
                 if hostname is not None:
                     computer_data["hostname"] = hostname
                 if domain is not None:
@@ -312,16 +312,15 @@ class database:
                 if dc is not None:
                     computer_data["dc"] = dc
                 update_hosts.append(computer_data)
-            print(f"Update Hosts: {update_hosts}")
-            cid = asyncio.run(
-                self.conn.execute(
-                    sqlite_upsert(self.ComputersTable),
-                    update_hosts
-                )
+
+        logging.debug(f"Update Hosts: {update_hosts}")
+        asyncio.run(
+            self.conn.execute(
+                sqlite_upsert(self.ComputersTable),
+                update_hosts
             )
-            logging.debug(f"CID: {cid}")
-            logging.debug(f"CID Type: {type(cid)}")
-        return cid
+        )
+        # asyncio.run(self.conn.close())
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
@@ -551,21 +550,27 @@ class database:
         domain = domain.split('.')[0].upper()
 
         if user_id:
-            users = self.conn.query(self.UsersTable).filter(
+            q = select(self.UsersTable).filter(
                 self.UsersTable.c.id == user_id
-            ).all()
+            )
+            res = asyncio.run(self.conn.execute(q))
+            users = res.all()
         else:
-            users = self.conn.query(self.UsersTable).filter(
+            q = select(self.UsersTable).filter(
                 self.UsersTable.c.credtype == credtype,
                 func.lower(self.UsersTable.c.domain) == func.lower(domain),
                 func.lower(self.UsersTable.c.username) == func.lower(username),
                 self.UsersTable.c.password == password
-            ).all()
+            )
+            res = asyncio.run(self.conn.execute(q))
+            users = res.all()
         logging.debug(f"Users: {users}")
 
-        hosts = self.conn.query(self.ComputersTable).filter(
+        q = select(self.ComputersTable).filter(
             self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
         )
+        res = asyncio.run(self.conn.execute(q))
+        hosts = res.all()
         logging.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
@@ -574,19 +579,26 @@ class database:
                 host_id = host[0]
 
                 # Check to see if we already added this link
-                links = self.conn.query(self.AdminRelationsTable).filter(
+                # links = self.conn.query(self.AdminRelationsTable).filter(
+                #     self.AdminRelationsTable.c.userid == user_id,
+                #     self.AdminRelationsTable.c.computerid == host_id
+                # ).all()
+                q = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.computerid == host_id
-                ).all()
+                )
+                res = asyncio.run(self.conn.execute(q))
+                links = res.all()
 
                 if not links:
-                    self.conn.execute(
-                        self.AdminRelationsTable.insert(),
-                        [{"userid": user_id, "computerid": host_id}]
-                    )
-
-        self.conn.commit()
-        self.conn.close()
+                    link = {"userid": user_id, "computerid": host_id}
+                    # self.conn.execute(
+                    #     self.AdminRelationsTable.insert(),
+                    #     [{"userid": user_id, "computerid": host_id}]
+                    # )
+                    asyncio.run(self.conn.execute(
+                        insert(self.AdminRelationsTable).values(link)
+                    ))
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
