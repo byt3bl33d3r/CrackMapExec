@@ -209,7 +209,7 @@ class database:
         Check if this host has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
-        update_hosts = []
+        hosts = []
 
         q = select(self.ComputersTable).filter(
             self.ComputersTable.c.ip == ip
@@ -232,7 +232,7 @@ class database:
 
         # create new computer
         if not results:
-            update_hosts = [host]
+            hosts = [host]
         # update existing hosts data
         else:
             for host in results:
@@ -258,13 +258,13 @@ class database:
                     computer_data["petitpotam"] = petitpotam
                 if dc is not None:
                     computer_data["dc"] = dc
-                update_hosts.append(computer_data)
+                hosts.append(computer_data)
 
-        logging.debug(f"Update Hosts: {update_hosts}")
+        logging.debug(f"Update Hosts: {hosts}")
         asyncio.run(
             self.conn.execute(
                 sqlite_upsert(self.ComputersTable),
-                update_hosts
+                hosts
             )
         )
         # asyncio.run(self.conn.close())
@@ -294,6 +294,7 @@ class database:
         if password is not None:
             credential_data["password"] = password
         if group_id is not None:
+            credential_data["groupid"] = group_id
             credential_data["groupid"] = group_id
         if pillaged_from is not None:
             credential_data["pillaged_from"] = pillaged_from
@@ -729,6 +730,9 @@ class database:
             q = select(self.GroupsTable).filter(
                 self.GroupsTable.c.id == filter_term
             )
+            results = asyncio.run(self.conn.execute(q)).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
         elif group_name and group_domain:
             q = select(self.GroupsTable).filter(
                 func.lower(self.GroupsTable.c.username) == func.lower(group_name),
