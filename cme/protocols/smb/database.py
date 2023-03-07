@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
-from sqlalchemy import MetaData, func, inspect, Table, select, insert, update, delete
+from sqlalchemy import MetaData, func, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -13,11 +13,6 @@ import warnings
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
-
-
-def get_table_names(conn):
-    inspector = inspect(conn)
-    return inspector.get_table_names()
 
 
 class database:
@@ -752,6 +747,5 @@ class database:
         return results
 
     def clear_database(self):
-        for table in self.metadata.tables:
-            self.conn.query(self.metadata.tables[table]).delete()
-        self.conn.commit()
+        for table in self.metadata.sorted_tables:
+            asyncio.run(self.conn.execute(table.delete()))
