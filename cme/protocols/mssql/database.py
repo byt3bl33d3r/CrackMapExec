@@ -311,24 +311,23 @@ class database:
         """
         # if we're returning a single credential by ID
         if self.is_credential_valid(filter_term):
-            results = self.conn.query(self.users_table).filter(
-                self.users_table.c.id == filter_term
-            ).all()
+            q = select(self.UsersTable).filter(
+                self.UsersTable.c.id == filter_term
+            )
         elif cred_type:
-            results = self.conn.query(self.users_table).filter(
-                self.users_table.c.credtype == cred_type
-            ).all()
+            q = select(self.UsersTable).filter(
+                self.UsersTable.c.credtype == cred_type
+            )
         # if we're filtering by username
         elif filter_term and filter_term != '':
-            results = self.conn.query(self.users_table).filter(
-                func.lower(self.users_table.c.username).like(func.lower(f"%{filter_term}%"))
-            ).all()
+            q = select(self.UsersTable).filter(
+                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
+            )
         # otherwise return all credentials
         else:
-            results = self.conn.query(self.users_table).all()
+            q = select(self.UsersTable)
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def is_computer_valid(self, host_id):
