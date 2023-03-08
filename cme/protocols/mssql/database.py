@@ -217,12 +217,13 @@ class database:
         """
         Removes a credential ID from the database
         """
+        del_hosts = []
         for cred_id in creds_id:
-            self.conn.query(self.users_table).filter(
-                self.users_table.c.id == cred_id
-            ).delete()
-        self.conn.commit()
-        self.conn.close()
+            q = delete(self.UsersTable).filter(
+                self.UsersTable.c.id == cred_id
+            )
+            del_hosts.append(q)
+        asyncio.run(self.conn.execute(q))
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
         domain = domain.split('.')[0].upper()
