@@ -229,21 +229,24 @@ class database:
         domain = domain.split('.')[0].upper()
 
         if user_id:
-            users = self.conn.query(self.users_table).filter(
-                self.users_table.c.id == user_id
-            ).all()
+            q = select(self.UsersTable).filter(
+                self.UsersTable.c.id == user_id
+            )
+            users = asyncio.run(self.conn.execute(q)).all()
         else:
-            users = self.conn.query(self.users_table).filter(
-                self.users_table.c.credtype == credtype,
-                func.lower(self.users_table.c.domain) == func.lower(domain),
-                func.lower(self.users_table.c.username) == func.lower(username),
-                self.users_table.c.password == password
-            ).all()
+            q = select(self.UsersTable).filter(
+                self.UsersTable.c.credtype == credtype,
+                func.lower(self.UsersTable.c.domain) == func.lower(domain),
+                func.lower(self.UsersTable.c.username) == func.lower(username),
+                self.UsersTable.c.password == password
+            )
+            users = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Users: {users}")
 
-        hosts = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.ip.like(func.lower(f"%{host}%"))
+        q = select(self.ComputersTable).filter(
+            self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
         )
+        hosts = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
@@ -251,20 +254,16 @@ class database:
                 user_id = user[0]
                 host_id = host[0]
 
-                # Check to see if we already added this link
-                links = self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.userid == user_id,
-                    self.admin_relations_table.c.computerid == host_id
-                ).all()
+                q = select(self.AdminRelationsTable).filter(
+                    self.AdminRelationsTable.c.userid == user_id,
+                    self.AdminRelationsTable.c.computerid == host_id
+                )
+                links = asyncio.run(self.conn.execute(q)).all()
 
                 if not links:
-                    self.conn.execute(
-                        self.admin_relations_table.insert(),
-                        [{"userid": user_id, "computerid": host_id}]
-                    )
-
-        self.conn.commit()
-        self.conn.close()
+                    asyncio.run(self.conn.execute(
+                        insert(self.AdminRelationsTable).values(link)
+                    ))
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
