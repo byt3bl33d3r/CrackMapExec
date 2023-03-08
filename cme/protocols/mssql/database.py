@@ -7,9 +7,11 @@ from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
-from datetime import datetime
 import asyncio
 import warnings
+
+# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+warnings.filterwarnings("ignore", category=SAWarning)
 
 
 class database:
