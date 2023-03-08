@@ -1,24 +1,48 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
-from sqlalchemy import MetaData, func
+from sqlalchemy import MetaData, func, Table, select, insert, update, delete
+from sqlalchemy.dialects.sqlite import Insert  # used for upsert
+from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SAWarning
+from datetime import datetime
+import asyncio
+import warnings
 
 
 class database:
-    def __init__(self, db_engine, metadata=None):
-        metadata = MetaData()
-        metadata.reflect(bind=db_engine)
+    def __init__(self, db_engine):
+        self.ComputersTable = None
+        self.UsersTable = None
+        self.AdminRelationsTable = None
 
-        session_factory = sessionmaker(bind=db_engine, expire_on_commit=False, class_=AsyncSession)
+        self.db_engine = db_engine
+        self.metadata = MetaData()
+        asyncio.run(self.reflect_tables())
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True, class_=AsyncSession)
+        # session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False)
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
-        self.metadata = metadata
-        self.computers_table = metadata.tables["computers"]
-        self.admin_relations_table = metadata.tables["admin_relations"]
-        self.users_table = metadata.tables["users"]
+
+    async def shutdown_db(self):
+        try:
+            await asyncio.shield(self.conn.close())
+        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
+        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
+        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
+        except IllegalStateChangeError as e:
+            logging.debug(f"Error while closing session db object: {e}")
+
+    async def reflect_tables(self):
+        async with self.db_engine.connect() as conn:
+            await conn.run_sync(self.metadata.reflect)
+
+            self.ComputersTable = Table("computers", self.metadata, autoload_with=self.db_engine)
+            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
 
     @staticmethod
     def db_schema(db_conn):
@@ -53,66 +77,58 @@ class database:
 
     def add_computer(self, ip, hostname, domain, os, instances):
         """
-        Check if this host has already been added to the database, if not add it in.
+        Check if this host has already been added to the database, if not, add it in.
+        TODO: return inserted or updated row ids as a list
         """
         domain = domain.split('.')[0].upper()
+        hosts = []
 
-        results = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.ip == ip
-        ).all()
+        q = select(self.ComputersTable).filter(
+            self.ComputersTable.c.ip == ip
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+        logging.debug(f"mssql add_computer() - computers returned: {results}")
 
-        # initialize the cid to the first (or only) id
-        if len(results) > 0:
-            cid = results[0][0]
-
-        computer_data = {}
-        if ip is not None:
-            computer_data["ip"] = ip
-        if hostname is not None:
-            computer_data["hostname"] = hostname
-        if domain is not None:
-            computer_data["domain"] = domain
-        if os is not None:
-            computer_data["os"] = os
-        if instances is not None:
-            computer_data["instances"] = instances
+        host_data = {
+            "ip": ip,
+            "hostname": hostname,
+            "domain": domain,
+            "os": os,
+            "instances": instances,
+        }
 
         if not results:
-            new_host = {
-                "ip": ip,
-                "hostname": hostname,
-                "domain": domain,
-                "os": os,
-                "instances": instances
-            }
-            try:
-                cid = self.conn.execute(
-                    self.computers_table.insert(),
-                    [new_host]
-                )
-            except Exception as e:
-                pass
-                # logging.error(f"Exception: {e}")
+            hosts = [host_data]
         else:
             for host in results:
-                try:
-                    cid = self.conn.execute(
-                        self.computers_table.update().values(
-                            computer_data
-                        ).where(
-                            self.computers_table.c.id == host.id
-                        )
-                    )
-                except Exception as e:
-                    pass
-                    # logging.error(f"Exception: {e}")
-        try:
-            self.conn.commit()
-        except Exception as e:
-            logging.error(f"Exception while committing to database: {e}")
+                computer_data = host._asdict()
+                if ip is not None:
+                    computer_data["ip"] = ip
+                if hostname is not None:
+                    computer_data["hostname"] = hostname
+                if domain is not None:
+                    computer_data["domain"] = domain
+                if os is not None:
+                    computer_data["os"] = os
+                if instances is not None:
+                    computer_data["instances"] = instances
+                if computer_data not in hosts:
+                    hosts.append(computer_data)
 
-        self.conn.close()
-        return cid
+        logging.debug(f"Update Hosts: {hosts}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.ComputersTable)
+        q = q.on_conflict_do_update(
+            index_elements=self.ComputersTable.primary_key,
+            set_=self.ComputersTable.columns
+        )
+        asyncio.run(
+            self.conn.execute(
+                q,
+                hosts
+            )
+        )
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
