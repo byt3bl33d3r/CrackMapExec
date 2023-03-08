@@ -161,73 +161,6 @@ class database:
         #    FOREIGN KEY(computerid) REFERENCES computers(id)
         #    )''')
 
-    def add_share(self, computer_id, user_id, name, remark, read, write):
-        share_data = {
-            "computerid": computer_id,
-            "userid": user_id,
-            "name": name,
-            "remark": remark,
-            "read": read,
-            "write": write,
-        }
-        share_id = asyncio.run(self.conn.execute(
-            insert(self.SharesTable).values(share_data).returning(self.SharesTable.c.id)
-        )).scalar_one()
-
-        return share_id
-
-    def is_share_valid(self, share_id):
-        """
-        Check if this share ID is valid.
-        """
-        q = select(self.SharesTable).filter(
-            self.SharesTable.c.id == share_id
-        )
-        results = asyncio.run(self.conn.execute(q)).all()
-
-        logging.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
-        return len(results) > 0
-
-    def get_shares(self, filter_term=None):
-        if self.is_share_valid(filter_term):
-            q = select(self.SharesTable).filter(
-                self.SharesTable.c.id == filter_term
-            )
-        elif filter_term:
-            q = select(self.SharesTable).filter(
-                func.lower(self.SharesTable.c.name).like(func.lower(f"%{filter_term}%"))
-            )
-        else:
-            q = select(self.SharesTable)
-        results = asyncio.run(self.conn.execute(q)).all()
-        return results
-
-    def get_shares_by_access(self, permissions, share_id=None):
-        permissions = permissions.lower()
-        q = select(self.SharesTable)
-        if share_id:
-            q.filter(self.SharesTable.c.id == share_id)
-        if "r" in permissions:
-            q.filter(self.SharesTable.c.read == 1)
-        if "w" in permissions:
-            q.filter(self.SharesTable.c.write == 1)
-        results = asyncio.run(self.conn.execute(q)).all()
-        return results
-
-    def get_users_with_share_access(self, computer_id, share_name, permissions):
-        permissions = permissions.lower()
-        q = select(self.SharesTable.c.userid).filter(
-            self.SharesTable.c.name == share_name,
-            self.SharesTable.c.computerid == computer_id
-        )
-        if "r" in permissions:
-            q.filter(self.SharesTable.c.read == 1)
-        if "w" in permissions:
-            q.filter(self.SharesTable.c.write == 1)
-        results = asyncio.run(self.conn.execute(q)).all()
-
-        return results
-
     # pull/545
     def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
@@ -382,70 +315,6 @@ class database:
         ))
         return user_rowid
 
-    def add_group(self, domain, name, member_count_ad=None):
-        domain = domain.split('.')[0].upper()
-        groups = []
-
-        q = select(self.GroupsTable).filter(
-            func.lower(self.GroupsTable.c.domain) == func.lower(domain),
-            func.lower(self.GroupsTable.c.name) == func.lower(name)
-        )
-        results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"add_group() - groups returned: {results}")
-
-        group_data = {
-            "domain": domain,
-            "name": name,
-        }
-
-        if not results:
-            if member_count_ad is not None:
-                group_data["member_count_ad"] = member_count_ad
-                today = datetime.now()
-                iso_date = today.isoformat()
-                group_data["last_query_time"] = iso_date
-            groups = [group_data]
-        else:
-            for group in results:
-                g_data = group._asdict()
-                if domain is not None:
-                    g_data["domain"] = domain
-                if name is not None:
-                    g_data["name"] = name
-                if member_count_ad is not None:
-                    g_data["member_count_ad"] = member_count_ad
-                    today = datetime.now()
-                    iso_date = today.isoformat()
-                    g_data["last_query_time"] = iso_date
-                # only add it to the upsert query if it's changed to save query execution time
-                if g_data not in groups:
-                    groups.append(g_data)
-
-        logging.debug(f"Update Groups: {groups}")
-
-        # TODO: find a way to abstract this away to a single Upsert call
-        q = Insert(self.GroupsTable).returning(self.GroupsTable.c.id)
-        q = q.on_conflict_do_update(
-            index_elements=self.GroupsTable.primary_key,
-            set_=self.GroupsTable.columns
-        )
-        res_inserted_result = asyncio.run(
-            self.conn.execute(
-                q,
-                groups
-            )
-        )
-
-        # from the code, the resulting ID is only referenced if it expects one group, which isn't great
-        # TODO: always return a list and fix code references to not expect a single integer
-        inserted_result = res_inserted_result.first()
-        gid = inserted_result.id
-
-        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
-        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
-
-        return gid
-
     def remove_credentials(self, creds_id):
         """
         Removes a credential ID from the database
@@ -513,24 +382,6 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
-    def get_group_relations(self, user_id=None, group_id=None):
-        if user_id and group_id:
-            q = select(self.GroupRelationsTable).filter(
-                self.GroupRelationsTable.c.id == user_id,
-                self.GroupRelationsTable.c.groupid == group_id
-            )
-        elif user_id:
-            q = select(self.GroupRelationsTable).filter(
-                self.GroupRelationsTable.c.id == user_id
-            )
-        elif group_id:
-            q = select(self.GroupRelationsTable).filter(
-                self.GroupRelationsTable.c.groupid == group_id
-            )
-
-        results = asyncio.run(self.conn.execute(q)).all()
-        return results
-
     def remove_admin_relation(self, user_ids=None, host_ids=None):
         q = delete(self.AdminRelationsTable)
         if user_ids:
@@ -545,18 +396,6 @@ class database:
                 )
         asyncio.run(self.conn.execute(q))
 
-    def remove_group_relations(self, user_id=None, group_id=None):
-        q = delete(self.GroupRelationsTable)
-        if user_id:
-            q.filter(
-                self.GroupRelationsTable.c.userid == user_id
-            )
-        elif group_id:
-            q.filter(
-                self.GroupRelationsTable.c.groupid == group_id
-            )
-        asyncio.run(self.conn.execute(q))
-
     def is_credential_valid(self, credential_id):
         """
         Check if this credential ID is valid.
@@ -567,20 +406,6 @@ class database:
         )
         results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
-
-    def is_credential_local(self, credential_id):
-        q = select(self.UsersTable.c.domain).filter(
-            self.UsersTable.c.id == credential_id
-        )
-        user_domain = asyncio.run(self.conn.execute(q)).all()
-
-        if user_domain:
-            q = select(self.ComputersTable).filter(
-                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
-            )
-            results = asyncio.run(self.conn.execute(q)).all()
-
-            return len(results) > 0
 
     def get_credentials(self, filter_term=None, cred_type=None):
         """
@@ -604,39 +429,6 @@ class database:
         else:
             q = select(self.UsersTable)
 
-        results = asyncio.run(self.conn.execute(q)).all()
-        return results
-
-    def is_user_valid(self, user_id):
-        """
-        Check if this User ID is valid.
-        """
-        q = select(self.UsersTable).filter(
-            self.UsersTable.c.id == user_id
-        )
-        results = asyncio.run(self.conn.execute(q)).all()
-        return len(results) > 0
-
-    def get_users(self, filter_term=None):
-        q = select(self.UsersTable)
-
-        if self.is_user_valid(filter_term):
-            q.filter(
-                self.UsersTable.c.id == filter_term
-            )
-        # if we're filtering by username
-        elif filter_term and filter_term != '':
-            q.filter(
-                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
-            )
-        results = asyncio.run(self.conn.execute(q)).all()
-        return results
-
-    def get_user(self, domain, username):
-        q = select(self.UsersTable).filter(
-            func.lower(self.UsersTable.c.domain) == func.lower(domain),
-            func.lower(self.UsersTable.c.username) == func.lower(username)
-        )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
@@ -683,9 +475,6 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
-    def get_domain_controllers(self, domain=None):
-        return self.get_computers(filter_term='dc', domain=domain)
-
     def is_group_valid(self, group_id):
         """
         Check if this group ID is valid.
@@ -699,6 +488,70 @@ class database:
         logging.debug(f"is_group_valid(groupID={group_id}) => {valid}")
 
         return valid
+
+    def add_group(self, domain, name, member_count_ad=None):
+        domain = domain.split('.')[0].upper()
+        groups = []
+
+        q = select(self.GroupsTable).filter(
+            func.lower(self.GroupsTable.c.domain) == func.lower(domain),
+            func.lower(self.GroupsTable.c.name) == func.lower(name)
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+        logging.debug(f"add_group() - groups returned: {results}")
+
+        group_data = {
+            "domain": domain,
+            "name": name,
+        }
+
+        if not results:
+            if member_count_ad is not None:
+                group_data["member_count_ad"] = member_count_ad
+                today = datetime.now()
+                iso_date = today.isoformat()
+                group_data["last_query_time"] = iso_date
+            groups = [group_data]
+        else:
+            for group in results:
+                g_data = group._asdict()
+                if domain is not None:
+                    g_data["domain"] = domain
+                if name is not None:
+                    g_data["name"] = name
+                if member_count_ad is not None:
+                    g_data["member_count_ad"] = member_count_ad
+                    today = datetime.now()
+                    iso_date = today.isoformat()
+                    g_data["last_query_time"] = iso_date
+                # only add it to the upsert query if it's changed to save query execution time
+                if g_data not in groups:
+                    groups.append(g_data)
+
+        logging.debug(f"Update Groups: {groups}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.GroupsTable).returning(self.GroupsTable.c.id)
+        q = q.on_conflict_do_update(
+            index_elements=self.GroupsTable.primary_key,
+            set_=self.GroupsTable.columns
+        )
+        res_inserted_result = asyncio.run(
+            self.conn.execute(
+                q,
+                groups
+            )
+        )
+
+        # from the code, the resulting ID is only referenced if it expects one group, which isn't great
+        # TODO: always return a list and fix code references to not expect a single integer
+        inserted_result = res_inserted_result.first()
+        gid = inserted_result.id
+
+        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
+        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
+
+        return gid
 
     def get_groups(self, filter_term=None, group_name=None, group_domain=None):
         """
@@ -729,6 +582,153 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
 
         logging.debug(f"get_groups(filterTerm={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
+        return results
+
+    def get_group_relations(self, user_id=None, group_id=None):
+        if user_id and group_id:
+            q = select(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.id == user_id,
+                self.GroupRelationsTable.c.groupid == group_id
+            )
+        elif user_id:
+            q = select(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.id == user_id
+            )
+        elif group_id:
+            q = select(self.GroupRelationsTable).filter(
+                self.GroupRelationsTable.c.groupid == group_id
+            )
+
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def remove_group_relations(self, user_id=None, group_id=None):
+        q = delete(self.GroupRelationsTable)
+        if user_id:
+            q.filter(
+                self.GroupRelationsTable.c.userid == user_id
+            )
+        elif group_id:
+            q.filter(
+                self.GroupRelationsTable.c.groupid == group_id
+            )
+        asyncio.run(self.conn.execute(q))
+
+    def is_credential_local(self, credential_id):
+        q = select(self.UsersTable.c.domain).filter(
+            self.UsersTable.c.id == credential_id
+        )
+        user_domain = asyncio.run(self.conn.execute(q)).all()
+
+        if user_domain:
+            q = select(self.ComputersTable).filter(
+                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
+            )
+            results = asyncio.run(self.conn.execute(q)).all()
+
+            return len(results) > 0
+
+    def is_user_valid(self, user_id):
+        """
+        Check if this User ID is valid.
+        """
+        q = select(self.UsersTable).filter(
+            self.UsersTable.c.id == user_id
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+        return len(results) > 0
+
+    def get_users(self, filter_term=None):
+        q = select(self.UsersTable)
+
+        if self.is_user_valid(filter_term):
+            q.filter(
+                self.UsersTable.c.id == filter_term
+            )
+        # if we're filtering by username
+        elif filter_term and filter_term != '':
+            q.filter(
+                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
+            )
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def get_user(self, domain, username):
+        q = select(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username)
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def get_domain_controllers(self, domain=None):
+        return self.get_computers(filter_term='dc', domain=domain)
+
+    def is_share_valid(self, share_id):
+        """
+        Check if this share ID is valid.
+        """
+        q = select(self.SharesTable).filter(
+            self.SharesTable.c.id == share_id
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+
+        logging.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
+        return len(results) > 0
+
+    def add_share(self, computer_id, user_id, name, remark, read, write):
+        share_data = {
+            "computerid": computer_id,
+            "userid": user_id,
+            "name": name,
+            "remark": remark,
+            "read": read,
+            "write": write,
+        }
+        share_id = asyncio.run(self.conn.execute(
+            insert(self.SharesTable).values(share_data).returning(self.SharesTable.c.id)
+        )).scalar_one()
+
+        return share_id
+
+    def get_shares(self, filter_term=None):
+        if self.is_share_valid(filter_term):
+            q = select(self.SharesTable).filter(
+                self.SharesTable.c.id == filter_term
+            )
+        elif filter_term:
+            q = select(self.SharesTable).filter(
+                func.lower(self.SharesTable.c.name).like(func.lower(f"%{filter_term}%"))
+            )
+        else:
+            q = select(self.SharesTable)
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def get_shares_by_access(self, permissions, share_id=None):
+        permissions = permissions.lower()
+        q = select(self.SharesTable)
+        if share_id:
+            q.filter(self.SharesTable.c.id == share_id)
+        if "r" in permissions:
+            q.filter(self.SharesTable.c.read == 1)
+        if "w" in permissions:
+            q.filter(self.SharesTable.c.write == 1)
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def get_users_with_share_access(self, computer_id, share_name, permissions):
+        permissions = permissions.lower()
+        q = select(self.SharesTable.c.userid).filter(
+            self.SharesTable.c.name == share_name,
+            self.SharesTable.c.computerid == computer_id
+        )
+        if "r" in permissions:
+            q.filter(self.SharesTable.c.read == 1)
+        if "w" in permissions:
+            q.filter(self.SharesTable.c.write == 1)
+        results = asyncio.run(self.conn.execute(q)).all()
+
         return results
 
     def add_domain_backupkey(self, domain:str, pvk:bytes):
