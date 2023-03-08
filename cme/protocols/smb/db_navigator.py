@@ -408,7 +408,7 @@ class navigator(DatabaseNavigator):
 
                 data = [['GroupID', 'Domain', 'Name']]
                 for cred_id in cred_id_list:
-                    links = self.db.get_group_relations(userID=cred_id)
+                    links = self.db.get_group_relations(user_id=cred_id)
 
                     for link in links:
                         link_id, user_id, group_id = link
@@ -439,6 +439,26 @@ class navigator(DatabaseNavigator):
 
                             data.append([host_id, ip, hostname, domain, os])
                 print_table(data, title='Admin Access to Host(s)')
+
+    def help_creds(self):
+        help_string = """
+        creds [add|remove|plaintext|hash|filter_term]
+        By default prints all creds
+        Table format:
+        | 'CredID', 'Admin On', 'CredType', 'Domain', 'UserName', 'Password' |
+        Subcommands:
+            add - format: "add domain username password <notes> <credType> <sid>"
+            remove - format: "remove <credID>"
+            plaintext - prints plaintext creds
+            hash - prints hashed creds
+            filter_term - filters creds with filter_term
+                If a single credential is returned (e.g. `creds 15`, it prints the following tables:
+                    Credential(s) | 'CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password' |
+                    Member of Group(s) | 'GroupID', 'Domain', 'Name' |
+                    Admin Access to Host(s) | 'HostID', 'IP', 'Hostname', 'Domain', 'OS'
+                Otherwise, it prints the default credential table
+        """
+        print_help(help_string)
 
     def do_clear_database(self, line):
         self.db.clear_database()
