@@ -137,11 +137,8 @@ class database:
         domain = domain.split('.')[0].upper()
         user_rowid = None
 
-        if group_id and not self.is_group_valid(group_id):
-            self.conn.close()
-            return
-
-        if pillaged_from and not self.is_computer_valid(pillaged_from):
+        if (group_id and not self.is_group_valid(group_id)) or \
+                (pillaged_from and not self.is_computer_valid(pillaged_from)):
             self.conn.close()
             return
 
@@ -156,14 +153,17 @@ class database:
             credential_data["password"] = password
         if group_id is not None:
             credential_data["groupid"] = group_id
+            credential_data["groupid"] = group_id
         if pillaged_from is not None:
             credential_data["pillaged_from"] = pillaged_from
 
-        results = self.conn.query(self.users_table).filter(
-            func.lower(self.users_table.c.domain) == func.lower(domain),
-            func.lower(self.users_table.c.username) == func.lower(username),
-            func.lower(self.users_table.c.credtype) == func.lower(credtype)
-        ).all()
+        q = select(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username),
+            func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+
         logging.debug(f"Credential results: {results}")
 
         if not results:
@@ -174,43 +174,43 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_computerid": pillaged_from,
             }
-            user_rowid = self.conn.execute(
-                self.users_table.insert(),
-                [user_data]
-            )
+            q = insert(self.UsersTable).values(user_data).returning(self.UsersTable.c.id)
+            results = asyncio.run(self.conn.execute(q)).first()
+            user_rowid = results.id
+
             logging.debug(f"User RowID: {user_rowid}")
             if group_id:
                 gr_data = {
                     "userid": user_rowid,
                     "groupid": group_id,
                 }
-                self.conn.execute(
-                    self.group_relations_table.insert(),
-                    [gr_data]
-                )
+                q = insert(self.GroupRelationsTable).values(gr_data)
+                asyncio.run(self.conn.execute(q))
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    user_rowid = self.conn.execute(
-                        self.users_table.update().values(
-                            credential_data
-                        ).where(
-                            self.users_table.c.id == user[0]
-                        )
-                    )
-                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                        self.conn.execute(
-                            self.group_relations_table.update().values(
-                                {"userid": user_rowid, "groupid": group_id}
-                            )
-                        )
-        self.conn.commit()
-        self.conn.close()
-        logging.debug(
-            'add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
-                credtype, domain, username, password, group_id, pillaged_from, user_rowid))
+                    q = update(self.UsersTable).values(credential_data).returning(self.UsersTable.c.id)
+                    results = asyncio.run(self.conn.execute(q)).first()
+                    user_rowid = results.id
 
+                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
+                        gr_data = {
+                            "userid": user_rowid,
+                            "groupid": group_id,
+                        }
+                        q = update(self.GroupRelationsTable).values(gr_data)
+                        asyncio.run(self.conn.execute(q))
+
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
+            credtype,
+            domain,
+            username,
+            password,
+            group_id,
+            pillaged_from,
+            user_rowid
+        ))
         return user_rowid
 
     def remove_credentials(self, creds_id):
