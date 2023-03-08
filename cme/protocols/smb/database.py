@@ -165,6 +165,7 @@ class database:
     def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
         Check if this host has already been added to the database, if not, add it in.
+        TODO: return inserted or updated row ids as a list
         """
         domain = domain.split('.')[0].upper()
         hosts = []
@@ -216,7 +217,9 @@ class database:
                     computer_data["petitpotam"] = petitpotam
                 if dc is not None:
                     computer_data["dc"] = dc
-                hosts.append(computer_data)
+                # only add computer to be updated if it has changed
+                if computer_data not in hosts:
+                    hosts.append(computer_data)
         logging.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
