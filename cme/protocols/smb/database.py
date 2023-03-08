@@ -293,10 +293,6 @@ class database:
             self.conn.close()
             return
 
-        # if pillaged_from and not self.is_computer_valid(pillaged_from):
-        #     self.conn.close()
-        #     return
-
         credential_data = {}
         if credtype is not None:
             credential_data["credtype"] = credtype
@@ -436,13 +432,6 @@ class database:
         """
         Removes a credential ID from the database
         """
-        # for cred_id in creds_id:
-        #     self.conn.query(self.UsersTable).filter(
-        #         self.UsersTable.c.id == cred_id
-        #     ).delete()
-        # self.conn.commit()
-        # self.conn.close()
-        #
         del_hosts = []
         for cred_id in creds_id:
             q = delete(self.UsersTable).filter(
@@ -480,11 +469,6 @@ class database:
                 user_id = user[0]
                 host_id = host[0]
 
-                # Check to see if we already added this link
-                # links = self.conn.query(self.AdminRelationsTable).filter(
-                #     self.AdminRelationsTable.c.userid == user_id,
-                #     self.AdminRelationsTable.c.computerid == host_id
-                # ).all()
                 q = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.computerid == host_id
@@ -492,11 +476,6 @@ class database:
                 links = asyncio.run(self.conn.execute(q)).all()
 
                 if not links:
-                    link = {"userid": user_id, "computerid": host_id}
-                    # self.conn.execute(
-                    #     self.AdminRelationsTable.insert(),
-                    #     [{"userid": user_id, "computerid": host_id}]
-                    # )
                     asyncio.run(self.conn.execute(
                         insert(self.AdminRelationsTable).values(link)
                     ))
@@ -572,10 +551,6 @@ class database:
         return len(results) > 0
 
     def is_credential_local(self, credential_id):
-        # user_domain = self.conn.query(self.UsersTable.c.domain).filter(
-        #     self.UsersTable.c.id == credential_id
-        # ).all()
-
         q = select(self.UsersTable.c.domain).filter(
             self.UsersTable.c.id == credential_id
         )
@@ -587,11 +562,6 @@ class database:
             )
             results = asyncio.run(self.conn.execute(q)).all()
 
-            # results = self.conn.query(self.ComputersTable).filter(
-            #     func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
-            # ).all()
-            # self.conn.commit()
-            # self.conn.close()
             return len(results) > 0
 
     def get_credentials(self, filter_term=None, cred_type=None):
@@ -720,9 +690,6 @@ class database:
             group_domain = group_domain.split('.')[0].upper()
 
         if self.is_group_valid(filter_term):
-            # results = self.conn.query(self.GroupsTable).filter(
-            #     self.GroupsTable.c.id == filter_term
-            # ).first()
             q = select(self.GroupsTable).filter(
                 self.GroupsTable.c.id == filter_term
             )
