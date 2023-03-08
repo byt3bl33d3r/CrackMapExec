@@ -164,7 +164,7 @@ class database:
     # pull/545
     def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
-        Check if this host has already been added to the database, if not add it in.
+        Check if this host has already been added to the database, if not, add it in.
         """
         domain = domain.split('.')[0].upper()
         hosts = []
@@ -173,7 +173,7 @@ class database:
             self.ComputersTable.c.ip == ip
         )
         results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"add_computer() - computers returned: {results}")
+        logging.debug(f"smb add_computer() - computers returned: {results}")
 
         host_data = {
             "ip": ip,
