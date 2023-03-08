@@ -334,11 +334,10 @@ class database:
         """
         Check if this host ID is valid.
         """
-        results = self.conn.query(self.computers_table).filter(
-            self.computers_table.c.id == host_id
-        ).all()
-        self.conn.commit()
-        self.conn.close()
+        q = select(self.ComputersTable).filter(
+            self.ComputersTable.c.id == host_id
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
 
     def get_computers(self, filter_term=None, domain=None):
