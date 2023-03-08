@@ -344,34 +344,33 @@ class database:
         """
         Return hosts from the database.
         """
+        q = select(self.ComputersTable)
+
         # if we're returning a single host by ID
         if self.is_computer_valid(filter_term):
-            results = self.conn.query(self.computers_table).filter(
-                self.computers_table.c.id == filter_term
-            ).first()
+            q.filter(
+                self.ComputersTable.c.id == filter_term
+            )
+            results = asyncio.run(self.conn.execute(q)).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
+            q.filter(
+                self.ComputersTable.c.dc == 1
+            )
             if domain:
-                results = self.conn.query(self.computers_table).filter(
-                    self.computers_table.c.dc == 1,
-                    func.lower(self.computers_table.c.domain) == func.lower(domain)
-                ).all()
-            else:
-                results = self.conn.query(self.computers_table).filter(
-                    self.computers_table.c.dc == 1
-                ).all()
+                q.filter(
+                    func.lower(self.ComputersTable.c.domain) == func.lower(domain)
+                )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            results = self.conn.query(self.computers_table).filter((
-                    func.lower(self.computers_table.c.ip).like(func.lower(f"%{filter_term}%")) |
-                    func.lower(self.computers_table.c.hostname).like(func.lower(f"%{filter_term}"))
-            )).all()
-        # otherwise return all computers
-        else:
-            results = self.conn.query(self.computers_table).all()
+            q.filter(
+                func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
+                func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
+            )
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def clear_database(self):
