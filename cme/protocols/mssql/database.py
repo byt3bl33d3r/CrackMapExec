@@ -281,18 +281,18 @@ class database:
         return results
 
     def remove_admin_relation(self, user_ids=None, host_ids=None):
+        q = delete(self.AdminRelationsTable)
         if user_ids:
             for user_id in user_ids:
-                self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.userid == user_id
-                ).delete()
+                q.filter(
+                    self.AdminRelationsTable.c.userid == user_id
+                )
         elif host_ids:
             for host_id in host_ids:
-                self.conn.query(self.admin_relations_table).filter(
-                    self.admin_relations_table.c.hostid == host_id
-                ).delete()
-        self.conn.commit()
-        self.conn.close()
+                q.filter(
+                    self.AdminRelationsTable.c.hostid == host_id
+                )
+        asyncio.run(self.conn.execute(q))
 
     def is_credential_valid(self, credential_id):
         """
