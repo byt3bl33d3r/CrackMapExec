@@ -891,7 +891,7 @@ class smb(connection):
                             # So I put a domain group as a member of a local group which is also a member of another local group.
                             # (╯°□°）╯︵ ┻━┻
                             if not group.isgroup:
-                                self.db.add_user(domain, name, group_id)
+                                self.db.add_credential("", domain, name, "", group_id, "")
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
@@ -957,11 +957,7 @@ class smb(connection):
                                 member_count_ad=member_count
                             )
                         if not group.isgroup:
-                            self.db.add_user(
-                                group.memberdomain,
-                                group.membername,
-                                group_id
-                            )
+                            self.db.add_credential("", group.memberdomain, group.membername, "", group_id, "")
                         elif group.isgroup:
                             self.db.add_group(
                                 group.groupdomain,
