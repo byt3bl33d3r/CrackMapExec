@@ -374,6 +374,5 @@ class database:
         return results
 
     def clear_database(self):
-        for table in self.metadata.tables:
-            self.conn.query(self.metadata.tables[table]).delete()
-        self.conn.commit()
+        for table in self.metadata.sorted_tables:
+            asyncio.run(self.conn.execute(table.delete()))
