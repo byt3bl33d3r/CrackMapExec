@@ -298,12 +298,11 @@ class database:
         """
         Check if this credential ID is valid.
         """
-        results = self.conn.query(self.users_table).filter(
-            self.users_table.c.id == credential_id,
-            self.users_table.c.password is not None
-        ).all()
-        self.conn.commit()
-        self.conn.close()
+        q = select(self.UsersTable).filter(
+            self.UsersTable.c.id == credential_id,
+            self.UsersTable.c.password is not None
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
 
     def get_credentials(self, filter_term=None, cred_type=None):
