@@ -267,18 +267,17 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            results = self.conn.query(self.admin_relations_table).filter(
-                self.admin_relations_table.c.userid == user_id
-            ).all()
+            q = select(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.userid == user_id
+            )
         elif host_id:
-            results = self.conn.query(self.admin_relations_table).filter(
-                self.admin_relations_table.c.computerid == host_id
-            ).all()
+            q = select(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.computerid == host_id
+            )
         else:
-            results = self.conn.query(self.admin_relations_table).all()
+            q = select(self.AdminRelationsTable)
 
-        self.conn.commit()
-        self.conn.close()
+        results = asyncio.run(self.conn.execute(q)).all()
         return results
 
     def remove_admin_relation(self, user_ids=None, host_ids=None):
