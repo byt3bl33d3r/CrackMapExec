@@ -235,7 +235,7 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Results in add_computer: {results}")
 
-        host = {
+        host_data = {
             "ip": ip,
             "hostname": hostname,
             "domain": domain,
@@ -250,7 +250,7 @@ class database:
 
         # create new computer
         if not results:
-            hosts = [host]
+            hosts = [host_data]
         # update existing hosts data
         else:
             for host in results:
@@ -285,7 +285,6 @@ class database:
                 hosts
             )
         )
-        # asyncio.run(self.conn.close())
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
@@ -334,7 +333,7 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_computerid": pillaged_from,
             }
-            q = insert(self.UsersTable).values(user_data)
+            q = insert(self.UsersTable).values(user_data).returning(self.UsersTable.c.id)
             results = asyncio.run(self.conn.execute(q)).first()
             user_rowid = results.id
 
@@ -350,7 +349,7 @@ class database:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    q = update(self.UsersTable).values(credential_data)
+                    q = update(self.UsersTable).values(credential_data).returning(self.UsersTable.c.id)
                     results = asyncio.run(self.conn.execute(q)).first()
                     user_rowid = results.id
 
@@ -433,44 +432,56 @@ class database:
 
     def add_group(self, domain, name, member_count_ad=None):
         domain = domain.split('.')[0].upper()
+        groups = []
 
-        results = self.conn.query(self.GroupsTable).filter(
+        q = select(self.GroupsTable).filter(
             func.lower(self.GroupsTable.c.domain) == func.lower(domain),
             func.lower(self.GroupsTable.c.name) == func.lower(name)
-        ).all()
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
+        logging.debug(f"add_group(): groups returned: {results}")
 
-        group_data = {}
-        if domain is not None:
-            group_data["domain"] = domain
-        if name is not None:
-            group_data["name"] = name
-        if member_count_ad is not None:
-            group_data["member_count_ad"] = member_count_ad
-            today = datetime.now()
-            iso_date = today.isoformat()
-            group_data["last_query_time"] = iso_date
+        group_data = {
+            "domain": domain,
+            "name": name,
+        }
 
-        if results:
-            # initialize the cid to the first (or only) id
-            cid = results[0][0]
-            for group in results:
-                cid = self.conn.execute(
-                    self.GroupsTable.update().values(
-                        group_data
-                    ).where(
-                        self.GroupsTable.c.id == group[0]
-                    )
-                )
+        if not results:
+            if member_count_ad is not None:
+                group_data["member_count_ad"] = member_count_ad
+                today = datetime.now()
+                iso_date = today.isoformat()
+                group_data["last_query_time"] = iso_date
+            groups = [group_data]
         else:
-            cid = self.conn.execute(
-                self.GroupsTable.insert(),
-                [group_data]
-            )
-        self.conn.commit()
-        self.conn.close()
+            for group in results:
+                g_data = group._asdict()
+                if domain is not None:
+                    g_data["domain"] = domain
+                if name is not None:
+                    g_data["name"] = name
+                if member_count_ad is not None:
+                    g_data["member_count_ad"] = member_count_ad
+                    today = datetime.now()
+                    iso_date = today.isoformat()
+                    g_data["last_query_time"] = iso_date
+                groups.append(group_data)
 
-        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, cid))
-        return cid
+        logging.debug(f"Update Groups: {groups}")
+        res_inserted_result = asyncio.run(
+            self.conn.execute(
+                sqlite_upsert(self.GroupsTable).returning(self.GroupsTable.c.id),
+                groups
+            )
+        )
+        # from the code, the resulting ID is only referenced if it expects one group, which isn't great
+        # TODO: always return a list and fix code references to not expect a single integer
+        inserted_result = res_inserted_result.first()
+        gid = inserted_result.id
+        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
+
+        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
+        return gid
 
     def remove_credentials(self, creds_id):
         """
