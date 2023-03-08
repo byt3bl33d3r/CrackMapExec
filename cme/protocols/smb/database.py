@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import logging
 from sqlalchemy import MetaData, func, Table, select, insert, update, delete
-from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
+from sqlalchemy.dialects.sqlite import Insert  # used for upsert
 from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,15 @@ from datetime import datetime
 import asyncio
 import warnings
 
+from sqlalchemy.ext.compiler import compiles
+
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
+
+
+@compiles(insert)
+def _prefix_insert_with_ignore(ins, compiler, **kw):
+    return compiler.visit_insert(ins.prefix_with('OR IGNORE'), **kw)
 
 
 class database:
@@ -58,7 +65,7 @@ class database:
     @staticmethod
     def db_schema(db_conn):
         db_conn.execute('''CREATE TABLE "computers" (
-            "id" integer PRIMARY KEY ON CONFLICT REPLACE,
+            "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
             "domain" text,
@@ -259,11 +266,17 @@ class database:
                 if dc is not None:
                     computer_data["dc"] = dc
                 hosts.append(computer_data)
-
         logging.debug(f"Update Hosts: {hosts}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.ComputersTable)
+        q = q.on_conflict_do_update(
+            index_elements=self.ComputersTable.primary_key,
+            set_=self.ComputersTable.columns
+        )
         asyncio.run(
             self.conn.execute(
-                sqlite_upsert(self.ComputersTable),
+                q,
                 hosts
             )
         )
@@ -447,22 +460,33 @@ class database:
                     today = datetime.now()
                     iso_date = today.isoformat()
                     g_data["last_query_time"] = iso_date
-                groups.append(group_data)
+                # only add it to the upsert query if it's changed to save query execution time
+                if g_data not in groups:
+                    groups.append(g_data)
 
         logging.debug(f"Update Groups: {groups}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.GroupsTable).returning(self.GroupsTable.c.id)
+        q = q.on_conflict_do_update(
+            index_elements=self.GroupsTable.primary_key,
+            set_=self.GroupsTable.columns
+        )
         res_inserted_result = asyncio.run(
             self.conn.execute(
-                sqlite_upsert(self.GroupsTable).returning(self.GroupsTable.c.id),
+                q,
                 groups
             )
         )
+
         # from the code, the resulting ID is only referenced if it expects one group, which isn't great
         # TODO: always return a list and fix code references to not expect a single integer
         inserted_result = res_inserted_result.first()
         gid = inserted_result.id
-        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
 
+        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
         logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
+
         return gid
 
     def remove_credentials(self, creds_id):
