@@ -10,7 +10,7 @@ import asyncio
 
 class database:
     def __init__(self, db_engine):
-        self.Credentials_table = None
+        self.CredentialsTable = None
         self.HostsTable = None
 
         self.db_engine = db_engine
