@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/rpcdump.py
+import logging
 from impacket.examples import logger
 from impacket import uuid, version
 from impacket.dcerpc.v5 import transport, epm
@@ -15,6 +16,7 @@ KNOWN_PROTOCOLS = {
     445: {'bindstr': r'ncacn_np:%s[\pipe\epmapper]'},
     }
 
+
 class CMEModule:
     '''
         For printnightmare: detect if print spooler is enabled or not. Then use @cube0x0's project https://github.com/cube0x0/CVE-2021-1675 or Mimikatz from Benjamin Delpy
@@ -24,7 +26,7 @@ class CMEModule:
     name = 'spooler'
     description = 'Detect if print spooler is enabled or not'
     supported_protocols = ['smb']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -61,7 +63,7 @@ class CMEModule:
 
         # Display results.
         endpoints = {}
-        # Let's groups the UUIDS
+        # Let's group the UUIDS
         for entry in entries:
             binding = epm.PrintStringBinding(entry['tower']['Floors'])
             tmpUUID = str(entry['tower']['Floors'][0])
@@ -90,8 +92,8 @@ class CMEModule:
                     logging.debug("          %s" % binding)
                 logging.debug("")
                 context.log.highlight('Spooler service enabled')
-                host_id = context.db.get_computers(connection.host)[0][0]
-                database.update_computer(context.db, host_id, spooler=True)
+                host = context.db.get_computers(connection.host)[0]
+                context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, spooler=True)
                 break
 
         if entries:
@@ -102,7 +104,6 @@ class CMEModule:
                 logging.info('Received %d endpoints.' % num)
         else:
             logging.info('No endpoints found.')
-
 
     def __fetchList(self, rpctransport):
         dce = rpctransport.get_dce_rpc()
