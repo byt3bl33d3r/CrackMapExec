@@ -12,6 +12,7 @@ from impacket import crypto
 import hmac, hashlib, struct, sys, socket, time
 from binascii import hexlify, unhexlify
 from subprocess import check_call
+import logging
 
 # Give up brute-forcing after this many attempts. If vulnerable, 256 attempts are expected to be neccessary on average.
 MAX_ATTEMPTS = 2000 # False negative chance: 0.04%
@@ -34,8 +35,11 @@ class CMEModule:
         if perform_attack('\\\\' + connection.hostname, connection.host, connection.hostname):
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
-            host = context.db.get_computers(connection.host)[0]
-            context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+            try:
+                host = context.db.get_computers(connection.host)[0]
+                context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+            except Exception as e:
+                logging.debug(f"Error updating zerologon status in database")
 
 
 def fail(msg):
