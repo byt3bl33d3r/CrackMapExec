@@ -268,7 +268,19 @@ class navigator(DatabaseNavigator):
             if len(hosts) > 1:
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
-                data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
+                data = [[
+                    'HostID',
+                    'IP',
+                    'Hostname',
+                    'Domain',
+                    'OS',
+                    'DC',
+                    'SMBv1',
+                    'Signing',
+                    'Spooler',
+                    'Zerologon',
+                    'PetitPotam'
+                ]]
                 host_id_list = []
 
                 for host in hosts:
@@ -277,10 +289,43 @@ class navigator(DatabaseNavigator):
                     ip = host[1]
                     hostname = host[2]
                     domain = host[3]
-                    os = host[4]
-                    dc = host[5]
 
-                    data.append([host_id, ip, hostname, domain, os, dc])
+                    try:
+                        os = host[4].decode()
+                    except:
+                        os = host[4]
+                    try:
+                        dc = host[5]
+                    except IndexError:
+                        dc = ''
+                    try:
+                        smbv1 = host[6]
+                        signing = host[7]
+                    except IndexError:
+                        smbv1 = ''
+                        signing = ''
+                    try:
+                        spooler = host[8]
+                        zerologon = host[9]
+                        petitpotam = host[10]
+                    except IndexError:
+                        spooler = ''
+                        zerologon = ''
+                        petitpotam = ''
+
+                    data.append([
+                        host_id,
+                        ip,
+                        hostname,
+                        domain,
+                        os,
+                        dc,
+                        smbv1,
+                        signing,
+                        spooler,
+                        zerologon,
+                        petitpotam,
+                    ])
                 print_table(data, title='Host')
 
                 data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
