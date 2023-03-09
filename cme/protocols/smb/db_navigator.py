@@ -127,6 +127,9 @@ class navigator(DatabaseNavigator):
         if filter_term == "":
             shares = self.db.get_shares()
             self.display_shares(shares)
+        elif filter_term in ["r", "w", "rw"]:
+            shares = self.db.get_shares_by_access(line)
+            self.display_shares(shares)
         else:
             shares = self.db.get_shares(filter_term=filter_term)
 
