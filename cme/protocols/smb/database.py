@@ -36,7 +36,7 @@ class database:
         self.metadata = MetaData()
         asyncio.run(self.reflect_tables())
         session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True, class_=AsyncSession)
-        # session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=False)
+        
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
