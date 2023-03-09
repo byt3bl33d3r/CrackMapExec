@@ -52,8 +52,8 @@ class database:
         async with self.db_engine.connect() as conn:
             await conn.run_sync(self.metadata.reflect)
 
-            self.Credentials_table = Table("computers", self.metadata, autoload_with=self.db_engine)
-            self.HostsTable = Table("users", self.metadata, autoload_with=self.db_engine)
+            self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
+            self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
