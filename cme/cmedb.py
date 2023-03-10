@@ -250,7 +250,7 @@ class DatabaseNavigator(cmd.Cmd):
     
     def write_list(self,entries,filename):
         """
-        Writes a fire with a simple list
+        Writes a file with a simple list
         """
         with open(os.path.expanduser(filename),"w") as export_file:
             for line in entries:
