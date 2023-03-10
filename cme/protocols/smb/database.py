@@ -331,8 +331,9 @@ class database:
             users = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Users: {users}")
 
+        like_term = func.lower(f"%{host}%")
         q = select(self.ComputersTable).filter(
-            self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
+            self.ComputersTable.c.ip.like(like_term)
         )
         hosts = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Hosts: {hosts}")
@@ -408,8 +409,9 @@ class database:
             )
         # if we're filtering by username
         elif filter_term and filter_term != '':
+            like_term = func.lower(f"%{filter_term}%")
             q = select(self.UsersTable).filter(
-                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
+                self.UsersTable.c.username.like(like_term)
             )
         # otherwise return all credentials
         else:
@@ -453,10 +455,10 @@ class database:
                 )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            logging.debug(f"In specific IP/hostname")
+            like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
-                func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
-                func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
+                self.ComputersTable.c.ip.like(like_term) |
+                self.ComputersTable.c.hostname.like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
@@ -560,8 +562,9 @@ class database:
                 func.lower(self.GroupsTable.c.domain) == func.lower(group_domain)
             )
         elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
             q = select(self.GroupsTable).filter(
-                func.lower(self.GroupsTable.c.name).like(func.lower(f"%{filter_term}%"))
+                self.GroupsTable.c.name.like(like_term)
             )
         else:
             q = select(self.GroupsTable).filter()
@@ -634,8 +637,9 @@ class database:
             )
         # if we're filtering by username
         elif filter_term and filter_term != '':
+            like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
-                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
+                self.UsersTable.c.username.like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
@@ -684,8 +688,9 @@ class database:
                 self.SharesTable.c.id == filter_term
             )
         elif filter_term:
+            like_term = func.lower(f"%{filter_term}%")
             q = select(self.SharesTable).filter(
-                func.lower(self.SharesTable.c.name).like(func.lower(f"%{filter_term}%"))
+                self.SharesTable.c.name.like(like_term)
             )
         else:
             q = select(self.SharesTable)
