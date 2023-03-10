@@ -32,8 +32,8 @@ class winrm(connection):
         self.endpoint = None
         self.port = None
         self.hash = None
-        self.lm_hash = None
-        self.nt_hash = None
+        self.lmhash = None
+        self.nthash = None
 
         connection.__init__(self, args, db, host)
 
@@ -272,23 +272,23 @@ class winrm(connection):
         try:
             from urllib3.connectionpool import log
             log.addFilter(SuppressFilter())
-            lm_hash = '00000000000000000000000000000000:'
-            nt_hash = ''
+            lmhash = '00000000000000000000000000000000:'
+            nthash = ''
 
             if not self.args.laps:
                 self.username = username
                 # This checks to see if we didn't provide the LM Hash
                 if ntlm_hash.find(':') != -1:
-                    lm_hash, nt_hash = ntlm_hash.split(':')
+                    lmhash, nthash = ntlm_hash.split(':')
                 else:
-                    nt_hash = ntlm_hash
-                    ntlm_hash = lm_hash + nt_hash
-                if lm_hash:
-                    self.lm_hash = lm_hash
-                if nt_hash:
-                    self.nt_hash = nt_hash
+                    nthash = ntlm_hash
+                    ntlm_hash = lmhash + nthash
+                if lmhash:
+                    self.lmhash = lmhash
+                if nthash:
+                    self.nthash = nthash
             else:
-                nt_hash = self.hash
+                nthash = self.hash
             
             self.domain = domain
             if self.args.ssl and self.args.ignore_ssl_cert:
@@ -296,7 +296,7 @@ class winrm(connection):
                     self.host,
                     auth='ntlm',
                     username=u'{}\\{}'.format(self.domain, self.username),
-                    password=lm_hash + nt_hash,
+                    password=lmhash + nthash,
                     ssl=True,
                     cert_validation=False
                 )
@@ -305,7 +305,7 @@ class winrm(connection):
                     self.host,
                     auth='ntlm',
                     username=u'{}\\{}'.format(self.domain, self.username),
-                    password=lm_hash + nt_hash,
+                    password=lmhash + nthash,
                     ssl=True
                 )
             else:
@@ -313,7 +313,7 @@ class winrm(connection):
                     self.host,
                     auth='ntlm',
                     username=u'{}\\{}'.format(self.domain, self.username),
-                    password=lm_hash + nt_hash,
+                    password=lmhash + nthash,
                     ssl=False
                 )
 
@@ -325,7 +325,7 @@ class winrm(connection):
                 u'{}\\{}:{} {}'.format(
                     self.domain,
                     self.username,
-                    nt_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
+                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
                 )
             )
@@ -340,7 +340,7 @@ class winrm(connection):
                     u'{}\\{}:{}'.format(
                         self.domain,
                         self.username,
-                        nt_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8
+                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8
                     )
                 )
             else:
@@ -348,7 +348,7 @@ class winrm(connection):
                     u'{}\\{}:{} "{}"'.format(
                         self.domain,
                         self.username,
-                        nt_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                         e
                     )
                 )
