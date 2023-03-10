@@ -429,7 +429,7 @@ class database:
         elif filter_term and filter_term != '':
             like_term = func.lower(f"%{filter_term}%")
             q = select(self.UsersTable).filter(
-                self.UsersTable.c.username.like(like_term)
+                func.lower(self.UsersTable.c.username).like(like_term)
             )
         # otherwise return all credentials
         else:
@@ -476,7 +476,7 @@ class database:
             like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
                 self.ComputersTable.c.ip.like(like_term) |
-                self.ComputersTable.c.hostname.like(like_term)
+                func.lower(self.ComputersTable.c.hostname).like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
@@ -657,7 +657,7 @@ class database:
         elif filter_term and filter_term != '':
             like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
-                self.UsersTable.c.username.like(like_term)
+                func.lower(self.UsersTable.c.username).like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
