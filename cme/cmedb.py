@@ -223,6 +223,10 @@ class DatabaseNavigator(cmd.Cmd):
             
             # Detailed will generate 
             elif line[1].lower() == 'detailed':
+                """
+                Will Return a CSV file with details about all hosts
+                Its is essentially the exact same as export hosts detailed.... I don't know what else to do with this part.
+                """
                 csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
                 hosts = self.db.get_smbsign_computers("detailed")
                 self.write_csv(filename,csv_header,hosts)
@@ -245,6 +249,9 @@ class DatabaseNavigator(cmd.Cmd):
                 csvFile.writerow(entry)
     
     def write_list(self,entries,filename):
+        """
+        Writes a fire with a simple list
+        """
         with open(os.path.expanduser(filename),"w") as export_file:
             for line in entries:
                 export_file.write(line+"\n")
@@ -299,7 +306,7 @@ class DatabaseNavigator(cmd.Cmd):
     def complete_export(self, text, line, begidx, endidx):
         "Tab-complete 'creds' commands."
 
-        commands = ["creds", "plaintext", "hashes"]
+        commands = ["creds", "plaintext", "hashes","shares","local_admins","signing"]
 
         mline = line.partition(' ')[2]
         offs = len(mline) - len(text)
