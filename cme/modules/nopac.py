@@ -25,12 +25,12 @@ class CMEModule:
 
         userName = Principal(connection.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
         tgt_with_pac, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, connection.password, connection.domain,
-                                                                unhexlify(connection.lmhash), unhexlify(connection.nthash), connection.aesKey,
-                                                                connection.host,requestPAC=True)
+                                                                         unhexlify(connection.lm_hash), unhexlify(connection.nt_hash), connection.aesKey,
+                                                                         connection.host, requestPAC=True)
         context.log.highlight("TGT with PAC size " + str(len(tgt_with_pac)))
         tgt_no_pac, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, connection.password, connection.domain,
-                                                                unhexlify(connection.lmhash), unhexlify(connection.nthash), connection.aesKey,
-                                                                connection.host,requestPAC=False)
+                                                                       unhexlify(connection.lm_hash), unhexlify(connection.nt_hash), connection.aesKey,
+                                                                       connection.host, requestPAC=False)
         context.log.highlight("TGT without PAC size " + str(len(tgt_no_pac)))
         if len(tgt_no_pac) < len(tgt_with_pac):
             context.log.highlight("")
