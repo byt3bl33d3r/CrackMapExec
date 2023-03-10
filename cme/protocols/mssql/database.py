@@ -246,8 +246,9 @@ class database:
             users = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Users: {users}")
 
-        q = select(self.ComputersTable).filter(
-            self.ComputersTable.c.ip.like(func.lower(f"%{host}%"))
+        like_term = func.lower(f"%{host}%")
+        q = q.filter(
+            self.ComputersTable.c.ip.like(like_term)
         )
         hosts = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"Hosts: {hosts}")
@@ -323,8 +324,9 @@ class database:
             )
         # if we're filtering by username
         elif filter_term and filter_term != '':
+            like_term = func.lower(f"%{filter_term}%")
             q = select(self.UsersTable).filter(
-                func.lower(self.UsersTable.c.username).like(func.lower(f"%{filter_term}%"))
+               self.UsersTable.c.username.like(like_term)
             )
         # otherwise return all credentials
         else:
@@ -368,9 +370,10 @@ class database:
                 )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
-            q = q.filter(
-                func.lower(self.ComputersTable.c.ip).like(func.lower(f"%{filter_term}%")) |
-                func.lower(self.ComputersTable.c.hostname).like(func.lower(f"%{filter_term}"))
+            like_term = func.lower(f"%{filter_term}%")
+            q = select(self.ComputersTable).filter(
+                self.ComputersTable.c.ip.like(like_term) |
+                self.ComputersTable.c.hostname.like(like_term)
             )
 
         results = asyncio.run(self.conn.execute(q)).all()

@@ -281,7 +281,13 @@ class smb(connection):
             pass
 
         self.os_arch = self.get_os_arch()
-        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+        self.output_filename = os.path.expanduser(
+            '~/.cme/logs/{}_{}_{}'.format(
+                self.hostname,
+                self.host,
+                datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            )
+        )
         self.output_filename = self.output_filename.replace(":", "-")
 
         if not self.domain:
@@ -308,6 +314,7 @@ class smb(connection):
         self.logger.extra['protocol'] = "LDAP"
         self.logger.extra['port'] = "389"
         ldapco = LDAPConnect(self.domain, "389", self.domain)
+
         if self.kerberos:
             if self.kdcHost is None:
                 self.logger.error('Provide --kdcHost parameter')
@@ -318,6 +325,7 @@ class smb(connection):
         if not connection:
             logging.debug('LAPS connection failed with account {}'.format(username))
             return False
+
         searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
         attributes = ['ms-MCS-AdmPwd','samAccountname']
         result = connection.search(
@@ -337,27 +345,32 @@ class smb(connection):
                 else:
                     msMCSAdmPwd = str(computer['vals'][0])
             logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+
         self.username = self.args.laps
         self.password = msMCSAdmPwd
+
         if msMCSAdmPwd == '':
             self.logger.error('msMCSAdmPwd is empty or account cannot read LAPS property for {}'.format(self.hostname))
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
             self.hash = binascii.hexlify(hash_ntlm).decode()
+
         self.domain = self.hostname
         self.logger.extra['protocol'] = "SMB"
         self.logger.extra['port'] = "445"
         return True
 
     def print_host_info(self):
-        self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
-            self.server_os,
-            ' x{}'.format(self.os_arch) if self.os_arch else '',
-            self.hostname,
-            self.domain,
-            self.signing,
-            self.smbv1)
+        self.logger.info(
+            u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
+                self.server_os,
+                ' x{}'.format(self.os_arch) if self.os_arch else '',
+                self.hostname,
+                self.domain,
+                self.signing,
+                self.smbv1
+            )
         )
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
@@ -368,8 +381,8 @@ class smb(connection):
         # Re-connect since we logged off
         fqdn_host = self.hostname + "." + self.domain
         self.create_conn_obj(fqdn_host)
-        lmhash = ''
-        nthash = ''
+        lm_hash = ''
+        nt_hash = ''
 
         try:
             if not self.args.laps:
@@ -377,20 +390,20 @@ class smb(connection):
                 self.username = username
             # This checks to see if we didn't provide the LM Hash
             if ntlm_hash.find(':') != -1:
-                lmhash, nthash = ntlm_hash.split(':')
-                self.hash = nthash
+                lm_hash, nt_hash = ntlm_hash.split(':')
+                self.hash = nt_hash
             else:
-                nthash = ntlm_hash
+                nt_hash = ntlm_hash
                 self.hash = ntlm_hash
-            if lmhash: self.lmhash = lmhash
-            if nthash: self.nthash = nthash
+            if lm_hash: self.lmhash = lm_hash
+            if nt_hash: self.nthash = nt_hash
 
             if not all('' == s for s in [self.nthash, password, aesKey]):
                 kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
             else:
                 kerb_pass = ''
 
-            self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
+            self.conn.kerberosLogin(username, password, domain, lm_hash, nt_hash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
             
             if username == '':
