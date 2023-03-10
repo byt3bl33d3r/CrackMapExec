@@ -362,7 +362,7 @@ class database:
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             q = q.filter(
-                self.ComputersTable.c.dc == 1
+                self.ComputersTable.c.dc == True
             )
             if domain:
                 q = q.filter(
