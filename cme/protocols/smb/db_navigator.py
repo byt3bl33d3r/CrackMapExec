@@ -509,7 +509,16 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        self.db.clear_database()
+        if input("This will destroy all data in the current database, are you SURE you want to run this? (y/n): ") == "y":
+            self.db.clear_database()
+
+    def help_clear_database(self):
+        help_string = """
+        clear_database
+        THIS COMPLETELY DESTROYS ALL DATA IN THE CURRENTLY CONNECTED DATABASE
+        YOU CANNOT UNDO THIS COMMAND
+        """
+        print_help(help_string)
 
     def complete_hosts(self, text, line):
         """
