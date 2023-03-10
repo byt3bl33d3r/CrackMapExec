@@ -17,11 +17,6 @@ from sqlalchemy.ext.compiler import compiles
 warnings.filterwarnings("ignore", category=SAWarning)
 
 
-@compiles(insert)
-def _prefix_insert_with_ignore(ins, compiler, **kw):
-    return compiler.visit_insert(ins.prefix_with('OR IGNORE'), **kw)
-
-
 class database:
     def __init__(self, db_engine):
         self.ComputersTable = None
@@ -35,8 +30,14 @@ class database:
         self.db_engine = db_engine
         self.metadata = MetaData()
         asyncio.run(self.reflect_tables())
-        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True, class_=AsyncSession)
-        
+        # we don't use async_sessionmaker or async_scoped_session because when `database` is initialized,
+        # there is no running async loop
+        session_factory = sessionmaker(
+            bind=self.db_engine,
+            expire_on_commit=True,
+            class_=AsyncSession
+        )
+
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
@@ -134,7 +135,7 @@ class database:
             UNIQUE(computerid, userid, name)
         )''')
 
-        #db_conn.execute('''CREATE TABLE "ntds_dumps" (
+        # db_conn.execute('''CREATE TABLE "ntds_dumps" (
         #    "id" integer PRIMARY KEY,
         #    "computerid", integer,
         #    "domain" text,
@@ -144,7 +145,8 @@ class database:
         #    )''')
 
     # pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
+    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None,
+                     dc=None):
         """
         Check if this host has already been added to the database, if not, add it in.
         TODO: return inserted or updated row ids as a list
@@ -290,15 +292,16 @@ class database:
                         q = update(self.GroupRelationsTable).values(gr_data)
                         asyncio.run(self.conn.execute(q))
 
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
-            credtype,
-            domain,
-            username,
-            password,
-            group_id,
-            pillaged_from,
-            user_rowid
-        ))
+        logging.debug(
+            'add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
+                credtype,
+                domain,
+                username,
+                password,
+                group_id,
+                pillaged_from,
+                user_rowid
+            ))
         return user_rowid
 
     def remove_credentials(self, creds_id):
@@ -379,7 +382,7 @@ class database:
         elif host_ids:
             for host_id in host_ids:
                 q = q.filter(
-                        self.AdminRelationsTable.c.hostid == host_id
+                    self.AdminRelationsTable.c.hostid == host_id
                 )
         asyncio.run(self.conn.execute(q))
 
@@ -447,12 +450,24 @@ class database:
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             q = q.filter(
-                self.ComputersTable.c.dc == 1
+                self.ComputersTable.c.dc == True
             )
             if domain:
                 q = q.filter(
                     func.lower(self.ComputersTable.c.domain) == func.lower(domain)
                 )
+        elif filter_term == 'spooler':
+            q = q.filter(
+                self.ComputersTable.c.spooler == True
+            )
+        elif filter_term == 'zerologon':
+            q = q.filter(
+                self.ComputersTable.c.zerologon == True
+            )
+        elif filter_term == 'petitpotam':
+            q = q.filter(
+                self.ComputersTable.c.petitpotam == True
+            )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
@@ -571,7 +586,8 @@ class database:
 
         results = asyncio.run(self.conn.execute(q)).all()
 
-        logging.debug(f"get_groups(filterTerm={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
+        logging.debug(
+            f"get_groups(filterTerm={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
         return results
 
     def get_group_relations(self, user_id=None, group_id=None):

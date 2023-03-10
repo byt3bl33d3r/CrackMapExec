@@ -247,6 +247,8 @@ class smb(connection):
         no_ntlm = False
         try:
             self.conn.login('', '')
+        except BrokenPipeError as e:
+            self.logger.error(f"Broken Pipe Error while attempting to login")
         except Exception as e:
             if "STATUS_NOT_SUPPORTED" in str(e):
                 # no ntlm supported
@@ -464,7 +466,10 @@ class smb(connection):
                 self.password = password
                 self.username = username
             self.domain = domain
-            self.conn.login(self.username, self.password, domain)
+            try:
+                self.conn.login(self.username, self.password, domain)
+            except BrokenPipeError as e:
+                self.logger.error(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
             self.db.add_credential('plaintext', domain, self.username, self.password)
@@ -531,7 +536,10 @@ class smb(connection):
                 nthash = self.hash
             
             self.domain = domain
-            self.conn.login(self.username, '', domain, lmhash, nthash)
+            try:
+                self.conn.login(self.username, '', domain, lmhash, nthash)
+            except BrokenPipeError as e:
+                self.logger.error(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
             self.db.add_credential('hash', domain, self.username, nthash)

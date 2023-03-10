@@ -193,7 +193,9 @@ class ldap(connection):
             self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
 
             try:
-                self.conn.login('' , '')
+                self.conn.login('', '')
+            except BrokenPipeError as e:
+                self.logger.error(f"Broken Pipe Error while attempting to login")
             except Exception as e:
                 if "STATUS_NOT_SUPPORTED" in str(e):
                     self.no_ntlm = True
