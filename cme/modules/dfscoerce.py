@@ -24,7 +24,7 @@ class CMEModule:
 
     def on_login(self, context, connection):
         trigger = TriggerAuth()
-        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host)
+        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lm_hash, nthash=connection.nt_hash, target=connection.host)
 
         if dce is not None: 
             logging.debug("Target is vulnerable to DFSCoerce")
