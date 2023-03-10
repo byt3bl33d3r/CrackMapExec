@@ -477,7 +477,7 @@ class database:
             q = q.filter(
                 self.ComputersTable.c.petitpotam == True
             )
-        elif filter_term.startswith('domain'):
+        elif filter_term is not None and filter_term.startswith('domain'):
             domain = filter_term.split()[1]
             like_term = func.lower(f"%{domain}%")
             q = q.filter(
