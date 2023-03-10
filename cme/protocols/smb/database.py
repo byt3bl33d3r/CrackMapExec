@@ -537,3 +537,22 @@ class database:
         cur.close()
         logging.debug('get_groups(filterTerm={}, groupName={}, groupDomain={}) => {}'.format(filterTerm, groupName, groupDomain, results))
         return results
+
+    def get_smbsign_computers(self,version="simple"):
+        """
+        Retrun computers with SMB Signing off
+        version:
+            simple - Just IPs
+            detailed - Full Details from the Data Base
+        """
+        cur = self.conn.cursor()
+        if version == "simple":
+            cur.execute("SELECT ip FROM computers where signing=0")
+            
+        elif version == "detailed":
+            cur.execute("SELECT * FROM computers WHERE signing=0")
+        
+        
+        results = cur.fetchall()
+        cur.close
+        return results

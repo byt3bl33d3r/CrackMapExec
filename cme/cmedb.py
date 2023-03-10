@@ -204,9 +204,35 @@ class DatabaseNavigator(cmd.Cmd):
                     
                 self.write_csv(filename,csv_header,formattedLocalAdmins)
                 print('[+] Local Admins exported')
-                     
+
+        elif line[0].lower() == 'signing':
+            if len(line) < 3:
+                print("[-] invalid arguments, export smb_signing <simple|detailed> <filename>")
+                return
+            filename = line[2]
+            
+
+            # Simple will just generate a list of IPs with SMB signing off.
+            if line[1].lower() == 'simple':
+                hosts = []
+                for i in self.db.get_smbsign_computers("simple"):
+                    hosts.append(i[0])
+                self.write_list(hosts,filename)
+                return
+                
+            
+            # Detailed will generate 
+            elif line[1].lower() == 'detailed':
+                csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
+                hosts = self.db.get_smbsign_computers("detailed")
+                self.write_csv(filename,csv_header,hosts)
+                return
+
+
+
+
         else:
-            print('[-] invalid argument, specify creds, hosts, local_admins or shares')
+            print('[-] invalid argument, specify creds, hosts, local_admins, shares, or signing')
             
     def write_csv(self,filename,headers,entries):
         """
@@ -217,6 +243,13 @@ class DatabaseNavigator(cmd.Cmd):
             csvFile.writerow(headers)
             for entry in entries:
                 csvFile.writerow(entry)
+    
+    def write_list(self,entries,filename):
+        with open(os.path.expanduser(filename),"w") as export_file:
+            for line in entries:
+                export_file.write(line+"\n")
+        return
+
         
     def do_import(self, line):
         if not line:
