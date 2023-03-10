@@ -370,8 +370,10 @@ def initialize_db(logger):
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
             # try to prevent some weird sqlite I/O errors
-            c.execute('PRAGMA journal_mode = OFF')
+            c.execute('PRAGMA journal_mode = OFF')  # could try setting to PERSIST if DB corruption starts occurring
             c.execute('PRAGMA foreign_keys = 1')
+            # set a small timeout (5s) so if another thread is writing to the database, the entire program doesn't crash
+            c.execute('PRAGMA busy_timeout = 5000')
             getattr(protocol_object, 'database').db_schema(c)
             # commit the changes and close everything off
             conn.commit()
