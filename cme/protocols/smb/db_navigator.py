@@ -348,10 +348,20 @@ class navigator(DatabaseNavigator):
 
     def help_hosts(self):
         help_string = """
-        hosts [filter_term]
+        hosts [dc|spooler|zerologon|petitpotam|filter_term]
         By default prints all hosts
-        Can use a filter term to filter hosts
-        The filter can be an integer for a specific host id, "dc" for domain controllers, or an ip/hostname
+        Table format:
+        | 'HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC', 'SMBv1', 'Signing', 'Spooler', 'Zerologon', 'PetitPotam' |
+        Subcommands:
+            dc - list all domain controllers
+            spooler - list all hosts with Spooler service enabled
+            zerologon - list all hosts vulnerable to zerologon
+            petitpotam - list all hosts vulnerable to petitpotam
+            filter_term - filters hosts with filter_term
+                If a single host is returned (e.g. `hosts 15`, it prints the following tables:
+                    Host | 'HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC', 'SMBv1', 'Signing', 'Spooler', 'Zerologon', 'PetitPotam' |
+                    Credential(s) with Admin Access | 'CredID', 'CredType', 'Domain', 'UserName', 'Password' |
+                Otherwise, it prints the default host table from a `like` query on the `ip` and `hostname` columns
         """
         print_help(help_string)
 
@@ -458,7 +468,7 @@ class navigator(DatabaseNavigator):
                     Credential(s) | 'CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password' |
                     Member of Group(s) | 'GroupID', 'Domain', 'Name' |
                     Admin Access to Host(s) | 'HostID', 'IP', 'Hostname', 'Domain', 'OS'
-                Otherwise, it prints the default credential table
+                Otherwise, it prints the default credential table from a `like` query on the `username` column
         """
         print_help(help_string)
 
