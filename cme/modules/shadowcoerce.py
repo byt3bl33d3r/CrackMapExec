@@ -34,14 +34,14 @@ class CMEModule:
 
     def on_login(self, context, connection):
         c = CoerceAuth()
-        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lm_hash, nthash=connection.nt_hash, target=connection.host, pipe="FssagentRpc")
+        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
 
         # If pipe not available, try again. "TL;DR: run the command twice if it doesn't work." - @Shutdown
         if dce == 1:
             logging.debug("First try failed. Creating another dce connection...")
             # Sleeping mandatory for second try
             time.sleep(2)
-            dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lm_hash, nthash=connection.nt_hash, target=connection.host, pipe="FssagentRpc")
+            dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
         
         if self.ipsc: 
             logging.debug("ipsc = %s", self.ipsc)

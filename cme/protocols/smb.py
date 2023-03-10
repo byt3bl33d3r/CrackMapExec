@@ -364,8 +364,8 @@ class smb(connection):
         # Re-connect since we logged off
         fqdn_host = self.hostname + "." + self.domain
         self.create_conn_obj(fqdn_host)
-        lm_hash = ''
-        nt_hash = ''
+        lmhash = ''
+        nthash = ''
 
         try:
             if not self.args.laps:
@@ -373,20 +373,20 @@ class smb(connection):
                 self.username = username
             # This checks to see if we didn't provide the LM Hash
             if ntlm_hash.find(':') != -1:
-                lm_hash, nt_hash = ntlm_hash.split(':')
-                self.hash = nt_hash
+                lmhash, nthash = ntlm_hash.split(':')
+                self.hash = nthash
             else:
-                nt_hash = ntlm_hash
+                nthash = ntlm_hash
                 self.hash = ntlm_hash
-            if lm_hash: self.lmhash = lm_hash
-            if nt_hash: self.nthash = nt_hash
+            if lmhash: self.lmhash = lmhash
+            if nthash: self.nthash = nthash
 
             if not all('' == s for s in [self.nthash, password, aesKey]):
                 kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
             else:
                 kerb_pass = ''
 
-            self.conn.kerberosLogin(username, password, domain, lm_hash, nt_hash, aesKey, kdcHost, useCache=useCache)
+            self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
             
             if username == '':

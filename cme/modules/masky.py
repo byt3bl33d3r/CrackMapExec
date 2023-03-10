@@ -88,8 +88,8 @@ class CMEModule:
 
         pwned_users = 0
         for user in rslts.users:
-            if user.nt_hash:
-                context.log.highlight(f"{user.domain}\{user.name} {user.nt_hash}")
+            if user.nthash:
+                context.log.highlight(f"{user.domain}\{user.name} {user.nthash}")
                 self.process_credentials(connection, context, user)
                 pwned_users += 1
 
@@ -107,7 +107,7 @@ class CMEModule:
             "hash",
             user.domain,
             user.name,
-            user.nt_hash,
+            user.nthash,
             pillaged_from=host,
         )
         add_user_bh(user.name, user.domain, context.log, connection.config)
