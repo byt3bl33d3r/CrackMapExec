@@ -477,6 +477,12 @@ class database:
             q = q.filter(
                 self.ComputersTable.c.petitpotam == True
             )
+        elif filter_term.startswith('domain'):
+            domain = filter_term.split()[1]
+            like_term = func.lower(f"%{domain}%")
+            q = q.filter(
+                self.ComputersTable.c.domain.like(like_term)
+            )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
