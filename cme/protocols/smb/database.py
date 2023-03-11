@@ -42,27 +42,6 @@ class database:
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
 
-    async def shutdown_db(self):
-        try:
-            await asyncio.shield(self.conn.close())
-        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
-        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
-        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
-        except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
-
-    async def reflect_tables(self):
-        async with self.db_engine.connect() as conn:
-            await conn.run_sync(self.metadata.reflect)
-
-            self.ComputersTable = Table("computers", self.metadata, autoload_with=self.db_engine)
-            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-            self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
-            self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
-            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-            self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
-            self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
-
     @staticmethod
     def db_schema(db_conn):
         db_conn.execute('''CREATE TABLE "computers" (
@@ -144,9 +123,33 @@ class database:
         #    FOREIGN KEY(computerid) REFERENCES computers(id)
         #    )''')
 
+    async def reflect_tables(self):
+        async with self.db_engine.connect() as conn:
+            await conn.run_sync(self.metadata.reflect)
+
+            self.ComputersTable = Table("computers", self.metadata, autoload_with=self.db_engine)
+            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+            self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
+            self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
+            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+            self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
+            self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+
+    async def shutdown_db(self):
+        try:
+            await asyncio.shield(self.conn.close())
+        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
+        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
+        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
+        except IllegalStateChangeError as e:
+            logging.debug(f"Error while closing session db object: {e}")
+
+    def clear_database(self):
+        for table in self.metadata.sorted_tables:
+            asyncio.run(self.conn.execute(table.delete()))
+
     # pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None,
-                     dc=None):
+    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
         Check if this host has already been added to the database, if not, add it in.
         TODO: return inserted or updated row ids as a list
@@ -744,7 +747,3 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
 
         return results
-
-    def clear_database(self):
-        for table in self.metadata.sorted_tables:
-            asyncio.run(self.conn.execute(table.delete()))
