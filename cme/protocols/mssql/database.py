@@ -165,8 +165,6 @@ class database:
         )
         results = asyncio.run(self.conn.execute(q)).all()
 
-        logging.debug(f"Credential results: {results}")
-
         if not results:
             user_data = {
                 "domain": domain,
@@ -179,7 +177,6 @@ class database:
             results = asyncio.run(self.conn.execute(q)).first()
             user_rowid = results.id
 
-            logging.debug(f"User RowID: {user_rowid}")
             if group_id:
                 gr_data = {
                     "userid": user_rowid,
