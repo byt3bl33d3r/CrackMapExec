@@ -489,16 +489,15 @@ class smb(connection):
                 self.logger.error(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
+            self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
             user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
-            host_id = self.db.get_hosts(self.host)[0]
-
-            self.logger.debug(f"user_id: {type(user_id)} {user_id}\nhost_id: {type(host_id)} {host_id})")
+            host_id = self.db.get_hosts(self.host)[0].id
 
             self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
                 self.logger.debug(f"Adding admin user: {self.domain}/{self.username}:{self.password}@{self.host}")
-                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host)
+                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host, user_id=user_id)
 
             out = u'{}\\{}:{} {}'.format(
                 domain,
@@ -564,10 +563,13 @@ class smb(connection):
                 self.logger.error(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
-            self.db.add_credential('hash', domain, self.username, nthash)
+            user_id = self.db.add_credential('hash', domain, self.username, nthash)
+            host_id = self.db.get_hosts(self.host)[0].id
+
+            self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, self.username, nthash, self.host)
+                self.db.add_admin_user('hash', domain, self.username, nthash, self.host, user_id=user_id)
 
             out = u'{}\\{}:{} {}'.format(
                 domain,
@@ -639,7 +641,6 @@ class smb(connection):
             return True
         elif self.create_smbv3_conn(kdc):
             return True
-
         return False
 
     def check_if_admin(self):
@@ -759,6 +760,7 @@ class smb(connection):
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
         try:
+            self.logger.debug(f"domain: {self.domain}")
             user_id = self.db.get_user(
                 self.domain.split('.')[0].upper(),
                 self.username
@@ -897,6 +899,7 @@ class smb(connection):
                             )
                         else:
                             domain, name = group.name.split('/')
+                            self.logger.highlight(f"domain: {domain}, name: {name}")
                             self.logger.highlight('{}\\{}'.format(
                                 domain.upper(),
                                 name
@@ -917,7 +920,7 @@ class smb(connection):
                             # So I put a domain group as a member of a local group which is also a member of another local group.
                             # (╯°□°）╯︵ ┻━┻
                             if not group.isgroup:
-                                self.db.add_credential("", domain, name, "", group_id, "")
+                                self.db.add_credential("plaintext", domain, name, "", group_id, "")
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
@@ -983,7 +986,7 @@ class smb(connection):
                                 member_count_ad=member_count
                             )
                         if not group.isgroup:
-                            self.db.add_credential("", group.memberdomain, group.membername, "", group_id, "")
+                            self.db.add_credential("plaintext", group.memberdomain, group.membername, "", group_id, "")
                         elif group.isgroup:
                             self.db.add_group(
                                 group.groupdomain,
