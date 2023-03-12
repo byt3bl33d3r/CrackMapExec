@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
-from sqlalchemy import MetaData, func, Table, select, insert, update, delete
+from sqlalchemy import MetaData, func, Table, select, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
 from sqlalchemy.exc import IllegalStateChangeError
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -82,13 +82,6 @@ class database:
             FOREIGN KEY(userid) REFERENCES users(id),
             FOREIGN KEY(computerid) REFERENCES computers(id)
             )''')
-        db_conn.execute('''CREATE TABLE "loggedin_relations" (
-            "id" integer PRIMARY KEY,
-            "userid" integer,
-            "computerid" integer,
-            FOREIGN KEY(userid) REFERENCES users(id),
-            FOREIGN KEY(computerid) REFERENCES computers(id)
-            )''')
         db_conn.execute('''CREATE TABLE "group_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
@@ -106,6 +99,13 @@ class database:
             "write" boolean,
             FOREIGN KEY(userid) REFERENCES users(id)
             UNIQUE(computerid, userid, name)
+        )''')
+        db_conn.execute('''CREATE TABLE "loggedin_relations" (
+            "id" integer PRIMARY KEY,
+            "userid" integer,
+            "computerid" integer,
+            FOREIGN KEY(userid) REFERENCES users(id),
+            FOREIGN KEY(computerid) REFERENCES computers(id)
         )''')
         db_conn.execute('''CREATE TABLE "dpapi_secrets" (
             "id" integer PRIMARY KEY,
@@ -237,27 +237,21 @@ class database:
         Check if this credential has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
-        user_rowid = None
+        credentials = []
+        groups = []
 
         if (group_id and not self.is_group_valid(group_id)) or \
                 (pillaged_from and not self.is_computer_valid(pillaged_from)):
-            self.conn.close()
             return
 
-        credential_data = {}
-        if credtype is not None:
-            credential_data["credtype"] = credtype
-        if domain is not None:
-            credential_data["domain"] = domain
-        if username is not None:
-            credential_data["username"] = username
-        if password is not None:
-            credential_data["password"] = password
-        if group_id is not None:
-            credential_data["groupid"] = group_id
-            credential_data["groupid"] = group_id
-        if pillaged_from is not None:
-            credential_data["pillaged_from"] = pillaged_from
+        credential_data = {
+            "cred_type": credtype,
+            "domain": domain,
+            "username": username,
+            "password": password,
+            "groupid": group_id,
+            "pillaged_from": pillaged_from,
+        }
 
         q = select(self.UsersTable).filter(
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
@@ -267,54 +261,57 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
 
         logging.debug(f"Credential results: {results}")
-
+        # add new credential
         if not results:
-            user_data = {
-                "domain": domain,
-                "username": username,
-                "password": password,
-                "credtype": credtype,
-                "pillaged_from_computerid": pillaged_from,
-            }
-            q = insert(self.UsersTable).values(user_data).returning(self.UsersTable.c.id)
-            results = asyncio.run(self.conn.execute(q)).first()
-            user_rowid = results.id
-
-            logging.debug(f"User RowID: {user_rowid}")
-            if group_id:
-                gr_data = {
-                    "userid": user_rowid,
-                    "groupid": group_id,
-                }
-                q = insert(self.GroupRelationsTable).values(gr_data)
-                asyncio.run(self.conn.execute(q))
+            credentials = [credentials]
+        # update existing cred data
         else:
-            for user in results:
-                # might be able to just remove this if check, but leaving it in for now
-                if not user[3] and not user[4] and not user[5]:
-                    q = update(self.UsersTable).values(credential_data).returning(self.UsersTable.c.id)
-                    results = asyncio.run(self.conn.execute(q)).first()
-                    user_rowid = results.id
+            for creds in results:
+                # this will include the id, so we don't touch it
+                cred_data = creds._asdict()
+                # only update column if it is being passed in
+                if credtype is not None:
+                    credential_data["credtype"] = credtype
+                if domain is not None:
+                    credential_data["domain"] = domain
+                if username is not None:
+                    credential_data["username"] = username
+                if password is not None:
+                    credential_data["password"] = password
+                if group_id is not None:
+                    credential_data["groupid"] = group_id
+                    groups.append({
+                        "userid": cred_data["id"],
+                        "groupid": group_id
+                    })
+                if pillaged_from is not None:
+                    credential_data["pillaged_from"] = pillaged_from
+                # only add computer to be updated if it has changed
+                if cred_data not in credentials:
+                    credentials.append(cred_data)
+        logging.debug(f"Update Credentials: {credentials}")
+        logging.debug(f"Update Groups: {groups}")
 
-                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                        gr_data = {
-                            "userid": user_rowid,
-                            "groupid": group_id,
-                        }
-                        q = update(self.GroupRelationsTable).values(gr_data)
-                        asyncio.run(self.conn.execute(q))
-
-        logging.debug(
-            'add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
-                credtype,
-                domain,
-                username,
-                password,
-                group_id,
-                pillaged_from,
-                user_rowid
-            ))
-        return user_rowid
+        # TODO: find a way to abstract this away to a single Upsert call
+        q_computers = Insert(self.ComputersTable)
+        update_columns_computers = {col.name: col for col in q_computers.excluded if col.name not in 'id'}
+        q_computers = q_computers.on_conflict_do_update(
+            index_elements=self.ComputersTable.primary_key,
+            set_=update_columns_computers
+        )
+        asyncio.run(
+            self.conn.execute(
+                q_computers,
+                credentials
+            )
+        )
+        q_groups = Insert(self.GroupRelationsTable)
+        asyncio.run(
+            self.conn.execute(
+                q_groups,
+                groups
+            )
+        )
 
     def remove_credentials(self, creds_id):
         """
@@ -344,29 +341,32 @@ class database:
                 self.UsersTable.c.password == password
             )
             users = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"Users: {users}")
+        logging.debug(f"add_admin_user() - Users: {users}")
 
-        like_term = func.lower(f"%{host}%")
-        q = select(self.ComputersTable).filter(
-            self.ComputersTable.c.ip.like(like_term)
-        )
-        hosts = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"Hosts: {hosts}")
+        computers = self.get_computers(host)
+        logging.debug(f"add_admin_user() - Hosts: {computers}")
 
-        if users is not None and hosts is not None:
-            for user, host in zip(users, hosts):
+        if users and computers:
+            for user, host in zip(users, computers):
                 user_id = user[0]
-                host_id = host[0]
+                computer_id = host[0]
+                link = {
+                    "userid": user_id,
+                    "computerid": computer_id
+                }
+                logging.debug(f"add_admin_user() - user_id: {user_id}; computer_id: {computer_id}")
 
                 q = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
-                    self.AdminRelationsTable.c.computerid == host_id
+                    self.AdminRelationsTable.c.computerid == computer_id
                 )
                 links = asyncio.run(self.conn.execute(q)).all()
+                logging.debug(f"add_admin_user() - links: {links}")
 
                 if not links:
                     asyncio.run(self.conn.execute(
-                        insert(self.AdminRelationsTable).values(links)
+                        Insert(self.AdminRelationsTable),
+                        [link]
                     ))
 
     def get_admin_relations(self, user_id=None, host_id=None):
@@ -394,7 +394,7 @@ class database:
         elif host_ids:
             for host_id in host_ids:
                 q = q.filter(
-                    self.AdminRelationsTable.c.hostid == host_id
+                    self.AdminRelationsTable.c.computerid == host_id
                 )
         asyncio.run(self.conn.execute(q))
 
@@ -434,6 +434,20 @@ class database:
 
         results = asyncio.run(self.conn.execute(q)).all()
         return results
+
+    def is_credential_local(self, credential_id):
+        q = select(self.UsersTable.c.domain).filter(
+            self.UsersTable.c.id == credential_id
+        )
+        user_domain = asyncio.run(self.conn.execute(q)).all()
+
+        if user_domain:
+            q = select(self.ComputersTable).filter(
+                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
+            )
+            results = asyncio.run(self.conn.execute(q)).all()
+
+            return len(results) > 0
 
     def is_computer_valid(self, host_id):
         """
@@ -494,6 +508,7 @@ class database:
                 func.lower(self.ComputersTable.c.hostname).like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
+        logging.debug(f"get_computers() results: {results}")
         return results
 
     def is_group_valid(self, group_id):
@@ -638,20 +653,6 @@ class database:
             )
         asyncio.run(self.conn.execute(q))
 
-    def is_credential_local(self, credential_id):
-        q = select(self.UsersTable.c.domain).filter(
-            self.UsersTable.c.id == credential_id
-        )
-        user_domain = asyncio.run(self.conn.execute(q)).all()
-
-        if user_domain:
-            q = select(self.ComputersTable).filter(
-                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
-            )
-            results = asyncio.run(self.conn.execute(q)).all()
-
-            return len(results) > 0
-
     def is_user_valid(self, user_id):
         """
         Check if this User ID is valid.
@@ -711,7 +712,8 @@ class database:
             "write": write,
         }
         share_id = asyncio.run(self.conn.execute(
-            insert(self.SharesTable).values(share_data).returning(self.SharesTable.c.id)
+            Insert(self.SharesTable).returning(self.SharesTable.c.id),
+            share_data
         )).scalar_one()
 
         return share_id
@@ -842,3 +844,65 @@ class database:
         cur.close()
         logging.debug('get_dpapi_secrets(filterTerm={}, computer={}, dpapi_type={}, windows_user={}, username={}, url={}) => {}'.format(filterTerm, computer, dpapi_type, windows_user, username, url, results))
         return results
+
+    def add_loggedin_relation(self, user_id, computer_id):
+        if not user_id or not computer_id:
+            logging.debug(f"user_id ({user_id} or computer_id {computer_id} is None")
+            return None
+        logging.debug(f"add_loggedin_relations() - user_id: {type(user_id)} {user_id}\ncomputer_id: {type(computer_id)} {computer_id})")
+        relation_query = select(self.LoggedinRelationsTable).filter(
+            self.LoggedinRelationsTable.c.userid == user_id,
+            self.LoggedinRelationsTable.c.computerid == computer_id
+        )
+        logging.debug(f"query: {relation_query}")
+        #results = asyncio.run(self.conn.execute(relation_query))
+        results = None
+        #result_ids = results.all()
+        logging.debug(f"add_loggedin_relations() - relations returned: {results}")
+
+        # only add one if one doesn't already exist
+        if not results:
+            relation = {
+                "userid": user_id,
+                "computerid": computer_id
+            }
+            try:
+                # TODO: find a way to abstract this away to a single Upsert call
+                q = Insert(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
+                res_inserted_result = asyncio.run(
+                    self.conn.execute(
+                        q,
+                        [relation]
+                    )
+                )
+                inserted_result = res_inserted_result.first()
+                logging.debug(f"inserted_result: {inserted_result}\ntype: {type(inserted_result)}")
+
+                return inserted_result.id
+            except Exception as e:
+                logging.debug(f"Error inserting LoggedinRelation: {e}")
+
+    def get_loggedin_relations(self, user_id=None, computer_id=None):
+        q = select(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
+        if user_id:
+            q = q.filter(
+                self.LoggedinRelationsTable.c.userid == user_id
+            )
+        if computer_id:
+            q = q.filter(
+                self.LoggedinRelationsTable.c.computerid == computer_id
+            )
+        results = asyncio.run(self.conn.execute(q)).all()
+        return results
+
+    def remove_loggedin_relations(self, user_id=None, computer_id=None):
+        q = delete(self.LoggedinRelationsTable)
+        if user_id:
+            q = q.filter(
+                self.LoggedinRelationsTable.c.userid == user_id
+            )
+        elif computer_id:
+            q = q.filter(
+                self.LoggedinRelationsTable.c.computerid == computer_id
+            )
+        asyncio.run(self.conn.execute(q))

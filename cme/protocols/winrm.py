@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import asyncio
 import datetime
 import os
 
 import requests
 from impacket.smbconnection import SMBConnection, SessionError
+from sqlalchemy import select
+
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
@@ -114,8 +117,11 @@ class winrm(connection):
             if self.args.local_auth:
                 self.domain = self.hostname
 
+            self.db.add_computer(self.host, self.port, self.hostname, self.domain, self.server_os)
+
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
         self.output_filename = self.output_filename.replace(":", "-")
+
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldap_conn = LDAPConnect(self.domain, "389", self.domain)
@@ -242,11 +248,22 @@ class winrm(connection):
                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
                 )
             )
+            self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
+            self.db.add_credential('plaintext', domain, self.username, self.password)
+
+            q = select(self.ComputersTable).filter(
+                self.ComputersTable.c.ip == self.host
+            )
+            results = asyncio.run(self.conn.execute(q)).first().id
+
+            if self.admin_privs:
+                self.logger.debug(f"Inside admin privs")
+                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host)
+
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
             if not self.args.continue_on_success:
                 return True
-
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(
@@ -329,6 +346,11 @@ class winrm(connection):
                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
                 )
             )
+            self.db.add_credential('hash', domain, self.username, nthash)
+
+            if self.admin_privs:
+                self.db.add_admin_user('hash', domain, self.username, nthash, self.host)
+
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:

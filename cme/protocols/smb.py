@@ -489,9 +489,15 @@ class smb(connection):
                 self.logger.error(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
-            self.db.add_credential('plaintext', domain, self.username, self.password)
+            user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
+            computer_id = self.db.get_computers(self.host)[0]
+
+            self.logger.debug(f"user_id: {type(user_id)} {user_id}\ncomputer_id: {type(computer_id)} {computer_id})")
+
+            self.db.add_loggedin_relation(user_id, computer_id)
 
             if self.admin_privs:
+                self.logger.debug(f"Adding admin user: {self.domain}/{self.username}:{self.password}@{self.host}")
                 self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host)
 
             out = u'{}\\{}:{} {}'.format(
@@ -513,7 +519,6 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
-
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(
