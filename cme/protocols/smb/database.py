@@ -146,18 +146,13 @@ class database:
         """
         Check if this host has already been added to the database, if not, add it in.
         """
-        if not ip:
-            logging.debug(f"smb add_host - IP not passed in")
-            return
-        domain = domain.split('.')[0].upper()
+        domain = domain.split('.')[0]
         hosts = []
 
         q = select(self.HostsTable).filter(
             self.HostsTable.c.ip == ip
         )
-        logging.debug(f"smb add_host() - query: {q}")
         results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"smb add_host() - hosts returned: {results}")
 
         # create new host
         if not results:
@@ -165,7 +160,7 @@ class database:
                 "ip": ip,
                 "hostname": hostname,
                 "domain": domain,
-                "os": os,
+                "os": os if os is not None else '',
                 "dc": dc,
                 "smbv1": smbv1,
                 "signing": signing,
@@ -224,7 +219,7 @@ class database:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-        domain = domain.split('.')[0].upper()
+        domain = domain.split('.')[0]
         credentials = []
         groups = []
 
@@ -240,18 +235,17 @@ class database:
         )
         results = asyncio.run(self.conn.execute(q)).all()
 
-        logging.debug(f"Credential results: {results}")
         # add new credential
         if not results:
-            credential_data = {
-                "cred_type": credtype,
+            new_cred = {
+                "credtype": credtype,
                 "domain": domain,
                 "username": username,
                 "password": password,
                 "groupid": group_id,
                 "pillaged_from": pillaged_from,
             }
-            credentials = [credential_data]
+            credentials = [new_cred]
         # update existing cred data
         else:
             for creds in results:
@@ -277,29 +271,30 @@ class database:
                 # only add cred to be updated if it has changed
                 if cred_data not in credentials:
                     credentials.append(cred_data)
-        logging.debug(f"Update Credentials: {credentials}")
-        logging.debug(f"Update Groups: {groups}")
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q_hosts = Insert(self.UsersTable)
-        update_columns_hosts = {col.name: col for col in q_hosts.excluded if col.name not in 'id'}
-        q_hosts = q_hosts.on_conflict_do_update(
+        q_users = Insert(self.UsersTable).returning(self.UsersTable.c.id)
+        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in 'id'}
+        q_users = q_users.on_conflict_do_update(
             index_elements=self.UsersTable.primary_key,
-            set_=update_columns_hosts
+            set_=update_columns_users
         )
-        asyncio.run(
+        user_ids = asyncio.run(
             self.conn.execute(
-                q_hosts,
+                q_users,
                 credentials
             )
-        )
-        q_groups = Insert(self.GroupRelationsTable)
-        asyncio.run(
-            self.conn.execute(
-                q_groups,
-                groups
+        ).scalar()
+
+        if groups:
+            q_groups = Insert(self.GroupRelationsTable)
+            asyncio.run(
+                self.conn.execute(
+                    q_groups,
+                    groups
+                )
             )
-        )
+        return user_ids
 
     def remove_credentials(self, creds_id):
         """
@@ -314,25 +309,23 @@ class database:
         asyncio.run(self.conn.execute(q))
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
-        domain = domain.split('.')[0].upper()
+        domain = domain.split('.')[0]
+        add_links = []
 
+        creds_q = select(self.UsersTable)
         if user_id:
-            q = select(self.UsersTable).filter(
+            creds_q = creds_q.filter(
                 self.UsersTable.c.id == user_id
             )
-            users = asyncio.run(self.conn.execute(q)).all()
         else:
-            q = select(self.UsersTable).filter(
-                self.UsersTable.c.credtype == credtype,
+            creds_q = creds_q.filter(
+                func.lower(self.UsersTable.c.credtype) == func.lower(credtype),
                 func.lower(self.UsersTable.c.domain) == func.lower(domain),
                 func.lower(self.UsersTable.c.username) == func.lower(username),
                 self.UsersTable.c.password == password
             )
-            users = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"add_admin_user() - Users: {users}")
-
+        users = asyncio.run(self.conn.execute(creds_q))
         hosts = self.get_hosts(host)
-        logging.debug(f"add_admin_user() - Hosts: {hosts}")
 
         if users and hosts:
             for user, host in zip(users, hosts):
@@ -342,20 +335,21 @@ class database:
                     "userid": user_id,
                     "hostid": host_id
                 }
-                logging.debug(f"add_admin_user() - user_id: {user_id}; host_id: {host_id}")
-
-                q = select(self.AdminRelationsTable).filter(
+                admin_relations_select = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.hostid == host_id
                 )
-                links = asyncio.run(self.conn.execute(q)).all()
-                logging.debug(f"add_admin_user() - links: {links}")
+                links = asyncio.run(self.conn.execute(admin_relations_select)).all()
 
                 if not links:
-                    asyncio.run(self.conn.execute(
-                        Insert(self.AdminRelationsTable),
-                        [link]
-                    ))
+                    add_links.append(link)
+
+        admin_relations_insert = Insert(self.AdminRelationsTable)
+
+        asyncio.run(self.conn.execute(
+            admin_relations_insert,
+            add_links
+        ))
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
@@ -496,7 +490,7 @@ class database:
                 func.lower(self.HostsTable.c.hostname).like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"hosts() results: {results}")
+        logging.debug(f"smb hosts() - results: {results}")
         return results
 
     def is_group_valid(self, group_id):
@@ -514,7 +508,7 @@ class database:
         return valid
 
     def add_group(self, domain, name, member_count_ad=None):
-        domain = domain.split('.')[0].upper()
+        domain = domain.split('.')[0]
         groups = []
 
         q = select(self.GroupsTable).filter(
@@ -583,7 +577,7 @@ class database:
         Return groups from the database
         """
         if group_domain:
-            group_domain = group_domain.split('.')[0].upper()
+            group_domain = group_domain.split('.')[0]
 
         if self.is_group_valid(filter_term):
             q = select(self.GroupsTable).filter(
@@ -748,19 +742,11 @@ class database:
         return results
 
     def add_loggedin_relation(self, user_id, host_id):
-        if not user_id or not host_id:
-            logging.debug(f"user_id ({user_id} or host_id {host_id} is None")
-            return None
-        logging.debug(f"add_loggedin_relations() - user_id: {type(user_id)} {user_id}\nhost_id: {type(host_id)} {host_id})")
         relation_query = select(self.LoggedinRelationsTable).filter(
             self.LoggedinRelationsTable.c.userid == user_id,
             self.LoggedinRelationsTable.c.hostid == host_id
         )
-        logging.debug(f"query: {relation_query}")
-        #results = asyncio.run(self.conn.execute(relation_query))
-        results = None
-        #result_ids = results.all()
-        logging.debug(f"add_loggedin_relations() - relations returned: {results}")
+        results = asyncio.run(self.conn.execute(relation_query)).all()
 
         # only add one if one doesn't already exist
         if not results:
@@ -771,16 +757,13 @@ class database:
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
                 q = Insert(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
-                res_inserted_result = asyncio.run(
+                inserted_ids = asyncio.run(
                     self.conn.execute(
                         q,
                         [relation]
                     )
-                )
-                inserted_result = res_inserted_result.first()
-                logging.debug(f"inserted_result: {inserted_result}\ntype: {type(inserted_result)}")
-
-                return inserted_result.id
+                ).scalar()
+                return inserted_ids
             except Exception as e:
                 logging.debug(f"Error inserting LoggedinRelation: {e}")
 
