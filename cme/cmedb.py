@@ -298,16 +298,23 @@ class CMEDBMenu(cmd.Cmd):
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
+    def help_proto(self):
+        help_string = """
+        proto [smb|mssql|winrm]
+            *unimplemented protocols: ftp, rdp, ldap, ssh
+        Changes cmedb to the specified protocol
+        """
+        print_help(help_string)
 
     def do_workspace(self, line):
-        help_string = "[-] workspace create <targetName> | workspace list | workspace <targetName>"
-        if not line:
-            print(help_string)
-            return
-
         line = line.strip()
+        if not line:
+            subcommand = ''
+            self.help_workspace()
+        else:
+            subcommand = line.split()[0]
 
-        if line.split()[0] == 'create':
+        if subcommand == 'create':
             new_workspace = line.split()[1].strip()
             print("[*] Creating workspace '{}'".format(new_workspace))
             os.mkdir(os.path.join(self.workspace_dir, new_workspace))
@@ -334,7 +341,7 @@ class CMEDBMenu(cmd.Cmd):
                     conn.commit()
                     conn.close()
             self.do_workspace(new_workspace)
-        elif line.split()[0] == 'list':
+        elif subcommand == 'list':
             print("[*] Enumerating Workspaces")
             for workspace in os.listdir(os.path.join(self.workspace_dir)):
                 if workspace == self.workspace:
@@ -346,8 +353,12 @@ class CMEDBMenu(cmd.Cmd):
             self.write_configfile()
             self.workspace = line
             self.prompt = 'cmedb ({}) > '.format(line)
-        else:
-            print(help_string)
+
+    def help_workspace(self):
+        help_string = """
+        workspace [create <targetName> | workspace list | workspace <targetName>]
+        """
+        print_help(help_string)
 
 
 def initialize_db(logger):
