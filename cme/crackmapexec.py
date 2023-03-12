@@ -139,6 +139,8 @@ async def start_threadpool(protocol_obj, args, db, targets, jitter):
 def main():
     logging.getLogger('asyncio').setLevel(logging.CRITICAL)
     logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
+    logging.getLogger('pypsrp').setLevel(logging.CRITICAL)
+    logging.getLogger('spnego').setLevel(logging.CRITICAL)
     logging.getLogger('sqlalchemy.pool.impl.NullPool').setLevel(logging.CRITICAL)
     first_run_setup(logger)
 
