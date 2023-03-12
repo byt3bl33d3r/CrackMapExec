@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import asyncio
-import datetime
+from datetime import datetime
 import os
 
 import requests
 from impacket.smbconnection import SMBConnection, SessionError
 from sqlalchemy import select
+from urllib3.exceptions import NewConnectionError
 
 from cme.connection import *
 from cme.helpers.logger import highlight
@@ -50,6 +50,7 @@ class winrm(connection):
         winrm_parser.add_argument("--ssl", action='store_true', help="Connect to SSL Enabled WINRM")
         winrm_parser.add_argument("--ignore-ssl-cert", action='store_true', help="Ignore Certificate Verification")
         winrm_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
+        winrm_parser.add_argument("--http-timeout", dest='http_timeout', type=int, default=10, help="HTTP timeout for WinRM connections")
         dgroup = winrm_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, default=None, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -92,7 +93,7 @@ class winrm(connection):
             self.logger.extra['hostname'] = self.hostname
         else:
             try:
-                smb_conn = SMBConnection(self.host, self.host, None)
+                smb_conn = SMBConnection(self.host, self.host, None, timeout=5)
                 try:
                     smb_conn.login('', '')
                 except SessionError as e:
@@ -103,13 +104,18 @@ class winrm(connection):
                 self.server_os = smb_conn.getServerOS()
                 self.logger.extra['hostname'] = self.hostname
 
-                self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+                self.output_filename = os.path.expanduser(
+                    '~/.cme/logs/{}_{}_{}'.format(
+                        self.hostname,
+                        self.host,
+                        datetime.now().strftime("%Y-%m-%d_%H%M%S")
+                    )
+                )
 
                 try:
                     smb_conn.logoff()
                 except:
                     pass
-
             except Exception as e:
                 logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
@@ -118,6 +124,11 @@ class winrm(connection):
 
             if self.args.local_auth:
                 self.domain = self.hostname
+
+            if self.server_os is None:
+                self.server_os = ''
+            if self.domain is None:
+                self.domain = ''
 
             self.db.add_host(self.host, self.port, self.hostname, self.domain, self.server_os)
 
@@ -184,20 +195,23 @@ class winrm(connection):
 
         for url in endpoints:
             try:
-                requests.get(url, verify=False, timeout=3)
+                logging.debug(f"winrm create_conn_obj() - Requesting URL: {url}")
+                res = requests.post(url, verify=False, timeout=self.args.http_timeout)
+                logging.debug(f"winrm create_conn_obj() - Received response code: {res.status_code}")
                 self.endpoint = url
                 if self.endpoint.startswith('https://'):
                     self.port = self.args.port if self.args.port else 5986
                 else:
                     self.port = self.args.port if self.args.port else 5985
-
                 self.logger.extra['port'] = self.port
-
                 return True
-            except Exception as e:
-                if 'Max retries exceeded with url' not in str(e):
-                    logging.debug('Error in WinRM create_conn_obj:' + str(e))
-
+            except requests.exceptions.Timeout as e:
+                logging.debug(f"Connection Timed out to WinRM service: {e}")
+            except requests.exceptions.ConnectionError as e:
+                if 'Max retries exceeded with url' in str(e):
+                    logging.debug(f"Connection Timeout to WinRM service (max retries exceeded)")
+                else:
+                    logging.debug(f"Other ConnectionError to WinRM service: {e}")
         return False
 
     def plaintext_login(self, domain, username, password):
@@ -246,17 +260,16 @@ class winrm(connection):
                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
                 )
             )
-            self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
-            self.db.add_credential('plaintext', domain, self.username, self.password)
 
-            q = select(self.HostsTable).filter(
-                self.HostsTable.c.ip == self.host
-            )
-            results = asyncio.run(self.conn.execute(q)).first().id
+            self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
+            user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
+            host_id = self.db.get_hosts(self.host)[0].id
+
+            self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
                 self.logger.debug(f"Inside admin privs")
-                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host)
+                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host, user_id=user_id)
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
