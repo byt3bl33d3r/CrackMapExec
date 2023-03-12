@@ -93,27 +93,27 @@ class navigator(DatabaseNavigator):
         print_table(data, title='Hosts')
     
     def display_shares(self, shares):
-        data = [["ShareID", "computer", "Name", "Remark", "Read Access", "Write Access"]]
+        data = [["ShareID", "host", "Name", "Remark", "Read Access", "Write Access"]]
 
         for share in shares:
             share_id = share[0]
-            computer_id = share[1]
+            host_id = share[1]
             name = share[3]
             remark = share[4]
 
             users_r_access = self.db.get_users_with_share_access(
-                computer_id=computer_id,
+                host_id=host_id,
                 share_name=name,
                 permissions='r'
             )
             users_w_access = self.db.get_users_with_share_access(
-                computer_id=computer_id,
+                host_id=host_id,
                 share_name=name,
                 permissions='w'
             )
             data.append([
                 share_id,
-                computer_id,
+                host_id,
                 name,
                 remark,
                 f"{len(users_r_access)} User(s)",
@@ -138,24 +138,24 @@ class navigator(DatabaseNavigator):
             elif len(shares) == 1:
                 share = shares[0]
                 share_id = share[0]
-                computer_id = share[1]
+                host_id = share[1]
                 name = share[3]
                 remark = share[4]
 
                 users_r_access = self.db.get_users_with_share_access(
-                    computer_id=computer_id,
+                    host_id=host_id,
                     share_name=name,
                     permissions='r'
                 )
                 users_w_access = self.db.get_users_with_share_access(
-                    computer_id=computer_id,
+                    host_id=host_id,
                     share_name=name,
                     permissions='w'
                 )
 
                 data = [["ShareID", "Name", "Remark"], [share_id, name, remark]]
                 print_table(data, title='Share')
-                host = self.db.get_computers(filter_term=computer_id)[0]
+                host = self.db.get_hosts(filter_term=host_id)[0]
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
 
                 host_id = host[0]
@@ -260,10 +260,10 @@ class navigator(DatabaseNavigator):
         filter_term = line.strip()
 
         if filter_term == "":
-            hosts = self.db.get_computers()
+            hosts = self.db.get_hosts()
             self.display_hosts(hosts)
         else:
-            hosts = self.db.get_computers(filter_term=filter_term)
+            hosts = self.db.get_hosts(filter_term=filter_term)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
@@ -486,7 +486,7 @@ class navigator(DatabaseNavigator):
 
                     for link in links:
                         link_id, cred_id, host_id = link
-                        hosts = self.db.get_computers(host_id)
+                        hosts = self.db.get_hosts(host_id)
 
                         for host in hosts:
                             host_id = host[0]

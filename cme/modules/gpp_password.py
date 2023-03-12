@@ -81,7 +81,7 @@ class CMEModule:
                                     if k != 'cpassword':
                                         context.log.highlight('{}: {}'.format(k, v))
 
-                                hostid = context.db.get_computers(connection.host)[0][0]
+                                hostid = context.db.get_hosts(connection.host)[0][0]
                                 context.db.add_credential('plaintext', '', username, password, pillaged_from=hostid)
 
     def decrypt_cpassword(self, cpassword):

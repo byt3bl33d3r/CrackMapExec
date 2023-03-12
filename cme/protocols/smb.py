@@ -277,7 +277,7 @@ class smb(connection):
         self.server_os = self.conn.getServerOS()
 
         try:
-            self.signing   = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+            self.signing = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
         except Exception as e:
             logging.debug(e)
             pass
@@ -295,7 +295,7 @@ class smb(connection):
         if not self.domain:
             self.domain = self.hostname
 
-        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, self.smbv1, self.signing)
+        self.db.add_host(self.host, self.hostname, self.domain, self.server_os, self.smbv1, self.signing)
 
         try:
             '''
@@ -328,10 +328,10 @@ class smb(connection):
             logging.debug('LAPS connection failed with account {}'.format(username))
             return False
 
-        searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='+ self.hostname +'))'
-        attributes = ['ms-MCS-AdmPwd','samAccountname']
+        search_filter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name=' + self.hostname + '))'
+        attributes = ['ms-MCS-AdmPwd', 'samAccountname']
         result = connection.search(
-            searchFilter=searchFilter,
+            searchFilter=search_filter,
             attributes=attributes,
             sizeLimit=0
         )
@@ -341,12 +341,12 @@ class smb(connection):
         for item in result:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
-            for computer in item['attributes']:
-                if str(computer['type']) == "sAMAccountName":
-                    sAMAccountName = str(computer['vals'][0])
+            for host in item['attributes']:
+                if str(host['type']) == "sAMAccountName":
+                    sAMAccountName = str(host['vals'][0])
                 else:
-                    msMCSAdmPwd = str(computer['vals'][0])
-            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+                    msMCSAdmPwd = str(host['vals'][0])
+            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
 
         self.username = self.args.laps
         self.password = msMCSAdmPwd
@@ -490,11 +490,11 @@ class smb(connection):
 
             self.check_if_admin()
             user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
-            computer_id = self.db.get_computers(self.host)[0]
+            host_id = self.db.get_hosts(self.host)[0]
 
-            self.logger.debug(f"user_id: {type(user_id)} {user_id}\ncomputer_id: {type(computer_id)} {computer_id})")
+            self.logger.debug(f"user_id: {type(user_id)} {user_id}\nhost_id: {type(host_id)} {host_id})")
 
-            self.db.add_loggedin_relation(user_id, computer_id)
+            self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
                 self.logger.debug(f"Adding admin user: {self.domain}/{self.username}:{self.password}@{self.host}")
@@ -1073,11 +1073,11 @@ class smb(connection):
                 break
         return users
 
-    def computers(self):
-        computers = []
+    def hosts(self):
+        hosts = []
         for dc_ip in self.get_dc_ips():
             try:
-                computers = get_netcomputer(
+                hosts = get_netcomputer(
                     dc_ip,
                     self.domain,
                     self.username,
@@ -1090,14 +1090,14 @@ class smb(connection):
                 )
 
                 self.logger.success('Enumerated domain computer(s)')
-                for computer in computers:
-                    domain, computer_clean = self.domainfromdnshostname(computer.dnshostname)
-                    self.logger.highlight('{}\\{:<30}'.format(domain, computer_clean))
+                for hosts in hosts:
+                    domain, host_clean = self.domainfromdnshostname(hosts.dnshostname)
+                    self.logger.highlight('{}\\{:<30}'.format(domain, host_clean))
                 break
             except Exception as e:
-                self.logger.error('Error enumerating domain computers using dc ip {}: {}'.format(dc_ip, e))
+                self.logger.error('Error enumerating domain hosts using dc ip {}: {}'.format(dc_ip, e))
                 break
-        return computers
+        return hosts
 
     def loggedon_users(self):
         logged_on = []
@@ -1300,7 +1300,7 @@ class smb(connection):
     @requires_admin
     def sam(self):
         self.enable_remoteops()
-        host_id = self.db.get_computers(filter_term=self.host)[0][0]
+        host_id = self.db.get_hosts(filter_term=self.host)[0][0]
 
         def add_sam_hash(sam_hash, host_id):
             add_sam_hash.sam_hashes += 1
@@ -1519,7 +1519,7 @@ class smb(connection):
         self.enable_remoteops()
         use_vss_method = False
         NTDSFileName = None
-        host_id = self.db.get_computers(filter_term=self.host)[0][0]
+        host_id = self.db.get_hosts(filter_term=self.host)[0][0]
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1

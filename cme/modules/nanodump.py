@@ -193,7 +193,7 @@ class CMEModule:
                                         credtype = "hash"
                                         credential = NThash
                                     context.log.highlight(domain + "\\" + username + ":" + credential)
-                                    hostid = context.db.get_computers(connection.host)[0][0]
+                                    hostid = context.db.get_hosts(connection.host)[0][0]
                                     context.db.add_credential(credtype, connection.domain, username, credential, pillaged_from=hostid)
                                     if "." not in domain and domain.upper() in connection.domain.upper():
                                         domain = connection.domain
