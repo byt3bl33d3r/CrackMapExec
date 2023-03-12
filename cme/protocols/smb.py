@@ -32,6 +32,7 @@ from cme.protocols.smb.mmcexec import MMCEXEC
 from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.protocols.smb.samruser import UserSamrDump
+from cme.protocols.smb.samrfunc import SamrFunc
 from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
@@ -926,6 +927,19 @@ class smb(connection):
                 break
             except Exception as e:
                 self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
+                self.logger.info('Trying with SAMRPC protocol')
+                groups = SamrFunc(self).get_local_groups()
+                if groups:
+                    self.logger.success('Enumerated local groups')
+                    logging.debug(f"Local groups: {groups}")
+
+                for group_name, group_rid in groups.items():
+                    group_id = self.db.add_group(
+                        self.hostname,
+                        group_name,
+                        rid=group_rid
+                    )
+                    logging.debug(f"Added group, returned id: {group_id}")
         return groups
 
     def domainfromdsn(self, dsn):

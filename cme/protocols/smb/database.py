@@ -71,6 +71,7 @@ class database:
             "id" integer PRIMARY KEY,
             "domain" text,
             "name" text,
+            "rid" text,
             "member_count_ad" integer,
             "last_query_time" text
             )''')
@@ -523,7 +524,7 @@ class database:
 
         return valid
 
-    def add_group(self, domain, name, member_count_ad=None):
+    def add_group(self, domain, name, rid=None, member_count_ad=None):
         domain = domain.split('.')[0]
         groups = []
 
@@ -537,6 +538,7 @@ class database:
         group_data = {
             "domain": domain,
             "name": name,
+            "rid": rid
         }
 
         if not results:
@@ -553,6 +555,8 @@ class database:
                     g_data["domain"] = domain
                 if name is not None:
                     g_data["name"] = name
+                if rid is not None:
+                    g_data["rid"] = rid
                 if member_count_ad is not None:
                     g_data["member_count_ad"] = member_count_ad
                     today = datetime.now()
