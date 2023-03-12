@@ -33,8 +33,8 @@ class CMEModule:
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
             try:
-                host = context.db.get_computers(connection.host)[0]
-                context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+                host = context.db.get_hosts(connection.host)[0]
+                context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
             except Exception as e:
                 logging.debug(f"Error updating zerologon status in database")
 

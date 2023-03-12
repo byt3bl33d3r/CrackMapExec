@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore", category=SAWarning)
 
 class database:
     def __init__(self, db_engine):
-        self.ComputersTable = None
+        self.HostsTable = None
         self.UsersTable = None
         self.GroupsTable = None
         self.SharesTable = None
@@ -44,7 +44,7 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "computers" (
+        db_conn.execute('''CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
@@ -64,8 +64,8 @@ class database:
             "username" text,
             "password" text,
             "credtype" text,
-            "pillaged_from_computerid" integer,
-            FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
+            "pillaged_from_hostid" integer,
+            FOREIGN KEY(pillaged_from_hostid) REFERENCES hosts(id)
             )''')
         db_conn.execute('''CREATE TABLE "groups" (
             "id" integer PRIMARY KEY,
@@ -78,9 +78,9 @@ class database:
         db_conn.execute('''CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
-            "computerid" integer,
+            "hostid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
-            FOREIGN KEY(computerid) REFERENCES computers(id)
+            FOREIGN KEY(hostid) REFERENCES hosts(id)
             )''')
         db_conn.execute('''CREATE TABLE "group_relations" (
             "id" integer PRIMARY KEY,
@@ -91,36 +91,36 @@ class database:
             )''')
         db_conn.execute('''CREATE TABLE "shares" (
             "id" integer PRIMARY KEY,
-            "computerid" text,
+            "hostid" text,
             "userid" integer,
             "name" text,
             "remark" text,
             "read" boolean,
             "write" boolean,
             FOREIGN KEY(userid) REFERENCES users(id)
-            UNIQUE(computerid, userid, name)
+            UNIQUE(hostid, userid, name)
         )''')
         db_conn.execute('''CREATE TABLE "loggedin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
-            "computerid" integer,
+            "hostid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
-            FOREIGN KEY(computerid) REFERENCES computers(id)
+            FOREIGN KEY(hostid) REFERENCES hosts(id)
         )''')
         # db_conn.execute('''CREATE TABLE "ntds_dumps" (
         #    "id" integer PRIMARY KEY,
-        #    "computerid", integer,
+        #    "hostid", integer,
         #    "domain" text,
         #    "username" text,
         #    "hash" text,
-        #    FOREIGN KEY(computerid) REFERENCES computers(id)
+        #    FOREIGN KEY(hostid) REFERENCES hosts(id)
         #    )''')
 
     async def reflect_tables(self):
         async with self.db_engine.connect() as conn:
             await conn.run_sync(self.metadata.reflect)
 
-            self.ComputersTable = Table("computers", self.metadata, autoload_with=self.db_engine)
+            self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
             self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
             self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
             self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
@@ -142,79 +142,83 @@ class database:
             asyncio.run(self.conn.execute(table.delete()))
 
     # pull/545
-    def add_computer(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
+    def add_host(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
         """
         Check if this host has already been added to the database, if not, add it in.
-        TODO: return inserted or updated row ids as a list
         """
+        if not ip:
+            logging.debug(f"smb add_host - IP not passed in")
+            return
         domain = domain.split('.')[0].upper()
         hosts = []
 
-        q = select(self.ComputersTable).filter(
-            self.ComputersTable.c.ip == ip
+        q = select(self.HostsTable).filter(
+            self.HostsTable.c.ip == ip
         )
+        logging.debug(f"smb add_host() - query: {q}")
         results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"smb add_computer() - computers returned: {results}")
+        logging.debug(f"smb add_host() - hosts returned: {results}")
 
-        host_data = {
-            "ip": ip,
-            "hostname": hostname,
-            "domain": domain,
-            "os": os,
-            "dc": dc,
-            "smbv1": smbv1,
-            "signing": signing,
-            "spooler": spooler,
-            "zerologon": zerologon,
-            "petitpotam": petitpotam
-        }
-
-        # create new computer
+        # create new host
         if not results:
-            hosts = [host_data]
+            new_host = {
+                "ip": ip,
+                "hostname": hostname,
+                "domain": domain,
+                "os": os,
+                "dc": dc,
+                "smbv1": smbv1,
+                "signing": signing,
+                "spooler": spooler,
+                "zerologon": zerologon,
+                "petitpotam": petitpotam
+            }
+            hosts = [new_host]
         # update existing hosts data
         else:
             for host in results:
-                computer_data = host._asdict()
+                host_data = host._asdict()
                 # only update column if it is being passed in
                 if ip is not None:
-                    computer_data["ip"] = ip
+                    host_data["ip"] = ip
                 if hostname is not None:
-                    computer_data["hostname"] = hostname
+                    host_data["hostname"] = hostname
                 if domain is not None:
-                    computer_data["domain"] = domain
+                    host_data["domain"] = domain
                 if os is not None:
-                    computer_data["os"] = os
+                    host_data["os"] = os
                 if smbv1 is not None:
-                    computer_data["smbv1"] = smbv1
+                    host_data["smbv1"] = smbv1
                 if signing is not None:
-                    computer_data["signing"] = signing
+                    host_data["signing"] = signing
                 if spooler is not None:
-                    computer_data["spooler"] = spooler
+                    host_data["spooler"] = spooler
                 if zerologon is not None:
-                    computer_data["zerologon"] = zerologon
+                    host_data["zerologon"] = zerologon
                 if petitpotam is not None:
-                    computer_data["petitpotam"] = petitpotam
+                    host_data["petitpotam"] = petitpotam
                 if dc is not None:
-                    computer_data["dc"] = dc
+                    host_data["dc"] = dc
                 # only add computer to be updated if it has changed
-                if computer_data not in hosts:
-                    hosts.append(computer_data)
+                if host_data not in hosts:
+                    hosts.append(host_data)
         logging.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q = Insert(self.ComputersTable)
+        q = Insert(self.HostsTable).returning(self.HostsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
         q = q.on_conflict_do_update(
-            index_elements=self.ComputersTable.primary_key,
+            index_elements=self.HostsTable.primary_key,
             set_=update_columns
         )
-        asyncio.run(
+        added_host_ids = asyncio.run(
             self.conn.execute(
                 q,
                 hosts
             )
-        )
+        ).scalar()
+        logging.debug(f"add_host() - Host IDs Added or Updated: {added_host_ids}")
+        return added_host_ids
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
@@ -225,17 +229,9 @@ class database:
         groups = []
 
         if (group_id and not self.is_group_valid(group_id)) or \
-                (pillaged_from and not self.is_computer_valid(pillaged_from)):
+                (pillaged_from and not self.is_host_valid(pillaged_from)):
+            logging.debug(f"Invalid group or host")
             return
-
-        credential_data = {
-            "cred_type": credtype,
-            "domain": domain,
-            "username": username,
-            "password": password,
-            "groupid": group_id,
-            "pillaged_from": pillaged_from,
-        }
 
         q = select(self.UsersTable).filter(
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
@@ -247,7 +243,15 @@ class database:
         logging.debug(f"Credential results: {results}")
         # add new credential
         if not results:
-            credentials = [credentials]
+            credential_data = {
+                "cred_type": credtype,
+                "domain": domain,
+                "username": username,
+                "password": password,
+                "groupid": group_id,
+                "pillaged_from": pillaged_from,
+            }
+            credentials = [credential_data]
         # update existing cred data
         else:
             for creds in results:
@@ -255,37 +259,37 @@ class database:
                 cred_data = creds._asdict()
                 # only update column if it is being passed in
                 if credtype is not None:
-                    credential_data["credtype"] = credtype
+                    cred_data["credtype"] = credtype
                 if domain is not None:
-                    credential_data["domain"] = domain
+                    cred_data["domain"] = domain
                 if username is not None:
-                    credential_data["username"] = username
+                    cred_data["username"] = username
                 if password is not None:
-                    credential_data["password"] = password
+                    cred_data["password"] = password
                 if group_id is not None:
-                    credential_data["groupid"] = group_id
+                    cred_data["groupid"] = group_id
                     groups.append({
                         "userid": cred_data["id"],
                         "groupid": group_id
                     })
                 if pillaged_from is not None:
-                    credential_data["pillaged_from"] = pillaged_from
-                # only add computer to be updated if it has changed
+                    cred_data["pillaged_from"] = pillaged_from
+                # only add cred to be updated if it has changed
                 if cred_data not in credentials:
                     credentials.append(cred_data)
         logging.debug(f"Update Credentials: {credentials}")
         logging.debug(f"Update Groups: {groups}")
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q_computers = Insert(self.ComputersTable)
-        update_columns_computers = {col.name: col for col in q_computers.excluded if col.name not in 'id'}
-        q_computers = q_computers.on_conflict_do_update(
-            index_elements=self.ComputersTable.primary_key,
-            set_=update_columns_computers
+        q_hosts = Insert(self.UsersTable)
+        update_columns_hosts = {col.name: col for col in q_hosts.excluded if col.name not in 'id'}
+        q_hosts = q_hosts.on_conflict_do_update(
+            index_elements=self.UsersTable.primary_key,
+            set_=update_columns_hosts
         )
         asyncio.run(
             self.conn.execute(
-                q_computers,
+                q_hosts,
                 credentials
             )
         )
@@ -327,22 +331,22 @@ class database:
             users = asyncio.run(self.conn.execute(q)).all()
         logging.debug(f"add_admin_user() - Users: {users}")
 
-        computers = self.get_computers(host)
-        logging.debug(f"add_admin_user() - Hosts: {computers}")
+        hosts = self.get_hosts(host)
+        logging.debug(f"add_admin_user() - Hosts: {hosts}")
 
-        if users and computers:
-            for user, host in zip(users, computers):
+        if users and hosts:
+            for user, host in zip(users, hosts):
                 user_id = user[0]
-                computer_id = host[0]
+                host_id = host[0]
                 link = {
                     "userid": user_id,
-                    "computerid": computer_id
+                    "hostid": host_id
                 }
-                logging.debug(f"add_admin_user() - user_id: {user_id}; computer_id: {computer_id}")
+                logging.debug(f"add_admin_user() - user_id: {user_id}; host_id: {host_id}")
 
                 q = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
-                    self.AdminRelationsTable.c.computerid == computer_id
+                    self.AdminRelationsTable.c.hostid == host_id
                 )
                 links = asyncio.run(self.conn.execute(q)).all()
                 logging.debug(f"add_admin_user() - links: {links}")
@@ -360,7 +364,7 @@ class database:
             )
         elif host_id:
             q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.computerid == host_id
+                self.AdminRelationsTable.c.hostid == host_id
             )
         else:
             q = select(self.AdminRelationsTable)
@@ -378,7 +382,7 @@ class database:
         elif host_ids:
             for host_id in host_ids:
                 q = q.filter(
-                    self.AdminRelationsTable.c.computerid == host_id
+                    self.AdminRelationsTable.c.hostid == host_id
                 )
         asyncio.run(self.conn.execute(q))
 
@@ -426,33 +430,33 @@ class database:
         user_domain = asyncio.run(self.conn.execute(q)).all()
 
         if user_domain:
-            q = select(self.ComputersTable).filter(
-                func.lower(self.ComputersTable.c.id) == func.lower(user_domain)
+            q = select(self.HostsTable).filter(
+                func.lower(self.HostsTable.c.id) == func.lower(user_domain)
             )
             results = asyncio.run(self.conn.execute(q)).all()
 
             return len(results) > 0
 
-    def is_computer_valid(self, host_id):
+    def is_host_valid(self, host_id):
         """
         Check if this host ID is valid.
         """
-        q = select(self.ComputersTable).filter(
-            self.ComputersTable.c.id == host_id
+        q = select(self.HostsTable).filter(
+            self.HostsTable.c.id == host_id
         )
         results = asyncio.run(self.conn.execute(q)).all()
         return len(results) > 0
 
-    def get_computers(self, filter_term=None, domain=None):
+    def get_hosts(self, filter_term=None, domain=None):
         """
         Return hosts from the database.
         """
-        q = select(self.ComputersTable)
+        q = select(self.HostsTable)
 
         # if we're returning a single host by ID
-        if self.is_computer_valid(filter_term):
+        if self.is_host_valid(filter_term):
             q = q.filter(
-                self.ComputersTable.c.id == filter_term
+                self.HostsTable.c.id == filter_term
             )
             results = asyncio.run(self.conn.execute(q)).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
@@ -460,39 +464,39 @@ class database:
         # if we're filtering by domain controllers
         elif filter_term == 'dc':
             q = q.filter(
-                self.ComputersTable.c.dc == True
+                self.HostsTable.c.dc == True
             )
             if domain:
                 q = q.filter(
-                    func.lower(self.ComputersTable.c.domain) == func.lower(domain)
+                    func.lower(self.HostsTable.c.domain) == func.lower(domain)
                 )
         elif filter_term == 'spooler':
             q = q.filter(
-                self.ComputersTable.c.spooler == True
+                self.HostsTable.c.spooler == True
             )
         elif filter_term == 'zerologon':
             q = q.filter(
-                self.ComputersTable.c.zerologon == True
+                self.HostsTable.c.zerologon == True
             )
         elif filter_term == 'petitpotam':
             q = q.filter(
-                self.ComputersTable.c.petitpotam == True
+                self.HostsTable.c.petitpotam == True
             )
         elif filter_term is not None and filter_term.startswith('domain'):
             domain = filter_term.split()[1]
             like_term = func.lower(f"%{domain}%")
             q = q.filter(
-                self.ComputersTable.c.domain.like(like_term)
+                self.HostsTable.c.domain.like(like_term)
             )
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
-                self.ComputersTable.c.ip.like(like_term) |
-                func.lower(self.ComputersTable.c.hostname).like(like_term)
+                self.HostsTable.c.ip.like(like_term) |
+                func.lower(self.HostsTable.c.hostname).like(like_term)
             )
         results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"get_computers() results: {results}")
+        logging.debug(f"hosts() results: {results}")
         return results
 
     def is_group_valid(self, group_id):
@@ -672,7 +676,7 @@ class database:
         return results
 
     def get_domain_controllers(self, domain=None):
-        return self.get_computers(filter_term='dc', domain=domain)
+        return self.get_hosts(filter_term='dc', domain=domain)
 
     def is_share_valid(self, share_id):
         """
@@ -686,9 +690,9 @@ class database:
         logging.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
         return len(results) > 0
 
-    def add_share(self, computer_id, user_id, name, remark, read, write):
+    def add_share(self, host_id, user_id, name, remark, read, write):
         share_data = {
-            "computerid": computer_id,
+            "hostid": host_id,
             "userid": user_id,
             "name": name,
             "remark": remark,
@@ -729,11 +733,11 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
-    def get_users_with_share_access(self, computer_id, share_name, permissions):
+    def get_users_with_share_access(self, host_id, share_name, permissions):
         permissions = permissions.lower()
         q = select(self.SharesTable.c.userid).filter(
             self.SharesTable.c.name == share_name,
-            self.SharesTable.c.computerid == computer_id
+            self.SharesTable.c.hostid == host_id
         )
         if "r" in permissions:
             q = q.filter(self.SharesTable.c.read == 1)
@@ -743,14 +747,14 @@ class database:
 
         return results
 
-    def add_loggedin_relation(self, user_id, computer_id):
-        if not user_id or not computer_id:
-            logging.debug(f"user_id ({user_id} or computer_id {computer_id} is None")
+    def add_loggedin_relation(self, user_id, host_id):
+        if not user_id or not host_id:
+            logging.debug(f"user_id ({user_id} or host_id {host_id} is None")
             return None
-        logging.debug(f"add_loggedin_relations() - user_id: {type(user_id)} {user_id}\ncomputer_id: {type(computer_id)} {computer_id})")
+        logging.debug(f"add_loggedin_relations() - user_id: {type(user_id)} {user_id}\nhost_id: {type(host_id)} {host_id})")
         relation_query = select(self.LoggedinRelationsTable).filter(
             self.LoggedinRelationsTable.c.userid == user_id,
-            self.LoggedinRelationsTable.c.computerid == computer_id
+            self.LoggedinRelationsTable.c.hostid == host_id
         )
         logging.debug(f"query: {relation_query}")
         #results = asyncio.run(self.conn.execute(relation_query))
@@ -762,7 +766,7 @@ class database:
         if not results:
             relation = {
                 "userid": user_id,
-                "computerid": computer_id
+                "hostid": host_id
             }
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
@@ -780,27 +784,27 @@ class database:
             except Exception as e:
                 logging.debug(f"Error inserting LoggedinRelation: {e}")
 
-    def get_loggedin_relations(self, user_id=None, computer_id=None):
+    def get_loggedin_relations(self, user_id=None, host_id=None):
         q = select(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(
                 self.LoggedinRelationsTable.c.userid == user_id
             )
-        if computer_id:
+        if host_id:
             q = q.filter(
-                self.LoggedinRelationsTable.c.computerid == computer_id
+                self.LoggedinRelationsTable.c.hostid == host_id
             )
         results = asyncio.run(self.conn.execute(q)).all()
         return results
 
-    def remove_loggedin_relations(self, user_id=None, computer_id=None):
+    def remove_loggedin_relations(self, user_id=None, host_id=None):
         q = delete(self.LoggedinRelationsTable)
         if user_id:
             q = q.filter(
                 self.LoggedinRelationsTable.c.userid == user_id
             )
-        elif computer_id:
+        elif host_id:
             q = q.filter(
-                self.LoggedinRelationsTable.c.computerid == computer_id
+                self.LoggedinRelationsTable.c.hostid == host_id
             )
         asyncio.run(self.conn.execute(q))

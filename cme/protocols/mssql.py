@@ -116,7 +116,7 @@ class mssql(connection):
                 self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
         self.mssql_instances = self.conn.getInstances(0)
-        self.db.add_computer(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
+        self.db.add_host(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
 
         try:
             self.conn.disconnect()

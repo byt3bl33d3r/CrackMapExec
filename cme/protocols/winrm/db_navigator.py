@@ -60,10 +60,10 @@ class navigator(DatabaseNavigator):
         filter_term = line.strip()
 
         if filter_term == "":
-            hosts = self.db.get_computers()
+            hosts = self.db.get_hosts()
             self.display_hosts(hosts)
         else:
-            hosts = self.db.get_computers(filter_term=filter_term)
+            hosts = self.db.get_hosts(filter_term=filter_term)
 
             if len(hosts) > 1:
                 self.display_hosts(hosts)
@@ -209,7 +209,7 @@ class navigator(DatabaseNavigator):
 
                     for link in links:
                         link_id, cred_id, host_id = link
-                        hosts = self.db.get_computers(host_id)
+                        hosts = self.db.get_hosts(host_id)
 
                         for host in hosts:
                             host_id = host[0]

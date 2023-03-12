@@ -93,8 +93,8 @@ class CMEModule:
                 logging.debug("")
                 context.log.highlight('Spooler service enabled')
                 try:
-                    host = context.db.get_computers(connection.host)[0]
-                    context.db.add_computer(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, spooler=True)
+                    host = context.db.get_hosts(connection.host)[0]
+                    context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, spooler=True)
                 except Exception as e:
                     logging.debug(f"Error updating spooler status in database")
                 break

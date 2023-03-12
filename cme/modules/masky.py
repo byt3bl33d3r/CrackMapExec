@@ -102,7 +102,7 @@ class CMEModule:
         return True
 
     def process_credentials(self, connection, context, user):
-        host = context.db.get_computers(connection.host)[0][0]
+        host = context.db.get_hosts(connection.host)[0][0]
         context.db.add_credential(
             "hash",
             user.domain,

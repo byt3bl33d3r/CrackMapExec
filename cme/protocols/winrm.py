@@ -119,7 +119,7 @@ class winrm(connection):
             if self.args.local_auth:
                 self.domain = self.hostname
 
-            self.db.add_computer(self.host, self.port, self.hostname, self.domain, self.server_os)
+            self.db.add_host(self.host, self.port, self.hostname, self.domain, self.server_os)
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldap_conn = LDAPConnect(self.domain, "389", self.domain)
@@ -145,12 +145,12 @@ class winrm(connection):
         for item in result:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
-            for computer in item['attributes']:
-                if str(computer['type']) == "sAMAccountName":
-                    sAMAccountName = str(computer['vals'][0])
+            for host in item['attributes']:
+                if str(host['type']) == "sAMAccountName":
+                    sAMAccountName = str(host['vals'][0])
                 else:
-                    msMCSAdmPwd = str(computer['vals'][0])
-            logging.debug("Computer: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+                    msMCSAdmPwd = str(host['vals'][0])
+            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
         self.username = self.args.laps
         self.password = msMCSAdmPwd
         if msMCSAdmPwd == '':
@@ -249,8 +249,8 @@ class winrm(connection):
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
             self.db.add_credential('plaintext', domain, self.username, self.password)
 
-            q = select(self.ComputersTable).filter(
-                self.ComputersTable.c.ip == self.host
+            q = select(self.HostsTable).filter(
+                self.HostsTable.c.ip == self.host
             )
             results = asyncio.run(self.conn.execute(q)).first().id
 
