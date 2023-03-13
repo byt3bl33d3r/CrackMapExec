@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os.path
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
@@ -33,6 +34,7 @@ class CMEAdapter(logging.LoggerAdapter):
     def __init__(self, logger_name='CME', extra=None):
         self.logger = logging.getLogger(logger_name)
         self.extra = extra
+        self.outputfile = None
 
     def process(self, msg, kwargs):
         if self.extra is None:
@@ -107,6 +109,22 @@ class CMEAdapter(logging.LoggerAdapter):
         out = CMEAdapter.message
         CMEAdapter.message = ''
         return out
+    
+    def setup_logfile(self, log_file=None):
+        formatter = logging.Formatter("%(message)s")
+        self.outputfile = init_log_file() if log_file == None else log_file
+        file_creation = False
+        if not os.path.isfile(self.outputfile):
+            open(self.outputfile, 'x')
+            file_creation = True
+        fileHandler = logging.FileHandler(filename=self.outputfile, mode="a")
+        with fileHandler._open() as f:
+            if file_creation:
+                f.write("[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
+            else:
+                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
+        fileHandler.setFormatter(formatter)
+        self.logger.addHandler(fileHandler)
 
 def setup_debug_logger():
     debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
@@ -117,20 +135,11 @@ def setup_debug_logger():
     root_logger = logging.getLogger()
     root_logger.handlers = []
     root_logger.addHandler(streamHandler)
-    #root_logger.addHandler(fileHandler)
     root_logger.setLevel(logging.DEBUG)
     return root_logger
 
-def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
+def setup_logger(level=logging.INFO, logger_name='CME'):
     formatter = logging.Formatter("%(message)s")
-
-    if log_to_file:
-        if not log_prefix:
-            log_prefix = 'log'
-
-        log_filename = '{}_{}.log'.format(log_prefix.replace('/', '_'), datetime.now().strftime('%Y-%m-%d'))
-        fileHandler = logging.FileHandler('./logs/{}'.format(log_filename))
-        fileHandler.setFormatter(formatter)
 
     streamHandler = logging.StreamHandler(sys.stdout)
     streamHandler.setFormatter(formatter)
@@ -138,10 +147,10 @@ def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_
     cme_logger = logging.getLogger(logger_name)
     cme_logger.propagate = False
     cme_logger.addHandler(streamHandler)
-
-    if log_to_file:
-        cme_logger.addHandler(fileHandler)
-
     cme_logger.setLevel(level)
 
     return cme_logger
+
+def init_log_file():
+    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs','full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
+    return log_filename

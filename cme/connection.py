@@ -50,10 +50,13 @@ class connection(object):
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
-        self.export = None if not self.args.export else self.args.export
+        self.log = None if not self.args.log else self.args.log
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
+
+        if self.log:
+            CMEAdapter().setup_logfile(self.log[0])
 
         try:
             self.host = gethost_addrinfo(self.hostname)
@@ -111,9 +114,6 @@ class connection(object):
                 if v is not False and v is not None:
                     logging.debug('Calling {}()'.format(k))
                     r = getattr(self, k)()
-                    if self.export:
-                        r2 = str(r).replace("'", '"')
-                        write_log(str(r2), self.export[0])
 
     def call_modules(self):
         module_logger = CMEAdapter(extra={

@@ -16,7 +16,6 @@ from cme.context import Context
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
-import time
 import asyncio
 import aioconsole
 import functools
@@ -140,6 +139,8 @@ def main():
     jitter = None
     server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
     current_workspace = config.get('CME', 'workspace')
+    if config.get('CME', 'log_mode') != "False":
+        logger.setup_logfile()
 
     if args.verbose:
         setup_debug_logger()

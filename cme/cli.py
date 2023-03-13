@@ -51,7 +51,7 @@ def gen_cli_args():
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication")
     std_parser.add_argument("--use-kcache", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
-    std_parser.add_argument("--export", metavar="EXPORT", nargs='+', help="Export result into a file, probably buggy")
+    std_parser.add_argument("--log", metavar="LOG", nargs='+', help="Export result into a custome file")
     std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
     std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="FQDN of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
 
