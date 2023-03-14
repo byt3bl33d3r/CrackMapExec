@@ -1495,7 +1495,7 @@ class smb(connection):
                         domain=self.domain,
                         username=self.username,
                         password=self.password,
-                        target=self.domain,
+                        target=self.host,
                         lmhash=self.lmhash,
                         nthash=self.nthash,
                         do_kerberos=self.kerberos,
