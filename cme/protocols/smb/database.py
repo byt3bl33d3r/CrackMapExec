@@ -10,8 +10,8 @@ from sqlalchemy.exc import SAWarning
 from datetime import datetime
 import asyncio
 import warnings
+import base64
 
-from sqlalchemy.ext.compiler import compiles
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
@@ -26,6 +26,8 @@ class database:
         self.AdminRelationsTable = None
         self.GroupRelationsTable = None
         self.LoggedinRelationsTable = None
+        self.DpapiBackupkey = None
+        self.DpapiSecrets = None
 
         self.db_engine = db_engine
         self.metadata = MetaData()
@@ -110,13 +112,13 @@ class database:
         )''')
         db_conn.execute('''CREATE TABLE "dpapi_secrets" (
             "id" integer PRIMARY KEY,
-            "computer" text,
+            "host" text,
             "dpapi_type" text,
             "windows_user" text,
             "username" text,
             "password" text,
             "url" text,
-            UNIQUE(computer, dpapi_type, windows_user, username, password, url)
+            UNIQUE(host, dpapi_type, windows_user, username, password, url)
         )''')
         db_conn.execute('''CREATE TABLE "dpapi_backupkey" (
             "id" integer PRIMARY KEY,
@@ -144,6 +146,8 @@ class database:
             self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
             self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
             self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+            self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
+            self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
 
     async def shutdown_db(self):
         try:
@@ -211,7 +215,7 @@ class database:
                     host_data["petitpotam"] = petitpotam
                 if dc is not None:
                     host_data["dc"] = dc
-                # only add computer to be updated if it has changed
+                # only add host to be updated if it has changed
                 if host_data not in hosts:
                     hosts.append(host_data)
         logging.debug(f"Update Hosts: {hosts}")
@@ -622,7 +626,7 @@ class database:
         results = asyncio.run(self.conn.execute(q)).all()
 
         logging.debug(
-            f"get_groups(filterTerm={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
+            f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
         return results
 
     def get_group_relations(self, user_id=None, group_id=None):
@@ -717,7 +721,6 @@ class database:
             Insert(self.SharesTable).returning(self.SharesTable.c.id),
             share_data
         )).scalar_one()
-
         return share_id
 
     def get_shares(self, filter_term=None):
@@ -761,90 +764,139 @@ class database:
 
         return results
 
-    def add_domain_backupkey(self, domain:str, pvk:bytes):
+    def add_domain_backupkey(self, domain: str, pvk: bytes):
         """
         Add domain backupkey
         :domain is the domain fqdn
         :pvk is the domain backupkey
         """
-        cur = self.conn.cursor()
-
-        cur.execute("SELECT * FROM dpapi_backupkey WHERE LOWER(domain)=LOWER(?)", [domain])
-        results = cur.fetchall()
+        q = select(self.DpapiBackupkey).filter(
+            func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain)
+        )
+        results = asyncio.run(self.conn.execute(q)).all()
 
         if not len(results):
-            import base64
             pvk_encoded = base64.b64encode(pvk)
-            cur.execute("INSERT INTO dpapi_backupkey (domain, pvk) VALUES (?,?)", [domain, pvk_encoded])
+            backup_key = {
+                "domain": domain,
+                "pvk": pvk_encoded
+            }
+            try:
+                # TODO: find a way to abstract this away to a single Upsert call
+                q = Insert(self.DpapiBackupkey).returning(self.DpapiBackupkey.c.id)
+                inserted_id = asyncio.run(
+                    self.conn.execute(
+                        q,
+                        [backup_key]
+                    )
+                ).scalar()
+                logging.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded}) => {inserted_id}")
+                return inserted_id
+            except Exception as e:
+                logging.debug(f"Issue while inserting DPAPI Backup Key: {e}")
 
-        cur.close()
-
-        logging.debug('add_domain_backupkey(domain={}, pvk={}) => {}'.format(domain, pvk_encoded, cur.lastrowid))
-
-    def get_domain_backupkey(self, domain:str = None):
+    def get_domain_backupkey(self, domain: str = None):
         """
         Get domain backupkey
         :domain is the domain fqdn
         """
-        cur = self.conn.cursor()
-
+        q = select(self.DpapiBackupkey)
         if domain is not None:
-            cur.execute("SELECT * FROM dpapi_backupkey WHERE LOWER(domain)=LOWER(?)", [domain])
-        else:
-            cur.execute("SELECT * FROM dpapi_backupkey", [domain])
-        results = cur.fetchall()
-        cur.close()
-        logging.debug('get_domain_backupkey(domain={}) => {}'.format(domain, results))
-        if len(results) >0:
-            import base64
-            results = [(idkey, domain, base64.b64decode(pvk)) for idkey, domain, pvk in results]
+            q = q.filter(
+                func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain)
+            )
+        results = asyncio.run(self.conn.execute(q)).all()
+
+        logging.debug(f"get_domain_backupkey(domain={domain}) => {results}")
+
+        if len(results) > 0:
+            results = [(id_key, domain, base64.b64decode(pvk)) for id_key, domain, pvk in results]
         return results
 
-    def is_dpapi_secret_valid(self, dpapiSecretID):
+    def is_dpapi_secret_valid(self, dpapi_secret_id):
         """
         Check if this group ID is valid.
-        :dpapiSecretID is a primary id
+        :dpapi_secret_id is a primary id
         """
-        cur = self.conn.cursor()
-        cur.execute('SELECT * FROM dpapi_secrets WHERE id=? LIMIT 1', [dpapiSecretID])
-        results = cur.fetchall()
-        cur.close()
+        q = select(self.DpapiSecrets).filter(
+            func.lower(self.DpapiSecrets.c.id) == dpapi_secret_id
+        )
+        results = asyncio.run(self.conn.execute(q)).first()
+        valid = True if results is not None else False
+        logging.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
+        return valid
 
-        logging.debug('is_dpapi_secret_valid(groupID={}) => {}'.format(dpapiSecretID, True if len(results) else False))
-        return len(results) > 0
-
-    def add_dpapi_secrets(self, computer:str, dpapi_type:str, windows_user:str, username:str, password:str, url:str=''):
+    def add_dpapi_secrets(self, host: str, dpapi_type: str, windows_user: str, username: str, password: str, url: str=''):
         """
         Add dpapi secrets to cmedb
         """
-        cur = self.conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO dpapi_secrets (computer, dpapi_type, windows_user, username, password, url) VALUES (?,?,?,?,?,?)", [computer, dpapi_type, windows_user, username, password, url])
-        cur.close()
+        secret = {
+            "host": host,
+            "dpapi_type": dpapi_type,
+            "windows_user": windows_user,
+            "username": username,
+            "password": password,
+            "url": url
+        }
+        q = Insert(self.DpapiSecrets).returning(self.DpapiSecrets.c.id)
+        update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
+        q = q.on_conflict_do_update(
+            index_elements=self.DpapiSecrets.primary_key,
+            set_=update_columns
+        )
+        res_inserted_result = asyncio.run(
+            self.conn.execute(
+                q,
+                [secret]
+            )
+        ).scalar()
 
-        logging.debug('add_dpapi_secrets(computer={}, dpapi_type={}, windows_user={}, username={}, password={}, url={}) => {}'.format(computer, dpapi_type, windows_user, username, password, url, cur.lastrowid))
+        inserted_result = res_inserted_result.first()
+        inserted_id = inserted_result.id
 
-    def get_dpapi_secrets(self, filterTerm=None, computer:str=None, dpapi_type:str=None, windows_user:str=None, username:str=None, url:str=None):
+        logging.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url}) => {inserted_id}")
+
+    def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None, username: str = None, url: str = None):
         """
         Get dpapi secrets from cmedb
         """
-        cur = self.conn.cursor()
-        if self.is_dpapi_secret_valid(filterTerm):
-            cur.execute("SELECT * FROM dpapi_secrets WHERE id=? LIMIT 1", [filterTerm])
-        elif computer:
-            cur.execute("SELECT * FROM dpapi_secrets WHERE computer=? LIMIT 1", [computer])
+        q = select(self.DpapiSecrets)
+
+        if self.is_dpapi_secret_valid(filter_term):
+            q = q.filter(
+                self.DpapiSecrets.c.id == filter_term
+            )
+            results = asyncio.run(self.conn.execute(q)).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
+        elif host:
+            q = q.filter(
+                self.DpapiSecrets.c.host == host
+            )
+            results = asyncio.run(self.conn.execute(q)).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
         elif dpapi_type:
-            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(dpapi_type)=LOWER(?)', [dpapi_type])
+            q = q.filter(
+                func.lower(self.DpapiSecrets.c.dpapi_type) == func.lower(dpapi_type)
+            )
         elif windows_user:
-            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(windows_user) LIKE LOWER(?)', [windows_user])
+            like_term = func.lower(f"%{windows_user}%")
+            q = q.filter(
+                func.lower(self.DpapiSecrets.c.windows_user).like(like_term)
+            )
         elif username:
-            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(windows_user) LIKE LOWER(?)', [username])
+            like_term = func.lower(f"%{username}%")
+            q = q.filter(
+                func.lower(self.DpapiSecrets.c.windows_user).like(like_term)
+            )
         elif url:
-            cur.execute('SELECT * FROM dpapi_secrets WHERE LOWER(url)=LOWER(?)', [url])
-        else:
-            cur.execute("SELECT * FROM dpapi_secrets")
-        results = cur.fetchall()
-        cur.close()
-        logging.debug('get_dpapi_secrets(filterTerm={}, computer={}, dpapi_type={}, windows_user={}, username={}, url={}) => {}'.format(filterTerm, computer, dpapi_type, windows_user, username, url, results))
+            q = q.filter(
+                func.lower(self.DpapiSecrets.c.url) == func.lower(url)
+            )
+        results = asyncio.run(self.conn.execute(q)).all()
+
+        logging.debug(f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
         return results
 
     def add_loggedin_relation(self, user_id, host_id):

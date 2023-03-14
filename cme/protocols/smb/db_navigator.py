@@ -366,50 +366,50 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_dpapi(self, line):
-        filterTerm = line.strip()
+        filter_term = line.strip()
 
-        if filterTerm == "":
+        if filter_term == "":
             secrets = self.db.get_dpapi_secrets()
-            secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-            self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "browser":
+            secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+            print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "browser":
             secrets = self.db.get_dpapi_secrets(dpapi_type="MSEDGE")
             secrets += self.db.get_dpapi_secrets(dpapi_type="GOOGLE CHROME")
             secrets += self.db.get_dpapi_secrets(dpapi_type="IEX")
             secrets += self.db.get_dpapi_secrets(dpapi_type="FIREFOX")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "chrome":
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "chrome":
             secrets = self.db.get_dpapi_secrets(dpapi_type="GOOGLE CHROME")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "msedge":
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "msedge":
             secrets = self.db.get_dpapi_secrets(dpapi_type="MSEDGE")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "credentials":
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "credentials":
             secrets = self.db.get_dpapi_secrets(dpapi_type="CREDENTIAL")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "iex":
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "iex":
             secrets = self.db.get_dpapi_secrets(dpapi_type="IEX")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
-        elif filterTerm.split()[0].lower() == "firefox":
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
+        elif filter_term.split()[0].lower() == "firefox":
             secrets = self.db.get_dpapi_secrets(dpapi_type="FIREFOX")
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
         else:
-            secrets = self.db.get_dpapi_secrets(filterTerm=filterTerm)
+            secrets = self.db.get_dpapi_secrets(filter_term=filter_term)
             if len(secrets) > 0:
-                secrets.insert(0,["ID","Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                self.print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
+                print_table(secrets, title='DPAPI Secrets')
 
     def do_creds(self, line):
         filter_term = line.strip()
