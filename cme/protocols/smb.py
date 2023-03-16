@@ -1495,7 +1495,7 @@ class smb(connection):
                         domain=self.domain,
                         username=self.username,
                         password=self.password,
-                        target=self.host,
+                        target=self.domain,  # querying DNS server for domain will return DC
                         lmhash=self.lmhash,
                         nthash=self.nthash,
                         do_kerberos=self.kerberos,
