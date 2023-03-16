@@ -154,7 +154,6 @@ class database:
             credential_data["password"] = password
         if group_id is not None:
             credential_data["groupid"] = group_id
-            credential_data["groupid"] = group_id
         if pillaged_from is not None:
             credential_data["pillaged_from"] = pillaged_from
 
@@ -173,28 +172,29 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_hostid": pillaged_from,
             }
-            q = insert(self.UsersTable).values(user_data).returning(self.UsersTable.c.id)
-            results = asyncio.run(self.conn.execute(q)).first()
-            user_rowid = results.id
-
-            if group_id:
-                gr_data = {
-                    "userid": user_rowid,
-                    "groupid": group_id,
-                }
-                q = insert(self.GroupRelationsTable).values(gr_data)
-                asyncio.run(self.conn.execute(q))
+            q = insert(self.UsersTable).values(user_data)  # .returning(self.UsersTable.c.id)
+            asyncio.run(self.conn.execute(q)) # .first()
+            # following is commented out due to sqlalchemy not supporting RETURNING until 3.35
+            # user_rowid = results.id
+            #
+            # if group_id:
+            #     gr_data = {
+            #         "userid": user_rowid,
+            #         "groupid": group_id,
+            #     }
+            #     q = insert(self.GroupRelationsTable).values(gr_data)
+            #     asyncio.run(self.conn.execute(q))
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    q = update(self.UsersTable).values(credential_data).returning(self.UsersTable.c.id)
-                    results = asyncio.run(self.conn.execute(q)).first()
-                    user_rowid = results.id
+                    q = update(self.UsersTable).values(credential_data)  # .returning(self.UsersTable.c.id)
+                    results = asyncio.run(self.conn.execute(q)) # .first()
+                    # user_rowid = results.id
 
                     if group_id and not len(self.get_group_relations(user_rowid, group_id)):
                         gr_data = {
-                            "userid": user_rowid,
+                            "userid": user[0],
                             "groupid": group_id,
                         }
                         q = update(self.GroupRelationsTable).values(gr_data)

@@ -221,20 +221,20 @@ class database:
         logging.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q = Insert(self.HostsTable).returning(self.HostsTable.c.id)
+        q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
         q = q.on_conflict_do_update(
             index_elements=self.HostsTable.primary_key,
             set_=update_columns
         )
-        added_host_ids = asyncio.run(
+        asyncio.run(
             self.conn.execute(
                 q,
                 hosts
             )
-        ).scalar()
-        logging.debug(f"add_host() - Host IDs Added or Updated: {added_host_ids}")
-        return added_host_ids
+        )  # .scalar()
+        # logging.debug(f"add_host() - Host IDs Added or Updated: {added_host_ids}")
+        # return results
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
@@ -294,18 +294,18 @@ class database:
                     credentials.append(cred_data)
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q_users = Insert(self.UsersTable).returning(self.UsersTable.c.id)
+        q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
         update_columns_users = {col.name: col for col in q_users.excluded if col.name not in 'id'}
         q_users = q_users.on_conflict_do_update(
             index_elements=self.UsersTable.primary_key,
             set_=update_columns_users
         )
-        user_ids = asyncio.run(
+        asyncio.run(
             self.conn.execute(
                 q_users,
                 credentials
             )
-        ).scalar()
+        )  # .scalar()
 
         if groups:
             q_groups = Insert(self.GroupRelationsTable)
@@ -315,7 +315,7 @@ class database:
                     groups
                 )
             )
-        return user_ids
+        # return user_ids
 
     def remove_credentials(self, creds_id):
         """
@@ -542,7 +542,9 @@ class database:
         group_data = {
             "domain": domain,
             "name": name,
-            "rid": rid
+            "rid": rid,
+            "member_count_ad": member_count_ad,
+            "last_query_time": None
         }
 
         if not results:
@@ -573,13 +575,13 @@ class database:
         logging.debug(f"Update Groups: {groups}")
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q = Insert(self.GroupsTable).returning(self.GroupsTable.c.id)
+        q = Insert(self.GroupsTable)  # .returning(self.GroupsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
         q = q.on_conflict_do_update(
             index_elements=self.GroupsTable.primary_key,
             set_=update_columns
         )
-        res_inserted_result = asyncio.run(
+        asyncio.run(
             self.conn.execute(
                 q,
                 groups
@@ -588,13 +590,13 @@ class database:
 
         # from the code, the resulting ID is only referenced if it expects one group, which isn't great
         # TODO: always return a list and fix code references to not expect a single integer
-        inserted_result = res_inserted_result.first()
-        gid = inserted_result.id
-
-        logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
-        logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
-
-        return gid
+        # inserted_result = res_inserted_result.first()
+        # gid = inserted_result.id
+        #
+        # logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
+        # logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
+        #
+        # return gid
 
     def get_groups(self, filter_term=None, group_name=None, group_domain=None):
         """
@@ -718,10 +720,10 @@ class database:
             "write": write,
         }
         share_id = asyncio.run(self.conn.execute(
-            Insert(self.SharesTable).returning(self.SharesTable.c.id),
+            Insert(self.SharesTable),#.returning(self.SharesTable.c.id),
             share_data
-        )).scalar_one()
-        return share_id
+        ))#.scalar_one()
+        #return share_id
 
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
@@ -783,15 +785,15 @@ class database:
             }
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(self.DpapiBackupkey).returning(self.DpapiBackupkey.c.id)
-                inserted_id = asyncio.run(
+                q = Insert(self.DpapiBackupkey)  # .returning(self.DpapiBackupkey.c.id)
+                asyncio.run(
                     self.conn.execute(
                         q,
                         [backup_key]
                     )
                 ).scalar()
                 logging.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded}) => {inserted_id}")
-                return inserted_id
+                # return inserted_id
             except Exception as e:
                 logging.debug(f"Issue while inserting DPAPI Backup Key: {e}")
 
@@ -838,21 +840,21 @@ class database:
             "password": password,
             "url": url
         }
-        q = Insert(self.DpapiSecrets).returning(self.DpapiSecrets.c.id)
+        q = Insert(self.DpapiSecrets)  # .returning(self.DpapiSecrets.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
         q = q.on_conflict_do_update(
             index_elements=self.DpapiSecrets.primary_key,
             set_=update_columns
         )
-        res_inserted_result = asyncio.run(
+        asyncio.run(
             self.conn.execute(
                 q,
                 [secret]
             )
-        ).scalar()
+        )  # .scalar()
 
-        inserted_result = res_inserted_result.first()
-        inserted_id = inserted_result.id
+        # inserted_result = res_inserted_result.first()
+        # inserted_id = inserted_result.id
 
         logging.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url}) => {inserted_id}")
 
@@ -914,19 +916,19 @@ class database:
             }
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
-                inserted_ids = asyncio.run(
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+                asyncio.run(
                     self.conn.execute(
                         q,
                         [relation]
                     )
-                ).scalar()
-                return inserted_ids
+                )  # .scalar()
+                # return inserted_ids
             except Exception as e:
                 logging.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(
                 self.LoggedinRelationsTable.c.userid == user_id

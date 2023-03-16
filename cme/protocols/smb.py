@@ -1107,7 +1107,7 @@ class smb(connection):
                                 group_domain=group.groupdomain
                             )[0][0]
                         except IndexError:
-                            group_id = self.db.add_group(
+                            self.db.add_group(
                                 group.groupdomain,
                                 self.args.groups,
                                 member_count_ad=member_count
