@@ -22,17 +22,17 @@ class navigator(DatabaseNavigator):
         print_table(data, title='Credentials')
 
     def display_groups(self, groups):
-        data = [['GroupID', 'Domain', 'Name', 'Enumerated Members', 'AD Members', 'Last Query Time']]
+        data = [['GroupID', 'Domain', 'Name', 'RID', 'Enumerated Members', 'AD Members', 'Last Query Time']]
 
         for group in groups:
             group_id = group[0]
             domain = group[1]
             name = group[2]
+            rid = group[3]
             members = len(self.db.get_group_relations(group_id=group_id))
-            ad_members = group[3]
-            last_query_time = group[4]
-
-            data.append([group_id, domain, name, members, ad_members, last_query_time])
+            ad_members = group[4]
+            last_query_time = group[5]
+            data.append([group_id, domain, name, rid, members, ad_members, last_query_time])
         print_table(data, title='Groups')
 
     # pull/545
@@ -219,14 +219,18 @@ class navigator(DatabaseNavigator):
             if len(groups) > 1:
                 self.display_groups(groups)
             elif len(groups) == 1:
-                data = [['GroupID', 'Domain', 'Name']]
+                data = [['GroupID', 'Domain', 'Name', 'RID', 'Enumerated Members', 'AD Members', 'Last Query Time']]
 
                 for group in groups:
                     group_id = group[0]
                     domain = group[1]
                     name = group[2]
+                    rid = group[3]
+                    members = len(self.db.get_group_relations(group_id=group_id))
+                    ad_members = group[4]
+                    last_query_time = group[5]
 
-                    data.append([group_id, domain, name])
+                    data.append([group_id, domain, name, rid, members, ad_members, last_query_time])
                 print_table(data, title='Group')
                 data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
 
