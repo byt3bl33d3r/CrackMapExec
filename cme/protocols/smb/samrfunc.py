@@ -16,7 +16,7 @@ from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 class SamrFunc:
     def __init__(self, connection):
         self.logger = connection.logger
-        self.addr = connection.host
+        self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
@@ -24,8 +24,8 @@ class SamrFunc:
         self.hash = connection.hash
         self.lmhash = ''
         self.nthash = ''
-        self.aesKey = None
-        self.doKerberos = False
+        self.aesKey = None,
+        self.doKerberos = connection.Kerberos
 
         if self.hash is not None:
             if self.hash.find(':') != -1:
@@ -40,13 +40,15 @@ class SamrFunc:
             username=self.username,
             password=self.password,
             remote_name=self.addr,
-            remote_host=self.addr
+            remote_host=self.addr,
+            kerberos=self.doKerberos
         )
         self.lsa_query = LSAQuery(
             username=self.username,
             password=self.password,
             remote_name=self.addr,
-            remote_host=self.addr
+            remote_host=self.addr,
+            kerberos=self.doKerberos
         )
 
     def get_builtin_groups(self):
@@ -96,7 +98,7 @@ class SamrFunc:
 
 
 class SAMRQuery:
-    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host=''):
+    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host='', kerberos=None):
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -106,6 +108,7 @@ class SAMRQuery:
         self.__port = port
         self.__remote_name = remote_name
         self.__remote_host = remote_host
+        self.__kerberos = kerberos
         self.dce = self.get_dce()
         self.server_handle = self.get_server_handle()
 
@@ -122,8 +125,8 @@ class SAMRQuery:
             self.__domain,
             self.__lmhash,
             self.__nthash,
-            self.__aesKey
-            #doKerberos=self.doKerberos
+            self.__aesKey,
+            doKerberos=self.__kerberos
         )
         return rpc_transport
 
@@ -176,7 +179,7 @@ class SAMRQuery:
 
 
 class LSAQuery:
-    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host=''):
+    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host='', kerberos=None):
         self.__username = username
         self.__password = password
         self.__domain = domain
@@ -186,6 +189,7 @@ class LSAQuery:
         self.__port = port
         self.__remote_name = remote_name
         self.__remote_host = remote_host
+        self.__kerberos = kerberos
         self.dce = self.get_dce()
         self.policy_handle = self.get_policy_handle()
 
@@ -194,6 +198,8 @@ class LSAQuery:
         rpc_transport = transport.DCERPCTransportFactory(string_binding)
         rpc_transport.set_dport(self.__port)
         rpc_transport.setRemoteHost(self.__remote_host)
+        if self.kerberos:
+            rpc_transport.set_kerberos(True, self.__domain)
         if hasattr(rpc_transport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             rpc_transport.set_credentials(
@@ -202,9 +208,8 @@ class LSAQuery:
                 self.__domain,
                 self.__lmhash,
                 self.__nthash,
-                self.__aesKey
+                self.__aesKey,
             )
-        rpc_transport.set_kerberos(False, None)
         return rpc_transport
 
     def get_dce(self):

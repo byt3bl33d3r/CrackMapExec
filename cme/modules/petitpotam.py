@@ -180,7 +180,7 @@ class EfsRpcEncryptFileSrvResponse(NDRCALL):
     )
 
 class CoerceAuth:
-    def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp):
+    def connect(self, username, password, domain, lmhash, nthash, target, pipe, targetIp, doKerberos, dcHost):
         binding_params = {
             'lsarpc': {
                 'stringBinding': r'ncacn_np:%s[\PIPE\lsarpc]' % target,
