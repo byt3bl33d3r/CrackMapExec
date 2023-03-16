@@ -45,6 +45,7 @@ minikerberos = "0.4.0"
 pypykatz = "^0.6.6"
 aardwolf = "^0.2.7"
 asyauth = "^0.0.13"
+dploot =  { git = "https://github.com/zblurx/dploot.git", branch = "master" }
 masky = "^0.2.0"
 
 [tool.poetry.dev-dependencies]
