@@ -300,6 +300,7 @@ class database:
             index_elements=self.UsersTable.primary_key,
             set_=update_columns_users
         )
+        logging.debug(f"Adding credentials: {credentials}")
         asyncio.run(
             self.conn.execute(
                 q_users,
@@ -367,10 +368,11 @@ class database:
 
         admin_relations_insert = Insert(self.AdminRelationsTable)
 
-        asyncio.run(self.conn.execute(
-            admin_relations_insert,
-            add_links
-        ))
+        if add_links:
+            asyncio.run(self.conn.execute(
+                admin_relations_insert,
+                add_links
+            ))
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
@@ -437,6 +439,18 @@ class database:
 
         results = asyncio.run(self.conn.execute(q)).all()
         return results
+
+    def get_credential(self, cred_type, domain, username, password):
+        domain = domain.split('.')[0]
+
+        q = select(self.UsersTable).filter(
+            self.UsersTable.c.domain == domain,
+            self.UsersTable.c.username == username,
+            self.UsersTable.c.password == password,
+            self.UsersTable.c.credtype == cred_type
+        )
+        results = asyncio.run(self.conn.execute(q)).first()
+        return results.id
 
     def is_credential_local(self, credential_id):
         q = select(self.UsersTable.c.domain).filter(
@@ -915,6 +929,7 @@ class database:
                 "hostid": host_id
             }
             try:
+                logging.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
                 q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
                 asyncio.run(
@@ -923,7 +938,9 @@ class database:
                         [relation]
                     )
                 )  # .scalar()
-                # return inserted_ids
+                inserted_id_results = self.get_loggedin_relations(user_id, host_id)
+                logging.debug(f"Checking if relation was added: {inserted_id_results}")
+                return inserted_id_results[0].id
             except Exception as e:
                 logging.debug(f"Error inserting LoggedinRelation: {e}")
 

@@ -47,7 +47,7 @@ from dploot.lib.target import Target
 from dploot.lib.smb import DPLootSMBConnection
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
-from time import time
+from time import time, sleep
 from datetime import datetime
 from functools import wraps
 from traceback import format_exc
@@ -536,7 +536,8 @@ class smb(connection):
 
             self.check_if_admin()
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
-            user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
+            self.db.add_credential('plaintext', domain, self.username, self.password)
+            user_id = self.db.get_credential('plaintext', domain, self.username, self.password)
             host_id = self.db.get_hosts(self.host)[0].id
 
             self.db.add_loggedin_relation(user_id, host_id)
