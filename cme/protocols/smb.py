@@ -1005,11 +1005,11 @@ class smb(connection):
                                 group.name,
                                 group.membercount
                             ))
-                            self.db.add_group(
+                            group_id = self.db.add_group(
                                 self.hostname,
                                 group.name,
                                 member_count_ad=group.membercount
-                            )
+                            )[0]
                         else:
                             domain, name = group.name.split('/')
                             self.logger.highlight(f"domain: {domain}, name: {name}")
@@ -1027,7 +1027,7 @@ class smb(connection):
                                     domain,
                                     self.args.local_groups,
                                     member_count_ad=group.membercount
-                                )
+                                )[0]
 
                             # yo dawg, I hear you like groups.
                             # So I put a domain group as a member of a local group which is also a member of another local group.
@@ -1050,7 +1050,7 @@ class smb(connection):
                         self.hostname,
                         group_name,
                         rid=group_rid
-                    )
+                    )[0]
                     logging.debug(f"Added group, returned id: {group_id}")
         return groups
 
@@ -1106,19 +1106,19 @@ class smb(connection):
                                 group_domain=group.groupdomain
                             )[0][0]
                         except IndexError:
-                            self.db.add_group(
+                            group_id = self.db.add_group(
                                 group.groupdomain,
                                 self.args.groups,
                                 member_count_ad=member_count
-                            )
+                            )[0]
                         if not group.isgroup:
                             self.db.add_credential("plaintext", group.memberdomain, group.membername, "", group_id, "")
                         elif group.isgroup:
-                            self.db.add_group(
+                            group_id = self.db.add_group(
                                 group.groupdomain,
                                 group.groupname,
                                 member_count_ad=member_count
-                            )
+                            )[0]
                     break
                 except Exception as e:
                     self.logger.error('Error enumerating domain group members using dc ip {}: {}'.format(dc_ip, e))
@@ -1153,11 +1153,11 @@ class smb(connection):
                             # Since there isn't a groupmember attribute on the returned object from get_netgroup
                             # we grab it from the distinguished name
                             domain = self.domainfromdsn(group.distinguishedname)
-                            self.db.add_group(
+                            group_id = self.db.add_group(
                                 domain,
                                 group.samaccountname,
                                 member_count_ad=member_count
-                            )
+                            )[0]
                     break
                 except Exception as e:
                     self.logger.error('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))

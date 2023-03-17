@@ -543,15 +543,11 @@ class database:
         return valid
 
     def add_group(self, domain, name, rid=None, member_count_ad=None):
+        results = self.get_groups(group_name=name, group_domain=domain)
+
         domain = domain.split('.')[0]
         groups = []
-
-        q = select(self.GroupsTable).filter(
-            func.lower(self.GroupsTable.c.domain) == func.lower(domain),
-            func.lower(self.GroupsTable.c.name) == func.lower(name)
-        )
-        results = asyncio.run(self.conn.execute(q)).all()
-        logging.debug(f"add_group() - groups returned: {results}")
+        updated_ids = []
 
         group_data = {
             "domain": domain,
@@ -568,6 +564,19 @@ class database:
                 iso_date = today.isoformat()
                 group_data["last_query_time"] = iso_date
             groups = [group_data]
+
+            # insert the group and get the returned id right away, this can be refactored when we can use RETURNING
+            q = Insert(self.GroupsTable)
+            asyncio.run(
+                self.conn.execute(
+                    q,
+                    groups
+                )
+            )
+            new_group_data = self.get_groups(group_name=group_data["name"], group_domain=group_data["domain"])
+            returned_id = [new_group_data[0].id]
+            logging.debug(f"Inserted group with ID: {returned_id[0]}")
+            return returned_id
         else:
             for group in results:
                 g_data = group._asdict()
@@ -585,6 +594,7 @@ class database:
                 # only add it to the upsert query if it's changed to save query execution time
                 if g_data not in groups:
                     groups.append(g_data)
+                    updated_ids.append(g_data["id"])
 
         logging.debug(f"Update Groups: {groups}")
 
@@ -601,16 +611,15 @@ class database:
                 groups
             )
         )
-
-        # from the code, the resulting ID is only referenced if it expects one group, which isn't great
         # TODO: always return a list and fix code references to not expect a single integer
         # inserted_result = res_inserted_result.first()
         # gid = inserted_result.id
         #
         # logging.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
         # logging.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
-        #
-        # return gid
+        if updated_ids:
+            logging.debug(f"Updated groups with IDs: {updated_ids}")
+        return updated_ids
 
     def get_groups(self, filter_term=None, group_name=None, group_domain=None):
         """
@@ -619,7 +628,7 @@ class database:
         if group_domain:
             group_domain = group_domain.split('.')[0]
 
-        if self.is_group_valid(filter_term):
+        if filter_term and self.is_group_valid(filter_term):
             q = select(self.GroupsTable).filter(
                 self.GroupsTable.c.id == filter_term
             )
@@ -628,7 +637,7 @@ class database:
             return [results]
         elif group_name and group_domain:
             q = select(self.GroupsTable).filter(
-                func.lower(self.GroupsTable.c.username) == func.lower(group_name),
+                func.lower(self.GroupsTable.c.name) == func.lower(group_name),
                 func.lower(self.GroupsTable.c.domain) == func.lower(group_domain)
             )
         elif filter_term and filter_term != "":
