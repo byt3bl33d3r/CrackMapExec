@@ -131,17 +131,12 @@ class database:
             )
         )
 
-    def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
+    def add_credential(self, credtype, domain, username, password, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
         domain = domain.split('.')[0].upper()
         user_rowid = None
-
-        if (group_id and not self.is_group_valid(group_id)) or \
-                (pillaged_from and not self.is_host_valid(pillaged_from)):
-            self.conn.close()
-            return
 
         credential_data = {}
         if credtype is not None:
@@ -152,8 +147,6 @@ class database:
             credential_data["username"] = username
         if password is not None:
             credential_data["password"] = password
-        if group_id is not None:
-            credential_data["groupid"] = group_id
         if pillaged_from is not None:
             credential_data["pillaged_from"] = pillaged_from
 
@@ -174,16 +167,6 @@ class database:
             }
             q = insert(self.UsersTable).values(user_data)  # .returning(self.UsersTable.c.id)
             asyncio.run(self.conn.execute(q)) # .first()
-            # following is commented out due to sqlalchemy not supporting RETURNING until 3.35
-            # user_rowid = results.id
-            #
-            # if group_id:
-            #     gr_data = {
-            #         "userid": user_rowid,
-            #         "groupid": group_id,
-            #     }
-            #     q = insert(self.GroupRelationsTable).values(gr_data)
-            #     asyncio.run(self.conn.execute(q))
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
@@ -192,22 +175,12 @@ class database:
                     results = asyncio.run(self.conn.execute(q)) # .first()
                     # user_rowid = results.id
 
-                    if group_id and not len(self.get_group_relations(user_rowid, group_id)):
-                        gr_data = {
-                            "userid": user[0],
-                            "groupid": group_id,
-                        }
-                        q = update(self.GroupRelationsTable).values(gr_data)
-                        asyncio.run(self.conn.execute(q))
-
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(
+        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
             credtype,
             domain,
             username,
             password,
-            group_id,
-            pillaged_from,
-            user_rowid
+            pillaged_from
         ))
         return user_rowid
 
