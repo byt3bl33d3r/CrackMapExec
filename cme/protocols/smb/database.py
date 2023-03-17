@@ -169,6 +169,7 @@ class database:
         """
         domain = domain.split('.')[0]
         hosts = []
+        updated_ids = []
 
         q = select(self.HostsTable).filter(
             self.HostsTable.c.ip == ip
@@ -218,6 +219,7 @@ class database:
                 # only add host to be updated if it has changed
                 if host_data not in hosts:
                     hosts.append(host_data)
+                    updated_ids.append(host_data["id"])
         logging.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
@@ -233,8 +235,10 @@ class database:
                 hosts
             )
         )  # .scalar()
-        # logging.debug(f"add_host() - Host IDs Added or Updated: {added_host_ids}")
-        # return results
+        # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
+        if updated_ids:
+            logging.debug(f"add_host() - Host IDs Updated: {updated_ids}")
+            return updated_ids
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
