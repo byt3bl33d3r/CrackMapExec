@@ -867,12 +867,7 @@ class database:
             "password": password,
             "url": url
         }
-        q = Insert(self.DpapiSecrets)  # .returning(self.DpapiSecrets.c.id)
-        update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
-        q = q.on_conflict_do_update(
-            index_elements=self.DpapiSecrets.primary_key,
-            set_=update_columns
-        )
+        q = Insert(self.DpapiSecrets).on_conflict_do_nothing()  # .returning(self.DpapiSecrets.c.id)
         asyncio.run(
             self.conn.execute(
                 q,
