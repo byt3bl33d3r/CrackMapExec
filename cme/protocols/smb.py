@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
-import os
-import re
 import ntpath
-import hashlib, binascii
+import hashlib
+import binascii
 from io import StringIO
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
@@ -47,7 +45,7 @@ from dploot.lib.target import Target
 from dploot.lib.smb import DPLootSMBConnection
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
-from time import time, sleep
+from time import time
 from datetime import datetime
 from functools import wraps
 from traceback import format_exc
