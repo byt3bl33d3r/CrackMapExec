@@ -201,19 +201,19 @@ class database:
                     credentials.append(cred_data)
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q_users = Insert(self.UsersTable).returning(self.UsersTable.c.id)
+        q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
         update_columns_users = {col.name: col for col in q_users.excluded if col.name not in 'id'}
         q_users = q_users.on_conflict_do_update(
             index_elements=self.UsersTable.primary_key,
             set_=update_columns_users
         )
-        user_ids = asyncio.run(
+        asyncio.run(
             self.conn.execute(
                 q_users,
                 credentials
             )
-        ).scalar()
-        return user_ids
+        )  # .scalar()
+        # return user_ids
 
     def remove_credentials(self, creds_id):
         """
@@ -441,19 +441,19 @@ class database:
             }
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
-                inserted_ids = asyncio.run(
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+                asyncio.run(
                     self.conn.execute(
                         q,
                         [relation]
                     )
-                ).scalar()
-                return inserted_ids
+                )  # .scalar()
+                # return inserted_ids
             except Exception as e:
                 logging.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(self.LoggedinRelationsTable).returning(self.LoggedinRelationsTable.c.id)
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(
                 self.LoggedinRelationsTable.c.userid == user_id

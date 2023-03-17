@@ -791,8 +791,8 @@ class database:
                         q,
                         [backup_key]
                     )
-                ).scalar()
-                logging.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded}) => {inserted_id}")
+                )  # .scalar()
+                logging.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})")
                 # return inserted_id
             except Exception as e:
                 logging.debug(f"Issue while inserting DPAPI Backup Key: {e}")
@@ -856,7 +856,7 @@ class database:
         # inserted_result = res_inserted_result.first()
         # inserted_id = inserted_result.id
 
-        logging.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url}) => {inserted_id}")
+        logging.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
 
     def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None, username: str = None, url: str = None):
         """

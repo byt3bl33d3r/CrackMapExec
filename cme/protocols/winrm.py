@@ -266,14 +266,14 @@ class winrm(connection):
             )
 
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
-            user_id = self.db.add_credential('plaintext', domain, self.username, self.password)
-            host_id = self.db.get_hosts(self.host)[0].id
+            self.db.add_credential('plaintext', domain, self.username, self.password)
+            # host_id = self.db.get_hosts(self.host)[0].id
 
-            self.db.add_loggedin_relation(user_id, host_id)
+            # self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
                 self.logger.debug(f"Inside admin privs")
-                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host, user_id=user_id)
+                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host) # , user_id=user_id)
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
