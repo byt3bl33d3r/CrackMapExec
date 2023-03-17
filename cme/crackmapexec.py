@@ -241,55 +241,61 @@ def main():
 
     if hasattr(args, 'module'):
         loader = module_loader(args, db, logger)
-        if args.list_modules:
-            modules = loader.get_modules()
+        modules = loader.get_modules()
 
+        if args.list_modules:
             for name, props in sorted(modules.items()):
                 logger.info('{:<25} {}'.format(name, props['description']))
             sys.exit(0)
-
         elif args.module and args.show_module_options:
-
-            modules = loader.get_modules()
             for name, props in modules.items():
                 if args.module.lower() == name.lower():
                     logger.info('{} module options:\n{}'.format(name, props['options']))
             sys.exit(0)
-
         elif args.module:
-            modules = loader.get_modules()
-            for name, props in modules.items():
-                if args.module.lower() == name.lower():
-                    module = loader.init_module(props['path'])
-                    setattr(protocol_object, 'module', module)
-                    break
+            logging.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
+            for m in args.module:
+                if m not in modules:
+                    logger.error(f"Module not found: {m}")
+                    exit(1)
 
-            if not module:
-                logger.error('Module not found')
-                exit(1)
+                logging.debug(f"Loading module {m} at path {modules[m]['path']}")
+                module = loader.init_module(modules[m]['path'])
 
-            if getattr(module, 'opsec_safe') is False:
-                ans = input(highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
-                if ans.lower() not in ['y', 'yes', '']:
-                    sys.exit(1)
+                if not module.opsec_safe:
+                    ans = input(
+                        highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
+                    if ans.lower() not in ['y', 'yes', '']:
+                        sys.exit(1)
 
-            if getattr(module, 'multiple_hosts') is False and len(targets) > 1:
-                ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
-                if ans.lower() not in ['y', 'yes', '']:
-                    sys.exit(1)
+                if not module.multiple_hosts and len(targets) > 1:
+                    ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
+                    if ans.lower() not in ['y', 'yes', '']:
+                        sys.exit(1)
 
-            if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                    if hasattr(module, 'required_server'):
+                        args.server = module.required_server
 
-                if hasattr(module, 'required_server'):
-                    args.server = getattr(module, 'required_server')
+                    if not args.server_port:
+                        args.server_port = server_port_dict[args.server]
 
-                if not args.server_port:
-                    args.server_port = server_port_dict[args.server]
+                    # loading a module server multiple times will obviously fail
+                    try:
+                        context = Context(db, logger, args)
+                        module_server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
+                        module_server.start()
+                        protocol_object.server = module_server.server
+                    except Exception as e:
+                        logging.debug(f"Error loading module server for {module}: {e}")
 
-                context = Context(db, logger, args)
-                module_server = CMEServer(module, context, logger, args.server_host, args.server_port, args.server)
-                module_server.start()
-                setattr(protocol_object, 'server', module_server.server)
+                logging.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
+                logging.debug(f"proto object dir: {dir(protocol_object)}")
+                # get currently set modules, otherwise default to empty list
+                current_modules = getattr(protocol_object, 'module', [])
+                current_modules.append(module)
+                setattr(protocol_object, 'module', current_modules)
+                logging.debug(f"proto object module after adding: {protocol_object.module}")
 
     if hasattr(args, 'ntds') and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely [Y/n] ', 'red'))

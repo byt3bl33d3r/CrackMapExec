@@ -119,28 +119,30 @@ class connection(object):
                     r = getattr(self, k)()
 
     def call_modules(self):
-        module_logger = CMEAdapter(extra={
-            'module': self.module.name.upper(),
-            'host': self.host,
-            'port': self.args.port,
-            'hostname': self.hostname
-        })
+        for module in self.module:
+            logging.debug(f"Loading module {module}")
+            module_logger = CMEAdapter(extra={
+                'module': module.name.upper(),
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': self.hostname
+            })
 
-        context = Context(self.db, module_logger, self.args)
-        context.localip = self.local_ip
+            context = Context(self.db, module_logger, self.args)
+            context.localip = self.local_ip
 
-        if hasattr(self.module, 'on_request') or hasattr(self.module, 'has_response'):
-            self.server.connection = self
-            self.server.context.localip = self.local_ip
+            if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                self.server.connection = self
+                self.server.context.localip = self.local_ip
 
-        if hasattr(self.module, 'on_login'):
-            self.module.on_login(context, self)
+            if hasattr(module, 'on_login'):
+                module.on_login(context, self)
 
-        if self.admin_privs and hasattr(self.module, 'on_admin_login'):
-            self.module.on_admin_login(context, self)
+            if self.admin_privs and hasattr(module, 'on_admin_login'):
+                module.on_admin_login(context, self)
 
-        if (not hasattr(self.module, 'on_request') and not hasattr(self.module, 'has_response')) and hasattr(self.module, 'on_shutdown'):
-            self.module.on_shutdown(context, self)
+            if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module,'on_shutdown'):
+                module.on_shutdown(context, self)
 
     def inc_failed_login(self, username):
         global global_failed_logins
