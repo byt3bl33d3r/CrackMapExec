@@ -747,10 +747,10 @@ class database:
             "write": write,
         }
         share_id = asyncio.run(self.conn.execute(
-            Insert(self.SharesTable),#.returning(self.SharesTable.c.id),
+            Insert(self.SharesTable).on_conflict_do_nothing(),  # .returning(self.SharesTable.c.id),
             share_data
-        ))#.scalar_one()
-        #return share_id
+        ))  # .scalar_one()
+        # return share_id
 
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
