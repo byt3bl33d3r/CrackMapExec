@@ -49,13 +49,8 @@ class CMEModule:
             rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
             for attempt in range(0, MAX_ATTEMPTS):
                 result = try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer)
-
-                if result is None:
-                    logging.debug('=', end='', flush=True)
-                else:
-                    break
-            if result:
-                return True
+                if result:
+                    return True
             else:
                 self.context.log.debug('\nAttack failed. Target is probably patched.')
         except DCERPCException as e:
