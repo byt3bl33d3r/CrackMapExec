@@ -98,6 +98,15 @@ class DatabaseNavigator(cmd.Cmd):
         self.db = database
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
 
+    def do_exit(self, line):
+        sys.exit()
+
+    def help_exit(self):
+        help_string = """
+        Exits
+        """
+        print_help(help_string)
+
     def do_back(self, line):
         raise UserExitedProto
 
