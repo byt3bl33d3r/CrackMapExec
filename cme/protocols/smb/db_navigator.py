@@ -415,6 +415,23 @@ class navigator(DatabaseNavigator):
                 secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
                 print_table(secrets, title='DPAPI Secrets')
 
+    def help_dpapi(self):
+        help_string = """
+        dpapi [browser|chrome|msedge|credentials|iex|firefox|filter_term]
+        By default prints all dpapi dumped secrets
+        Table format:
+        | 'ID', 'Host', 'DPAPI Type', 'Windows User', 'Username', 'Password', 'URL' |
+        Subcommands:
+            browser - list all secrets dumped from browser
+            chrome - list all secrets dumped from chrome
+            msedge - list all secrets dumped from microsoft edge
+            credentials - list all secrets dumped from credential manager (user and system)
+            iex - list all secrets dumped from Internet Explorer
+            firefox - list all secrets dumped from Firefox
+            filter_term - filters dpapi secrets with filter_term
+        """
+        print_help(help_string)
+
     def do_creds(self, line):
         filter_term = line.strip()
 
