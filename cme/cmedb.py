@@ -14,6 +14,7 @@ from cme.paths import CONFIG_PATH, WS_PATH
 from requests import ConnectionError
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import SAWarning
+import asyncio
 import csv
 import warnings
 from textwrap import dedent
@@ -109,6 +110,7 @@ class DatabaseNavigator(cmd.Cmd):
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
 
     def do_exit(self, line):
+        asyncio.run(self.db.shutdown_db())
         sys.exit()
 
     def help_exit(self):
