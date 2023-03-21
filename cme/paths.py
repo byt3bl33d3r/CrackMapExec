@@ -10,3 +10,4 @@ if hasattr(sys, 'getandroidapilevel'):
 WS_PATH = os.path.join(CME_PATH, 'workspaces')
 CERT_PATH = os.path.join(CME_PATH, 'cme.pem')
 CONFIG_PATH = os.path.join(CME_PATH, 'cme.conf')
+WORKSPACE_DIR = os.path.join(CME_PATH, 'workspaces')
