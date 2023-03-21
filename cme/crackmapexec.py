@@ -228,7 +228,7 @@ def main():
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
     logging.debug(f"Protocol Object: {protocol_object}")
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
-    logging.debug(f"Protocol DB Object: {protocol_object}")
+    logging.debug(f"Protocol DB Object: {protocol_db_object}")
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     logging.debug(f"DB Path: {db_path}")
