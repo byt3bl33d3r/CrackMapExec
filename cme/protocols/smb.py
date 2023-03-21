@@ -199,6 +199,7 @@ class smb(connection):
         tgroup = smb_parser.add_argument_group("Files", "Options for put and get remote files")
         tgroup.add_argument("--put-file", nargs=2, metavar="FILE", help='Put a local file into remote target, ex: whoami.txt \\\\Windows\\\\Temp\\\\whoami.txt')
         tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: \\\\Windows\\\\Temp\\\\whoami.txt whoami.txt')
+        tgroup.add_argument("--append-host", action='store_true', help='append the host to the get-file filename')
 
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--exec-method', choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None, help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
@@ -1105,10 +1106,13 @@ class smb(connection):
 
     def get_file(self):
         self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
-        with open(self.args.get_file[1], 'wb+') as file:
+        file_handle = self.args.get_file[1]
+        if self.args.append_host:
+            file_handle = self.args.get_file[1] + "_" + self.host
+        with open(file_handle, 'wb+') as file:
             try:
                 self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
-                self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+                self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], file_handle))
             except Exception as e:
                 self.logger.error('Error reading file {}: {}'.format(self.args.share, e))
 
