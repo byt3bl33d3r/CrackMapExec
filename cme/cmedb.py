@@ -159,7 +159,10 @@ class DatabaseNavigator(cmd.Cmd):
                         entry.append(self.db.get_hosts(cred[5])[0][2])
                     formatted_creds.append(entry)
                 write_csv(filename, csv_header, formatted_creds)
-            print('[+] creds exported')
+            else:
+                print('[-] No such export option: %s' % line[1])
+                return 
+            print('[+] Creds exported')
         # Hosts
         elif line[0].lower() == 'hosts':
             if len(line) < 3:
@@ -182,8 +185,10 @@ class DatabaseNavigator(cmd.Cmd):
                 hosts = self.db.get_hosts("signing")
                 signing_hosts = [host[1] for host in hosts]
                 write_list(filename, signing_hosts)
-
-            print('[+] hosts exported')
+            else:
+                print('[-] No such export option: %s' % line[1])
+                return 
+            print('[+] Hosts exported')
         # Shares
         elif line[0].lower() == 'shares':
             if len(line) < 3:
@@ -214,7 +219,10 @@ class DatabaseNavigator(cmd.Cmd):
                     ]
                     formatted_shares.append(entry)
                 write_csv(filename, csv_header, formatted_shares)
-                print('[+] shares exported')
+            else:
+                print('[-] No such export option: %s' % line[1])
+                return 
+            print('[+] Shares exported')
         # Local Admin
         elif line[0].lower() == 'local_admins':
             if len(line) < 3:
@@ -241,9 +249,44 @@ class DatabaseNavigator(cmd.Cmd):
                     # Can't modify a tuple which is what self.db.get_admin_relations() returns
                     formatted_local_admins.append(formatted_entry)
                 write_csv(filename, csv_header, formatted_local_admins)
-                print('[+] Local Admins exported')
+            else:
+                print('[-] No such export option: %s' % line[1])
+                return 
+            print('[+] Local Admins exported')
+        elif line[0].lower() == 'dpapi':
+            if len(line) < 3:
+                print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
+                return
+
+            # These values don't change between simple and detailed
+            dpapi_secrets = self.db.get_dpapi_secrets()
+            csv_header = ["id", "host", "dpapi_type", "windows_user", "username", "password", "url"]
+            filename = line[2]
+
+            if line[1].lower() == 'simple':
+                write_csv(filename, csv_header, dpapi_secrets)
+            elif line[1].lower() == 'detailed':
+                formatted_dpapi_secret = []
+                for entry in dpapi_secrets:
+                    
+                    formatted_entry = [
+                        entry[0],                                        # Entry ID
+                        self.db.get_hosts(filter_term=entry[1])[0][2],   # Hostname
+                        entry[2],                                        # DPAPI type
+                        entry[3],                                        # Windows User
+                        entry[4],                                        # Username
+                        entry[5],                                        # Password
+                        entry[6],                                        # URL
+                    ]
+                    # Can't modify a tuple which is what self.db.get_admin_relations() returns
+                    formatted_dpapi_secret.append(formatted_entry)
+                write_csv(filename, csv_header, formatted_dpapi_secret)
+            else:
+                print('[-] No such export option: %s' % line[1])
+                return 
+            print('[+] DPAPI secrets exported')
         else:
-            print("[-] Invalid argument, specify creds, hosts, local_admins, or shares")
+            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
 
     def help_export(self):
         help_string = """
