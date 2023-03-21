@@ -65,6 +65,16 @@ def write_csv(filename, headers, entries):
             csv_file.writerow(entry)
 
 
+def write_list(filename, entries):
+    """
+    Writes a file with a simple list
+    """
+    with open(os.path.expanduser(filename), "w") as export_file:
+        for line in entries:
+            export_file.write(line + "\n")
+    return
+
+
 def complete_import(text, line):
     """
     Tab-complete 'import' commands
@@ -79,7 +89,7 @@ def complete_export(text, line):
     """
     Tab-complete 'creds' commands.
     """
-    commands = ["creds", "plaintext", "hashes"]
+    commands = ["creds", "plaintext", "hashes", "shares", "local_admins", "signing"]
     mline = line.partition(' ')[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
@@ -121,7 +131,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if line[0].lower() == 'creds':
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <simple/detailed> <filename>")
+                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
                 return
             
             filename = line[2]
@@ -151,17 +161,25 @@ class DatabaseNavigator(cmd.Cmd):
         # Hosts
         elif line[0].lower() == 'hosts':
             if len(line) < 3:
-                print("[-] invalid arguments, export hosts <simple/detailed> <filename>")
+                print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
                 return
-            hosts = self.db.get_hosts()
-            csv_header = ["id", "ip", "hostname", "domain", "os", "dc", "smbv1", "signing"]
+
+            csv_header_simple = ["id", "ip", "hostname", "domain", "os", "dc", "smbv1", "signing"]
+            csv_header_detailed = ["id", "ip", "hostname", "domain", "os", "dc", "smbv1", "signing", "spooler", "zerologon", "petitpotam"]
             filename = line[2]
-            
-            if line[1].lower() == 'simple':
-                write_csv(filename, csv_header, hosts)
+
+            if line[1].lower() == "simple":
+                hosts = self.db.get_hosts()
+                simple_hosts = [host[:8] for host in hosts]
+                write_csv(filename, csv_header_simple, simple_hosts)
             # TODO: maybe add more detail like who is an admin on it, shares discovered, etc
-            elif line[1].lower() == 'detailed':
-                write_csv(filename, csv_header, hosts)
+            elif line[1].lower() == "detailed":
+                hosts = self.db.get_hosts()
+                write_csv(filename, csv_header_detailed, hosts)
+            elif line[1].lower() == "signing":
+                hosts = self.db.get_hosts("signing")
+                signing_hosts = [host[1] for host in hosts]
+                write_list(filename, signing_hosts)
 
             print('[+] hosts exported')
         # Shares
@@ -223,7 +241,17 @@ class DatabaseNavigator(cmd.Cmd):
                 write_csv(filename, csv_header, formatted_local_admins)
                 print('[+] Local Admins exported')
         else:
-            print('[-] invalid argument, specify creds, hosts, local_admins or shares')
+            print("[-] Invalid argument, specify creds, hosts, local_admins, or shares")
+
+    def help_export(self):
+        help_string = """
+        export [creds|hosts|local_admins|shares|signing] [simple|detailed|*] [filename]
+        Exports information to a specified file
+        
+        * hosts has an additional third option from simple and detailed: signing - this simply writes a list of ips of
+        hosts where signing is enabled
+        """
+        print_help(help_string)
 
     def do_import(self, line):
         if not line:

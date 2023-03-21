@@ -503,6 +503,11 @@ class database:
                 q = q.filter(
                     func.lower(self.HostsTable.c.domain) == func.lower(domain)
                 )
+        elif filter_term == 'signing':
+            # generally we want hosts that are vulnerable, so signing disabled
+            q = q.filter(
+                self.HostsTable.c.signing == False
+            )
         elif filter_term == 'spooler':
             q = q.filter(
                 self.HostsTable.c.spooler == True
