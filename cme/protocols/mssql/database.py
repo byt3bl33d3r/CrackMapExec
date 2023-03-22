@@ -3,7 +3,7 @@
 import logging
 from sqlalchemy import MetaData, func, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
@@ -40,11 +40,20 @@ class database:
 
     async def reflect_tables(self):
         async with self.db_engine.connect() as conn:
-            await conn.run_sync(self.metadata.reflect)
+            try:
+                await conn.run_sync(self.metadata.reflect)
 
-            self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+            except NoInspectionAvailable:
+                print(
+                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
+                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
+                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/ ~/old_cme/`)\n"
+                    "[-] Then remove the CME folder (`rm -rf ~/.cme/`) and rerun CME to initialize the new DB schema"
+                )
+                exit()
 
     @staticmethod
     def db_schema(db_conn):

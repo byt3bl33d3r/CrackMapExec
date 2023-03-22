@@ -3,7 +3,7 @@
 import logging
 from sqlalchemy import MetaData, func, Table, select, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
@@ -11,7 +11,6 @@ from datetime import datetime
 import asyncio
 import warnings
 import base64
-
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
@@ -137,17 +136,26 @@ class database:
 
     async def reflect_tables(self):
         async with self.db_engine.connect() as conn:
-            await conn.run_sync(self.metadata.reflect)
+            try:
+                await conn.run_sync(self.metadata.reflect)
 
-            self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-            self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-            self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
-            self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
-            self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-            self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
-            self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
-            self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
-            self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
+                self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+                self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
+                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+                self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
+                self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
+            except NoInspectionAvailable:
+                print(
+                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
+                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
+                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/ ~/old_cme/`)\n"
+                    "[-] Then remove the CME folder (`rm -rf ~/.cme/`) and rerun CME to initialize the new DB schema"
+                )
+                exit()
 
     async def shutdown_db(self):
         try:
@@ -163,7 +171,8 @@ class database:
             asyncio.run(self.conn.execute(table.delete()))
 
     # pull/545
-    def add_host(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None, dc=None):
+    def add_host(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None,
+                 dc=None):
         """
         Check if this host has already been added to the database, if not, add it in.
         """
@@ -860,7 +869,8 @@ class database:
         logging.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
         return valid
 
-    def add_dpapi_secrets(self, host: str, dpapi_type: str, windows_user: str, username: str, password: str, url: str=''):
+    def add_dpapi_secrets(self, host: str, dpapi_type: str, windows_user: str, username: str, password: str,
+                          url: str = ''):
         """
         Add dpapi secrets to cmedb
         """
@@ -883,9 +893,11 @@ class database:
         # inserted_result = res_inserted_result.first()
         # inserted_id = inserted_result.id
 
-        logging.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
+        logging.debug(
+            f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
 
-    def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None, username: str = None, url: str = None):
+    def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None,
+                          username: str = None, url: str = None):
         """
         Get dpapi secrets from cmedb
         """
@@ -925,7 +937,8 @@ class database:
             )
         results = asyncio.run(self.conn.execute(q)).all()
 
-        logging.debug(f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
+        logging.debug(
+            f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
         return results
 
     def add_loggedin_relation(self, user_id, host_id):
