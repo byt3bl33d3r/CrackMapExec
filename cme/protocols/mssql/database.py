@@ -50,8 +50,8 @@ class database:
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/ ~/old_cme/`)\n"
-                    "[-] Then remove the CME folder (`rm -rf ~/.cme/`) and rerun CME to initialize the new DB schema"
+                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
+                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
                 )
                 exit()
 
