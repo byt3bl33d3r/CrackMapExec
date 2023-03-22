@@ -1,4 +1,5 @@
 import os
+import time
 
 class CMEModule:
     '''
@@ -9,7 +10,7 @@ class CMEModule:
     name = 'ntdsutil'
     description = 'Dump NTDS with ntdsutil'
     supported_protocols = ['smb']
-    opsec_safe= False
+    opsec_safe= True
     multiple_hosts = False
 
     def options(self, context, module_options):
@@ -22,7 +23,7 @@ class CMEModule:
         self.share = "ADMIN$"
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.tmp_share = self.tmp_dir.split("C:\\Windows\\")[1]
-        self.dump_location = 'ntdsutil'
+        self.dump_location = str(time.time())[:9]
         self.dir_result = 'ntdsutil'
 
         if 'DIR_RESULT' in module_options:
