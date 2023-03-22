@@ -12,6 +12,8 @@ class Context:
             setattr(self, key, value)
 
         self.db = db
+        self.log = logger
+        self.log.debug = logging.debug
         self.log_folder_path = os.path.join(os.path.expanduser('~/.cme'), 'logs')
         self.localip = None
 
