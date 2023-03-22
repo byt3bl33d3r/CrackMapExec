@@ -302,7 +302,7 @@ def main():
         if ans.lower() not in ['y', 'yes', '']:
             sys.exit(1)
 
-    if (args.ntds and not args.userntds):
+    if hasattr(args, 'ntds') and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely [Y/n] ', 'red'))
         if ans.lower() not in ['y', 'yes', '']:
             sys.exit(1)
