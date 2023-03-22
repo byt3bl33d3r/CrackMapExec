@@ -120,7 +120,7 @@ class CMEModule:
     def options(self, context, module_options):
         """
             METHOD              Method to use to dump lsass.exe with lsassy
-            RESET_DUMPED        Allows re-dumping of computers. (Default: False)
+            RESET_DUMPED        Allows re-dumping of hosts. (Default: False)
             RESET               Reset DB. (Default: False)
         """
         self.method = 'comsvcs'

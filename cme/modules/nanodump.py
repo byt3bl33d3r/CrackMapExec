@@ -171,12 +171,15 @@ class CMEModule:
                 try:
                     credentials = []
                     credz_bh = []
-                    pypy_parse = pypykatz.parse_minidump_external(dump)
+                    try:
+                        pypy_parse = pypykatz.parse_minidump_external(dump)
+                    except Exception as e:
+                        pypy_parse = None
+                        context.log.error(f'Error parsing minidump: {e}')
 
                     ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
                             'tspkg_creds']
                     for luid in pypy_parse.logon_sessions:
-
                         for ssp in ssps:
                             for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
                                 domain = getattr(cred, "domainname", None)
@@ -193,7 +196,7 @@ class CMEModule:
                                         credtype = "hash"
                                         credential = NThash
                                     context.log.highlight(domain + "\\" + username + ":" + credential)
-                                    hostid = context.db.get_computers(connection.host)[0][0]
+                                    hostid = context.db.get_hosts(connection.host)[0][0]
                                     context.db.add_credential(credtype, connection.domain, username, credential, pillaged_from=hostid)
                                     if "." not in domain and domain.upper() in connection.domain.upper():
                                         domain = connection.domain

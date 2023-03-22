@@ -13,6 +13,7 @@ from cme.loaders.module_loader import module_loader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
+from cme.paths import CME_PATH
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
@@ -29,6 +30,12 @@ import random
 import os
 import sys
 import logging
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.exc import SAWarning
+import warnings
+
+Base = declarative_base()
 
 setup_logger()
 logger = CMEAdapter()
@@ -38,6 +45,20 @@ try:
 except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     sys.exit()
+# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+warnings.filterwarnings("ignore", category=SAWarning)
+
+
+def create_db_engine(db_path):
+    db_engine = create_async_engine(
+        f"sqlite+aiosqlite:///{db_path}",
+        isolation_level="AUTOCOMMIT",
+        future=True
+    )  # can add echo=True
+    # db_engine.execution_options(isolation_level="AUTOCOMMIT")
+    # db_engine.connect().connection.text_factory = str
+    return db_engine
+
 
 async def monitor_threadpool(pool, targets):
     logging.debug('Started thread poller')
@@ -53,6 +74,7 @@ async def monitor_threadpool(pool, targets):
         except asyncio.CancelledError:
             logging.debug("Stopped thread poller")
             break
+
 
 async def run_protocol(loop, protocol_obj, args, db, target, jitter):
     try:
@@ -79,10 +101,11 @@ async def run_protocol(loop, protocol_obj, args, db, target, jitter):
     except asyncio.TimeoutError:
         logging.debug("Thread exceeded timeout")
     except asyncio.CancelledError:
-        logging.debug("Stopping thread")
+        logging.debug("Shutting down DB")
         thread.cancel()
     except sqlite3.OperationalError as e:
         logging.debug("Sqlite error - sqlite3.operationalError - {}".format(str(e)))
+
 
 async def start_threadpool(protocol_obj, args, db, targets, jitter):
     pool = ThreadPoolExecutor(max_workers=args.threads + 1)
@@ -113,10 +136,17 @@ async def start_threadpool(protocol_obj, args, db, targets, jitter):
         logger.info("Shutting down, please wait...")
         logging.debug("Cancelling scan")
     finally:
+        await asyncio.shield(db.shutdown_db())
         monitor_task.cancel()
         pool.shutdown(wait=True)
 
+
 def main():
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
+    logging.getLogger('pypsrp').setLevel(logging.CRITICAL)
+    logging.getLogger('spnego').setLevel(logging.CRITICAL)
+    logging.getLogger('sqlalchemy.pool.impl.NullPool').setLevel(logging.CRITICAL)
     first_run_setup(logger)
 
     args = gen_cli_args()
@@ -128,10 +158,8 @@ def main():
         except:
             sys.exit(1)
 
-    cme_path = os.path.expanduser('~/.cme')
-
     config = configparser.ConfigParser()
-    config.read(os.path.join(cme_path, 'cme.conf'))
+    config.read(os.path.join(CME_PATH, 'cme.conf'))
 
     module = None
     module_server = None
@@ -190,26 +218,29 @@ def main():
     if hasattr(args, 'obfs') and args.obfs:
         powershell.obfuscate_ps_scripts = True
 
+    logging.debug(f"Protocol: {args.protocol}")
     p_loader = protocol_loader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
+    logging.debug(f"Protocol Path: {protocol_path}")
     protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
+    logging.debug(f"Protocol DB Path: {protocol_db_path}")
 
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
+    logging.debug(f"Protocol Object: {protocol_object}")
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
+    logging.debug(f"Protocol DB Object: {protocol_object}")
 
-    db_path = os.path.join(cme_path, 'workspaces', current_workspace, args.protocol + '.db')
-    # set the database connection to autocommit w/ isolation level
-    db_connection = sqlite3.connect(db_path, check_same_thread=False)
-    db_connection.text_factory = str
-    db_connection.isolation_level = None
-    db = protocol_db_object(db_connection)
+    db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
+    logging.debug(f"DB Path: {db_path}")
+
+    db_engine = create_db_engine(db_path)
+
+    db = protocol_db_object(db_engine)
 
     setattr(protocol_object, 'config', config)
 
     if hasattr(args, 'module'):
-
         loader = module_loader(args, db, logger)
-
         if args.list_modules:
             modules = loader.get_modules()
 
@@ -260,7 +291,7 @@ def main():
                 module_server.start()
                 setattr(protocol_object, 'server', module_server.server)
 
-    if (args.ntds and not args.userntds):
+    if hasattr(args, 'ntds') and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely [Y/n] ', 'red'))
         if ans.lower() not in ['y', 'yes', '']:
             sys.exit(1)
@@ -274,6 +305,8 @@ def main():
     finally:
         if module_server:
             module_server.shutdown()
+        asyncio.run(db_engine.dispose())
+
 
 if __name__ == '__main__':
     main()
