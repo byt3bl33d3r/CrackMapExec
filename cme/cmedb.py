@@ -430,6 +430,7 @@ class CMEDBMenu(cmd.Cmd):
         """
         print_help(help_string)
 
+
 def create_workspace(workspace_name, p_loader, protocols):
     os.mkdir(os.path.join(WORKSPACE_DIR, workspace_name))
 
