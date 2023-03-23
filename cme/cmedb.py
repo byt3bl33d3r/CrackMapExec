@@ -51,11 +51,6 @@ def print_table(data, title=None):
     print(table.table)
     print("")
 
-
-# def do_exit():
-#     sys.exit(0)
-
-
 def write_csv(filename, headers, entries):
     """
     Writes a CSV file with the provided parameters.
@@ -421,6 +416,14 @@ class CMEDBMenu(cmd.Cmd):
         """
         print_help(help_string)
 
+    def do_exit(self, line):
+        sys.exit()
+
+    def help_exit(self):
+        help_string = """
+        Exits
+        """
+        print_help(help_string)
 
 def create_workspace(workspace_name, p_loader, protocols):
     os.mkdir(os.path.join(WORKSPACE_DIR, workspace_name))
