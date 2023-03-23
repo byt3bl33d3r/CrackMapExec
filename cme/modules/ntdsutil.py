@@ -90,7 +90,7 @@ class CMEModule:
         bootKey = localOperations.getBootKey()
         noLMHash = localOperations.checkNoLMHashPolicy()
 
-        host_id = context.db.get_computers(filterTerm=connection.host)[0][0]
+        host_id = context.db.get_hosts(filter_term=connection.host)[0][0]
 
         def add_ntds_hash(ntds_hash, host_id):
             add_ntds_hash.ntds_hashes += 1
