@@ -254,7 +254,7 @@ def main():
             sys.exit(0)
         elif args.module:
             logging.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
-            for m in args.module:
+            for m in map(str.lower, args.module):
                 if m not in modules:
                     logger.error(f"Module not found: {m}")
                     exit(1)

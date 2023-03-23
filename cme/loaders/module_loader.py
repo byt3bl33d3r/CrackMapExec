@@ -76,8 +76,11 @@ class module_loader:
                     module_path = os.path.join(path, module)
                     m = self.load_module(os.path.join(path, module))
                     if m and (self.args.protocol in m.supported_protocols):
-                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__}#'chain_support': m.chain_support}
-
+                        modules[m.name.lower()] = {
+                            'path': os.path.join(path, module),
+                            'description': m.description,
+                            'options': m.options.__doc__
+                        }  # 'chain_support': m.chain_support}
         return modules
 
     def init_module(self, module_path):
