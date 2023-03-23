@@ -298,7 +298,7 @@ def main():
                 logging.debug(f"proto object module after adding: {protocol_object.module}")
 
     if hasattr(args, 'ntds') and args.ntds and not args.userntds:
-        ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the modile -M ntdsutil [Y/n] ', 'red'))
+        ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ', 'red'))
         if ans.lower() not in ['y', 'yes', '']:
             sys.exit(1)
 
