@@ -126,17 +126,19 @@ class CMEModule:
 
                 h_out.write(bytes(chunk))
 
-
             with open(self.dir_result + machine_name + ".decode", 'rb') as dump:
                 try:
                     credentials = []
                     credz_bh = []
-                    pypy_parse = pypykatz.parse_minidump_external(dump)
+                    try:
+                        pypy_parse = pypykatz.parse_minidump_external(dump)
+                    except Exception as e:
+                        pypy_parse = None
+                        context.log.error(f'Error parsing minidump: {e}')
 
                     ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
                             'tspkg_creds']
                     for luid in pypy_parse.logon_sessions:
-
                         for ssp in ssps:
                             for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
                                 domain = getattr(cred, "domainname", None)
@@ -154,4 +156,4 @@ class CMEModule:
                     if len(credz_bh) > 0:
                         add_user_bh(credz_bh, None, context.log, connection.config)
                 except Exception as e:
-                    context.log.error('Error openning dump file', str(e))
+                    context.log.error('Error opening dump file', str(e))

@@ -106,7 +106,7 @@ class CMEModule:
 
     @staticmethod
     def save_credentials(context, connection, domain, username, password, lmhash, nthash):
-        host_id = context.db.get_computers(connection.host)[0][0]
+        host_id = context.db.get_hosts(connection.host)[0][0]
         if password is not None:
             credential_type = 'plaintext'
         else:

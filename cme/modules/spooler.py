@@ -2,17 +2,20 @@
 # -*- coding: utf-8 -*-
 
 # https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/rpcdump.py
+import logging
 from impacket.examples import logger
 from impacket import uuid, version
 from impacket.dcerpc.v5 import transport, epm
 from impacket.dcerpc.v5.rpch import RPC_PROXY_INVALID_RPC_PORT_ERR, \
     RPC_PROXY_CONN_A1_0X6BA_ERR, RPC_PROXY_CONN_A1_404_ERR, \
     RPC_PROXY_RPC_OUT_DATA_404_ERR
+from cme.protocols.smb.database import database
 
 KNOWN_PROTOCOLS = {
     135: {'bindstr': r'ncacn_ip_tcp:%s[135]'},
     445: {'bindstr': r'ncacn_np:%s[\pipe\epmapper]'},
     }
+
 
 class CMEModule:
     '''
@@ -23,7 +26,7 @@ class CMEModule:
     name = 'spooler'
     description = 'Detect if print spooler is enabled or not'
     supported_protocols = ['smb']
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -60,7 +63,7 @@ class CMEModule:
 
         # Display results.
         endpoints = {}
-        # Let's groups the UUIDS
+        # Let's group the UUIDS
         for entry in entries:
             binding = epm.PrintStringBinding(entry['tower']['Floors'])
             tmpUUID = str(entry['tower']['Floors'][0])
@@ -89,6 +92,11 @@ class CMEModule:
                     logging.debug("          %s" % binding)
                 logging.debug("")
                 context.log.highlight('Spooler service enabled')
+                try:
+                    host = context.db.get_hosts(connection.host)[0]
+                    context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, spooler=True)
+                except Exception as e:
+                    logging.debug(f"Error updating spooler status in database")
                 break
 
         if entries:
@@ -99,7 +107,6 @@ class CMEModule:
                 logging.info('Received %d endpoints.' % num)
         else:
             logging.info('No endpoints found.')
-
 
     def __fetchList(self, rpctransport):
         dce = rpctransport.get_dce_rpc()
