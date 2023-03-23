@@ -1411,7 +1411,7 @@ class smb(connection):
         self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
         file_handle = self.args.get_file[1]
         if self.args.append_host:
-            file_handle = self.args.get_file[1] + "_" + self.host
+            file_handle = self.hostname + "-" + self.args.get_file[1]
         with open(file_handle, 'wb+') as file:
             try:
                 self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
