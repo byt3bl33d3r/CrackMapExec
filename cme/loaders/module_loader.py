@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import imp
+from importlib.machinery import SourceFileLoader
 import os
 import cme
 from cme.context import Context
@@ -9,7 +9,6 @@ from cme.logger import CMEAdapter
 
 
 class module_loader:
-
     def __init__(self, args, db, logger):
         self.args = args
         self.db = db
@@ -50,7 +49,7 @@ class module_loader:
 
     def load_module(self, module_path):
         try:
-            module = imp.load_source('payload_module', module_path).CMEModule()
+            module = SourceFileLoader('payload_module', module_path).load_module().CMEModule()
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
