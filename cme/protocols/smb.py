@@ -1045,6 +1045,8 @@ class smb(connection):
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
+            except SessionError as e:
+                self.logger.error(f"Error connecting via SMB: {e}")
             except Exception as e:
                 self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
                 self.logger.info('Trying with SAMRPC protocol')
