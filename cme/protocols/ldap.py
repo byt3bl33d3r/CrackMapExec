@@ -177,29 +177,33 @@ class ldap(connection):
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={
-                                        'protocol': "SMB",
-                                        'host': self.host,
-                                        'port': "445",
-                                        'hostname': self.hostname
-                                        })
+            'protocol': "SMB",
+            'host': self.host,
+            'port': "445",
+            'hostname': self.hostname
+        })
 
     def get_ldap_info(self, host):
         try:
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
-            ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % host)
+            ldap_connection = ldap_impacket.LDAPConnection(proto + '://%s' % host)
 
-            resp = ldapConnection.search(scope=ldapasn1_impacket.Scope('baseObject'), attributes=['defaultNamingContext', 'dnsHostName'], sizeLimit=0)
+            resp = ldap_connection.search(
+                scope=ldapasn1_impacket.Scope('baseObject'),
+                attributes=['defaultNamingContext', 'dnsHostName'],
+                sizeLimit=0
+            )
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
                 target = None
-                targetDomain = None
-                baseDN = None
+                target_domain = None
+                base_dn = None
                 try:
                     for attribute in item['attributes']:
                         if str(attribute['type']) == 'defaultNamingContext':
-                            baseDN = str(attribute['vals'][0])
-                            targetDomain = sub(',DC=', '.', baseDN[baseDN.lower().find('dc='):], flags=I)[3:]
+                            base_dn = str(attribute['vals'][0])
+                            target_domain = sub(',DC=', '.', base_dn[base_dn.lower().find('dc='):], flags=I)[3:]
                         if str(attribute['type']) == 'dnsHostName':
                             target = str(attribute['vals'][0])
                 except Exception as e:
@@ -208,12 +212,12 @@ class ldap(connection):
         except OSError as e:
             return [None, None, None]
 
-        return [target, targetDomain, baseDN]
+        return [target, target_domain, base_dn]
 
     def get_os_arch(self):
         try:
-            stringBinding = r'ncacn_ip_tcp:{}[135]'.format(self.host)
-            transport = DCERPCTransportFactory(stringBinding)
+            string_binding = r'ncacn_ip_tcp:{}[135]'.format(self.host)
+            transport = DCERPCTransportFactory(string_binding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
             if self.args.kerberos:
@@ -228,7 +232,6 @@ class ldap(connection):
             else:
                 dce.disconnect()
                 return 64
-
         except Exception as e:
             logging.debug('Error retrieving os arch of {}: {}'.format(self.host, str(e)))
 
@@ -287,11 +290,10 @@ class ldap(connection):
 
             if self.args.domain:
                 self.domain = self.args.domain
-            
             if self.args.local_auth:
                 self.domain = self.hostname
 
-            #Re-connect since we logged off
+            # Re-connect since we logged off
             self.create_conn_obj()
         self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
         self.output_filename = self.output_filename.replace(":", "-")
@@ -353,20 +355,29 @@ class ldap(connection):
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
-            self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
-                                                aesKey, kdcHost=kdcHost, useCache=useCache)
+            self.ldapConnection.kerberosLogin(
+                username,
+                password,
+                domain,
+                self.lmhash,
+                self.nthash,
+                aesKey,
+                kdcHost=kdcHost,
+                useCache=useCache
+            )
 
             if self.username == '':
                 self.username = self.get_ldap_username()
 
             self.check_if_admin()
 
-            out = u'{}\\{}{} {}'.format(domain,
-                                    self.username,
-                                    # Show what was used between cleartext, nthash, aesKey and ccache
-                                    " from ccache" if useCache
-                                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}\\{}{} {}'.format(
+                domain,
+                self.username,
+                # Show what was used between cleartext, nthash, aesKey and ccache
+                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
 
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
@@ -378,28 +389,32 @@ class ldap(connection):
                 return True
         except SessionKeyDecryptionError:
             # for PRE-AUTH account
-            self.logger.error(u'{}\\{}{} {}'.format(domain,
-                                                    self.username,
-                                                    " account vulnerable to asreproast attack",
-                                                    ""),
-                                                    color='yellow')
+            self.logger.error(u'{}\\{}{} {}'.format(
+                domain,
+                self.username,
+                " account vulnerable to asreproast attack",
+                ""),
+                color='yellow'
+            )
             return False
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}{} {}'.format(self.domain,
-                                                self.username,
-                                                " from ccache" if useCache
-                                                else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                str(error)),
-                                                color='magenta' if error in ldap_error_status else 'red')
+            self.logger.error(u'{}\\{}{} {}'.format(
+                self.domain,
+                self.username,
+                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                str(error)),
+                color='magenta' if error in ldap_error_status else 'red'
+            )
             return False
         except (KeyError, KerberosException, OSError) as e:
-            self.logger.error(u'{}\\{}{} {}'.format(self.domain,
-                                                self.username,
-                                                " from ccache" if useCache
-                                                else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                str(e)),
-                                                color='red')
+            self.logger.error(u'{}\\{}{} {}'.format(
+                self.domain,
+                self.username,
+                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                str(e)),
+                color='red'
+            )
             return False
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
@@ -407,8 +422,16 @@ class ldap(connection):
                 try:
                     # Connect to LDAPS
                     self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.target, self.baseDN)
-                    self.ldapConnection.kerberosLogin(username, password, domain, self.lmhash, self.nthash,
-                                                    aesKey, kdcHost=kdcHost, useCache=useCache)
+                    self.ldapConnection.kerberosLogin(
+                        username,
+                        password,
+                        domain,
+                        self.lmhash,
+                        self.nthash,
+                        aesKey,
+                        kdcHost=kdcHost,
+                        useCache=useCache
+                    )
                 
                     if self.username == '':
                         self.username = self.get_ldap_username()
@@ -416,11 +439,12 @@ class ldap(connection):
                     self.check_if_admin()
 
                     # Prepare success credential text
-                    out = u'{}\\{}{} {}'.format(domain,
-                                            self.username,
-                                            " from ccache" if useCache
-                                            else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+                    out = u'{}\\{}{} {}'.format(
+                        domain,
+                        self.username,
+                        " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    )
                     
                     if self.username == '':
                         self.username = self.get_ldap_username()
@@ -428,9 +452,11 @@ class ldap(connection):
                     self.check_if_admin()
 
                     # Prepare success credential text
-                    out = u'{}\\{} {}'.format(domain,
-                                            self.username,
-                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+                    out = u'{}\\{} {}'.format(
+                        domain,
+                        self.username,
+                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    )
                     
                     self.logger.extra['protocol'] = "LDAPS"
                     self.logger.extra['port'] = "636"
@@ -442,29 +468,33 @@ class ldap(connection):
                         return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
-                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
-                                                    self.username, 
-                                                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if errorCode in ldap_error_status else 'red')
+                    self.logger.error(u'{}\\{}:{} {}'.format(
+                        self.domain,
+                        self.username,
+                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                        ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                        color='magenta' if errorCode in ldap_error_status else 'red'
+                    )
                     return False
                 except SessionError as e:
                     error, desc = e.getErrorString()
-                    self.logger.error(u'{}\\{}{} {}'.format(self.domain,
-                                                        self.username,
-                                                        " from ccache" if useCache
-                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                        str(error)),
-                                                        color='magenta' if error in ldap_error_status else 'red')
+                    self.logger.error(u'{}\\{}{} {}'.format(
+                        self.domain,
+                        self.username,
+                        " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                        str(error)),
+                        color='magenta' if error in ldap_error_status else 'red'
+                    )
                     return False
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(u'{}\\{}{} {}'.format(self.domain,
-                                                 self.username,
-                                                 " from ccache" if useCache
-                                                 else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if errorCode in ldap_error_status else 'red')
+                self.logger.error(u'{}\\{}{} {}'.format(
+                    self.domain,
+                    self.username,
+                    " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                    color='magenta' if errorCode in ldap_error_status else 'red'
+                )
                 return False
 
     def plaintext_login(self, domain, username, password):
@@ -488,10 +518,12 @@ class ldap(connection):
             self.check_if_admin()
 
             # Prepare success credential text
-            out = u'{}\\{}:{} {}'.format(domain,
-                                     self.username,
-                                     self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}\\{}:{} {}'.format(
+                domain,
+                self.username,
+                self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
 
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
@@ -512,10 +544,12 @@ class ldap(connection):
                     self.check_if_admin()
 
                     # Prepare success credential text
-                    out = u'{}\\{}:{} {}'.format(domain,
-                                             self.username,
-                                             self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                             highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+                    out = u'{}\\{}:{} {}'.format(
+                        domain,
+                        self.username,
+                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    )
                     self.logger.extra['protocol'] = "LDAPS"
                     self.logger.extra['port'] = "636"
                     self.logger.success(out)
@@ -526,53 +560,60 @@ class ldap(connection):
                         return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
-                    self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
-                                                    self.username, 
-                                                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                    color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
+                    self.logger.error(u'{}\\{}:{} {}'.format(
+                        self.domain,
+                        self.username,
+                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                        ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                        color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red'
+                    )
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
-                                                 self.username, 
-                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
-                                                 color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red')
+                self.logger.error(u'{}\\{}:{} {}'.format(
+                    self.domain,
+                    self.username,
+                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                    ldap_error_status[errorCode] if errorCode in ldap_error_status else ''),
+                    color='magenta' if (errorCode in ldap_error_status and errorCode != 1) else 'red'
+                )
             return False
 
         except OSError as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(self.domain, 
-                                                 self.username, 
-                                                 self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 "Error connecting to the domain, are you sure LDAP service is running on the target ?"))
+            self.logger.error(u'{}\\{}:{} {}'.format(
+                self.domain,
+                self.username,
+                self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                "Error connecting to the domain, are you sure LDAP service is running on the target ?")
+            )
             return False
-
 
     def hash_login(self, domain, username, ntlm_hash):
         self.logger.extra['protocol'] = "LDAP"
         self.logger.extra['port'] = "389"
-        lmhash = ''
-        nthash = ''
+        lmhash = ""
+        nthash = ""
 
-        #This checks to see if we didn't provide the LM Hash
+        # This checks to see if we didn't provide the LM Hash
         if ntlm_hash.find(':') != -1:
             lmhash, nthash = ntlm_hash.split(':')
         else:
             nthash = ntlm_hash
 
         self.hash = ntlm_hash
-        if lmhash: self.lmhash = lmhash
-        if nthash: self.nthash = nthash
+        if lmhash:
+            self.lmhash = lmhash
+        if nthash:
+            self.nthash = nthash
 
         self.username = username
         self.domain = domain
 
         if self.hash == '' and self.args.asreproast:
-            hash_TGT = KerberosAttacks(self).getTGT_asroast(self.username)
-            if hash_TGT:
-                self.logger.highlight(u'{}'.format(hash_TGT))
+            hash_tgt = KerberosAttacks(self).getTGT_asroast(self.username)
+            if hash_tgt:
+                self.logger.highlight(u'{}'.format(hash_tgt))
                 with open(self.args.asreproast, 'a+') as hash_asreproast:
-                    hash_asreproast.write(hash_TGT + '\n')
+                    hash_asreproast.write(hash_tgt + '\n')
             return False
 
         try:
@@ -583,10 +624,12 @@ class ldap(connection):
             self.check_if_admin()
             
             # Prepare success credential text
-            out = u'{}\\{}:{} {}'.format(domain,
-                                    self.username,
-                                    self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}\\{}:{} {}'.format(
+                domain,
+                self.username,
+                self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
             self.logger.success(out)
