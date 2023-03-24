@@ -1,15 +1,7 @@
 import argparse
 import os
 import subprocess
-from time import sleep
 from rich.console import Console
-
-# TODO IN ARG PARSE
-IP = "192.168.8.96"
-USER = 'Administrator'
-PASSWORD = "-p Passw0rd\!"
-# PASSWORD = "-H 23C36EF176F50F9483DCE5068ED64161"
-KERBEROS = ""
 
 
 def get_cli_args():
