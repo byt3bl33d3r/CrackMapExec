@@ -1360,13 +1360,24 @@ class smb(connection):
         # Want fragmentation? Uncomment next line
         # dce.set_max_fragment_size(32)
 
-        self.logger.success('Brute forcing RIDs')
+        self.logger.info('Brute forcing RIDs (no results may indicate an access error (check with --verbose)')
         dce.bind(lsat.MSRPC_UUID_LSAT)
-        resp = lsad.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
+        try:
+            resp = lsad.hLsarOpenPolicy2(
+                dce,
+                MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
+            )
+        except lsad.DCERPCSessionError as e:
+            logging.debug(f"Error connecting: {e}")
+            return entries
+
         policy_handle = resp['PolicyHandle']
 
-        resp = lsad.hLsarQueryInformationPolicy2(dce, policy_handle,
-                                                 lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation)
+        resp = lsad.hLsarQueryInformationPolicy2(
+            dce,
+            policy_handle,
+            lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation
+        )
 
         domain_sid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
 
