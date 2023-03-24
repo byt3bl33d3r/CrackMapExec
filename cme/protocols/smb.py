@@ -71,7 +71,10 @@ smb_error_status = [
 
 def get_error_string(exception):
     if hasattr(exception, 'getErrorString'):
-        es = exception.getErrorString()
+        try:
+            es = exception.getErrorString()
+        except KeyError:
+            return f"Could not get nt error code {exception.getErrorCode()} from impacket: {exception}"
         if type(es) is tuple:
             return es[0]
         else:
@@ -865,6 +868,8 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
+        permissions = []
+
         try:
             self.logger.debug(f"domain: {self.domain}")
             user_id = self.db.get_user(
@@ -875,64 +880,68 @@ class smb(connection):
             error = get_error_string(e)
             self.logger.error(f"Error getting user: {error}")
             pass
-        permissions = []
 
         try:
-            for share in self.conn.listShares():
-                share_name = share['shi1_netname'][:-1]
-                share_remark = share['shi1_remark'][:-1]
-                share_info = {
-                    'name': share_name,
-                    'remark': share_remark,
-                    'access': []
-                }
-                read = False
-                write = False
-                try:
-                    self.conn.listPath(share_name, '*')
-                    read = True
-                    share_info['access'].append('READ')
-                except SessionError as e:
-                    error = get_error_string(e)
-                    logging.debug(f"Error checking READ access on share: {error}")
-                    pass
-
-                try:
-                    self.conn.createDirectory(share_name, temp_dir)
-                    self.conn.deleteDirectory(share_name, temp_dir)
-                    write = True
-                    share_info['access'].append('WRITE')
-                except SessionError as e:
-                    error = get_error_string(e)
-                    logging.debug(f"Error checking WRITE access on share: {error}")
-                    pass
-
-                permissions.append(share_info)
-
-                if share_name != "IPC$":
-                    try:
-                        # TODO: check if this already exists in DB before adding
-                        self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
-                    except Exception as e:
-                        error = get_error_string(e)
-                        logging.debug(f"Error adding share: {error}")
-                        pass
-
-            self.logger.success('Enumerated shares')
-            self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
-            self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
-            for share in permissions:
-                name = share['name']
-                remark = share['remark']
-                perms = share['access']
-
-                if self.args.filter_shares and self.args.filter_shares != perms:
-                    continue
-                self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+            shares = self.conn.listShares()
+            logging.debug(f"Shares returned: {shares}")
+        except SessionError as e:
+            logging.debug(f'Error enumerating shares: {get_error_string(e)}')
+            return permissions
         except Exception as e:
-            error = get_error_string(e)
-            logging.debug(f'Error enumerating shares: {error}')
+            logging.debug(f'Error enumerating shares: {e}')
+            return permissions
 
+        for share in shares:
+            share_name = share['shi1_netname'][:-1]
+            share_remark = share['shi1_remark'][:-1]
+            share_info = {
+                'name': share_name,
+                'remark': share_remark,
+                'access': []
+            }
+            read = False
+            write = False
+            try:
+                self.conn.listPath(share_name, '*')
+                read = True
+                share_info['access'].append('READ')
+            except SessionError as e:
+                error = get_error_string(e)
+                logging.debug(f"Error checking READ access on share: {error}")
+                pass
+
+            try:
+                self.conn.createDirectory(share_name, temp_dir)
+                self.conn.deleteDirectory(share_name, temp_dir)
+                write = True
+                share_info['access'].append('WRITE')
+            except SessionError as e:
+                error = get_error_string(e)
+                logging.debug(f"Error checking WRITE access on share: {error}")
+                pass
+
+            permissions.append(share_info)
+
+            if share_name != "IPC$":
+                try:
+                    # TODO: check if this already exists in DB before adding
+                    self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
+                except Exception as e:
+                    error = get_error_string(e)
+                    logging.debug(f"Error adding share: {error}")
+                    pass
+
+        self.logger.success('Enumerated shares')
+        self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
+        self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
+        for share in permissions:
+            name = share['name']
+            remark = share['remark']
+            perms = share['access']
+
+            if self.args.filter_shares and self.args.filter_shares != perms:
+                continue
+            self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         return permissions
 
     def get_dc_ips(self):
