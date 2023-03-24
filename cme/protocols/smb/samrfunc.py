@@ -25,7 +25,7 @@ class SamrFunc:
         self.lmhash = ''
         self.nthash = ''
         self.aesKey = None,
-        self.doKerberos = connection.Kerberos
+        self.doKerberos = connection.kerberos
 
         if self.hash is not None:
             if self.hash.find(':') != -1:
@@ -139,11 +139,22 @@ class SAMRQuery:
         except impacket.nmb.NetBIOSError as e:
             logging.error(f"NetBIOSError on Connection: {e}")
             return
+        except impacket.smbconnection.SessionError as e:
+            logging.error(f"SessionError on Connection: {e}")
+            return
         return dce
 
     def get_server_handle(self):
-        resp = samr.hSamrConnect(self.dce)
-        return resp['ServerHandle']
+        if self.dce:
+            try:
+                resp = samr.hSamrConnect(self.dce)
+            except samr.DCERPCException as e:
+                logging.debug(f"Error while connecting with Samr: {e}")
+                return None
+            return resp['ServerHandle']
+        else:
+            logging.debug(f"Error creating Samr handle")
+            return
 
     def get_domains(self):
         resp = samr.hSamrEnumerateDomainsInSamServer(self.dce, self.server_handle)
@@ -220,7 +231,7 @@ class LSAQuery:
             dce.bind(lsat.MSRPC_UUID_LSAT)
         except impacket.nmb.NetBIOSError as e:
             self.logger.error(f"NetBIOSError on Connection: {e}")
-            return
+            return None
         return dce
 
     def get_policy_handle(self):
