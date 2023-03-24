@@ -190,10 +190,16 @@ class ldap(connection):
         try:
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldap_url = f"{proto}://{host}"
+            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [0]")
             try:
                 ldap_connection = ldap_impacket.LDAPConnection(ldap_url)
             except SysCallError as e:
-                logging.debug(f"LDAP(s) connection to {ldap_url} failed: {e}")
+                if proto == "ldaps":
+                    logging.debug(f"LDAPs connection to {ldap_url} failed - {e}")
+                    # https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/enable-ldap-over-ssl-3rd-certification-authority
+                    logging.debug(f"Even if the port is open, LDAPS may not be configured")
+                else:
+                    logging.debug(f"LDAP connection to {ldap_url} failed: {e}")
                 return [None, None, None]
 
             resp = ldap_connection.search(
@@ -324,7 +330,7 @@ class ldap(connection):
             # self.logger.info(self.endpoint)
         return True
 
-    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
         logging.getLogger("impacket").disabled = True
         self.username = username
         self.password = password
@@ -363,7 +369,9 @@ class ldap(connection):
         try:
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
-            self.ldapConnection = ldap_impacket.LDAPConnection(proto + '://%s' % self.target, self.baseDN)
+            ldap_url = f"{proto}://{self.target}"
+            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [1]")
+            self.ldapConnection = ldap_impacket.LDAPConnection(ldap_url, self.baseDN)
             self.ldapConnection.kerberosLogin(
                 username,
                 password,
@@ -430,7 +438,9 @@ class ldap(connection):
                 # We need to try SSL
                 try:
                     # Connect to LDAPS
-                    self.ldapConnection = ldap_impacket.LDAPConnection('ldaps://%s' % self.target, self.baseDN)
+                    ldaps_url = f"ldaps://{self.target}"
+                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN} [2]")
+                    self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.kerberosLogin(
                         username,
                         password,
@@ -523,7 +533,7 @@ class ldap(connection):
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldap_url = f"{proto}://{self.target}"
-            logging.debug(f"Connecting to {ldap_url} - {self.baseDN}")
+            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [3]")
             self.ldapConnection = ldap_impacket.LDAPConnection(ldap_url, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -550,7 +560,7 @@ class ldap(connection):
                 try:
                     # Connect to LDAPS
                     ldaps_url = f"{proto}://{self.target}"
-                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN}")
+                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN} [4]")
                     self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.check_if_admin()
