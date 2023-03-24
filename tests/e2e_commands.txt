@@ -42,6 +42,7 @@ crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M uac
 crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M webdav
 crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M wifi
 crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M winscp
+crackmapexec smb TARGET -u USER -p PASSWORD KERBEROS -M spooler -M petitpotam -M zerologon -M nopac -M dfscoerce -M enum_av -M enum_dns -M gpp_autologin -M gpp_password -M lsassy -M impersonate -M install_elevated -M ioxidresolver -M ms17-010 -M ntlmv1 -M runasppl -M shadowcoerce -M uac -M webdav -M wifi
 crackmapexec smb TARGET -u '' -p '' -M zerologon
 crackmapexec smb TARGET -u '' -p '' -M petitpotam
 crackmapexec ldap TARGET -u USER -p PASSWORD KERBEROS --users
