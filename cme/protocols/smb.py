@@ -885,10 +885,12 @@ class smb(connection):
             shares = self.conn.listShares()
             logging.debug(f"Shares returned: {shares}")
         except SessionError as e:
-            logging.debug(f'Error enumerating shares: {get_error_string(e)}')
+            error = get_error_string(e)
+            self.logger.error('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
             return permissions
         except Exception as e:
-            logging.debug(f'Error enumerating shares: {e}')
+            error = get_error_string(e)
+            self.logger.error('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
             return permissions
 
         for share in shares:
@@ -1362,7 +1364,6 @@ class smb(connection):
         # Want fragmentation? Uncomment next line
         # dce.set_max_fragment_size(32)
 
-        self.logger.info('Brute forcing RIDs (no results may indicate an access error (check with --verbose)')
         dce.bind(lsat.MSRPC_UUID_LSAT)
         try:
             resp = lsad.hLsarOpenPolicy2(
@@ -1370,7 +1371,7 @@ class smb(connection):
                 MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
             )
         except lsad.DCERPCSessionError as e:
-            logging.debug(f"Error connecting: {e}")
+            self.logger.error(f"Error connecting: {e}")
             return entries
 
         policy_handle = resp['PolicyHandle']
