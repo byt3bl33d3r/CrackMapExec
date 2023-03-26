@@ -5,9 +5,7 @@ from sqlalchemy import MetaData, func, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
 from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
-import asyncio
 import warnings
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
@@ -22,38 +20,15 @@ class database:
 
         self.db_engine = db_engine
         self.metadata = MetaData()
-        asyncio.run(self.reflect_tables())
-        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True, class_=AsyncSession)
+        self.reflect_tables()
+        session_factory = sessionmaker(
+            bind=self.db_engine,
+            expire_on_commit=True
+        )
         
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
         self.conn = Session()
-
-    async def shutdown_db(self):
-        try:
-            await asyncio.shield(self.conn.close())
-        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
-        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
-        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
-        except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
-
-    async def reflect_tables(self):
-        async with self.db_engine.connect() as conn:
-            try:
-                await conn.run_sync(self.metadata.reflect)
-
-                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
-                exit()
 
     @staticmethod
     def db_schema(db_conn):
@@ -84,6 +59,34 @@ class database:
             FOREIGN KEY(pillaged_from_hostid) REFERENCES hosts(id)
             )''')
 
+    def reflect_tables(self):
+        with self.db_engine.connect() as conn:
+            try:
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+            except NoInspectionAvailable:
+                print(
+                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
+                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
+                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
+                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
+                )
+                exit()
+
+    def shutdown_db(self):
+        try:
+            self.conn.close()
+        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
+        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
+        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
+        except IllegalStateChangeError as e:
+            logging.debug(f"Error while closing session db object: {e}")
+
+    def clear_database(self):
+        for table in self.metadata.sorted_tables:
+            self.conn.execute(table.delete())
+
     def add_host(self, ip, hostname, domain, os, instances):
         """
         Check if this host has already been added to the database, if not, add it in.
@@ -95,7 +98,7 @@ class database:
         q = select(self.HostsTable).filter(
             self.HostsTable.c.ip == ip
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         logging.debug(f"mssql add_host() - hosts returned: {results}")
 
         host_data = {
@@ -133,11 +136,9 @@ class database:
             index_elements=self.HostsTable.primary_key,
             set_=update_columns
         )
-        asyncio.run(
-            self.conn.execute(
-                q,
-                hosts
-            )
+        self.conn.execute(
+            q,
+            hosts
         )
 
     def add_credential(self, credtype, domain, username, password, pillaged_from=None):
@@ -164,7 +165,7 @@ class database:
             func.lower(self.UsersTable.c.username) == func.lower(username),
             func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
 
         if not results:
             user_data = {
@@ -175,13 +176,13 @@ class database:
                 "pillaged_from_hostid": pillaged_from,
             }
             q = insert(self.UsersTable).values(user_data)  # .returning(self.UsersTable.c.id)
-            asyncio.run(self.conn.execute(q)) # .first()
+            self.conn.execute(q) # .first()
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
                     q = update(self.UsersTable).values(credential_data)  # .returning(self.UsersTable.c.id)
-                    results = asyncio.run(self.conn.execute(q)) # .first()
+                    results = self.conn.execute(q) # .first()
                     # user_rowid = results.id
 
         logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
@@ -203,7 +204,7 @@ class database:
                 self.UsersTable.c.id == cred_id
             )
             del_hosts.append(q)
-        asyncio.run(self.conn.execute(q))
+        self.conn.execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
         domain = domain.split('.')[0].upper()
@@ -212,7 +213,7 @@ class database:
             q = select(self.UsersTable).filter(
                 self.UsersTable.c.id == user_id
             )
-            users = asyncio.run(self.conn.execute(q)).all()
+            users = self.conn.execute(q).all()
         else:
             q = select(self.UsersTable).filter(
                 self.UsersTable.c.credtype == credtype,
@@ -220,31 +221,35 @@ class database:
                 func.lower(self.UsersTable.c.username) == func.lower(username),
                 self.UsersTable.c.password == password
             )
-            users = asyncio.run(self.conn.execute(q)).all()
+            users = self.conn.execute(q).all()
         logging.debug(f"Users: {users}")
 
         like_term = func.lower(f"%{host}%")
         q = q.filter(
             self.HostsTable.c.ip.like(like_term)
         )
-        hosts = asyncio.run(self.conn.execute(q)).all()
+        hosts = self.conn.execute(q).all()
         logging.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
             for user, host in zip(users, hosts):
                 user_id = user[0]
                 host_id = host[0]
+                link = {
+                    "userid": user_id,
+                    "hostid": host_id
+                }
 
                 q = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.hostid == host_id
                 )
-                links = asyncio.run(self.conn.execute(q)).all()
+                links = self.conn.execute(q).all()
 
                 if not links:
-                    asyncio.run(self.conn.execute(
+                    self.conn.execute(
                         insert(self.AdminRelationsTable).values(link)
-                    ))
+                    )
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
@@ -258,7 +263,7 @@ class database:
         else:
             q = select(self.AdminRelationsTable)
 
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def remove_admin_relation(self, user_ids=None, host_ids=None):
@@ -273,7 +278,7 @@ class database:
                 q = q.filter(
                     self.AdminRelationsTable.c.hostid == host_id
                 )
-        asyncio.run(self.conn.execute(q))
+        self.conn.execute(q)
 
     def is_credential_valid(self, credential_id):
         """
@@ -283,7 +288,7 @@ class database:
             self.UsersTable.c.id == credential_id,
             self.UsersTable.c.password is not None
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
     def get_credentials(self, filter_term=None, cred_type=None):
@@ -309,7 +314,7 @@ class database:
         else:
             q = select(self.UsersTable)
 
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def is_host_valid(self, host_id):
@@ -319,7 +324,7 @@ class database:
         q = select(self.HostsTable).filter(
             self.HostsTable.c.id == host_id
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
     def get_hosts(self, filter_term=None, domain=None):
@@ -333,7 +338,7 @@ class database:
             q = q.filter(
                 self.HostsTable.c.id == filter_term
             )
-            results = asyncio.run(self.conn.execute(q)).first()
+            results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         # if we're filtering by domain controllers
@@ -353,9 +358,6 @@ class database:
                 func.lower(self.HostsTable.c.hostname).like(like_term)
             )
 
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
-    def clear_database(self):
-        for table in self.metadata.sorted_tables:
-            asyncio.run(self.conn.execute(table.delete()))

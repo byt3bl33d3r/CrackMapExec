@@ -47,7 +47,9 @@ def run_e2e_tests():
     result = subprocess.Popen("crackmapexec --version", shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     version = result.communicate()[0].decode().strip()
 
-    with console.status(f"[bold green] :brain: Running test commands for cme v{version}...") as status:
+    with console.status(f"[bold green] :brain: Running {len(tasks)} test commands for cme v{version}...") as status:
+        passed = 0
+        failed = 0
         while tasks:
             task = tasks.pop(0)
             result = subprocess.Popen(str(task), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -56,8 +58,11 @@ def run_e2e_tests():
             return_code = result.returncode
             if return_code == 0:
                 console.log(f"{task.strip()} :heavy_check_mark:")
+                passed += 1
             else:
                 console.log(f"[bold red]{task.strip()} :cross_mark:[/]")
+                failed += 1
+        console.log(f"Tests [bold green] Passed: {passed} [bold red] Failed: {failed}")
 
 
 if __name__ == "__main__":

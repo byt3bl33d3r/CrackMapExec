@@ -2,11 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import random
 import socket
 from os.path import isfile
 from threading import BoundedSemaphore
 from socket import gethostbyname
 from functools import wraps
+from time import sleep
+
 from cme.logger import CMEAdapter
 from cme.context import Context
 from cme.helpers.logger import write_log
@@ -68,6 +71,11 @@ class connection(object):
         except Exception as e:
             logging.debug('Error resolving hostname {}: {}'.format(self.hostname, e))
             return
+
+        if args.jitter:
+            value = random.choice(range(args.jitter[0], args.jitter[1]))
+            logging.debug(f"Doin' the jitterbug for {value} second(s)")
+            sleep(value)
 
         self.proto_flow()
 

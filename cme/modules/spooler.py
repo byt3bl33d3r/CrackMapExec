@@ -102,11 +102,11 @@ class CMEModule:
         if entries:
             num = len(entries)
             if 1 == num:
-                logging.info('Received one endpoint.')
+                logging.debug(f"[Spooler] Received one endpoint")
             else:
-                logging.info('Received %d endpoints.' % num)
+                logging.debug(f"[Spooler] Received {num} endpoints")
         else:
-            logging.info('No endpoints found.')
+            logging.debug(f"[Spooler] No endpoints found")
 
     def __fetchList(self, rpctransport):
         dce = rpctransport.get_dce_rpc()
