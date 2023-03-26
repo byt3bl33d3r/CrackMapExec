@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import types
 from importlib.machinery import SourceFileLoader
 import os
 import sys
@@ -56,7 +56,9 @@ class module_loader:
 
     def load_module(self, module_path):
         try:
-            module = SourceFileLoader('payload_module', module_path).load_module().CMEModule()
+            loader = SourceFileLoader('protocol', module_path)
+            module = types.ModuleType(loader.name)
+            loader.exec_module(mod)
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
