@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import imp
 import types
 from importlib.machinery import SourceFileLoader
 import os
@@ -7,6 +8,7 @@ import sys
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
+
 
 class module_loader:
     def __init__(self, args, db, logger):
@@ -21,44 +23,36 @@ class module_loader:
         if not hasattr(module, 'name'):
             self.logger.error('{} missing the name variable'.format(module_path))
             module_error = True
-
         elif not hasattr(module, 'description'):
             self.logger.error('{} missing the description variable'.format(module_path))
             module_error = True
-
-        #elif not hasattr(module, 'chain_support'):
-        #    self.logger.error('{} missing the chain_support variable'.format(module_path))
-        #    module_error = True
-
         elif not hasattr(module, 'supported_protocols'):
             self.logger.error('{} missing the supported_protocols variable'.format(module_path))
             module_error = True
-
         elif not hasattr(module, 'opsec_safe'):
             self.logger.error('{} missing the opsec_safe variable'.format(module_path))
             module_error = True
-
         elif not hasattr(module, 'multiple_hosts'):
             self.logger.error('{} missing the multiple_hosts variable'.format(module_path))
             module_error = True
-
         elif not hasattr(module, 'options'):
             self.logger.error('{} missing the options function'.format(module_path))
             module_error = True
-
         elif not hasattr(module, 'on_login') and not (module, 'on_admin_login'):
             self.logger.error('{} missing the on_login/on_admin_login function(s)'.format(module_path))
             module_error = True
+        # elif not hasattr(module, 'chain_support'):
+        #    self.logger.error('{} missing the chain_support variable'.format(module_path))
+        #    module_error = True
 
-        if module_error: return False
+        if module_error:
+            return False
 
         return True
 
     def load_module(self, module_path):
         try:
-            loader = SourceFileLoader('protocol', module_path)
-            module = types.ModuleType(loader.name)
-            loader.exec_module(mod)
+            module = imp.load_source('payload_module', module_path).CMEModule()
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
