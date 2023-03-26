@@ -1177,7 +1177,7 @@ class smb(connection):
 
     def users(self):
         users = []
-        self.logger.info('Trying with SAMRPC protocol')
+        self.logger.info('Trying do dump local users with SAMRPC protocol')
         users = UserSamrDump(self).dump()
         return users
 
