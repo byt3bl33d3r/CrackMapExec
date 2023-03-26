@@ -15,14 +15,6 @@ from sqlalchemy.dialects.sqlite import Insert
 
 
 @pytest.fixture(scope="session")
-<<<<<<< HEAD
-def event_loop():
-    return asyncio.get_event_loop()
-
-
-@pytest_asyncio.fixture(scope="session")
-=======
->>>>>>> tests_marshall
 def db_engine():
     db_path = os.path.join(WS_PATH, "test/smb.db")
     db_engine = create_engine(
