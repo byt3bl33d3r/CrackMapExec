@@ -39,6 +39,7 @@ def gen_cli_args():
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
     parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='sets a random delay between each connection (default: None)')
+    parser.add_argument("--progress", default=True, action='store_false', help='display progress bar during scan')
     parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
     parser.add_argument("--version", action='store_true', help="Display CME version")

@@ -8,12 +8,12 @@ import sqlite3
 import sys
 import os
 import requests
+from sqlalchemy import create_engine
 from terminaltables import AsciiTable
 import configparser
 from cme.loaders.protocol_loader import protocol_loader
 from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
 from requests import ConnectionError
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import SAWarning
 import asyncio
 import csv
@@ -33,13 +33,11 @@ class UserExitedProto(Exception):
 
 
 def create_db_engine(db_path):
-    db_engine = create_async_engine(
-        f"sqlite+aiosqlite:///{db_path}",
+    db_engine = create_engine(
+        f"sqlite:///{db_path}",
         isolation_level="AUTOCOMMIT",
         future=True
-    )  # can add echo=True
-    # db_engine.execution_options(isolation_level="AUTOCOMMIT")
-    # db_engine.connect().connection.text_factory = str
+    )
     return db_engine
 
 
@@ -50,6 +48,7 @@ def print_table(data, title=None):
         table.title = title
     print(table.table)
     print("")
+
 
 def write_csv(filename, headers, entries):
     """
@@ -106,7 +105,7 @@ class DatabaseNavigator(cmd.Cmd):
         self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
 
     def do_exit(self, line):
-        asyncio.run(self.db.shutdown_db())
+        self.db.shutdown_db()
         sys.exit()
 
     def help_exit(self):
