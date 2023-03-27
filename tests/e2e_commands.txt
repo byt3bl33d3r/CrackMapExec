@@ -55,7 +55,6 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M ntlmv1
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M petitpotam
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M procdump
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdcman
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=enable
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=disable
