@@ -21,7 +21,7 @@ class CMEModule:
     description = "Module to check if the DC is vulnerable to PetitPotam, credit to @topotam"
     supported_protocols = ['smb']
     opsec_safe = True
-    multiple_hosts = False
+    multiple_hosts = True
 
     def options(self, context, module_options):
         '''
