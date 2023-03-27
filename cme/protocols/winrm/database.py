@@ -19,11 +19,10 @@ class database:
 
         self.db_engine = db_engine
         self.metadata = MetaData()
-        asyncio.run(self.reflect_tables())
+        self.reflect_tables()
         session_factory = sessionmaker(
             bind=self.db_engine,
-            expire_on_commit=True,
-            class_=AsyncSession
+            expire_on_commit=True
         )
 
         Session = scoped_session(session_factory)
@@ -64,11 +63,9 @@ class database:
             FOREIGN KEY(hostid) REFERENCES hosts(id)
         )''')
 
-    async def reflect_tables(self):
-        async with self.db_engine.connect() as conn:
+    def reflect_tables(self):
+        with self.db_engine.connect() as conn:
             try:
-                await conn.run_sync(self.metadata.reflect)
-
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
                 self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
                 self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
@@ -82,9 +79,9 @@ class database:
                 )
                 exit()
 
-    async def shutdown_db(self):
+    def shutdown_db(self):
         try:
-            await asyncio.shield(self.conn.close())
+            self.conn.close()
         # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
@@ -93,7 +90,7 @@ class database:
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
-            asyncio.run(self.conn.execute(table.delete()))
+            self.conn.execute(table.delete())
 
     def add_host(self, ip, port, hostname, domain, os=None):
         """
@@ -106,7 +103,7 @@ class database:
         q = select(self.HostsTable).filter(
             self.HostsTable.c.ip == ip
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         logging.debug(f"smb add_host() - hosts returned: {results}")
 
         # create new host
@@ -146,11 +143,9 @@ class database:
             index_elements=self.HostsTable.primary_key,
             set_=update_columns
         )
-        asyncio.run(
-            self.conn.execute(
-                q,
-                hosts
-            )
+        self.conn.execute(
+            q,
+            hosts
         )
 
     def add_credential(self, credtype, domain, username, password, pillaged_from=None):
@@ -177,7 +172,7 @@ class database:
             func.lower(self.UsersTable.c.username) == func.lower(username),
             func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
 
         # add new credential
         if not results:
@@ -216,12 +211,10 @@ class database:
             index_elements=self.UsersTable.primary_key,
             set_=update_columns_users
         )
-        asyncio.run(
-            self.conn.execute(
-                q_users,
-                credentials
-            )
-        )  # .scalar()
+        self.conn.execute(
+            q_users,
+            credentials
+        ) # .scalar()
         # return user_ids
 
     def remove_credentials(self, creds_id):
@@ -234,7 +227,7 @@ class database:
                 self.UsersTable.c.id == cred_id
             )
             del_hosts.append(q)
-        asyncio.run(self.conn.execute(q))
+        self.conn.execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
         domain = domain.split('.')[0]
@@ -252,7 +245,7 @@ class database:
                 func.lower(self.UsersTable.c.username) == func.lower(username),
                 self.UsersTable.c.password == password
             )
-        users = asyncio.run(self.conn.execute(creds_q))
+        users = self.conn.execute(creds_q)
         hosts = self.get_hosts(host)
 
         if users and hosts:
@@ -267,17 +260,17 @@ class database:
                     self.AdminRelationsTable.c.userid == user_id,
                     self.AdminRelationsTable.c.hostid == host_id
                 )
-                links = asyncio.run(self.conn.execute(admin_relations_select)).all()
+                links = self.conn.execute(admin_relations_select).all()
 
                 if not links:
                     add_links.append(link)
 
         admin_relations_insert = Insert(self.AdminRelationsTable)
 
-        asyncio.run(self.conn.execute(
+        self.conn.execute(
             admin_relations_insert,
             add_links
-        ))
+        )
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
@@ -291,7 +284,7 @@ class database:
         else:
             q = select(self.AdminRelationsTable)
 
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def remove_admin_relation(self, user_ids=None, host_ids=None):
@@ -306,7 +299,7 @@ class database:
                 q = q.filter(
                     self.AdminRelationsTable.c.hostid == host_id
                 )
-        asyncio.run(self.conn.execute(q))
+        self.conn.execute(q)
 
     def is_credential_valid(self, credential_id):
         """
@@ -316,7 +309,7 @@ class database:
             self.UsersTable.c.id == credential_id,
             self.UsersTable.c.password is not None
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
     def get_credentials(self, filter_term=None, cred_type=None):
@@ -342,20 +335,20 @@ class database:
         else:
             q = select(self.UsersTable)
 
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def is_credential_local(self, credential_id):
         q = select(self.UsersTable.c.domain).filter(
             self.UsersTable.c.id == credential_id
         )
-        user_domain = asyncio.run(self.conn.execute(q)).all()
+        user_domain = self.conn.execute(q).all()
 
         if user_domain:
             q = select(self.HostsTable).filter(
                 func.lower(self.HostsTable.c.id) == func.lower(user_domain)
             )
-            results = asyncio.run(self.conn.execute(q)).all()
+            results = self.conn.execute(q).all()
 
             return len(results) > 0
 
@@ -366,7 +359,7 @@ class database:
         q = select(self.HostsTable).filter(
             self.HostsTable.c.id == host_id
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
     def get_hosts(self, filter_term=None):
@@ -380,7 +373,7 @@ class database:
             q = q.filter(
                 self.HostsTable.c.id == filter_term
             )
-            results = asyncio.run(self.conn.execute(q)).first()
+            results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         # if we're filtering by domain controllers
@@ -397,7 +390,7 @@ class database:
                 self.HostsTable.c.ip.like(like_term) |
                 func.lower(self.HostsTable.c.hostname).like(like_term)
             )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         logging.debug(f"winrm get_hosts() - results: {results}")
         return results
 
@@ -408,7 +401,7 @@ class database:
         q = select(self.UsersTable).filter(
             self.UsersTable.c.id == user_id
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
     def get_users(self, filter_term=None):
@@ -424,7 +417,7 @@ class database:
             q = q.filter(
                 func.lower(self.UsersTable.c.username).like(like_term)
             )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def get_user(self, domain, username):
@@ -432,7 +425,7 @@ class database:
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
             func.lower(self.UsersTable.c.username) == func.lower(username)
         )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def add_loggedin_relation(self, user_id, host_id):
@@ -440,7 +433,7 @@ class database:
             self.LoggedinRelationsTable.c.userid == user_id,
             self.LoggedinRelationsTable.c.hostid == host_id
         )
-        results = asyncio.run(self.conn.execute(relation_query)).all()
+        results = self.conn.execute(relation_query).all()
 
         # only add one if one doesn't already exist
         if not results:
@@ -451,11 +444,10 @@ class database:
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
                 q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
-                asyncio.run(
-                    self.conn.execute(
-                        q,
-                        [relation]
-                    )
+                
+                self.conn.execute(
+                    q,
+                    [relation]
                 )  # .scalar()
                 # return inserted_ids
             except Exception as e:
@@ -471,7 +463,7 @@ class database:
             q = q.filter(
                 self.LoggedinRelationsTable.c.hostid == host_id
             )
-        results = asyncio.run(self.conn.execute(q)).all()
+        results = self.conn.execute(q).all()
         return results
 
     def remove_loggedin_relations(self, user_id=None, host_id=None):
@@ -484,4 +476,4 @@ class database:
             q = q.filter(
                 self.LoggedinRelationsTable.c.hostid == host_id
             )
-        asyncio.run(self.conn.execute(q))
+        self.conn.execute(q)

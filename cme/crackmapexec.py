@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import concurrent.futures
+
+import sqlalchemy
 
 from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
 from cme.helpers.logger import highlight
@@ -18,8 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
 import asyncio
-import aioconsole
-import functools
 import configparser
 import cme.helpers.powershell as powershell
 import cme
@@ -31,9 +32,9 @@ import os
 import sys
 import logging
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import SAWarning
 import warnings
+from tqdm import tqdm
 
 Base = declarative_base()
 
@@ -50,95 +51,20 @@ warnings.filterwarnings("ignore", category=SAWarning)
 
 
 def create_db_engine(db_path):
-    db_engine = create_async_engine(
-        f"sqlite+aiosqlite:///{db_path}",
+    db_engine = sqlalchemy.create_engine(
+        f"sqlite:///{db_path}",
         isolation_level="AUTOCOMMIT",
         future=True
-    )  # can add echo=True
-    # db_engine.execution_options(isolation_level="AUTOCOMMIT")
-    # db_engine.connect().connection.text_factory = str
+    )
     return db_engine
 
 
-async def monitor_threadpool(pool, targets):
-    logging.debug('Started thread poller')
-
-    while True:
-        try:
-            text = await aioconsole.ainput("")
-            if text == "":
-                pool_size = pool._work_queue.qsize()
-                finished_threads = len(targets) - pool_size
-                percentage = Decimal(finished_threads) / Decimal(len(targets)) * Decimal(100)
-                logger.info(f"completed: {percentage:.2f}% ({finished_threads}/{len(targets)})")
-        except asyncio.CancelledError:
-            logging.debug("Stopped thread poller")
-            break
-
-
-async def run_protocol(loop, protocol_obj, args, db, target, jitter):
-    try:
-        if jitter:
-            value = random.choice(range(jitter[0], jitter[1]))
-            logging.debug(f"Doin' the jitterbug for {value} second(s)")
-            await asyncio.sleep(value)
-
-        thread = loop.run_in_executor(
-            None,
-            functools.partial(
-                protocol_obj,
-                args,
-                db,
-                str(target)
-            )
-        )
-
-        await asyncio.wait_for(
-            thread,
-            timeout=args.timeout
-        )
-
-    except asyncio.TimeoutError:
-        logging.debug("Thread exceeded timeout")
-    except asyncio.CancelledError:
-        logging.debug("Shutting down DB")
-        thread.cancel()
-    except sqlite3.OperationalError as e:
-        logging.debug("Sqlite error - sqlite3.operationalError - {}".format(str(e)))
-
-
-async def start_threadpool(protocol_obj, args, db, targets, jitter):
-    pool = ThreadPoolExecutor(max_workers=args.threads + 1)
-    loop = asyncio.get_running_loop()
-    loop.set_default_executor(pool)
-
-    monitor_task = asyncio.create_task(
-        monitor_threadpool(pool, targets)
-    )
-
-    jobs = [
-        run_protocol(
-            loop,
-            protocol_obj,
-            args,
-            db,
-            target,
-            jitter
-        )
-        for target in targets
-    ]
-
-    try:
-        logging.debug("Running")
-        await asyncio.gather(*jobs)
-    except asyncio.CancelledError:
-        print('\n')
-        logger.info("Shutting down, please wait...")
-        logging.debug("Cancelling scan")
-    finally:
-        await asyncio.shield(db.shutdown_db())
-        monitor_task.cancel()
-        pool.shutdown(wait=True)
+async def start_scan(protocol_obj, args, db, targets):
+    with tqdm(total=len(targets), disable=args.progress) as pbar:
+        with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
+            futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
+            for future in concurrent.futures.as_completed(futures):
+                pbar.update(1)
 
 
 def main():
@@ -164,7 +90,6 @@ def main():
     module = None
     module_server = None
     targets = []
-    jitter = None
     server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
     current_workspace = config.get('CME', 'workspace')
     if config.get('CME', 'log_mode') != "False":
@@ -178,9 +103,9 @@ def main():
     if args.jitter:
         if '-' in args.jitter:
             start, end = args.jitter.split('-')
-            jitter = (int(start), int(end))
+            args.jitter = (int(start), int(end))
         else:
-            jitter = (0, int(args.jitter))
+            args.jitter = (0, int(args.jitter))
 
     if hasattr(args, 'cred_id') and args.cred_id:
         for cred_id in args.cred_id:
@@ -228,7 +153,7 @@ def main():
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
     logging.debug(f"Protocol Object: {protocol_object}")
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
-    logging.debug(f"Protocol DB Object: {protocol_object}")
+    logging.debug(f"Protocol DB Object: {protocol_db_object}")
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
     logging.debug(f"DB Path: {db_path}")
@@ -298,14 +223,14 @@ def main():
 
     try:
         asyncio.run(
-            start_threadpool(protocol_object, args, db, targets, jitter)
+            start_scan(protocol_object, args, db, targets)
         )
     except KeyboardInterrupt:
         logging.debug("Got keyboard interrupt")
     finally:
         if module_server:
             module_server.shutdown()
-        asyncio.run(db_engine.dispose())
+        db_engine.dispose()
 
 
 if __name__ == '__main__':

@@ -22,13 +22,10 @@ class database:
 
         self.db_engine = db_engine
         self.metadata = MetaData()
-        asyncio.run(self.reflect_tables())
-        # we don't use async_sessionmaker or async_scoped_session because when `database` is initialized,
-        # there is no running async loop
+        self.reflect_tables()
         session_factory = sessionmaker(
             bind=self.db_engine,
-            expire_on_commit=True,
-            class_=AsyncSession
+            expire_on_commit=True
         )
 
         Session = scoped_session(session_factory)
@@ -52,11 +49,9 @@ class database:
             "server_banner" text
             )''')
 
-    async def reflect_tables(self):
-        async with self.db_engine.connect() as conn:
+    def reflect_tables(self):
+        with self.db_engine.connect() as conn:
             try:
-                await conn.run_sync(self.metadata.reflect)
-
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
                 self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
             except NoInspectionAvailable:
@@ -68,9 +63,9 @@ class database:
                 )
                 exit()
 
-    async def shutdown_db(self):
+    def shutdown_db(self):
         try:
-            await asyncio.shield(self.conn.close())
+            self.conn.close()
         # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
@@ -79,4 +74,4 @@ class database:
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
-            asyncio.run(self.conn.execute(table.delete()))
+            self.conn.execute(table.delete())

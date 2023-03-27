@@ -71,7 +71,10 @@ smb_error_status = [
 
 def get_error_string(exception):
     if hasattr(exception, 'getErrorString'):
-        es = exception.getErrorString()
+        try:
+            es = exception.getErrorString()
+        except KeyError:
+            return f"Could not get nt error code {exception.getErrorCode()} from impacket: {exception}"
         if type(es) is tuple:
             return es[0]
         else:
@@ -865,6 +868,8 @@ class smb(connection):
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
+        permissions = []
+
         try:
             self.logger.debug(f"domain: {self.domain}")
             user_id = self.db.get_user(
@@ -875,64 +880,70 @@ class smb(connection):
             error = get_error_string(e)
             self.logger.error(f"Error getting user: {error}")
             pass
-        permissions = []
 
         try:
-            for share in self.conn.listShares():
-                share_name = share['shi1_netname'][:-1]
-                share_remark = share['shi1_remark'][:-1]
-                share_info = {
-                    'name': share_name,
-                    'remark': share_remark,
-                    'access': []
-                }
-                read = False
-                write = False
-                try:
-                    self.conn.listPath(share_name, '*')
-                    read = True
-                    share_info['access'].append('READ')
-                except SessionError as e:
-                    error = get_error_string(e)
-                    logging.debug(f"Error checking READ access on share: {error}")
-                    pass
-
-                try:
-                    self.conn.createDirectory(share_name, temp_dir)
-                    self.conn.deleteDirectory(share_name, temp_dir)
-                    write = True
-                    share_info['access'].append('WRITE')
-                except SessionError as e:
-                    error = get_error_string(e)
-                    logging.debug(f"Error checking WRITE access on share: {error}")
-                    pass
-
-                permissions.append(share_info)
-
-                if share_name != "IPC$":
-                    try:
-                        # TODO: check if this already exists in DB before adding
-                        self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
-                    except Exception as e:
-                        error = get_error_string(e)
-                        logging.debug(f"Error adding share: {error}")
-                        pass
-
-            self.logger.success('Enumerated shares')
-            self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
-            self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
-            for share in permissions:
-                name = share['name']
-                remark = share['remark']
-                perms = share['access']
-
-                if self.args.filter_shares and self.args.filter_shares != perms:
-                    continue
-                self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+            shares = self.conn.listShares()
+            logging.debug(f"Shares returned: {shares}")
+        except SessionError as e:
+            error = get_error_string(e)
+            self.logger.error('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
+            return permissions
         except Exception as e:
             error = get_error_string(e)
-            logging.debug(f'Error enumerating shares: {error}')
+            self.logger.error('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
+            return permissions
 
+        for share in shares:
+            share_name = share['shi1_netname'][:-1]
+            share_remark = share['shi1_remark'][:-1]
+            share_info = {
+                'name': share_name,
+                'remark': share_remark,
+                'access': []
+            }
+            read = False
+            write = False
+            try:
+                self.conn.listPath(share_name, '*')
+                read = True
+                share_info['access'].append('READ')
+            except SessionError as e:
+                error = get_error_string(e)
+                logging.debug(f"Error checking READ access on share: {error}")
+                pass
+
+            try:
+                self.conn.createDirectory(share_name, temp_dir)
+                self.conn.deleteDirectory(share_name, temp_dir)
+                write = True
+                share_info['access'].append('WRITE')
+            except SessionError as e:
+                error = get_error_string(e)
+                logging.debug(f"Error checking WRITE access on share: {error}")
+                pass
+
+            permissions.append(share_info)
+
+            if share_name != "IPC$":
+                try:
+                    # TODO: check if this already exists in DB before adding
+                    self.db.add_share(self.hostname, user_id, share_name, share_remark, read, write)
+                except Exception as e:
+                    error = get_error_string(e)
+                    logging.debug(f"Error adding share: {error}")
+                    pass
+
+        self.logger.success('Enumerated shares')
+        self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
+        self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
+        for share in permissions:
+            name = share['name']
+            remark = share['remark']
+            perms = share['access']
+
+            if self.args.filter_shares and self.args.filter_shares != perms:
+                continue
+            self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
         return permissions
 
     def get_dc_ips(self):
@@ -1036,6 +1047,8 @@ class smb(connection):
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
+            except SessionError as e:
+                self.logger.error(f"Error connecting via SMB: {e}")
             except Exception as e:
                 self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
                 self.logger.info('Trying with SAMRPC protocol')
@@ -1164,41 +1177,8 @@ class smb(connection):
 
     def users(self):
         users = []
-        for dc_ip in self.get_dc_ips():
-            try:
-                users = get_netuser(
-                    dc_ip,
-                    self.domain,
-                    self.username,
-                    password=self.password,
-                    lmhash=self.lmhash,
-                    nthash=self.nthash,
-                    queried_username=self.args.users,
-                    queried_domain='',
-                    ads_path=str(),
-                    admin_count=False,
-                    spn=False,
-                    unconstrained=False,
-                    allow_delegation=False,
-                    custom_filter=str()
-                )
-
-                self.logger.success('Enumerated domain user(s)')
-                for user in users:
-                    domain = self.domainfromdsn(user.distinguishedname)
-                    self.logger.highlight('{}\\{:<30} badpwdcount: {} desc: {}'.format(
-                        domain,
-                        user.samaccountname,
-                        getattr(user, 'badpwdcount', 0),
-                        user.description[0] if hasattr(user, 'description') else '')
-                    )
-                    # self.db.add_user(domain, user.samaccountname)
-                break
-            except Exception as e:
-                self.logger.error('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
-                self.logger.info('Trying with SAMRPC protocol')
-                users = UserSamrDump(self).dump()
-                break
+        self.logger.info('Trying do dump local users with SAMRPC protocol')
+        users = UserSamrDump(self).dump()
         return users
 
     def hosts(self):
@@ -1351,13 +1331,23 @@ class smb(connection):
         # Want fragmentation? Uncomment next line
         # dce.set_max_fragment_size(32)
 
-        self.logger.success('Brute forcing RIDs')
         dce.bind(lsat.MSRPC_UUID_LSAT)
-        resp = lsad.hLsarOpenPolicy2(dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
+        try:
+            resp = lsad.hLsarOpenPolicy2(
+                dce,
+                MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
+            )
+        except lsad.DCERPCSessionError as e:
+            self.logger.error(f"Error connecting: {e}")
+            return entries
+
         policy_handle = resp['PolicyHandle']
 
-        resp = lsad.hLsarQueryInformationPolicy2(dce, policy_handle,
-                                                 lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation)
+        resp = lsad.hLsarQueryInformationPolicy2(
+            dce,
+            policy_handle,
+            lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation
+        )
 
         domain_sid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
 
