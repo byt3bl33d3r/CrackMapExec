@@ -173,9 +173,7 @@ def main():
                 logger.info('{:<25} {}'.format(name, props['description']))
             sys.exit(0)
         elif args.module and args.show_module_options:
-            for name, props in modules.items():
-                if args.module.lower() == name.lower():
-                    logger.info('{} module options:\n{}'.format(name, props['options']))
+            logger.info(f"{args.module[0]} module options:\n{modules[args.module[0]]['options']}")
             sys.exit(0)
         elif args.module:
             logging.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
