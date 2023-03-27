@@ -31,9 +31,11 @@ def generate_commands():
 
     with open(commands_file) as file:
         for line in file:
+            if line.startswith("#"):
+                continue
             line = line.strip()
             line = line.replace("TARGET", args.target) \
-                .replace("USER", f"\"{args.username}\"") \
+                .replace("USERNAME", f"\"{args.username}\"") \
                 .replace("PASSWORD", f"\"{args.password}\"") \
                 .replace("KERBEROS", kerberos)
             lines.append(line)
