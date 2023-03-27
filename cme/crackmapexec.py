@@ -17,6 +17,7 @@ from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
 from cme.paths import CME_PATH
+from cme.console import console
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
@@ -35,6 +36,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import SAWarning
 import warnings
 from tqdm import tqdm
+from rich.progress import Progress
 
 Base = declarative_base()
 
@@ -59,12 +61,20 @@ def create_db_engine(db_path):
     return db_engine
 
 
-async def start_scan(protocol_obj, args, db, targets):
-    with tqdm(total=len(targets), disable=args.progress) as pbar:
+async def start_run(protocol_obj, args, db, targets):
+    # with tqdm(total=len(targets), disable=args.progress) as pbar:
+    # with console.status("Running CME") as cme_console:
+    with Progress(console=console) as progress:
         with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
+            current = 0
+            # cme_console.update(f"Running CME {current}/{len(targets)}")
+            total = len(targets)
+            tasks = progress.add_task(f"[green]Running CME against {total} targets", total=total)
             futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
             for future in concurrent.futures.as_completed(futures):
-                pbar.update(1)
+                current += 1
+                # cme_console.update(f"Running CME {current}/{len(targets)}")
+                progress.update(tasks, completed=current)
 
 
 def main():
@@ -87,6 +97,7 @@ def main():
     config = configparser.ConfigParser()
     config.read(os.path.join(CME_PATH, 'cme.conf'))
 
+    #with console.status("Running CME") as cme_console:
     module = None
     module_server = None
     targets = []
@@ -227,7 +238,7 @@ def main():
 
     try:
         asyncio.run(
-            start_scan(protocol_object, args, db, targets)
+            start_run(protocol_object, args, db, targets)
         )
     except KeyboardInterrupt:
         logging.debug("Got keyboard interrupt")
