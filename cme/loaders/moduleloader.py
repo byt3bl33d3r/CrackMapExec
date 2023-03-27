@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import imp
-import types
-from importlib.machinery import SourceFileLoader
+import importlib
+import logging
 import os
+
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
 
 
-class module_loader:
+class ModuleLoader:
     def __init__(self, args, db, logger):
         self.args = args
         self.db = db
@@ -18,7 +18,6 @@ class module_loader:
 
     def module_is_sane(self, module, module_path):
         module_error = False
-
         if not hasattr(module, 'name'):
             self.logger.error('{} missing the name variable'.format(module_path))
             module_error = True
@@ -50,7 +49,9 @@ class module_loader:
 
     def load_module(self, module_path):
         try:
-            module = imp.load_source('payload_module', module_path).CMEModule()
+            spec = importlib.util.spec_from_file_location("CMEModule", module_path)
+            module = spec.loader.load_module().CMEModule()
+
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:

@@ -6,7 +6,7 @@ import os
 import cme
 
 
-class protocol_loader:
+class ProtocolLoader:
     def __init__(self):
         self.cme_path = os.path.expanduser('~/.cme')
 
@@ -14,7 +14,6 @@ class protocol_loader:
         loader = SourceFileLoader('protocol', protocol_path)
         protocol = types.ModuleType(loader.name)
         loader.exec_module(protocol)
-        #if self.module_is_sane(module, module_path):
         return protocol
 
     def get_protocols(self):

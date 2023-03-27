@@ -11,8 +11,8 @@ from cme.parsers.ip import parse_targets
 from cme.parsers.nmap import parse_nmap_xml
 from cme.parsers.nessus import parse_nessus_file
 from cme.cli import gen_cli_args
-from cme.loaders.protocol_loader import protocol_loader
-from cme.loaders.module_loader import module_loader
+from cme.loaders.protocolloader import ProtocolLoader
+from cme.loaders.moduleloader import ModuleLoader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
@@ -144,7 +144,7 @@ def main():
         powershell.obfuscate_ps_scripts = True
 
     logging.debug(f"Protocol: {args.protocol}")
-    p_loader = protocol_loader()
+    p_loader = ProtocolLoader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
     logging.debug(f"Protocol Path: {protocol_path}")
     protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
@@ -165,7 +165,7 @@ def main():
     setattr(protocol_object, 'config', config)
 
     if hasattr(args, 'module'):
-        loader = module_loader(args, db, logger)
+        loader = ModuleLoader(args, db, logger)
         modules = loader.get_modules()
 
         if args.list_modules:
