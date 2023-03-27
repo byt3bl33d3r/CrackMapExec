@@ -27,7 +27,7 @@ def db_engine():
 
 
 @pytest.fixture(scope="session")
-def db(db_engine):
+def db_setup(db_engine):
     proto = "smb"
     setup_logger()
     logger = CMEAdapter()
@@ -44,6 +44,12 @@ def db(db_engine):
     yield database_obj
     database_obj.shutdown_db()
     delete_workspace("test")
+
+
+@pytest.fixture(scope="function")
+def db(db_setup):
+    yield db_setup
+    db_setup.clear_database()
 
 
 @pytest.fixture(scope="session")
@@ -86,7 +92,6 @@ def test_add_host(db):
     assert host.zerologon is True
     assert host.petitpotam is False
     assert host.dc is False
-    db.clear_database()
 
 
 def test_update_host(db, sess):
@@ -129,7 +134,6 @@ def test_update_host(db, sess):
     assert host.zerologon is False
     assert host.petitpotam is False
     assert host.dc is False
-    db.clear_database()
 
 
 def test_add_credential():

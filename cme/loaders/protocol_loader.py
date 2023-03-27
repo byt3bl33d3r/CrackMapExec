@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import imp
+import types
+from importlib.machinery import SourceFileLoader
 import os
-import sys
 import cme
 
-class protocol_loader:
 
+class protocol_loader:
     def __init__(self):
         self.cme_path = os.path.expanduser('~/.cme')
 
     def load_protocol(self, protocol_path):
-        protocol = imp.load_source('protocol', protocol_path)
+        loader = SourceFileLoader('protocol', protocol_path)
+        protocol = types.ModuleType(loader.name)
+        loader.exec_module(protocol)
         #if self.module_is_sane(module, module_path):
         return protocol
 
@@ -27,7 +28,7 @@ class protocol_loader:
                     protocol_path = os.path.join(path, protocol)
                     protocol_name = protocol[:-3]
 
-                    protocols[protocol_name] = {'path' : protocol_path}
+                    protocols[protocol_name] = {'path': protocol_path}
 
                     db_file_path = os.path.join(path, protocol_name, 'database.py')
                     db_nav_path = os.path.join(path, protocol_name, 'db_navigator.py')

@@ -51,7 +51,6 @@ masky = "^0.2.0"
 sqlalchemy = "^2.0.4"
 aiosqlite = "^0.18.0"
 pytest = "^7.2.2"
-pytest-asyncio = "^0.21.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"

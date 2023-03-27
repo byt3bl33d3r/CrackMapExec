@@ -1177,41 +1177,8 @@ class smb(connection):
 
     def users(self):
         users = []
-        for dc_ip in self.get_dc_ips():
-            try:
-                users = get_netuser(
-                    dc_ip,
-                    self.domain,
-                    self.username,
-                    password=self.password,
-                    lmhash=self.lmhash,
-                    nthash=self.nthash,
-                    queried_username=self.args.users,
-                    queried_domain='',
-                    ads_path=str(),
-                    admin_count=False,
-                    spn=False,
-                    unconstrained=False,
-                    allow_delegation=False,
-                    custom_filter=str()
-                )
-
-                self.logger.success('Enumerated domain user(s)')
-                for user in users:
-                    domain = self.domainfromdsn(user.distinguishedname)
-                    self.logger.highlight('{}\\{:<30} badpwdcount: {} desc: {}'.format(
-                        domain,
-                        user.samaccountname,
-                        getattr(user, 'badpwdcount', 0),
-                        user.description[0] if hasattr(user, 'description') else '')
-                    )
-                    # self.db.add_user(domain, user.samaccountname)
-                break
-            except Exception as e:
-                self.logger.error('Error enumerating domain users using dc ip {}: {}'.format(dc_ip, e))
-                self.logger.info('Trying with SAMRPC protocol')
-                users = UserSamrDump(self).dump()
-                break
+        self.logger.info('Trying do dump local users with SAMRPC protocol')
+        users = UserSamrDump(self).dump()
         return users
 
     def hosts(self):

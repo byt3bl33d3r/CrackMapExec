@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import imp
+import types
 from importlib.machinery import SourceFileLoader
 import os
 import cme
@@ -49,7 +50,7 @@ class module_loader:
 
     def load_module(self, module_path):
         try:
-            module = SourceFileLoader('payload_module', module_path).load_module().CMEModule()
+            module = imp.load_source('payload_module', module_path).CMEModule()
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
