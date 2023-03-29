@@ -4,7 +4,6 @@ import concurrent.futures
 
 import sqlalchemy
 
-from cme.logger import CMEAdapter
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
