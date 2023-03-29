@@ -411,7 +411,7 @@ class smb(connection):
         return True
 
     def print_host_info(self):
-        console.log(
+        self.logger.info(
             u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
                 self.server_os,
                 ' x{}'.format(self.os_arch) if self.os_arch else '',
@@ -468,7 +468,7 @@ class smb(connection):
                 else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                 highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
             )
-            console.log(out)
+            self.logger.info(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, domain, self.logger, self.config)
             if not self.args.continue_on_success:
@@ -554,7 +554,7 @@ class smb(connection):
                 highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
             )
 
-            console.log(out)
+            self.logger.info(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
@@ -626,7 +626,7 @@ class smb(connection):
                 highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
             )
 
-            console.log(out)
+            self.logger.info(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
@@ -827,7 +827,7 @@ class smb(connection):
         output = u'{}'.format(output.strip())
 
         if self.args.execute or self.args.ps_execute:
-            console.log(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
+            self.logger.info(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
             buf = StringIO(output).readlines()
             for line in buf:
                 self.logger.highlight(line.strip())
@@ -934,7 +934,7 @@ class smb(connection):
                     logging.debug(f"Error adding share: {error}")
                     pass
 
-        console.log('Enumerated shares')
+        self.logger.info('Enumerated shares')
         self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
         self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
         for share in permissions:
@@ -961,7 +961,7 @@ class smb(connection):
     def sessions(self):
         try:
             sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-            console.log('Enumerated sessions')
+            self.logger.info('Enumerated sessions')
             for session in sessions:
                 if session.sesi10_cname.find(self.local_ip) == -1:
                     self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
@@ -973,7 +973,7 @@ class smb(connection):
         disks = []
         try:
             disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-            console.log('Enumerated disks')
+            self.logger.info('Enumerated disks')
             for disk in disks:
                 self.logger.highlight(disk.disk)
         except Exception as e:
@@ -1005,9 +1005,9 @@ class smb(connection):
                 )
 
                 if self.args.local_groups:
-                    console.log('Enumerated members of local group')
+                    self.logger.info('Enumerated members of local group')
                 else:
-                    console.log('Enumerated local groups')
+                    self.logger.info('Enumerated local groups')
 
                 for group in groups:
                     if group.name:
@@ -1055,7 +1055,7 @@ class smb(connection):
                 self.logger.info('Trying with SAMRPC protocol')
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
-                    console.log('Enumerated local groups')
+                    self.logger.info('Enumerated local groups')
                     logging.debug(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
@@ -1106,7 +1106,7 @@ class smb(connection):
                         custom_filter=str()
                     )
 
-                    console.log('Enumerated members of domain group')
+                    self.logger.info('Enumerated members of domain group')
                     for group in groups:
                         member_count = len(group.member) if hasattr(group, 'member') else 0
                         self.logger.highlight('{}\\{}'.format(
@@ -1154,7 +1154,7 @@ class smb(connection):
                         custom_filter=str()
                     )
 
-                    console.log('Enumerated domain group(s)')
+                    self.logger.info('Enumerated domain group(s)')
                     for group in groups:
                         member_count = len(group.member) if hasattr(group, 'member') else 0
                         self.logger.highlight('{:<40} membercount: {}'.format(
@@ -1198,7 +1198,7 @@ class smb(connection):
                     custom_filter=str()
                 )
 
-                console.log('Enumerated domain computer(s)')
+                self.logger.info('Enumerated domain computer(s)')
                 for hosts in hosts:
                     domain, host_clean = self.domainfromdnshostname(hosts.dnshostname)
                     self.logger.highlight('{}\\{:<30}'.format(domain, host_clean))
@@ -1219,7 +1219,7 @@ class smb(connection):
                 lmhash=self.lmhash,
                 nthash=self.nthash
             )
-            console.log('Enumerated logged_on users')
+            self.logger.info('Enumerated logged_on users')
             if self.args.loggedon_users_filter:
                 for user in logged_on:
                     if re.match(self.args.loggedon_users_filter, user.wkui1_username):
@@ -1394,7 +1394,7 @@ class smb(connection):
         with open(self.args.put_file[0], 'rb') as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
-                console.log(f"Created file {self.args.put_file[0]} on \\\\{elf.args.share}\\{self.args.put_file[1]}")
+                self.logger.info(f"Created file {self.args.put_file[0]} on \\\\{elf.args.share}\\{self.args.put_file[1]}")
             except Exception as e:
                 self.logger.error('Error writing file to share {}: {}'.format(self.args.share, e))
 
@@ -1406,7 +1406,7 @@ class smb(connection):
         with open(file_handle, 'wb+') as file:
             try:
                 self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
-                console.log('File {} was transferred to {}'.format(self.args.get_file[0], file_handle))
+                self.logger.info('File {} was transferred to {}'.format(self.args.get_file[0], file_handle))
             except Exception as e:
                 self.logger.error('Error reading file {}: {}'.format(self.args.share, e))
 
@@ -1442,10 +1442,10 @@ class smb(connection):
                 perSecretCallback=lambda secret: add_sam_hash(secret, host_id))
 
 
-            console.log('Dumping SAM hashes')
+            self.logger.info('Dumping SAM hashes')
             SAM.dump()
             SAM.export(self.output_filename)
-            console.log('Added {} SAM hashes to the database'.format(highlight(add_sam_hash.sam_hashes)))
+            self.logger.info('Added {} SAM hashes to the database'.format(highlight(add_sam_hash.sam_hashes)))
 
             try:
                 self.remote_ops.finish()
@@ -1460,7 +1460,7 @@ class smb(connection):
         if self.args.pvk is not None:
             try:
                 self.pvkbytes = open(self.args.pvk, 'rb').read()
-                console.log(f"Loading domain backupkey from {self.args.pvk}")
+                self.logger.info(f"Loading domain backupkey from {self.args.pvk}")
             except Exception as e:
                 logging.error(str(e))
 
@@ -1479,7 +1479,7 @@ class smb(connection):
                 'workspace create dpapi' then re-run the dpapi option")
                 return False
             if len(results) > 0:
-                console.log("Loading domain backupkey from cmedb...")
+                self.logger.info("Loading domain backupkey from cmedb...")
                 self.pvkbytes = results[0][2]
             else:
                 try:
@@ -1498,7 +1498,7 @@ class smb(connection):
                     dc_conn = DPLootSMBConnection(dc_target)
                     dc_conn.connect()  # Connect to DC
                     if dc_conn.is_admin():
-                        console.log("User is Domain Administrator, exporting domain backupkey...")
+                        self.logger.info("User is Domain Administrator, exporting domain backupkey...")
                         backupkey_triage = BackupkeyTriage(target=dc_target, conn=dc_conn)
                         backupkey = backupkey_triage.triage_backupkey()
                         self.pvkbytes = backupkey.backupkey_v2
@@ -1551,7 +1551,7 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
-            console.log("Collecting User and Machine masterkeys, grab a coffee and be patient...")
+            self.logger.info("Collecting User and Machine masterkeys, grab a coffee and be patient...")
             masterkeys_triage = MasterkeysTriage(
                 target=target,
                 conn=conn,
@@ -1569,7 +1569,7 @@ class smb(connection):
             logging.error("No masterkeys looted")
             return
 
-        console.log(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets")
+        self.logger.info(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets")
 
         try:
             # Collect User and Machine Credentials Manager secrets
@@ -1707,12 +1707,12 @@ class smb(connection):
                 isRemote=True,
                 perSecretCallback=lambda secret_type, secret: add_lsa_secret(secret)
             )
-            console.log('Dumping LSA secrets')
+            self.logger.info('Dumping LSA secrets')
             LSA.dumpCachedHashes()
             LSA.exportCached(self.output_filename)
             LSA.dumpSecrets()
             LSA.exportSecrets(self.output_filename)
-            console.log(
+            self.logger.info(
                 f"Dumped {highlight(add_lsa_secret.secrets)} \
                 LSA secrets to {self.output_filename + '.secrets'} \
                 and {self.output_filename + '.cached'}"
@@ -1794,9 +1794,9 @@ class smb(connection):
         )
 
         try:
-            console.log('Dumping the NTDS, this could take a while so go grab a redbull...')
+            self.logger.info('Dumping the NTDS, this could take a while so go grab a redbull...')
             NTDS.dump()
-            console.log('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(
+            self.logger.info('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(
                 highlight(add_ntds_hash.ntds_hashes),
                 self.output_filename + '.ntds',
                 highlight(add_ntds_hash.added_to_db)

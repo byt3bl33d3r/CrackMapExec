@@ -6,13 +6,16 @@ import os.path
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
+from cme.console import console
 from termcolor import colored
 from datetime import datetime
+from rich.text import Text
 
-#The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
-#There must be a better way of doing this, but this way we might save some penguins!
+# The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
+# There must be a better way of doing this, but this way we might save some penguins!
 
 ansi_escape = re.compile(r'\x1b[^m]*m')
+
 
 def antiansi_emit(self, record):
 
@@ -22,9 +25,9 @@ def antiansi_emit(self, record):
     record.msg = ansi_escape.sub('', record.message)
     logging.StreamHandler.emit(self, record)
 
+
 logging.FileHandler.emit = antiansi_emit
 
-####################################################################
 
 class CMEAdapter(logging.LoggerAdapter):
 
@@ -32,7 +35,7 @@ class CMEAdapter(logging.LoggerAdapter):
     message = ''
 
     def __init__(self, logger_name='CME', extra=None):
-        self.logger = logging.getLogger(logger_name)
+        self.logger = logging.getLogger("rich")
         self.extra = extra
         self.outputfile = None
 
@@ -44,25 +47,26 @@ class CMEAdapter(logging.LoggerAdapter):
             if len(self.extra['module']) > 8:
                 self.extra['module'] = self.extra['module'][:8] + '...'
 
-        #If the logger is being called when hooking the 'options' module function
+        # If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ('module' in self.extra.keys()):
             return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
 
-        #If the logger is being called from CMEServer
+        # If the logger is being called from CMEServer
         if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
             return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
-        #If the logger is being called from a protocol
+        # If the logger is being called from a protocol
         if 'module' in self.extra.keys():
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
-        return u'{:<24} {:<15} {:<6} {:<16} {}'.format(module_name,
-                                                    self.extra['host'],
-                                                    self.extra['port'],
-                                                    self.extra['hostname'] if self.extra['hostname'] else 'NONE',
-                                                    msg), kwargs
+        return u'{:<24} {:<15} {:<6} {:<16} {}'.format(
+            module_name,
+            self.extra['host'],
+            self.extra['port'],
+            self.extra['hostname'] if self.extra['hostname'] else 'NONE',
+            msg), kwargs
 
     def info(self, msg, *args, **kwargs):
         try:
@@ -72,7 +76,8 @@ class CMEAdapter(logging.LoggerAdapter):
             pass
 
         msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        text = Text.from_ansi(msg)
+        console.print(text, *args, **kwargs)
 
     def error(self, msg, color='red', *args, **kwargs):
         msg, kwargs = self.process(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
