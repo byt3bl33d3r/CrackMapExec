@@ -19,7 +19,8 @@ from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
-from cme.console import console
+
+from cme.console import cme_console
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.protocols.smb.firefox import FirefoxTriage

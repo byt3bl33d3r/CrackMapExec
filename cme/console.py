@@ -1,3 +1,3 @@
 from rich.console import Console
 
-console = Console()
+cme_console = Console()

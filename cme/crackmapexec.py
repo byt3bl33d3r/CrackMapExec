@@ -4,7 +4,7 @@ import concurrent.futures
 
 import sqlalchemy
 
-from cme.logger import setup_logger, setup_debug_logger, CMEAdapter
+from cme.logger import CMEAdapter
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
@@ -17,7 +17,8 @@ from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
 from cme.paths import CME_PATH
-from cme.console import console
+from cme.console import cme_console
+from cme.logger import logger
 from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from decimal import Decimal
@@ -40,7 +41,7 @@ from rich.progress import Progress
 
 Base = declarative_base()
 
-setup_logger()
+# setup_logger()
 logger = CMEAdapter()
 
 try:
@@ -64,7 +65,7 @@ def create_db_engine(db_path):
 async def start_run(protocol_obj, args, db, targets):
     # with tqdm(total=len(targets), disable=args.progress) as pbar:
     # with console.status("Running CME") as cme_console:
-    with Progress(console=console) as progress:
+    with Progress(console=cme_console) as progress:
         with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
             current = 0
             # cme_console.update(f"Running CME {current}/{len(targets)}")
@@ -107,9 +108,10 @@ def main():
         logger.setup_logfile()
 
     if args.verbose:
-        setup_debug_logger()
+        # setup_debug_logger()
+        logger.setLevel(logging.DEBUG)
 
-    logging.debug('Passed args:\n' + pformat(vars(args)))
+    logger.debug('Passed args:\n' + pformat(vars(args)))
 
     if args.jitter:
         if '-' in args.jitter:
@@ -154,20 +156,20 @@ def main():
     if hasattr(args, 'obfs') and args.obfs:
         powershell.obfuscate_ps_scripts = True
 
-    logging.debug(f"Protocol: {args.protocol}")
+    logger.debug(f"Protocol: {args.protocol}")
     p_loader = ProtocolLoader()
     protocol_path = p_loader.get_protocols()[args.protocol]['path']
-    logging.debug(f"Protocol Path: {protocol_path}")
+    logger.debug(f"Protocol Path: {protocol_path}")
     protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
-    logging.debug(f"Protocol DB Path: {protocol_db_path}")
+    logger.debug(f"Protocol DB Path: {protocol_db_path}")
 
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
-    logging.debug(f"Protocol Object: {protocol_object}")
+    logger.debug(f"Protocol Object: {protocol_object}")
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
-    logging.debug(f"Protocol DB Object: {protocol_db_object}")
+    logger.debug(f"Protocol DB Object: {protocol_db_object}")
 
     db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
-    logging.debug(f"DB Path: {db_path}")
+    logger.debug(f"DB Path: {db_path}")
 
     db_engine = create_db_engine(db_path)
 
@@ -187,13 +189,13 @@ def main():
             logger.info(f"{args.module[0]} module options:\n{modules[args.module[0]]['options']}")
             sys.exit(0)
         elif args.module:
-            logging.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
+            logger.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
             for m in map(str.lower, args.module):
                 if m not in modules:
                     logger.error(f"Module not found: {m}")
                     exit(1)
 
-                logging.debug(f"Loading module {m} at path {modules[m]['path']}")
+                logger.debug(f"Loading module {m} at path {modules[m]['path']}")
                 module = loader.init_module(modules[m]['path'])
 
                 if not module.opsec_safe:
@@ -221,15 +223,15 @@ def main():
                         module_server.start()
                         protocol_object.server = module_server.server
                     except Exception as e:
-                        logging.debug(f"Error loading module server for {module}: {e}")
+                        logger.debug(f"Error loading module server for {module}: {e}")
 
-                logging.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
-                logging.debug(f"proto object dir: {dir(protocol_object)}")
+                logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
+                logger.debug(f"proto object dir: {dir(protocol_object)}")
                 # get currently set modules, otherwise default to empty list
                 current_modules = getattr(protocol_object, 'module', [])
                 current_modules.append(module)
                 setattr(protocol_object, 'module', current_modules)
-                logging.debug(f"proto object module after adding: {protocol_object.module}")
+                logger.debug(f"proto object module after adding: {protocol_object.module}")
 
     if hasattr(args, 'ntds') and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ', 'red'))
@@ -241,7 +243,7 @@ def main():
             start_run(protocol_object, args, db, targets)
         )
     except KeyboardInterrupt:
-        logging.debug("Got keyboard interrupt")
+        logger.debug("Got keyboard interrupt")
     finally:
         if module_server:
             module_server.shutdown()

@@ -6,14 +6,14 @@ import os.path
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
-from cme.console import console
+from cme.console import cme_console
 from termcolor import colored
 from datetime import datetime
 from rich.text import Text
+from rich.logging import RichHandler
 
 # The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
 # There must be a better way of doing this, but this way we might save some penguins!
-
 ansi_escape = re.compile(r'\x1b[^m]*m')
 
 
@@ -30,11 +30,18 @@ logging.FileHandler.emit = antiansi_emit
 
 
 class CMEAdapter(logging.LoggerAdapter):
-
     # For Impacket's TDS library
     message = ''
 
     def __init__(self, logger_name='CME', extra=None):
+        logging.basicConfig(
+            format="%(message)s",
+            datefmt="[%X]",
+            handlers=[RichHandler(
+                console=cme_console,
+                rich_tracebacks=True
+            )]
+        )
         self.logger = logging.getLogger("rich")
         self.extra = extra
         self.outputfile = None
@@ -60,7 +67,6 @@ class CMEAdapter(logging.LoggerAdapter):
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
-
         return u'{:<24} {:<15} {:<6} {:<16} {}'.format(
             module_name,
             self.extra['host'],
@@ -77,14 +83,16 @@ class CMEAdapter(logging.LoggerAdapter):
 
         msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
-        console.print(text, *args, **kwargs)
+        cme_console.print(text, *args, **kwargs)
 
     def error(self, msg, color='red', *args, **kwargs):
         msg, kwargs = self.process(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
-        self.logger.error(msg, *args, **kwargs)
+        text = Text.from_ansi(msg)
+        self.logger.error(text, *args, **kwargs)
 
     def debug(self, msg, *args, **kwargs):
-        pass
+        text = Text.from_ansi(msg)
+        self.logger.debug(text, *args, **kwargs)
 
     def success(self, msg, *args, **kwargs):
         try:
@@ -94,7 +102,8 @@ class CMEAdapter(logging.LoggerAdapter):
             pass
 
         msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        text = Text.from_ansi(msg)
+        self.info(text, *args, **kwargs)
 
     def highlight(self, msg, *args, **kwargs):
         try:
@@ -104,10 +113,11 @@ class CMEAdapter(logging.LoggerAdapter):
             pass
 
         msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
 
     # For Impacket's TDS library
-    def logMessage(self,message):
+    def logMessage(self, message):
         CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
 
     def getMessage(self):
@@ -122,40 +132,44 @@ class CMEAdapter(logging.LoggerAdapter):
         if not os.path.isfile(self.outputfile):
             open(self.outputfile, 'x')
             file_creation = True
-        fileHandler = logging.FileHandler(filename=self.outputfile, mode="a")
-        with fileHandler._open() as f:
+        file_handler = logging.FileHandler(filename=self.outputfile, mode="a")
+        with file_handler._open() as f:
             if file_creation:
                 f.write("[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
             else:
                 f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
-        fileHandler.setFormatter(formatter)
-        self.logger.addHandler(fileHandler)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
 
-def setup_debug_logger():
-    debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
-    formatter = logging.Formatter(debug_output_string)
-    streamHandler = logging.StreamHandler(sys.stdout)
-    streamHandler.setFormatter(formatter)
 
-    root_logger = logging.getLogger()
-    root_logger.handlers = []
-    root_logger.addHandler(streamHandler)
-    root_logger.setLevel(logging.DEBUG)
-    return root_logger
-
-def setup_logger(level=logging.INFO, logger_name='CME'):
-    formatter = logging.Formatter("%(message)s")
-
-    streamHandler = logging.StreamHandler(sys.stdout)
-    streamHandler.setFormatter(formatter)
-
-    cme_logger = logging.getLogger(logger_name)
-    cme_logger.propagate = False
-    cme_logger.addHandler(streamHandler)
-    cme_logger.setLevel(level)
-
-    return cme_logger
+# def setup_debug_logger():
+#     debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
+#     formatter = logging.Formatter(debug_output_string)
+#     streamHandler = logging.StreamHandler(sys.stdout)
+#     streamHandler.setFormatter(formatter)
+#
+#     root_logger = logging.getLogger()
+#     root_logger.handlers = []
+#     root_logger.addHandler(streamHandler)
+#     root_logger.setLevel(logging.DEBUG)
+#     return root_logger
+#
+#
+# def setup_logger(level=logging.INFO, logger_name='CME'):
+#     formatter = logging.Formatter("%(message)s")
+#
+#     streamHandler = logging.StreamHandler(sys.stdout)
+#     streamHandler.setFormatter(formatter)
+#
+#     cme_logger = logging.getLogger(logger_name)
+#     cme_logger.propagate = False
+#     cme_logger.addHandler(streamHandler)
+#     cme_logger.setLevel(level)
+#
+#     return cme_logger
 
 def init_log_file():
-    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs','full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
+    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs', 'full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
     return log_filename
+
+logger = CMEAdapter()
