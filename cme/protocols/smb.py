@@ -272,7 +272,6 @@ class smb(connection):
                 'hostname': self.hostname
             }
         )
-        self.logger.debug(f"[SMB] Setup CMEAdapter")
 
     def get_os_arch(self):
         try:
@@ -337,10 +336,7 @@ class smb(connection):
         self.db.add_host(self.host, self.hostname, self.domain, self.server_os, self.smbv1, self.signing)
 
         try:
-            '''
-            DC's seem to want us to logoff first, windows workstations sometimes reset the connection
-            (go home Windows, you're drunk)
-            '''
+            # DCs seem to want us to logoff first, windows workstations sometimes reset the connection
             self.conn.logoff()
         except Exception as e:
             self.logger.debug(f"Error logging off system: {e}")
@@ -376,7 +372,7 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.debug('LAPS connection failed with account {}'.format(username))
+            self.logger.info('LAPS connection failed with account {}'.format(username))
             return False
 
         search_filter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name=' + self.hostname + '))'
@@ -397,13 +393,13 @@ class smb(connection):
                     sAMAccountName = str(host['vals'][0])
                 else:
                     msMCSAdmPwd = str(host['vals'][0])
-            self.logger.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+            self.logger.info("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
 
         self.username = self.args.laps
         self.password = msMCSAdmPwd
 
         if msMCSAdmPwd == '':
-            self.logger.error('msMCSAdmPwd is empty or account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.info(f"msMCSAdmPwd is empty or account cannot read LAPS property for {self.hostname}")
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
@@ -485,7 +481,7 @@ class smb(connection):
                     pass
                 self.create_conn_obj()
         except SessionKeyDecryptionError:
-            # for PRE-AUTH account
+            # for PRE-AUTH account - should this be a success instead of error?
             self.logger.error(u'{}\\{}{} {}'.format(
                 domain,
                 self.username,
@@ -498,27 +494,30 @@ class smb(connection):
             self.logger.error('CCache Error: {}'.format(e))
             return False
         except OSError as e:
-            self.logger.error(u'{}\\{}{} {} {}'.format(
-                domain,
-                self.username,
-                # Show what was used between cleartext, nthash, aesKey and ccache
-                " from ccache" if useCache
-                else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                str(e),
-                '',
-                color='red')
+            self.logger.error(
+                u'{}\\{}{} {} {}'.format(
+                    domain,
+                    self.username,
+                    # Show what was used between cleartext, nthash, aesKey and ccache
+                    " from ccache" if useCache
+                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                    str(e),
+                    '',
+                    color='red'
+                )
             )
         except (SessionError, Exception) as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}{} {} {}'.format(
-                domain,
-                self.username,
-                # Show what was used between cleartext, nthash, aesKey and ccache
-                " from ccache" if useCache
-                else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                error,
-                '({})'.format(desc) if self.args.verbose else ''
-            ),
+            self.logger.error(
+                u'{}\\{}{} {} {}'.format(
+                    domain,
+                    self.username,
+                    # Show what was used between cleartext, nthash, aesKey and ccache
+                    " from ccache" if useCache
+                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                    error,
+                    '({})'.format(desc) if self.args.verbose else ''
+                ),
                 color='magenta' if error in smb_error_status else 'red'
             )
             if error not in smb_error_status:
@@ -537,7 +536,7 @@ class smb(connection):
             try:
                 self.conn.login(self.username, self.password, domain)
             except BrokenPipeError as e:
-                self.logger.error(f"Broken Pipe Error while attempting to login")
+                self.logger.info(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
@@ -572,12 +571,14 @@ class smb(connection):
                 self.create_conn_obj()
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(
-                domain,
-                self.username,
-                self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                error,
-                '({})'.format(desc) if self.args.verbose else ''),
+            self.logger.error(
+                u'{}\\{}:{} {} {}'.format(
+                    domain,
+                    self.username,
+                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
+                    error,
+                    '({})'.format(desc) if self.args.verbose else ''
+                ),
                 color='magenta' if error in smb_error_status else 'red'
             )
             if error not in smb_error_status:
@@ -593,7 +594,6 @@ class smb(connection):
         lmhash = ''
         nthash = ''
         try:
-
             if not self.args.laps:
                 self.username = username
                 # This checks to see if we didn't provide the LM Hash
@@ -612,7 +612,7 @@ class smb(connection):
             try:
                 self.conn.login(self.username, '', domain, lmhash, nthash)
             except BrokenPipeError as e:
-                self.logger.error(f"Broken Pipe Error while attempting to login")
+                self.logger.info(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
             user_id = self.db.add_credential('hash', domain, self.username, nthash)
@@ -644,12 +644,14 @@ class smb(connection):
                 self.create_conn_obj()
         except SessionError as e:
             error, desc = e.getErrorString()
-            self.logger.error(u'{}\\{}:{} {} {}'.format(
-                domain,
-                self.username,
-                self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                error,
-                '({})'.format(desc) if self.args.verbose else ''),
+            self.logger.error(
+                u'{}\\{}:{} {} {}'.format(
+                    domain,
+                    self.username,
+                    self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
+                    error,
+                    '({})'.format(desc) if self.args.verbose else ''
+                ),
                 color='magenta' if error in smb_error_status else 'red'
             )
 
@@ -662,32 +664,42 @@ class smb(connection):
 
     def create_smbv1_conn(self, kdc=''):
         try:
-            self.conn = SMBConnection(self.host if not kdc else kdc, self.host if not kdc else kdc, None,
-                                      self.args.port, preferredDialect=SMB_DIALECT, timeout=self.args.smb_timeout)
+            self.conn = SMBConnection(
+                self.host if not kdc else kdc,
+                self.host if not kdc else kdc,
+                None,
+                self.args.port,
+                preferredDialect=SMB_DIALECT,
+                timeout=self.args.smb_timeout
+            )
             self.smbv1 = True
         except socket.error as e:
             if str(e).find('Connection reset by peer') != -1:
-                self.logger.debug('SMBv1 might be disabled on {}'.format(self.host if not kdc else kdc))
+                self.logger.info(f"SMBv1 might be disabled on {self.host if not kdc else kdc}")
             return False
         except (Exception, NetBIOSTimeout) as e:
-            self.logger.debug('Error creating SMBv1 connection to {}: {}'.format(self.host if not kdc else kdc, e))
+            self.logger.info(f"Error creating SMBv1 connection to {self.host if not kdc else kdc}: {e}")
             return False
 
         return True
 
     def create_smbv3_conn(self, kdc=''):
         try:
-            self.conn = SMBConnection(self.host if not kdc else kdc, self.host if not kdc else kdc, None,
-                                      self.args.port, timeout=self.args.smb_timeout)
+            self.conn = SMBConnection(
+                self.host if not kdc else kdc,
+                self.host if not kdc else kdc,
+                None,
+                self.args.port,
+                timeout=self.args.smb_timeout
+            )
             self.smbv1 = False
         except socket.error as e:
             if str(e).find('Too many open files') != -1:
-                self.logger.error('SMBv3 connection error on {}: {}'.format(self.host if not kdc else kdc, e))
+                self.logger.error(f"SMBv3 connection error on {self.host if not kdc else kdc}: {e}")
             return False
         except (Exception, NetBIOSTimeout) as e:
-            self.logger.debug('Error creating SMBv3 connection to {}: {}'.format(self.host if not kdc else kdc, e))
+            self.logger.debug(f"Error creating SMBv3 connection to {self.host if not kdc else kdc}: {e}")
             return False
-
         return True
 
     def create_conn_obj(self, kdc=''):
@@ -751,7 +763,7 @@ class smb(connection):
                         self.hash,
                         self.args.share
                     )
-                    self.logger.debug('Executed command via wmiexec')
+                    self.logger.info('Executed command via wmiexec')
                     break
                 except:
                     self.logger.debug('Error executing command via wmiexec, traceback:')
@@ -768,7 +780,7 @@ class smb(connection):
                         self.conn,
                         self.hash
                     )
-                    self.logger.debug('Executed command via mmcexec')
+                    self.logger.info('Executed command via mmcexec')
                     break
                 except:
                     self.logger.debug('Error executing command via mmcexec, traceback:')
@@ -787,7 +799,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash
                     )  # self.args.share)
-                    self.logger.debug('Executed command via atexec')
+                    self.logger.info('Executed command via atexec')
                     break
                 except:
                     self.logger.debug('Error executing command via atexec, traceback:')
@@ -809,7 +821,7 @@ class smb(connection):
                         self.hash,
                         self.args.share
                     )
-                    self.logger.debug('Executed command via smbexec')
+                    self.logger.info('Executed command via smbexec')
                     break
                 except:
                     self.logger.debug('Error executing command via smbexec, traceback:')
@@ -828,7 +840,7 @@ class smb(connection):
             self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
             output = output.decode('cp437')
 
-        output = u'{}'.format(output.strip())
+        output = output.strip()
 
         if self.args.execute or self.args.ps_execute:
             self.logger.display(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
@@ -888,7 +900,7 @@ class smb(connection):
 
         try:
             shares = self.conn.listShares()
-            self.logger.debug(f"Shares returned: {shares}")
+            self.logger.info(f"Shares returned: {shares}")
         except SessionError as e:
             error = get_error_string(e)
             self.logger.error('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
@@ -953,13 +965,10 @@ class smb(connection):
 
     def get_dc_ips(self):
         dc_ips = []
-
         for dc in self.db.get_domain_controllers(domain=self.domain):
             dc_ips.append(dc[1])
-
         if not dc_ips:
             dc_ips.append(self.host)
-
         return dc_ips
 
     def sessions(self):
@@ -1028,10 +1037,7 @@ class smb(connection):
                         else:
                             domain, name = group.name.split('/')
                             self.logger.highlight(f"domain: {domain}, name: {name}")
-                            self.logger.highlight('{}\\{}'.format(
-                                domain.upper(),
-                                name
-                            ))
+                            self.logger.highlight(f"{domain.upper()}\\{name}")
                             try:
                                 group_id = self.db.get_groups(
                                     group_name=self.args.local_groups,
@@ -1055,12 +1061,12 @@ class smb(connection):
             except SessionError as e:
                 self.logger.error(f"Error connecting via SMB: {e}")
             except Exception as e:
-                self.logger.error('Error enumerating local groups of {}: {}'.format(self.host, e))
+                self.logger.error(f"Error enumerating local groups of {self.host}: {e}")
                 self.logger.display('Trying with SAMRPC protocol')
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
                     self.logger.display('Enumerated local groups')
-                    self.logger.debug(f"Local groups: {groups}")
+                    self.logger.info(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
                     group_id = self.db.add_group(
@@ -1264,7 +1270,7 @@ class smb(connection):
             else:
                 query = rpc._wmi_connection.ExecQuery(self.args.wmi, lFlags=WBEM_FLAG_FORWARD_ONLY)
         except Exception as e:
-            self.logger.error('Error creating WMI connection: {}'.format(e))
+            self.logger.error(f"Error creating WMI connection: {e}")
             return records
 
         while True:
@@ -1422,7 +1428,7 @@ class smb(connection):
             self.remote_ops.enableRegistry()
             self.bootkey = self.remote_ops.getBootKey()
         except Exception as e:
-            self.logger.error('RemoteOperations failed: {}'.format(e))
+            self.logger.error(f"RemoteOperations failed: {e}")
 
     @requires_admin
     def sam(self):
@@ -1445,16 +1451,15 @@ class smb(connection):
                 isRemote=True,
                 perSecretCallback=lambda secret: add_sam_hash(secret, host_id))
 
-
             self.logger.display('Dumping SAM hashes')
             SAM.dump()
             SAM.export(self.output_filename)
-            self.logger.display('Added {} SAM hashes to the database'.format(highlight(add_sam_hash.sam_hashes)))
+            self.logger.display(f"Added {highlight(add_sam_hash.sam_hashes)} SAM hashes to the database")
 
             try:
                 self.remote_ops.finish()
             except Exception as e:
-                self.logger.debug("Error calling remote_ops.finish(): {}".format(e))
+                self.logger.debug(f"Error calling remote_ops.finish(): {e}")
             SAM.finish()
 
     @requires_admin
@@ -1479,7 +1484,7 @@ class smb(connection):
             try:
                 results = self.db.get_domain_backupkey(self.domain)
             except:
-                logging.error("Your version of CMEDB is not up to date, run cmedb and create a new workspace: \
+                self.logger.error("Your version of CMEDB is not up to date, run cmedb and create a new workspace: \
                 'workspace create dpapi' then re-run the dpapi option")
                 return False
             if len(results) > 0:
@@ -1530,7 +1535,7 @@ class smb(connection):
             conn = DPLootSMBConnection(target)
             conn.smb_session = self.conn
         except Exception as e:
-            self.logger.debug("Could not upgrade connection: {}".format(e))
+            self.logger.debug(f"Could not upgrade connection: {e}")
             return
 
         plaintexts = {
