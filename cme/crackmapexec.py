@@ -37,9 +37,6 @@ from rich.progress import Progress
 
 Base = declarative_base()
 
-# setup_logger()
-# logger = CMEAdapter()
-
 try:
     import librlers
 except:
@@ -73,15 +70,10 @@ async def start_run(protocol_obj, args, db, targets):
 
 
 def main():
-    # logging.getLogger('asyncio').setLevel(logging.CRITICAL)
-    # logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
-    # logging.getLogger('pypsrp').setLevel(logging.CRITICAL)
-    # logging.getLogger('spnego').setLevel(logging.CRITICAL)
-    # logging.getLogger('sqlalchemy.pool.impl.NullPool').setLevel(logging.CRITICAL)
+    first_run_setup(cme_logger)
     args = gen_cli_args()
 
     if args.verbose:
-        # setup_debug_logger()
         cme_logger.logger.setLevel(logging.INFO)
     elif args.debug:
         cme_logger.logger.setLevel(logging.DEBUG)
@@ -89,10 +81,6 @@ def main():
         cme_logger.logger.setLevel(logging.ERROR)
 
     cme_logger.debug(f"Passed args: {args}")
-
-    cme_logger.debug("Starting CME")
-    first_run_setup(cme_logger)
-    cme_logger.debug(f"First run setup completed")
 
     if args.darrell:
         links = open(os.path.join(os.path.dirname(cme.__file__), 'data', 'videos_for_darrell.harambe')).read().splitlines()

@@ -2,17 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import os
-import errno
-import sqlite3
 import shutil
 import cme
 import configparser
-from configparser import ConfigParser, NoSectionError, NoOptionError
-from cme.paths import CME_PATH, CONFIG_PATH, CERT_PATH, TMP_PATH
+from configparser import NoSectionError, NoOptionError
+from cme.paths import CME_PATH, CONFIG_PATH, TMP_PATH
 from cme.cmedb import initialize_db
-from subprocess import check_output, PIPE
-import sys
-import logging
 
 
 def first_run_setup(logger):
