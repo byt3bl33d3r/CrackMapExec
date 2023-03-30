@@ -65,7 +65,7 @@ class SMBSpiderPlus:
     def reconnect(self):
         if self.conn_retry > 0:
             self.conn_retry -= 1
-            self.logger.info(f"Reconnect to server {self.conn_retry}")
+            self.logger.display(f"Reconnect to server {self.conn_retry}")
 
             # Renogociate the session
             time.sleep(3)

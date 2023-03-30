@@ -92,15 +92,15 @@ class KerberosAttacks:
                 domain = ccache.principal.realm['data']
             else:
                 domain = self.domain
-            logging.debug("Using Kerberos Cache: %s" % getenv('KRB5CCNAME'))
+            logger.debug("Using Kerberos Cache: %s" % getenv('KRB5CCNAME'))
             principal = 'krbtgt/%s@%s' % (domain.upper(), domain.upper())
             creds = ccache.getCredential(principal)
             if creds is not None:
                 TGT = creds.toTGT()
-                logging.debug('Using TGT from cache')
+                logger.debug('Using TGT from cache')
                 return TGT
             else:
-                logging.debug("No valid credentials found in cache. ")
+                logger.debug("No valid credentials found in cache. ")
         except:
             # No cache present
             pass
@@ -119,7 +119,7 @@ class KerberosAttacks:
                                                                 compute_nthash(self.password), self.aesKey,
                                                                 kdcHost=self.kdcHost)
             except Exception as e:
-                logging.debug('TGT: %s' % str(e))
+                logger.debug('TGT: %s' % str(e))
                 tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, self.password, self.domain,
                                                                     unhexlify(self.lmhash),
                                                                     unhexlify(self.nthash), self.aesKey,
@@ -198,7 +198,7 @@ class KerberosAttacks:
             elif e.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
                 return "Password of user " + userName + " expired but user doesn't require pre-auth"
             else:
-                logging.debug(e)
+                logger.debug(e)
                 return False
 
         # This should be the PREAUTH_FAILED packet or the actual TGT if the target principal has the
@@ -210,7 +210,7 @@ class KerberosAttacks:
             asRep = decoder.decode(r, asn1Spec=AS_REP())[0]
         else:
             # The user doesn't have UF_DONT_REQUIRE_PREAUTH set
-            logging.debug('User %s doesn\'t have UF_DONT_REQUIRE_PREAUTH set' % userName)
+            logger.debug('User %s doesn\'t have UF_DONT_REQUIRE_PREAUTH set' % userName)
             return
 
         # Let's output the TGT enc-part/cipher in Hashcat format, in case somebody wants to use it.

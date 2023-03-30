@@ -3,16 +3,22 @@
 # from https://github.com/SecureAuthCorp/impacket/blob/master/examples/GetNPUsers.py
 # https://troopers.de/downloads/troopers19/TROOPERS19_AD_Fun_With_LDAP.pdf
 
-import logging
 import hmac
+import os
+from datetime import datetime
+
+from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
+from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.dcerpc.v5.transport import DCERPCTransportFactory
 
 from cme.connection import *
 from cme.helpers.logger import highlight
-from cme.logger import CMEAdapter
+from cme.logger import CMEAdapter, cme_logger
 from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
 from cme.protocols.ldap.kerberos import KerberosAttacks
 from cme.protocols.ldap.bloodhound import BloodHound
+from cme.console import cme_console
 
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
@@ -133,7 +139,7 @@ class ldap(connection):
         self.output_filename = None
         self.smbv1 = None
         self.signing = False
-        self.smb_share_name = smb_share_name
+        self.smb_share_name = None
         self.admin_privs = False
         self.no_ntlm = False
         self.sid_domain = ""
@@ -179,27 +185,33 @@ class ldap(connection):
         return parser
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={
-            'protocol': "SMB",
-            'host': self.host,
-            'port': "445",
-            'hostname': self.hostname
-        })
+        cme_console.print("Creating logger)")
+        # self.logger = cme_logger
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': "LDAP",
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': self.hostname
+            }
+        )
 
     def get_ldap_info(self, host):
         try:
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldap_url = f"{proto}://{host}"
-            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [0]")
+            self.logger.debug(f"Connecting to {ldap_url} with no baseDN")
             try:
                 ldap_connection = ldap_impacket.LDAPConnection(ldap_url)
+                if ldap_connection:
+                    self.logger.debug(f"ldap_connection: {ldap_connection}")
             except SysCallError as e:
                 if proto == "ldaps":
-                    logging.debug(f"LDAPs connection to {ldap_url} failed - {e}")
+                    self.logger.debug(f"LDAPs connection to {ldap_url} failed - {e}")
                     # https://learn.microsoft.com/en-us/troubleshoot/windows-server/identity/enable-ldap-over-ssl-3rd-certification-authority
-                    logging.debug(f"Even if the port is open, LDAPS may not be configured")
+                    self.logger.debug(f"Even if the port is open, LDAPS may not be configured")
                 else:
-                    logging.debug(f"LDAP connection to {ldap_url} failed: {e}")
+                    self.logger.debug(f"LDAP connection to {ldap_url} failed: {e}")
                 return [None, None, None]
 
             resp = ldap_connection.search(
@@ -221,11 +233,11 @@ class ldap(connection):
                         if str(attribute['type']) == 'dnsHostName':
                             target = str(attribute['vals'][0])
                 except Exception as e:
-                    logging.debug("Exception:", exc_info=True)
-                    logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                    self.logger.debug("Exception:", exc_info=True)
+                    self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
         except OSError as e:
             return [None, None, None]
-
+        self.logger.debug(f"Target: {target}; taret_domain: {target_domain}; base_dn: {base_dn}")
         return [target, target_domain, base_dn]
 
     def get_os_arch(self):
@@ -247,7 +259,7 @@ class ldap(connection):
                 dce.disconnect()
                 return 64
         except Exception as e:
-            logging.debug('Error retrieving os arch of {}: {}'.format(self.host, str(e)))
+            self.logger.debug('Error retrieving os arch of {}: {}'.format(self.host, str(e)))
 
         return 0
 
@@ -310,15 +322,16 @@ class ldap(connection):
         self.output_filename = self.output_filename.replace(":", "-")
 
     def print_host_info(self):
+        self.logger.debug("Printing host info for LDAP")
         if self.args.no_smb:
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
-            self.logger.info(u"Connecting to LDAP {}".format(self.hostname))
-            # self.logger.info(self.endpoint)
+            self.logger.display(u"Connecting to LDAP {}".format(self.hostname))
+            # self.logger.display(self.endpoint)
         else:
             self.logger.extra['protocol'] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra['port'] = "445" if not self.no_ntlm else "389"
-            self.logger.info(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
+            self.logger.display(u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
                 self.server_os,
                 ' x{}'.format(self.os_arch) if self.os_arch else '',
                 self.hostname,
@@ -327,7 +340,7 @@ class ldap(connection):
                 self.smbv1)
             )
             self.logger.extra['protocol'] = "LDAP"
-            # self.logger.info(self.endpoint)
+            # self.logger.display(self.endpoint)
         return True
 
     def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
@@ -370,7 +383,7 @@ class ldap(connection):
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldap_url = f"{proto}://{self.target}"
-            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [1]")
+            self.logger.debug(f"Connecting to {ldap_url} - {self.baseDN} [1]")
             self.ldapConnection = ldap_impacket.LDAPConnection(ldap_url, self.baseDN)
             self.ldapConnection.kerberosLogin(
                 username,
@@ -439,7 +452,7 @@ class ldap(connection):
                 try:
                     # Connect to LDAPS
                     ldaps_url = f"ldaps://{self.target}"
-                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN} [2]")
+                    self.logger.debug(f"Connecting to {ldaps_url} - {self.baseDN} [2]")
                     self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.kerberosLogin(
                         username,
@@ -533,7 +546,7 @@ class ldap(connection):
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldap_url = f"{proto}://{self.target}"
-            logging.debug(f"Connecting to {ldap_url} - {self.baseDN} [3]")
+            self.logger.debug(f"Connecting to {ldap_url} - {self.baseDN} [3]")
             self.ldapConnection = ldap_impacket.LDAPConnection(ldap_url, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -560,7 +573,7 @@ class ldap(connection):
                 try:
                     # Connect to LDAPS
                     ldaps_url = f"{proto}://{self.target}"
-                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN} [4]")
+                    self.logger.debug(f"Connecting to {ldaps_url} - {self.baseDN} [4]")
                     self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.check_if_admin()
@@ -642,7 +655,7 @@ class ldap(connection):
             # Connect to LDAP
             proto = "ldaps" if (self.args.gmsa or self.args.port == 636) else "ldap"
             ldaps_url = f"{proto}://{self.target}"
-            logging.debug(f"Connecting to {ldaps_url} - {self.baseDN}")
+            self.logger.debug(f"Connecting to {ldaps_url} - {self.baseDN}")
             self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
             self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
             self.check_if_admin()
@@ -667,7 +680,7 @@ class ldap(connection):
                 try:
                     # We need to try SSL
                     ldaps_url = f"{proto}://{self.target}"
-                    logging.debug(f"Connecting to {ldaps_url} - {self.baseDN}")
+                    self.logger.debug(f"Connecting to {ldaps_url} - {self.baseDN}")
                     self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.login(self.username, self.password, self.domain, self.lmhash, self.nthash)
                     self.check_if_admin()
@@ -717,27 +730,32 @@ class ldap(connection):
             return False
 
     def create_smbv1_conn(self):
+        self.logger.debug(f"Creating smbv1 connection object")
         try:
             self.conn = SMBConnection(self.host, self.host, None, 445, preferredDialect=SMB_DIALECT)
             self.smbv1 = True
+            if self.conn:
+                self.logger.debug(f"SMBv1 Connection successful")
         except socket.error as e:
             if str(e).find('Connection reset by peer') != -1:
-                logging.debug('SMBv1 might be disabled on {}'.format(self.host))
+                self.logger.debug('SMBv1 might be disabled on {}'.format(self.host))
             return False
         except Exception as e:
-            logging.debug('Error creating SMBv1 connection to {}: {}'.format(self.host, e))
+            self.logger.debug('Error creating SMBv1 connection to {}: {}'.format(self.host, e))
             return False
-
         return True
 
     def create_smbv3_conn(self):
+        self.logger.debug(f"Creating smbv3 connection object")
         try:
             self.conn = SMBConnection(self.host, self.host, None, 445)
             self.smbv1 = False
+            if self.conn:
+                self.logger.debug(f"SMBv3 Connection successful")
         except socket.error:
             return False
         except Exception as e:
-            logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
+            self.logger.debug('Error creating SMBv3 connection to {}: {}'.format(self.host, e))
             return False
 
         return True
@@ -818,7 +836,7 @@ class ldap(connection):
     def search(self, searchFilter, attributes, sizeLimit=0):
         try:
             if self.ldapConnection:
-                logging.debug('Search Filter=%s' % searchFilter)
+                self.logger.debug('Search Filter=%s' % searchFilter)
                 resp = self.ldapConnection.search(
                     searchFilter=searchFilter,
                     attributes=attributes,
@@ -844,7 +862,7 @@ class ldap(connection):
         resp = self.search(searchFilter, attributes,  sizeLimit=0)
         if resp:
             answers = []
-            self.logger.info('Total of records returned %d' % len(resp))
+            self.logger.display('Total of records returned %d' % len(resp))
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                     continue
@@ -861,7 +879,7 @@ class ldap(connection):
                             description = str(attribute['vals'][0])
                     self.logger.highlight('{:<30} {}'.format(sAMAccountName, description))
                 except Exception as e:
-                    self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
+                    self.self.cme_logger.debug('Skipping item, cannot process due to error %s' % str(e))
                     pass
             return
 
@@ -872,7 +890,7 @@ class ldap(connection):
         resp = self.search(searchFilter, attributes, 0)
         if resp:
             answers = []
-            logging.debug('Total of records returned %d' % len(resp))
+            self.logger.debug('Total of records returned %d' % len(resp))
 
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -884,8 +902,8 @@ class ldap(connection):
                             name = str(attribute['vals'][0])
                     self.logger.highlight('{}'.format(name))
                 except Exception as e:
-                    logging.debug("Exception:", exc_info=True)
-                    logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                    self.logger.debug("Exception:", exc_info=True)
+                    self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                     pass
             return       
 
@@ -902,7 +920,7 @@ class ldap(connection):
             self.logger.highlight("No entries found!")
         elif resp:
             answers = []
-            self.logger.info('Total of records returned %d' % len(resp))
+            self.logger.display('Total of records returned %d' % len(resp))
 
             for item in resp:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -935,8 +953,8 @@ class ldap(connection):
                     if mustCommit is True:
                         answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
                 except Exception as e:
-                    logging.debug("Exception:", exc_info=True)
-                    logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                    self.logger.debug("Exception:", exc_info=True)
+                    self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                     pass
             if len(answers)>0:
                 for user in answers:
@@ -1002,7 +1020,7 @@ class ldap(connection):
 
                     if mustCommit is True:
                         if int(userAccountControl) & UF_ACCOUNTDISABLE:
-                            logging.debug('Bypassing disabled account %s ' % sAMAccountName)
+                            self.logger.debug('Bypassing disabled account %s ' % sAMAccountName)
                         else:
                             for spn in SPNs:
                                 answers.append([spn, sAMAccountName,memberOf, pwdLastSet, lastLogon, delegation])
@@ -1011,7 +1029,7 @@ class ldap(connection):
                     pass
 
             if len(answers)>0:
-                self.logger.info('Total of records returned %d' % len(answers))
+                self.logger.display('Total of records returned %d' % len(answers))
                 TGT = KerberosAttacks(self).getTGT_kerberoasting()
                 dejavue = []
                 for SPN, sAMAccountName, memberOf, pwdLastSet, lastLogon, delegation in answers:
@@ -1034,7 +1052,7 @@ class ldap(connection):
                                 hash_kerberoasting.write(r + '\n')
                             dejavue.append(sAMAccountName)
                         except Exception as e:
-                            logging.debug("Exception:", exc_info=True)
+                            self.logger.debug("Exception:", exc_info=True)
                             logging.error('Principal: %s - %s' % (downLevelLogonName, str(e)))
                 return True
             else:
@@ -1049,7 +1067,7 @@ class ldap(connection):
         resp = self.search(searchFilter, attributes, 0)
 
         answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        self.logger.debug('Total of records returned %d' % len(resp))
 
         for item in resp:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1082,11 +1100,11 @@ class ldap(connection):
                 if mustCommit is True:
                     answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
             except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                self.logger.debug("Exception:", exc_info=True)
+                self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                 pass
         if len(answers)>0:
-            logging.debug(answers)
+            self.logger.debug(answers)
             for value in answers:
                 self.logger.highlight(value[0])
         else:
@@ -1097,14 +1115,14 @@ class ldap(connection):
         # Building the search filter
         searchFilter = "(userAccountControl:1.2.840.113556.1.4.803:=32)"
         try:
-            logging.debug('Search Filter=%s' % searchFilter)
+            self.logger.debug('Search Filter=%s' % searchFilter)
             resp = self.ldapConnection.search(searchFilter=searchFilter,
                         attributes=['sAMAccountName',
                                 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon'],
                         sizeLimit=0)
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                self.logger.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
@@ -1112,7 +1130,7 @@ class ldap(connection):
             else:
                 return False
         answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        self.logger.debug('Total of records returned %d' % len(resp))
 
         for item in resp:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1148,11 +1166,11 @@ class ldap(connection):
                 if mustCommit is True:
                     answers.append([sAMAccountName, memberOf, pwdLastSet, lastLogon, userAccountControl, status])
             except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                self.logger.debug("Exception:", exc_info=True)
+                self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                 pass
         if len(answers)>0:
-            logging.debug(answers)
+            self.logger.debug(answers)
             for value in answers:
                 self.logger.highlight("User: " + value[0] + " Status: " + value[5])
         else:
@@ -1165,7 +1183,7 @@ class ldap(connection):
         attributes=['sAMAccountName', 'pwdLastSet', 'MemberOf', 'userAccountControl', 'lastLogon']
         resp = self.search(searchFilter, attributes, 0)
         answers = []
-        logging.debug('Total of records returned %d' % len(resp))
+        self.logger.debug('Total of records returned %d' % len(resp))
 
         for item in resp:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1198,11 +1216,11 @@ class ldap(connection):
                 if mustCommit is True:
                     answers.append([sAMAccountName,memberOf, pwdLastSet, lastLogon, userAccountControl])
             except Exception as e:
-                logging.debug("Exception:", exc_info=True)
-                logging.debug('Skipping item, cannot process due to error %s' % str(e))
+                self.logger.debug("Exception:", exc_info=True)
+                self.logger.debug('Skipping item, cannot process due to error %s' % str(e))
                 pass
         if len(answers)>0:
-            logging.debug(answers)
+            self.logger.debug(answers)
             for value in answers:
                 self.logger.highlight(value[0])
         else:
@@ -1210,7 +1228,7 @@ class ldap(connection):
         return
 
     def gmsa(self):
-        self.logger.info("Getting GMSA Passwords")
+        self.logger.display("Getting GMSA Passwords")
         search_filter = '(objectClass=msDS-GroupManagedServiceAccount)'
         gmsa_accounts = self.ldapConnection.search(searchFilter=search_filter,
                                     attributes=['sAMAccountName', 'msDS-ManagedPassword','msDS-GroupMSAMembership'],
@@ -1218,7 +1236,7 @@ class ldap(connection):
                                     searchBase=self.baseDN)
         if gmsa_accounts:
             answers = []
-            logging.debug('Total of records returned %d' % len(gmsa_accounts))
+            self.logger.debug('Total of records returned %d' % len(gmsa_accounts))
 
             for item in gmsa_accounts:
                 if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1242,7 +1260,7 @@ class ldap(connection):
     def decipher_gmsa_name(self, domain_name=None, account_name=None):
         # https://aadinternals.com/post/gmsa/
         gmsa_account_name = (domain_name + account_name).upper()
-        self.logger.debug(f"GMSA name for {gmsa_account_name}")
+        self.self.cme_logger.debug(f"GMSA name for {gmsa_account_name}")
         bin_account_name = gmsa_account_name.encode("utf-16le")
         bin_hash = hmac.new(bytes('' , 'latin-1'), msg = bin_account_name, digestmod = hashlib.sha256).digest()
         hex_letters = "0123456789abcdef"
@@ -1250,7 +1268,7 @@ class ldap(connection):
         for b in bin_hash:
             str_hash += hex_letters[b & 0x0f]
             str_hash += hex_letters[b >> 0x04]
-        self.logger.debug(f"Hash2: {str_hash}")
+        self.self.cme_logger.debug(f"Hash2: {str_hash}")
         return str_hash
 
     def gmsa_convert_id(self):
@@ -1266,7 +1284,7 @@ class ldap(connection):
                                             searchBase=self.baseDN)
                 if gmsa_accounts:
                     answers = []
-                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+                    self.logger.debug('Total of records returned %d' % len(gmsa_accounts))
 
                     for item in gmsa_accounts:
                         if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1295,7 +1313,7 @@ class ldap(connection):
                                             searchBase=self.baseDN)
                 if gmsa_accounts:
                     answers = []
-                    logging.debug('Total of records returned %d' % len(gmsa_accounts))
+                    self.logger.debug('Total of records returned %d' % len(gmsa_accounts))
 
                     for item in gmsa_accounts:
                         if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
@@ -1320,7 +1338,6 @@ class ldap(connection):
             self.logger.error("No string provided :'(")
 
     def bloodhound(self):
-
         auth = ADAuthentication(username=self.username, password=self.password, domain=self.domain, lm_hash=self.nthash, nt_hash=self.nthash, aeskey=self.aesKey, kdc=self.kdcHost, auth_method='auto')
         ad = AD(auth=auth, domain=self.domain, nameserver=self.args.nameserver, dns_tcp=False, dns_timeout=3)
         collect = resolve_collection_methods('Default' if not self.args.collection else self.args.collection)
@@ -1328,7 +1345,7 @@ class ldap(connection):
             return
         self.logger.highlight('Resolved collection methods: %s', ', '.join(list(collect)))
 
-        logging.debug('Using DNS to retrieve domain information')
+        self.logger.debug('Using DNS to retrieve domain information')
         ad.dns_resolve(domain=self.domain)
 
         if self.args.kerberos:
@@ -1341,37 +1358,20 @@ class ldap(connection):
         bloodhound = BloodHound(ad, self.hostname, self.host, self.args.port)
         bloodhound.connect()
 
-        # root_logger = logging.getLogger()
-        # root_logger.setLevel(logging.INFO)
-
-        # bad bad coding but it's late and I don't have much time
-        from termcolor import colored
-        debug_output_string = "{:<24} {:<15} {:<6} {:<16} \033[1m\x1b[33;20m%(message)s \x1b[0m".format(colored(self.logger.extra['protocol'], 'blue', attrs=['bold']),
-                                                                    self.logger.extra['host'],
-                                                                    self.logger.extra['port'],
-                                                                    self.logger.extra['hostname'] if self.logger.extra['hostname'] else 'NONE')
-        formatter = logging.Formatter(debug_output_string)
-        streamHandler = logging.StreamHandler()
-        streamHandler.setFormatter(formatter)
-
-        root_logger = logging.getLogger()
-        root_logger.handlers = []
-        root_logger.addHandler(streamHandler)
-        root_logger.setLevel(logging.INFO)
-
-
-        bloodhound.run(collect=collect,
-                    num_workers=10,
-                    disable_pooling=False,
-                    timestamp=timestamp,
-                    computerfile=None,
-                    cachefile=None,
-                    exclude_dcs=False)
+        bloodhound.run(
+            collect=collect,
+            num_workers=10,
+            disable_pooling=False,
+            timestamp=timestamp,
+            computerfile=None,
+            cachefile=None,
+            exclude_dcs=False
+        )
 
         self.logger.highlight("Compressing output into " + self.output_filename + "bloodhound.zip")
         list_of_files = os.listdir(os.getcwd())
-        with ZipFile(self.output_filename + "bloodhound.zip",'w') as zip:
+        with ZipFile(self.output_filename + "bloodhound.zip", 'w') as z:
             for each_file in list_of_files:
                 if each_file.startswith(timestamp) and each_file.endswith("json"):
-                    zip.write(each_file)
+                    z.write(each_file)
                     os.remove(each_file)

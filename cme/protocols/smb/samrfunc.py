@@ -15,7 +15,7 @@ from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 
 class SamrFunc:
     def __init__(self, connection):
-        self.logger = connection.logger
+        self.logger = connection.cme_logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
@@ -114,7 +114,7 @@ class SAMRQuery:
 
     def get_transport(self):
         string_binding = f"ncacn_np:{self.__port}[\pipe\samr]"
-        logging.debug(f"Binding to {string_binding}")
+        logger.debug(f"Binding to {string_binding}")
         # using a direct SMBTransport instead of DCERPCTransportFactory since we need the filename to be '\samr'
         rpc_transport = transport.SMBTransport(
             self.__remote_host,
@@ -149,11 +149,11 @@ class SAMRQuery:
             try:
                 resp = samr.hSamrConnect(self.dce)
             except samr.DCERPCException as e:
-                logging.debug(f"Error while connecting with Samr: {e}")
+                logger.debug(f"Error while connecting with Samr: {e}")
                 return None
             return resp['ServerHandle']
         else:
-            logging.debug(f"Error creating Samr handle")
+            logger.debug(f"Error creating Samr handle")
             return
 
     def get_domains(self):

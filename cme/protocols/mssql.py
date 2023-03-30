@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
 import logging
-from cme.logger import CMEAdapter
 from io import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
@@ -11,7 +9,6 @@ from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
 from impacket import tds
-import configparser
 from impacket.krb5.ccache import CCache
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
@@ -70,12 +67,14 @@ class mssql(connection):
                 self.call_cmd_args()
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={
-                                        'protocol': 'MSSQL',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': 'None'
-                                        })
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': 'MSSQL',
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': 'None'
+            }
+        )
 
     def enum_host_info(self):
         # this try pass breaks module http server, more info https://github.com/byt3bl33d3r/CrackMapExec/issues/363
@@ -113,7 +112,7 @@ class mssql(connection):
                     self.domain = self.hostname
 
             except Exception as e:
-                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+                self.logger.info("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
 
         self.mssql_instances = self.conn.getInstances(0)
         self.db.add_host(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
@@ -124,11 +123,15 @@ class mssql(connection):
             pass
 
     def print_host_info(self):
-        self.logger.info(u"{} (name:{}) (domain:{})".format(self.server_os,
-                                                            self.hostname,
-                                                            self.domain))
+        self.logger.display(
+            u"{} (name:{}) (domain:{})".format(
+                self.server_os,
+                self.hostname,
+                self.domain
+            )
+        )
         # if len(self.mssql_instances) > 0:
-        #     self.logger.info("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
+        #     self.logger.display("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
         #     for i, instance in enumerate(self.mssql_instances):
         #         self.logger.debug("Instance {}".format(i))
         #         for key in instance.keys():
@@ -160,7 +163,7 @@ class mssql(connection):
 
         return True
 
-    def kerberos_login(self, domain, username, password = '', ntlm_hash = '', aesKey = '', kdcHost = '', useCache = False):
+    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
         try:
             self.conn.disconnect()
         except:
@@ -200,12 +203,13 @@ class mssql(connection):
             self.domain = domain
             self.check_if_admin()
 
-            out = u'{}{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
-                                    username,
-                                    # Show what was used between cleartext, nthash, aesKey and ccache
-                                    " from ccache" if useCache
-                                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}{}{} {}'.format(
+                '{}\\'.format(domain) if not self.args.local_auth else '',
+                username,
+                # Show what was used between cleartext, nthash, aesKey and ccache
+                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -242,10 +246,12 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user('plaintext', domain, username, password, self.host)
 
-            out = u'{}{}:{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
-                                    username,
-                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}{}:{} {}'.format(
+                '{}\\'.format(domain) if not self.args.local_auth else '',
+                username,
+                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -254,10 +260,12 @@ class mssql(connection):
         except BrokenPipeError as e:
             self.logger.error(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(domain,
-                                                        username,
-                                                        password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                        e))
+            self.logger.error(u'{}\\{}:{} {}'.format(
+                domain,
+                username,
+                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                e)
+            )
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -277,7 +285,14 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
-            res = self.conn.login(None, username, '', domain, ':' + nthash if not lmhash else ntlm_hash, not self.args.local_auth)
+            res = self.conn.login(
+                None,
+                username,
+                '',
+                domain,
+                ':' + nthash if not lmhash else ntlm_hash,
+                not self.args.local_auth
+            )
             if res is not True:
                 self.conn.printReplies()
                 return False
@@ -291,10 +306,12 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user('hash', domain, username, ntlm_hash, self.host)
 
-            out = u'{}\\{} {} {}'.format(domain,
-                                        username,
-                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+            out = u'{}\\{} {} {}'.format(
+                domain,
+                username,
+                ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+            )
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -303,10 +320,12 @@ class mssql(connection):
         except BrokenPipeError as e:
             self.logger.error(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(domain,
-                                                        username,
-                                                        ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                        e))
+            self.logger.error(u'{}\\{}:{} {}'.format(
+                domain,
+                username,
+                ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                e)
+            )
             return False
 
     def mssql_query(self):
@@ -323,12 +342,13 @@ class mssql(connection):
             payload = self.args.execute
             if not self.args.no_output: get_output = True
 
-        logging.debug('Command to execute:\n{}'.format(payload))
+        self.logger.info('Command to execute:\n{}'.format(payload))
         exec_method = MSSQLEXEC(self.conn)
         raw_output = exec_method.execute(payload, get_output)
-        logging.debug('Executed command via mssqlexec')
+        self.logger.info('Executed command via mssqlexec')
 
-        if hasattr(self, 'server'): self.server.track_host(self.host)
+        if hasattr(self, 'server'):
+            self.server.track_host(self.host)
 
         output = u'{}'.format(raw_output)
 
@@ -354,11 +374,11 @@ class mssql(connection):
 
     @requires_admin
     def put_file(self):
-        self.logger.info('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
+        self.logger.display('Copy {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
         with open(self.args.put_file[0], 'rb') as f:
             try:
                 data = f.read()
-                self.logger.info('Size is {} bytes'.format(len(data)))
+                self.logger.display('Size is {} bytes'.format(len(data)))
                 exec_method = MSSQLEXEC(self.conn)
                 exec_method.put_file(data, self.args.put_file[1])
                 if exec_method.file_exists(self.args.put_file[1]):
@@ -370,7 +390,7 @@ class mssql(connection):
 
     @requires_admin
     def get_file(self):
-        self.logger.info('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        self.logger.display('Copy {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
         try:
             exec_method = MSSQLEXEC(self.conn)
             exec_method.get_file(self.args.get_file[0], self.args.get_file[1])
@@ -378,10 +398,9 @@ class mssql(connection):
         except Exception as e:
             self.logger.error('Error reading file {}: {}'.format(self.args.get_file[0], e))
 
+
 # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
 # The whole tds library in impacket needs a good overhaul to preserve my sanity
-
-
 def printRepliesCME(self):
     for keys in self.replies.keys():
         for i, key in enumerate(self.replies[keys]):
@@ -414,5 +433,6 @@ def printRepliesCME(self):
                     else:
                         _type = "%d" % key['Type']
                     self._MSSQL__rowsPrinter.info("ENVCHANGE(%s): Old Value: %s, New Value: %s" % (_type,record['OldValue'].decode('utf-16le'), record['NewValue'].decode('utf-16le')))
+
 
 tds.MSSQL.printReplies = printRepliesCME

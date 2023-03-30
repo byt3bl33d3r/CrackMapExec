@@ -36,11 +36,11 @@ class CMEModule:
                 host = context.db.get_hosts(connection.host)[0]
                 context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
             except Exception as e:
-                logging.debug(f"Error updating zerologon status in database")
+                logger.debug(f"Error updating zerologon status in database")
 
     def perform_attack(self, dc_handle, dc_ip, target_computer):
         # Keep authenticating until successful. Expected average number of attempts needed: 256.
-        logging.debug('Performing authentication attempts...')
+        logger.debug('Performing authentication attempts...')
         rpc_con = None
         try:
             binding = epm.hept_map(dc_ip, nrpc.MSRPC_UUID_NRPC, protocol='ncacn_ip_tcp')
@@ -59,8 +59,8 @@ class CMEModule:
 
 
 def fail(msg):
-    logging.debug(msg, file=sys.stderr)
-    logging.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
+    logger.debug(msg, file=sys.stderr)
+    logger.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
     sys.exit(2)
 
 

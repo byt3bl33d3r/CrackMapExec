@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import cmd
-import logging
 import shutil
 import sqlite3
 import sys
@@ -457,7 +456,7 @@ def delete_workspace(workspace_name):
 
 def initialize_db(logger):
     if not os.path.exists(os.path.join(WS_PATH, 'default')):
-        logger.info('Creating default workspace')
+        logger.debug('Creating default workspace')
         os.mkdir(os.path.join(WS_PATH, 'default'))
 
     p_loader = ProtocolLoader()
@@ -471,7 +470,7 @@ def initialize_db(logger):
         proto_db_path = os.path.join(WS_PATH, 'default', protocol + '.db')
 
         if not os.path.exists(proto_db_path):
-            logger.info('Initializing {} protocol database'.format(protocol.upper()))
+            logger.debug('Initializing {} protocol database'.format(protocol.upper()))
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
             # try to prevent some weird sqlite I/O errors

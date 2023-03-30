@@ -110,7 +110,7 @@ class TSCH_EXEC:
         elif self.__retOutput is False:
             argument_xml = "      <Arguments>/C {}</Arguments>".format(command)
 
-        logging.debug('Generated argument XML: ' + argument_xml)
+        logger.debug('Generated argument XML: ' + argument_xml)
         xml += argument_xml
 
         xml += """
@@ -146,7 +146,7 @@ class TSCH_EXEC:
 
         done = False
         while not done:
-            logging.debug('Calling SchRpcGetLastRunInfo for \\%s' % tmpName)
+            logger.debug('Calling SchRpcGetLastRunInfo for \\%s' % tmpName)
             resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % tmpName)
             if resp['pLastRuntime']['wYear'] != 0:
                 done = True
@@ -184,7 +184,7 @@ class TSCH_EXEC:
                             sleep(3)
                         else:
                             raise
-                #logging.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
+                #logger.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
                 smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % tmpFileName)
 
         dce.disconnect()

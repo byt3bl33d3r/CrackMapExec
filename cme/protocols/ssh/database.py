@@ -61,7 +61,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
+            logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:

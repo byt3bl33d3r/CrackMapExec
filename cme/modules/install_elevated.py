@@ -56,6 +56,6 @@ class CMEModule:
             try:
                 remote_ops.finish()
             except scmr.DCERPCSessionError as e:
-                logging.debug(f"Received SessionError while attempting to clean up logins: {e}")
+                logger.debug(f"Received SessionError while attempting to clean up logins: {e}")
             except Exception as e:
-                logging.debug(f"Received general exception while attempting to clean up logins: {e}")
+                logger.debug(f"Received general exception while attempting to clean up logins: {e}")

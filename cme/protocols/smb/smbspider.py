@@ -37,7 +37,7 @@ class SMBSpider:
         self.onlyfiles = onlyfiles
 
         if share == "*":
-            self.logger.info("Enumerating shares for spidering")
+            self.logger.display("Enumerating shares for spidering")
             permissions = []
             try:
                 for share in self.smbconnection.listShares():
@@ -46,7 +46,7 @@ class SMBSpider:
                     try:
                         self.smbconnection.listPath(share_name, '*')
                         self.share = share_name
-                        self.logger.info("Spidering share: {0}".format(share_name))
+                        self.logger.display("Spidering share: {0}".format(share_name))
                         self._spider(folder, depth)
                     except SessionError:
                         pass
@@ -54,7 +54,7 @@ class SMBSpider:
                 self.logger.error('Error enumerating shares: {}'.format(e))
         else:
             self.share = share
-            self.logger.info("Spidering {0}".format(folder))
+            self.logger.display("Spidering {0}".format(folder))
             self._spider(folder, depth)
 
         return self.results
@@ -87,7 +87,7 @@ class SMBSpider:
         except SessionError as e:
             if not filelist:
                 if 'STATUS_ACCESS_DENIED' not in str(e):
-                    logging.debug("Failed listing files on share {} in directory {}: {}".format(self.share, subfolder, e))
+                    logger.debug("Failed listing files on share {} in directory {}: {}".format(self.share, subfolder, e))
                 return
 
         for result in filelist:

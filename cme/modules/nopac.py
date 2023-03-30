@@ -53,4 +53,4 @@ class CMEModule:
                 context.log.highlight("VULNERABLE")
                 context.log.highlight("Next step: https://github.com/Ridter/noPac")
         except OSError as e:
-            logging.debug(f"Error connecting to Kerberos (port 88) on {connection.host}")
+            logger.debug(f"Error connecting to Kerberos (port 88) on {connection.host}")

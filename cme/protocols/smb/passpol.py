@@ -74,7 +74,7 @@ class PassPolDump:
     }
 
     def __init__(self, connection):
-        self.logger = connection.logger
+        self.logger = connection.cme_logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
@@ -105,14 +105,14 @@ class PassPolDump:
                 protodef = PassPolDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError:
-                logging.debug("Invalid Protocol '{}'".format(protocol))
-            logging.debug("Trying protocol {}".format(protocol))
+                logger.debug("Invalid Protocol '{}'".format(protocol))
+            logger.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
             try:
                 self.fetchList(rpctransport)
             except Exception as e:
-                logging.debug('Protocol failed: {}'.format(e))
+                logger.debug('Protocol failed: {}'.format(e))
             else:
                 # Got a response. No need for further iterations.
                 self.pretty_print()
@@ -188,9 +188,9 @@ class PassPolDump:
             0: 'Domain Refuse Password Change:'
         }
 
-        logging.debug('Found domain(s):')
+        logger.debug('Found domain(s):')
         for domain in self.__domains:
-            logging.debug('{}'.format(domain['Name']))
+            logger.debug('{}'.format(domain['Name']))
 
         self.logger.success("Dumping password info for domain: {}".format(self.__domains[0]['Name']))
 

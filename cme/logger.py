@@ -46,7 +46,43 @@ class CMEAdapter(logging.LoggerAdapter):
         self.extra = extra
         self.outputfile = None
 
-    def process(self, msg, kwargs):
+    # def process(self, msg, kwargs):
+    #     """
+    #     Used to process log strings for outputting
+    #     """
+    #     # print(self.extra)
+    #     if self.extra is None:
+    #         return u'{}'.format(msg), kwargs
+    #
+    #     if 'module' in self.extra.keys():
+    #         if len(self.extra['module']) > 8:
+    #             self.extra['module'] = self.extra['module'][:8] + '...'
+    #
+    #     # If the logger is being called when hooking the 'options' module function
+    #     if len(self.extra) == 1 and ('module' in self.extra.keys()):
+    #         return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+    #
+    #     # If the logger is being called from CMEServer
+    #     if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
+    #         return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+    #
+    #     # If the logger is being called from a protocol
+    #     if 'module' in self.extra.keys():
+    #         module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
+    #     else:
+    #         module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
+    #     return u'{:<24} {:<15} {:<6} {:<16} {}'.format(
+    #         module_name,
+    #         self.extra['host'],
+    #         self.extra['port'],
+    #         self.extra['hostname'] if self.extra['hostname'] else 'NONE',
+    #         msg), kwargs
+
+    def format(self, msg, *args, **kwargs):
+        """
+        Format msg for output if needed
+        This is used instead of process() since process() applies to _all_ messages, including debug calls
+        """
         if self.extra is None:
             return u'{}'.format(msg), kwargs
 
@@ -67,45 +103,61 @@ class CMEAdapter(logging.LoggerAdapter):
             module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
-        return u'{:<24} {:<15} {:<6} {:<16} {}'.format(
+
+        return '{:<24} {:<15} {:<6} {:<16} {}'.format(
             module_name,
             self.extra['host'],
             self.extra['port'],
             self.extra['hostname'] if self.extra['hostname'] else 'NONE',
             msg), kwargs
 
-    def info(self, msg, *args, **kwargs):
+    def display(self, msg, *args, **kwargs):
+        """
+        Display text to console, formatted for CME
+        """
         try:
             if 'protocol' in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
+        # msg = u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg)
+        msg, kwargs = self.format(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
 
-    def error(self, msg, color='red', *args, **kwargs):
-        msg, kwargs = self.process(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
-        text = Text.from_ansi(msg)
-        self.logger.error(text, *args, **kwargs)
+    # def error(self, msg, color='red', *args, **kwargs):
+    #     """
+    #     Print error log
+    #     """
+    #     msg, kwargs = self.format(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
+    #     text = Text.from_ansi(msg)
+    #     self.logger.error(text, *args, **kwargs)
 
-    def debug(self, msg, *args, **kwargs):
-        text = Text.from_ansi(msg)
-        self.logger.debug(text, *args, **kwargs)
+    # def debug(self, msg, color='blue', *args, **kwargs):
+    #     """
+    #     Print debug log (viewable via --verbose)
+    #     """
+    #     return super()._log(logging.DEBUG, msg, args, **kwargs)
 
     def success(self, msg, *args, **kwargs):
+        """
+        Print some sort of success to the user
+        """
         try:
             if 'protocol' in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
+        msg, kwargs = self.format(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
-        self.info(text, *args, **kwargs)
+        cme_console.print(text, *args, **kwargs)
 
     def highlight(self, msg, *args, **kwargs):
+        """
+        Prints a completely yellow highlighted message to the user
+        """
         try:
             if 'protocol' in self.extra.keys() and not called_from_cmd_args():
                 return
@@ -114,7 +166,7 @@ class CMEAdapter(logging.LoggerAdapter):
 
         msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         text = Text.from_ansi(msg)
-        cme_console.print(text, *args, **kwargs)
+        self.display(text, *args, **kwargs)
 
     # For Impacket's TDS library
     def logMessage(self, message):
@@ -172,4 +224,5 @@ def init_log_file():
     log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs', 'full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
     return log_filename
 
-logger = CMEAdapter()
+
+cme_logger = CMEAdapter()

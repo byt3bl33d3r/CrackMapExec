@@ -81,7 +81,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
+            logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
@@ -99,7 +99,7 @@ class database:
             self.HostsTable.c.ip == ip
         )
         results = self.conn.execute(q).all()
-        logging.debug(f"mssql add_host() - hosts returned: {results}")
+        logger.debug(f"mssql add_host() - hosts returned: {results}")
 
         host_data = {
             "ip": ip,
@@ -127,7 +127,7 @@ class database:
                 if host_data not in hosts:
                     hosts.append(host_data)
 
-        logging.debug(f"Update Hosts: {hosts}")
+        logger.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
@@ -185,7 +185,7 @@ class database:
                     results = self.conn.execute(q) # .first()
                     # user_rowid = results.id
 
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
+        logger.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
             credtype,
             domain,
             username,
@@ -222,14 +222,14 @@ class database:
                 self.UsersTable.c.password == password
             )
             users = self.conn.execute(q).all()
-        logging.debug(f"Users: {users}")
+        logger.debug(f"Users: {users}")
 
         like_term = func.lower(f"%{host}%")
         q = q.filter(
             self.HostsTable.c.ip.like(like_term)
         )
         hosts = self.conn.execute(q).all()
-        logging.debug(f"Hosts: {hosts}")
+        logger.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
             for user, host in zip(users, hosts):

@@ -54,7 +54,7 @@ class CMEModule:
                 resp = e.getAnswers()
                 pass
             else:
-                logging.debug(e)
+                logger.debug(e)
                 return False
 
         memberOf = []

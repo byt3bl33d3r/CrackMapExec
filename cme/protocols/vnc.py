@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import asyncio
+import os
+from datetime import datetime
+
+from aardwolf.commons.target import RDPTarget
+
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-
-from aardwolf import logger
 from aardwolf.vncconnection import VNCConnection
 from aardwolf.commons.iosettings import RDPIOSettings
-
+from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
 from asyauth.common.credentials import UniCredential
 from asyauth.common.constants import asyauthSecret, asyauthProtocol
 
-logger.setLevel(logging.CRITICAL)
 
 class vnc(connection):
-
     def __init__(self, args, db, host):
         self.iosettings = RDPIOSettings()
         self.iosettings.channels = []
@@ -43,8 +43,8 @@ class vnc(connection):
         return parser
 
     def proto_flow(self):
+        self.proto_logger()
         if self.create_conn_obj():
-            self.proto_logger()
             self.print_host_info()
             if self.login():
                 if hasattr(self.args, 'module') and self.args.module:
@@ -53,13 +53,17 @@ class vnc(connection):
                     self.call_cmd_args()
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={'protocol': 'VNC',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': self.hostname})
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': 'VNC',
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': self.hostname
+            }
+        )
 
     def print_host_info(self):
-        self.logger.info(u"VNC connecting to {}".format(self.hostname))
+        self.logger.display(u"VNC connecting to {}".format(self.hostname))
 
     def create_conn_obj(self):
         try:
@@ -68,7 +72,7 @@ class vnc(connection):
             self.conn = VNCConnection(target=self.target, credentials=credential, iosettings=self.iosettings)
             asyncio.run(self.connect_vnc(True))
         except Exception as e:
-            logging.debug(str(e))
+            self.logger.debug(str(e))
             if "Server supports:" not in str(e):
                 return False
         return True
@@ -83,27 +87,38 @@ class vnc(connection):
 
     def plaintext_login(self, username, password):
         try:
-            stype=asyauthSecret.PASS
+            stype = asyauthSecret.PASS
             if password == "":
-                stype = stype=asyauthSecret.NONE
+                stype = stype = asyauthSecret.NONE
             self.credential = UniCredential(secret=password, protocol=asyauthProtocol.PLAIN, stype=stype)
             self.conn = VNCConnection(target=self.target, credentials=self.credential, iosettings=self.iosettings)
             asyncio.run(self.connect_vnc())
 
             self.admin_privs = True
-            self.logger.success(u'{} {}'.format(password,
-                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            self.logger.success(
+                u'{} {}'.format(
+                    password,
+                    highlight('({})'.format(
+                        self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                )
+            )
             if not self.args.continue_on_success:
                 return True
 
         except Exception as e:
-            logging.debug(str(e))
+            self.logger.debug(str(e))
             if "Server supports: 1" in str(e):
-                self.logger.success(u'{} {}'.format("No password seems to be accepted by the server",
-                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))                
+                self.logger.success(
+                    u'{} {}'.format(
+                        "No password seems to be accepted by the server",
+                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             else:
-                self.logger.error(u'{} {}'.format(password,
-                                                "Authentication failed"))
+                self.logger.error(
+                    u'{} {}'.format(
+                        password,
+                        "Authentication failed"
+                    )
+                )
             return False
 
     async def screen(self):
@@ -112,8 +127,12 @@ class vnc(connection):
         await asyncio.sleep(int(self.args.screentime))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-            buffer.save(filename,'png')
+            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(
+                self.hostname,
+                self.host,
+                datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+
+            buffer.save(filename, 'png')
             self.logger.highlight("Screenshot saved {}".format(filename))
 
     def screenshot(self):

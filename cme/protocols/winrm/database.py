@@ -86,7 +86,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
+            logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
@@ -104,7 +104,7 @@ class database:
             self.HostsTable.c.ip == ip
         )
         results = self.conn.execute(q).all()
-        logging.debug(f"smb add_host() - hosts returned: {results}")
+        logger.debug(f"smb add_host() - hosts returned: {results}")
 
         # create new host
         if not results:
@@ -134,7 +134,7 @@ class database:
                 # only add host to be updated if it has changed
                 if host_data not in hosts:
                     hosts.append(host_data)
-        logging.debug(f"Update Hosts: {hosts}")
+        logger.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
@@ -391,7 +391,7 @@ class database:
                 func.lower(self.HostsTable.c.hostname).like(like_term)
             )
         results = self.conn.execute(q).all()
-        logging.debug(f"winrm get_hosts() - results: {results}")
+        logger.debug(f"winrm get_hosts() - results: {results}")
         return results
 
     def is_user_valid(self, user_id):
@@ -451,7 +451,7 @@ class database:
                 )  # .scalar()
                 # return inserted_ids
             except Exception as e:
-                logging.debug(f"Error inserting LoggedinRelation: {e}")
+                logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
         q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)

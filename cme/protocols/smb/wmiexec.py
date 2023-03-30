@@ -76,7 +76,7 @@ class WMIEXEC:
     def execute_handler(self, data):
         if self.__retOutput:
             try:
-                logging.debug('Executing remote')
+                logger.debug('Executing remote')
                 self.execute_remote(data)
             except:
                 self.cd('\\')
@@ -91,7 +91,7 @@ class WMIEXEC:
         if self.__retOutput:
             command += ' 1> ' + '%s' % self.__output  + ' 2>&1'
 
-        logging.debug('Executing command: ' + command)
+        logger.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
         self.get_output_remote()
 
@@ -101,7 +101,7 @@ class WMIEXEC:
 
         command = self.__shell + data + ' 1> \\\\{}\\{}\\{} 2>&1'.format(local_ip, self.__share_name, self.__output)
 
-        logging.debug('Executing command: ' + command)
+        logger.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
         self.get_output_fileless()
 

@@ -44,11 +44,11 @@ class CMEModule:
                         "lmcompatibilitylevel\x00"
                     )
                 except rrp.DCERPCSessionError as e:
-                    logging.debug(f"Unable to reference lmcompatabilitylevel, which probably means ntlmv1 is not set")
+                    logger.debug(f"Unable to reference lmcompatabilitylevel, which probably means ntlmv1 is not set")
 
                 if rtype and data and int(data) in [0, 1, 2]:
                     context.log.highlight(self.output.format(connection.conn.getRemoteHost(), data))
         except DCERPCSessionError as e:
-            logging.debug(f"Error connecting to RemoteRegistry: {e}")
+            logger.debug(f"Error connecting to RemoteRegistry: {e}")
         finally:
             remote_ops.finish()

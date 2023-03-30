@@ -18,7 +18,7 @@ class UserSamrDump:
     }
 
     def __init__(self, connection):
-        self.logger = connection.logger
+        self.logger = connection.cme_logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
@@ -49,15 +49,15 @@ class UserSamrDump:
                 protodef = UserSamrDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError as e:
-                logging.debug("Invalid Protocol '{}'".format(protocol))
-            logging.debug("Trying protocol {}".format(protocol))
+                logger.debug("Invalid Protocol '{}'".format(protocol))
+            logger.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
             try:
                 self.fetchList(rpctransport)
                 break
             except Exception as e:
-                logging.debug('Protocol failed: {}'.format(e))
+                logger.debug('Protocol failed: {}'.format(e))
         return self.users
 
     def fetchList(self, rpctransport):

@@ -11,7 +11,7 @@ from datetime import datetime
 import asyncio
 import warnings
 import base64
-from cme.logger import logger
+from cme.logger import cme_logger
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
@@ -160,7 +160,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logger.debug(f"Error while closing session db object: {e}")
+            cme_logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
@@ -225,7 +225,7 @@ class database:
                 if host_data not in hosts:
                     hosts.append(host_data)
                     updated_ids.append(host_data["id"])
-        logger.debug(f"Update Hosts: {hosts}")
+        cme_logger.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
@@ -241,7 +241,7 @@ class database:
         )  # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
         if updated_ids:
-            logger.debug(f"add_host() - Host IDs Updated: {updated_ids}")
+            cme_logger.debug(f"add_host() - Host IDs Updated: {updated_ids}")
             return updated_ids
 
     def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
@@ -254,7 +254,7 @@ class database:
 
         if (group_id and not self.is_group_valid(group_id)) or \
                 (pillaged_from and not self.is_host_valid(pillaged_from)):
-            logger.debug(f"Invalid group or host")
+            cme_logger.debug(f"Invalid group or host")
             return
 
         q = select(self.UsersTable).filter(
@@ -308,7 +308,7 @@ class database:
             index_elements=self.UsersTable.primary_key,
             set_=update_columns_users
         )
-        logger.debug(f"Adding credentials: {credentials}")
+        cme_logger.debug(f"Adding credentials: {credentials}")
 
         self.conn.execute(
             q_users,
@@ -536,7 +536,7 @@ class database:
                 func.lower(self.HostsTable.c.hostname).like(like_term)
             )
         results = self.conn.execute(q).all()
-        logger.debug(f"smb hosts() - results: {results}")
+        cme_logger.debug(f"smb hosts() - results: {results}")
         return results
 
     def is_group_valid(self, group_id):
@@ -549,7 +549,7 @@ class database:
         results = self.conn.execute(q).first()
 
         valid = True if results else False
-        logger.debug(f"is_group_valid(groupID={group_id}) => {valid}")
+        cme_logger.debug(f"is_group_valid(groupID={group_id}) => {valid}")
 
         return valid
 
@@ -585,7 +585,7 @@ class database:
             )
             new_group_data = self.get_groups(group_name=group_data["name"], group_domain=group_data["domain"])
             returned_id = [new_group_data[0].id]
-            logger.debug(f"Inserted group with ID: {returned_id[0]}")
+            cme_logger.debug(f"Inserted group with ID: {returned_id[0]}")
             return returned_id
         else:
             for group in results:
@@ -606,7 +606,7 @@ class database:
                     groups.append(g_data)
                     updated_ids.append(g_data["id"])
 
-        logger.debug(f"Update Groups: {groups}")
+        cme_logger.debug(f"Update Groups: {groups}")
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.GroupsTable)  # .returning(self.GroupsTable.c.id)
@@ -627,7 +627,7 @@ class database:
         # logger.debug(f"inserted_results: {inserted_result}\ntype: {type(inserted_result)}")
         # logger.debug('add_group(domain={}, name={}) => {}'.format(domain, name, gid))
         if updated_ids:
-            logger.debug(f"Updated groups with IDs: {updated_ids}")
+            cme_logger.debug(f"Updated groups with IDs: {updated_ids}")
         return updated_ids
 
     def get_groups(self, filter_term=None, group_name=None, group_domain=None):
@@ -659,7 +659,7 @@ class database:
 
         results = self.conn.execute(q).all()
 
-        logger.debug(
+        cme_logger.debug(
             f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
         return results
 
@@ -739,7 +739,7 @@ class database:
         )
         results = self.conn.execute(q).all()
 
-        logger.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
+        cme_logger.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
         return len(results) > 0
 
     def add_share(self, host_id, user_id, name, remark, read, write):
@@ -823,10 +823,10 @@ class database:
                     q,
                     [backup_key]
                 )  # .scalar()
-                logger.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})")
+                cme_logger.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})")
                 # return inserted_id
             except Exception as e:
-                logger.debug(f"Issue while inserting DPAPI Backup Key: {e}")
+                cme_logger.debug(f"Issue while inserting DPAPI Backup Key: {e}")
 
     def get_domain_backupkey(self, domain: str = None):
         """
@@ -840,7 +840,7 @@ class database:
             )
         results = self.conn.execute(q).all()
 
-        logger.debug(f"get_domain_backupkey(domain={domain}) => {results}")
+        cme_logger.debug(f"get_domain_backupkey(domain={domain}) => {results}")
 
         if len(results) > 0:
             results = [(id_key, domain, base64.b64decode(pvk)) for id_key, domain, pvk in results]
@@ -856,7 +856,7 @@ class database:
         )
         results = self.conn.execute(q).first()
         valid = True if results is not None else False
-        logger.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
+        cme_logger.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
         return valid
 
     def add_dpapi_secrets(self, host: str, dpapi_type: str, windows_user: str, username: str, password: str,
@@ -882,7 +882,7 @@ class database:
         # inserted_result = res_inserted_result.first()
         # inserted_id = inserted_result.id
 
-        logger.debug(
+        cme_logger.debug(
             f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
 
     def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None,
@@ -926,7 +926,7 @@ class database:
             )
         results = self.conn.execute(q).all()
 
-        logger.debug(
+        cme_logger.debug(
             f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
         return results
 
@@ -944,7 +944,7 @@ class database:
                 "hostid": host_id
             }
             try:
-                logger.debug(f"Inserting loggedin_relations: {relation}")
+                cme_logger.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
                 q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
 
@@ -953,10 +953,10 @@ class database:
                     [relation]
                 )  # .scalar()
                 inserted_id_results = self.get_loggedin_relations(user_id, host_id)
-                logger.debug(f"Checking if relation was added: {inserted_id_results}")
+                cme_logger.debug(f"Checking if relation was added: {inserted_id_results}")
                 return inserted_id_results[0].id
             except Exception as e:
-                logger.debug(f"Error inserting LoggedinRelation: {e}")
+                cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
         q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)

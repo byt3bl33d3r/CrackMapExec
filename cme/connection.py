@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import random
 import socket
 from os.path import isfile
 from threading import BoundedSemaphore
-from socket import gethostbyname
 from functools import wraps
 from time import sleep
 
-from cme.logger import CMEAdapter
+from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
-from cme.helpers.logger import write_log
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
@@ -42,7 +39,6 @@ def requires_admin(func):
 
 
 class connection(object):
-
     def __init__(self, args, db, host):
         self.domain = None
         self.args = args
@@ -56,25 +52,25 @@ class connection(object):
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
-        self.log = None if not self.args.log else self.args.log
+        self.log_file = None if not self.args.log else self.args.log
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
 
-        if self.log:
-            CMEAdapter().setup_logfile(self.log[0])
+        if self.log_file:
+            cme_logger.setup_logfile(self.log_file[0])
 
         try:
             self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
         except Exception as e:
-            logging.debug('Error resolving hostname {}: {}'.format(self.hostname, e))
+            cme_logger.info(f"Error resolving hostname {self.hostname}: {e}")
             return
 
         if args.jitter:
             value = random.choice(range(args.jitter[0], args.jitter[1]))
-            logging.debug(f"Doin' the jitterbug for {value} second(s)")
+            cme_logger.debug(f"Doin' the jitterbug for {value} second(s)")
             sleep(value)
 
         self.proto_flow()
@@ -108,9 +104,9 @@ class connection(object):
         return
 
     def proto_flow(self):
+        self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
-            self.proto_logger()
             if self.print_host_info():
                 # because of null session
                 if self.login() or (self.username == '' and self.password == ''):
@@ -123,12 +119,12 @@ class connection(object):
         for k, v in vars(self.args).items():
             if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                 if v is not False and v is not None:
-                    logging.debug('Calling {}()'.format(k))
+                    self.logger.debug('Calling {}()'.format(k))
                     r = getattr(self, k)()
 
     def call_modules(self):
         for module in self.module:
-            logging.debug(f"Loading module {module}")
+            self.logger.debug(f"Loading module {module}")
             module_logger = CMEAdapter(extra={
                 'module': module.name.upper(),
                 'host': self.host,
@@ -187,7 +183,7 @@ class connection(object):
                 else:
                     creds = self.db.get_credentials(filter_term=int(cred_id))
                 for cred in creds:
-                    logging.debug(cred)
+                    self.logger.debug(cred)
                     try:
                         c_id, domain, username, password, cred_type, pillaged_from = cred
 
@@ -208,11 +204,11 @@ class connection(object):
 
                             elif cred_type == 'plaintext' and not self.over_fail_limit(username):
                                 if self.args.kerberos:
-                                    if self.kerberos_login(domain, username, password, '' , '', self.kdcHost, False):
+                                    if self.kerberos_login(domain, username, password, '', '', self.kdcHost, False):
                                         return True
                                 elif self.plaintext_login(domain, username, password): return True
                     except IndexError:
-                        self.logger.error("Invalid database credential ID!")
+                        self.log.error("Invalid database credential ID!")
         if self.args.use_kcache:
             with sem:
                 username = self.args.username[0] if len(self.args.username) else ''
@@ -248,7 +244,7 @@ class connection(object):
                                                             if self.kerberos_login(self.domain, usr.strip(), '', f_hash.strip(), '', self.kdcHost, False): return True
                                                         elif self.hash_login(self.domain, usr.strip(), f_hash.strip()):
                                                             return True
-                                    else: # ntlm_hash is a string
+                                    else:  # ntlm_hash is a string
                                         if not self.over_fail_limit(usr.strip()):
                                             if self.args.kerberos:
                                                 if self.kerberos_login(self.domain, usr.strip(), '', ntlm_hash.strip(), '', self.kdcHost, False):
@@ -309,7 +305,7 @@ class connection(object):
                                                     return True
                                             elif self.hash_login(self.domain, user, f_hash.strip()):
                                                 return True
-                            else: # ntlm_hash is a string
+                            else:  # ntlm_hash is a string
                                 if not self.over_fail_limit(user):
                                     if self.args.kerberos:
                                         if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False): return True
