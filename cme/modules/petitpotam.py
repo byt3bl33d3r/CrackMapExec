@@ -55,7 +55,7 @@ class CMEModule:
                 host = context.db.get_hosts(connection.host)[0]
                 context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, petitpotam=True)
             except Exception as e:
-                logger.debug(f"Error updating petitpotam status in database")
+                context.log.debug(f"Error updating petitpotam status in database")
 
 
 class DCERPCSessionError(DCERPCException):

@@ -5,7 +5,6 @@
 # Website:
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
-#from lsassy import logger
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
