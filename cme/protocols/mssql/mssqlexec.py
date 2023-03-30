@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import binascii
+from cme.logger import cme_logger
+
 
 class MSSQLEXEC:
-
     def __init__(self, connection):
         self.mssql_conn = connection
         self.outputBuffer = ''
@@ -27,7 +27,7 @@ class MSSQLEXEC:
             return self.outputBuffer
 
         except Exception as e:
-            logger.debug('Error executing command via mssqlexec: {}'.format(e))
+            cme_logger.debug('Error executing command via mssqlexec: {}'.format(e))
 
     def enable_xp_cmdshell(self):
         self.mssql_conn.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")
@@ -55,7 +55,7 @@ class MSSQLEXEC:
                                         "EXEC sp_OADestroy @ob;".format(hexdata, remote))
             self.disable_ole()
         except Exception as e:
-            logger.debug('Error uploading via mssqlexec: {}'.format(e))
+            cme_logger.debug('Error uploading via mssqlexec: {}'.format(e))
 
     def file_exists(self, remote):
         try:
@@ -73,4 +73,4 @@ class MSSQLEXEC:
                 f.write(binascii.unhexlify(data))
 
         except Exception as e:
-            logger.debug('Error downloading via mssqlexec: {}'.format(e))
+            cme_logger.debug('Error downloading via mssqlexec: {}'.format(e))

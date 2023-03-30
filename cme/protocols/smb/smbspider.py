@@ -5,12 +5,11 @@ from time import strftime, localtime
 from cme.protocols.smb.remotefile import RemoteFile
 from impacket.smb3structs import FILE_READ_DATA
 from impacket.smbconnection import SessionError
-import logging
 import re
 import traceback
 
-class SMBSpider:
 
+class SMBSpider:
     def __init__(self, smbconnection, logger):
         self.smbconnection = smbconnection
         self.logger = logger
@@ -87,7 +86,7 @@ class SMBSpider:
         except SessionError as e:
             if not filelist:
                 if 'STATUS_ACCESS_DENIED' not in str(e):
-                    logger.debug("Failed listing files on share {} in directory {}: {}".format(self.share, subfolder, e))
+                    self.logger.debug("Failed listing files on share {} in directory {}: {}".format(self.share, subfolder, e))
                 return
 
         for result in filelist:

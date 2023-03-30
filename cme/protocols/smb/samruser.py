@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 #Stolen from Impacket
 
-import logging
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.dcerpc.v5 import transport, samr 
 from impacket.dcerpc.v5.samr import DCERPCSessionError
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.nt_errors import STATUS_MORE_ENTRIES
-from impacket import ntlm
+
 
 class UserSamrDump:
 
@@ -49,15 +48,15 @@ class UserSamrDump:
                 protodef = UserSamrDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError as e:
-                logger.debug("Invalid Protocol '{}'".format(protocol))
-            logger.debug("Trying protocol {}".format(protocol))
+                self.logger.debug("Invalid Protocol '{}'".format(protocol))
+            self.logger.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
             try:
                 self.fetchList(rpctransport)
                 break
             except Exception as e:
-                logger.debug('Protocol failed: {}'.format(e))
+                self.logger.debug('Protocol failed: {}'.format(e))
         return self.users
 
     def fetchList(self, rpctransport):

@@ -1,8 +1,7 @@
 import sys, time
 
 from cme.logger import CMEAdapter
-from bloodhound.ad.domain import AD, ADDC
-from bloodhound.ad.authentication import ADAuthentication
+from bloodhound.ad.domain import ADDC
 from bloodhound.enumeration.computers import ComputerEnumerator
 from bloodhound.enumeration.memberships import MembershipEnumerator
 from bloodhound.enumeration.domains import DomainEnumerator

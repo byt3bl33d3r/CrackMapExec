@@ -3,7 +3,7 @@
 
 # https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/rpcdump.py
 # from impacket.examples import context.log
-from impacket import uuid, version
+from impacket import uuid
 from impacket.dcerpc.v5 import transport, epm
 from impacket.dcerpc.v5.rpch import RPC_PROXY_INVALID_RPC_PORT_ERR, \
     RPC_PROXY_CONN_A1_0X6BA_ERR, RPC_PROXY_CONN_A1_404_ERR, \
@@ -17,9 +17,8 @@ KNOWN_PROTOCOLS = {
 
 class CMEModule:
     """
-        For printnightmare: detect if print spooler is enabled or not. Then use @cube0x0's project https://github.com/cube0x0/CVE-2021-1675 or Mimikatz from Benjamin Delpy
-        Module by @mpgn_x64
-
+    For printnightmare: detect if print spooler is enabled or not. Then use @cube0x0's project https://github.com/cube0x0/CVE-2021-1675 or Mimikatz from Benjamin Delpy
+    Module by @mpgn_x64
     """
     name = 'spooler'
     description = 'Detect if print spooler is enabled or not'

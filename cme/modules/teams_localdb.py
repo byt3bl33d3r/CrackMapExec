@@ -49,7 +49,7 @@ class CMEModule:
             c = conn.cursor()
             c.execute("SELECT value FROM cookies WHERE name = '" + name + "'")
             row = c.fetchone()
-            if row == None:
+            if row is None:
                 context.log.error("No " + name + " present in Microsoft Teams Cookies database")
             else:
                 context.log.success("Succesfully extracted " + name + ": ")

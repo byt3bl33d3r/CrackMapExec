@@ -5,8 +5,8 @@ import logging
 import os
 import configparser
 
-class Context:
 
+class Context:
     def __init__(self, db, logger, args):
         for key, value in vars(args).items():
             setattr(self, key, value)
@@ -19,4 +19,4 @@ class Context:
         self.conf.read(os.path.expanduser('~/.cme/cme.conf'))
 
         self.log = logger
-        self.log.debug = logging.debug
+        # self.log.debug = logging.debug

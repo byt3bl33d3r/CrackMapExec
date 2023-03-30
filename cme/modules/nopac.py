@@ -8,8 +8,6 @@ from binascii import unhexlify
 from impacket.krb5.kerberosv5 import getKerberosTGT
 from impacket.krb5 import constants
 from impacket.krb5.types import Principal
-import logging
-
 
 class CMEModule:
 
@@ -53,4 +51,4 @@ class CMEModule:
                 context.log.highlight("VULNERABLE")
                 context.log.highlight("Next step: https://github.com/Ridter/noPac")
         except OSError as e:
-            logger.debug(f"Error connecting to Kerberos (port 88) on {connection.host}")
+            context.log.debug(f"Error connecting to Kerberos (port 88) on {connection.host}")

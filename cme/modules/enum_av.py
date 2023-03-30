@@ -5,12 +5,10 @@
 # project : https://github.com/tothi/serviceDetector
 
 from impacket.dcerpc.v5 import lsat, lsad
-from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.dtypes import NULL, MAXIMUM_ALLOWED, RPC_UNICODE_STRING
-from impacket.dcerpc.v5 import transport, epm
-
-import json
+from impacket.dcerpc.v5 import transport
 import pathlib
+
 
 class CMEModule:
     '''
@@ -32,7 +30,7 @@ class CMEModule:
 
         success = 0
         results = {}
-        context.log.debug("Detecting installed services on {} using LsarLookupNames()...".format(connection.host))
+        context.log.debug(f"Detecting installed services on {connection.host} using LsarLookupNames()...")
         try:
             lsa = LsaLookupNames(connection.domain, connection.username, connection.password, connection.hostname if connection.kerberos else connection.host, connection.kerberos, connection.domain, connection.lmhash, connection.nthash)
             dce, rpctransport = lsa.connect()
@@ -42,7 +40,7 @@ class CMEModule:
                 for service in product['services']:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service['name'])
-                        context.log.debug("Detected installed service on {}: {} {}".format(connection.host, product['name'], service['description']))
+                        context.log.debug(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product['name'] not in results:
                             results[product['name']] = {"services": []}
                         results[product['name']]['services'].append(service)
@@ -52,7 +50,7 @@ class CMEModule:
         except Exception as e:
             context.log.error(str(e))
 
-        context.log.debug("Detecting running processes on {} by enumerating pipes...".format(connection.host))
+        context.log.info(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:
             for f in connection.conn.listPath('IPC$', '\\*'):
                 fl = f.get_longname()
@@ -67,7 +65,7 @@ class CMEModule:
                             results[product['name']]['pipes'].append(pipe)
             success += 1
         except Exception as e:
-            context.log.error(str(e))
+            context.log.debug(str(e))
 
         self.dump_results(results, connection.hostname, success, context)
 
@@ -90,6 +88,7 @@ class CMEModule:
         if (len(results) < 1) and (success > 1):
             out = out1 + " NOTHING!".format()
             context.log.highlight(out)
+
 
 class LsaLookupNames():
     timeout = None

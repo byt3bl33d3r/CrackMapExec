@@ -39,8 +39,7 @@ from impacket.dcerpc.v5.dcomrt import OBJREF, FLAGS_OBJREF_CUSTOM, OBJREF_CUSTOM
     OBJREF_EXTENDED, OBJREF_STANDARD, FLAGS_OBJREF_HANDLER, FLAGS_OBJREF_STANDARD, FLAGS_OBJREF_EXTENDED, \
     IRemUnknown2, INTERFACE
 from impacket.dcerpc.v5.dtypes import NULL
-from impacket.examples import logger
-from impacket.smbconnection import SMBConnection, SMB_DIALECT, SMB2_DIALECT_002, SMB2_DIALECT_21
+
 
 class MMCEXEC:
     def __init__(self, host, share_name, username, password, domain, smbconnection, hashes=None):

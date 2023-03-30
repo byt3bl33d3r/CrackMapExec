@@ -5,17 +5,16 @@ import json
 import errno
 import os
 import time
-import logging
 import traceback
 from cme.protocols.smb.remotefile import RemoteFile
-from impacket import smb
 from impacket.smb3structs import FILE_READ_DATA
 from impacket.smbconnection import SessionError
 
 
 CHUNK_SIZE = 4096
-
 suffixes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB']
+
+
 def humansize(nbytes):
     i = 0
     while nbytes >= 1024 and i < len(suffixes)-1:
@@ -24,8 +23,10 @@ def humansize(nbytes):
     f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
     return '%s %s' % (f, suffixes[i])
 
+
 def humaclock(time):
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time))
+
 
 def make_dirs(path):
     """
@@ -40,6 +41,7 @@ def make_dirs(path):
             raise
 
         pass
+
 
 get_list_from_option = lambda opt: list(map(lambda o: o.lower(), filter(bool, opt.split(','))))
 

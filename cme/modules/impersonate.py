@@ -7,20 +7,21 @@ from base64 import b64decode
 from sys import exit
 from os import path
 
+
 class CMEModule:
 
     name = "impersonate"
     description = "List and impersonate tokens to run command as locally logged on users"
     supported_protocols = ["smb"]
-    opsec_safe = True # could be flagged
+    opsec_safe = True  # could be flagged
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-            TOKEN     // Token id to usurp
-            EXEC      // Command to exec
-            IMP_EXE   // Path to the Impersonate binary on your local computer
-        '''
+        """
+        TOKEN     // Token id to usurp
+        EXEC      // Command to exec
+        IMP_EXE   // Path to the Impersonate binary on your local computer
+        """
 
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.share = "C$"
@@ -45,7 +46,6 @@ class CMEModule:
         return connection.execute(command, True)
         
     def on_admin_login(self, context, connection):
-
         if self.useembeded:
             file_to_upload = "/tmp/Impersonate.exe"
             with open(file_to_upload, 'wb') as impersonate:
@@ -91,7 +91,7 @@ class CMEModule:
                     context.log.error(f"Invalid token ID submitted")
 
         except Exception as e:
-            context.log.error(f"Error runing command: {e}")
+            context.log.error(f"Error running command: {e}")
         finally:
             try:
                 connection.conn.deleteFile(self.share, f"{self.tmp_share}{self.impersonate}")

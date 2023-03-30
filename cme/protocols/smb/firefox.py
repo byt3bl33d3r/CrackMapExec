@@ -225,7 +225,7 @@ class FirefoxTriage:
             encrypted_value = decoded_item[0][1].asOctets()
             cipher = AES.new(key, AES.MODE_CBC, iv)
             decrypted = cipher.decrypt(encrypted_value)
-            if decrypted != None:
+            if decrypted is not None:
                 return decrypted
             else:
                 return None

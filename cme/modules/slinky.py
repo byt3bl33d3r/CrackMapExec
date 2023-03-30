@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import pylnk3
-import os
 import ntpath
 from sys import exit
 

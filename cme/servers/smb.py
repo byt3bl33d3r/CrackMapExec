@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import threading
-import logging
 from sys import exit
 from impacket import smbserver
+
 
 class CMESMBServer(threading.Thread):
 

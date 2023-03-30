@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
 from cme.connection import *
 from cme.logger import CMEAdapter
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto

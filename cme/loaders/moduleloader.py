@@ -79,7 +79,11 @@ class ModuleLoader:
         module = self.load_module(module_path)
 
         if module:
-            module_logger = CMEAdapter(extra={'module': module.name.upper()})
+            try:
+                module_logger = CMEAdapter(extra={'module_name': module.name.upper()})
+            except Exception as e:
+                self.logger.error(f"Error loading CMEAdaptor for module {module.name.upper()}: {e}")
+            self.logger.debug(f"Module Logger: {module_logger}")
             context = Context(self.db, module_logger, self.args)
             module_options = {}
 

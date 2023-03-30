@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 #Stolen from https://github.com/Wh1t3Fox/polenum
 
-import logging
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
-from impacket.dcerpc.v5 import transport, samr 
-from impacket.dcerpc.v5.samr import DCERPCSessionError
-from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket import ntlm
+from impacket.dcerpc.v5 import transport, samr
 from time import strftime, gmtime
+from cme.logger import cme_logger
+
 
 def d2b(a):
     tbin = []
@@ -67,7 +65,6 @@ def convert(low, high, lockout=False):
 
 
 class PassPolDump:
-
     KNOWN_PROTOCOLS = {
         '139/SMB': (r'ncacn_np:%s[\pipe\samr]', 139),
         '445/SMB': (r'ncacn_np:%s[\pipe\samr]', 445),
@@ -98,21 +95,20 @@ class PassPolDump:
             self.password = ''
 
     def dump(self):
-
         # Try all requested protocols until one works.
         for protocol in self.protocols:
             try:
                 protodef = PassPolDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError:
-                logger.debug("Invalid Protocol '{}'".format(protocol))
-            logger.debug("Trying protocol {}".format(protocol))
+                cme_logger.debug("Invalid Protocol '{}'".format(protocol))
+            cme_logger.debug("Trying protocol {}".format(protocol))
             rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
                                                   self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
             try:
                 self.fetchList(rpctransport)
             except Exception as e:
-                logger.debug('Protocol failed: {}'.format(e))
+                cme_logger.debug('Protocol failed: {}'.format(e))
             else:
                 # Got a response. No need for further iterations.
                 self.pretty_print()
@@ -188,9 +184,9 @@ class PassPolDump:
             0: 'Domain Refuse Password Change:'
         }
 
-        logger.debug('Found domain(s):')
+        cme_logger.debug('Found domain(s):')
         for domain in self.__domains:
-            logger.debug('{}'.format(domain['Name']))
+            cme_logger.debug('{}'.format(domain['Name']))
 
         self.logger.success("Dumping password info for domain: {}".format(self.__domains[0]['Name']))
 

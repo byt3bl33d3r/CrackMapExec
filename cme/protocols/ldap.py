@@ -75,7 +75,7 @@ def resolve_collection_methods(methods):
         validated_methods = []
         for method in method_list:
             if method not in valid_methods:
-                logging.error('Invalid collection method specified: %s', method)
+                cme_logger.error('Invalid collection method specified: %s', method)
                 return False
 
             if method == 'default':
@@ -102,7 +102,7 @@ def resolve_collection_methods(methods):
                 validated_methods.append(method)
             return set(validated_methods)
         else:
-            logging.error('Invalid collection method specified: %s', method)
+            cme_logger.error('Invalid collection method specified: %s', method)
             return False
 
 
@@ -344,7 +344,7 @@ class ldap(connection):
         return True
 
     def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
-        logging.getLogger("impacket").disabled = True
+        cme_logger.getLogger("impacket").disabled = True
         self.username = username
         self.password = password
         self.domain = domain
@@ -1025,7 +1025,7 @@ class ldap(connection):
                             for spn in SPNs:
                                 answers.append([spn, sAMAccountName,memberOf, pwdLastSet, lastLogon, delegation])
                 except Exception as e:
-                    logging.error('Skipping item, cannot process due to error %s' % str(e))
+                    cme_logger.error('Skipping item, cannot process due to error %s' % str(e))
                     pass
 
             if len(answers)>0:
@@ -1053,7 +1053,7 @@ class ldap(connection):
                             dejavue.append(sAMAccountName)
                         except Exception as e:
                             self.logger.debug("Exception:", exc_info=True)
-                            logging.error('Principal: %s - %s' % (downLevelLogonName, str(e)))
+                            cme_logger.error('Principal: %s - %s' % (downLevelLogonName, str(e)))
                 return True
             else:
                 self.logger.highlight("No entries found!")

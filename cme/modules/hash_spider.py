@@ -80,7 +80,7 @@ def process_creds(context, connection, credentials_data, dbconnection, cursor, d
         username = result["username"].upper().split('@')[0]
         nthash = result["nthash"]
         password = result["password"]
-        if result["password"] != None:
+        if result["password"] is not None:
             context.log.highlight(
                 f"Found a cleartext password for: {username}:{password}. Adding to the DB and marking user as owned in BH.")
             cursor.execute("UPDATE admin_users SET password = ? WHERE username LIKE '" + username + "%'", [password])
@@ -90,7 +90,7 @@ def process_creds(context, connection, credentials_data, dbconnection, cursor, d
             session.run('MATCH (u) WHERE (u.name = "' + username + '") SET u.owned=True RETURN u,u.name,u.owned')
         if nthash == 'aad3b435b51404eeaad3b435b51404ee' or nthash == '31d6cfe0d16ae931b73c59d7e0c089c0':
             context.log.error(f"Hash for {username} is expired.")
-        elif username not in found_users and nthash != None:
+        elif username not in found_users and nthash is not None:
             context.log.highlight(
                 f"Found hashes for: '{username}:{nthash}'. Adding them to the DB and marking user as owned in BH.")
             found_users.append(username)

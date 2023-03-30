@@ -127,7 +127,7 @@ class connection(object):
             self.logger.debug(f"Loading module {module.name} - {module}")
             module_logger = CMEAdapter(
                 extra={
-                    'module': module.name.upper(),
+                    'module_name': module.name.upper(),
                     'host': self.host,
                     'port': self.args.port,
                     'hostname': self.hostname

@@ -124,7 +124,7 @@ class CMEModule:
             )
         except ldap.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logger.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                context.log.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 list_sites = e.getAnswers()

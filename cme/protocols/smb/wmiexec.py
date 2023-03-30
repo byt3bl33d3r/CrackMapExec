@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import ntpath, logging
+import ntpath
 import os
-
 from time import sleep
 from cme.helpers.misc import gen_random_string
+from cme.logger import cme_logger
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
+
 
 class WMIEXEC:
     def __init__(self, target, share_name, username, password, domain, smbconnection, doKerberos=False, aesKey=None, kdcHost=None, hashes=None, share=None):
@@ -29,6 +30,7 @@ class WMIEXEC:
         self.__kdcHost = kdcHost
         self.__doKerberos = doKerberos
         self.__retOutput = True
+        self.logger = cme_logger
 
         if hashes is not None:
         #This checks to see if we didn't provide the LM Hash
@@ -76,7 +78,7 @@ class WMIEXEC:
     def execute_handler(self, data):
         if self.__retOutput:
             try:
-                logger.debug('Executing remote')
+                self.logger.debug('Executing remote')
                 self.execute_remote(data)
             except:
                 self.cd('\\')
@@ -91,7 +93,7 @@ class WMIEXEC:
         if self.__retOutput:
             command += ' 1> ' + '%s' % self.__output  + ' 2>&1'
 
-        logger.debug('Executing command: ' + command)
+        self.logger.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
         self.get_output_remote()
 
@@ -101,7 +103,7 @@ class WMIEXEC:
 
         command = self.__shell + data + ' 1> \\\\{}\\{}\\{} 2>&1'.format(local_ip, self.__share_name, self.__output)
 
-        logger.debug('Executing command: ' + command)
+        self.logger.debug('Executing command: ' + command)
         self.__win32Process.Create(command, self.__pwd, None)
         self.get_output_fileless()
 

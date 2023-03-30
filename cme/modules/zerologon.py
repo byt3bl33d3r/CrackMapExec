@@ -6,20 +6,19 @@
 from impacket.dcerpc.v5 import nrpc, epm, transport
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 import sys
-import logging
+from cme.logger import cme_logger
 
 # Give up brute-forcing after this many attempts. If vulnerable, 256 attempts are expected to be necessary on average.
 MAX_ATTEMPTS = 2000  # False negative chance: 0.04%
 
 
 class CMEModule:
-    name = 'zerologon'
-    description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
-    supported_protocols = ['smb']
-    opsec_safe = True
-    multiple_hosts = False
-
     def __init__(self):
+        self.name = 'zerologon'
+        self.description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
+        self.supported_protocols = ['smb']
+        self.opsec_safe = True
+        self.multiple_hosts = False
         self.context = None
 
     def options(self, context, module_options):
@@ -30,17 +29,17 @@ class CMEModule:
     def on_login(self, context, connection):
         self.context = context
         if self.perform_attack('\\\\' + connection.hostname, connection.host, connection.hostname):
-            context.log.highlight("VULNERABLE")
-            context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
+            self.context.log.highlight("VULNERABLE")
+            self.context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
             try:
-                host = context.db.get_hosts(connection.host)[0]
-                context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+                host = self.context.db.get_hosts(connection.host)[0]
+                self.context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
             except Exception as e:
-                logger.debug(f"Error updating zerologon status in database")
+                self.context.log.debug(f"Error updating zerologon status in database")
 
     def perform_attack(self, dc_handle, dc_ip, target_computer):
         # Keep authenticating until successful. Expected average number of attempts needed: 256.
-        logger.debug('Performing authentication attempts...')
+        self.context.log.debug('Performing authentication attempts...')
         rpc_con = None
         try:
             binding = epm.hept_map(dc_ip, nrpc.MSRPC_UUID_NRPC, protocol='ncacn_ip_tcp')
@@ -59,8 +58,8 @@ class CMEModule:
 
 
 def fail(msg):
-    logger.debug(msg, file=sys.stderr)
-    logger.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
+    cme_logger.debug(msg, file=sys.stderr)
+    cme_logger.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
     sys.exit(2)
 
 

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
 
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import MetaData, Table
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
-import asyncio
-
+from cme.logger import cme_logger
 
 class database:
     def __init__(self, db_engine):
@@ -62,7 +59,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logger.debug(f"Error while closing session db object: {e}")
+            cme_logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:

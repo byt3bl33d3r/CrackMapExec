@@ -279,7 +279,7 @@ class CMEModule:
 
         # Searching for the targets SID and their Security Decriptors
         # If there is only one target
-        if (self.target_sAMAccountName or self.target_DN) and self.target_file == None:
+        if (self.target_sAMAccountName or self.target_DN) and self.target_file is None:
             # Searching for target account with its security descriptor
             try:
                 self.search_target_principal_security_descriptor(context, connection)

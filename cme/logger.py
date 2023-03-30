@@ -54,21 +54,21 @@ class CMEAdapter(logging.LoggerAdapter):
     #     if self.extra is None:
     #         return u'{}'.format(msg), kwargs
     #
-    #     if 'module' in self.extra.keys():
-    #         if len(self.extra['module']) > 8:
-    #             self.extra['module'] = self.extra['module'][:8] + '...'
+    #     if 'module_name' in self.extra.keys():
+    #         if len(self.extra['module_name']) > 8:
+    #             self.extra['module_name'] = self.extra['module_name'][:8] + '...'
     #
     #     # If the logger is being called when hooking the 'options' module function
-    #     if len(self.extra) == 1 and ('module' in self.extra.keys()):
-    #         return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+    #     if len(self.extra) == 1 and ('module_name' in self.extra.keys()):
+    #         return u'{:<64} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), msg), kwargs
     #
     #     # If the logger is being called from CMEServer
-    #     if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-    #         return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+    #     if len(self.extra) == 2 and ('module_name' in self.extra.keys()) and ('host' in self.extra.keys()):
+    #         return u'{:<24} {:<39} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
     #
     #     # If the logger is being called from a protocol
-    #     if 'module' in self.extra.keys():
-    #         module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
+    #     if 'module_name' in self.extra.keys():
+    #         module_name = colored(self.extra['module_name'], 'cyan', attrs=['bold'])
     #     else:
     #         module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
     #     return u'{:<24} {:<15} {:<6} {:<16} {}'.format(
@@ -86,21 +86,21 @@ class CMEAdapter(logging.LoggerAdapter):
         if self.extra is None:
             return u'{}'.format(msg), kwargs
 
-        if 'module' in self.extra.keys():
-            if len(self.extra['module']) > 8:
-                self.extra['module'] = self.extra['module'][:8] + '...'
+        if 'module_name' in self.extra.keys():
+            if len(self.extra['module_name']) > 8:
+                self.extra['module_name'] = self.extra['module_name'][:8] + '...'
 
         # If the logger is being called when hooking the 'options' module function
-        if len(self.extra) == 1 and ('module' in self.extra.keys()):
-            return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+        if len(self.extra) == 1 and ('module_name' in self.extra.keys()):
+            return u'{:<64} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), msg), kwargs
 
         # If the logger is being called from CMEServer
-        if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+        if len(self.extra) == 2 and ('module_name' in self.extra.keys()) and ('host' in self.extra.keys()):
+            return u'{:<24} {:<39} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
 
         # If the logger is being called from a protocol
-        if 'module' in self.extra.keys():
-            module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
+        if 'module_name' in self.extra.keys():
+            module_name = colored(self.extra['module_name'], 'cyan', attrs=['bold'])
         else:
             module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
 
@@ -169,17 +169,17 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
 
     # For Impacket's TDS library
-    def logMessage(self, message):
-        CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
-
-    def getMessage(self):
-        out = CMEAdapter.message
-        CMEAdapter.message = ''
-        return out
+    # def logMessage(self, message):
+    #     CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
+    #
+    # def getMessage(self):
+    #     out = CMEAdapter.message
+    #     CMEAdapter.message = ''
+    #     return out
     
     def setup_logfile(self, log_file=None):
         formatter = logging.Formatter("%(message)s")
-        self.outputfile = init_log_file() if log_file == None else log_file
+        self.outputfile = init_log_file() if log_file is None else log_file
         file_creation = False
         if not os.path.isfile(self.outputfile):
             open(self.outputfile, 'x')

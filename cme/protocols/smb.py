@@ -841,6 +841,7 @@ class smb(connection):
             output = output.decode('cp437')
 
         output = output.strip()
+        self.logger.debug(f"Output: {output}")
 
         if self.args.execute or self.args.ps_execute:
             self.logger.display(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")

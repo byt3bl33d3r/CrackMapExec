@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from cme.helpers.powershell import *
 from sys import exit
+
 
 class CMEModule:
     '''

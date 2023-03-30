@@ -3,7 +3,7 @@
 
 from impacket import system_errors
 from impacket.dcerpc.v5 import transport
-from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
+from impacket.dcerpc.v5.ndr import NDRCALL
 from impacket.dcerpc.v5.dtypes import ULONG, WSTR, DWORD
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.uuid import uuidtup_to_bin

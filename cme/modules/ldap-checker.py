@@ -8,9 +8,9 @@ import asyncio
 from msldap.connection import MSLDAPClientConnection
 from msldap.commons.target import MSLDAPTarget
 
-from asyauth.common.constants import asyauthProtocol, asyauthSecret
+from asyauth.common.constants import asyauthSecret
 from asyauth.common.credentials.ntlm import NTLMCredential
-from asyauth.common.credentials.kerberos import KerberosCredential
+
 
 class CMEModule:
     '''

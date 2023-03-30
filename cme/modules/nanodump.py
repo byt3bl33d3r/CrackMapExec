@@ -9,6 +9,8 @@ import sys
 import os
 from datetime import datetime
 from pypykatz.pypykatz import pypykatz
+
+from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 
 class CMEModule:

@@ -6,7 +6,6 @@
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
 
-import json
 import sys
 
 

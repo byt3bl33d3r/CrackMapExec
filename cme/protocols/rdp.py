@@ -1,30 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import asyncio
 import os
 from datetime import datetime
 from os import getenv
-
 from impacket.krb5.ccache import CCache
-
 from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
-
-from aardwolf import logger
 from aardwolf.connection import RDPConnection
 from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
 from aardwolf.commons.iosettings import RDPIOSettings
 from aardwolf.commons.target import RDPTarget
 from aardwolf.protocol.x224.constants import SUPP_PROTOCOLS
-
 from asyauth.common.credentials.ntlm import NTLMCredential
 from asyauth.common.credentials.kerberos import KerberosCredential
 from asyauth.common.constants import asyauthSecret
-
 from asysocks.unicomm.common.target import UniTarget, UniProto
 
 rdp_error_status = {

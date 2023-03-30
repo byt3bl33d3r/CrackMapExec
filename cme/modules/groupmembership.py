@@ -3,7 +3,6 @@
 
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap import ldap as ldap_impacket
-import re
 
 
 class CMEModule:
@@ -54,7 +53,7 @@ class CMEModule:
                 resp = e.getAnswers()
                 pass
             else:
-                logger.debug(e)
+                context.log.debug(e)
                 return False
 
         memberOf = []
