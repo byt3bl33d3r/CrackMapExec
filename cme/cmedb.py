@@ -11,7 +11,7 @@ import requests
 from sqlalchemy import create_engine
 from terminaltables import AsciiTable
 import configparser
-from cme.loaders.protocol_loader import protocol_loader
+from cme.loaders.protocolloader import ProtocolLoader
 from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
 from requests import ConnectionError
 from sqlalchemy.exc import SAWarning
@@ -345,7 +345,7 @@ class CMEDBMenu(cmd.Cmd):
 
 
         self.conn = None
-        self.p_loader = protocol_loader()
+        self.p_loader = ProtocolLoader()
         self.protocols = self.p_loader.get_protocols()
 
         self.workspace = self.config.get('CME', 'workspace')
@@ -460,7 +460,7 @@ def initialize_db(logger):
         logger.info('Creating default workspace')
         os.mkdir(os.path.join(WS_PATH, 'default'))
 
-    p_loader = protocol_loader()
+    p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
     for protocol in protocols.keys():
         try:

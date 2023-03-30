@@ -4,16 +4,17 @@
 import argparse
 import sys
 from argparse import RawTextHelpFormatter
-from cme.loaders.protocol_loader import protocol_loader
+from cme.loaders.protocolloader import ProtocolLoader
 from cme.helpers.logger import highlight
 from termcolor import colored
 
+
 def gen_cli_args():
 
-    VERSION  = '5.4.6'
+    VERSION = '5.4.6'
     CODENAME = "Bruce Wayne"
 
-    p_loader =  protocol_loader()
+    p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
 
     parser = argparse.ArgumentParser(description=f"""
@@ -64,7 +65,7 @@ def gen_cli_args():
 
     module_parser = argparse.ArgumentParser(add_help=False)
     mgroup = module_parser.add_mutually_exclusive_group()
-    mgroup.add_argument("-M", "--module", metavar='MODULE', help='module to use')
+    mgroup.add_argument("-M", "--module", action='append', metavar='MODULE', help='module to use')
     #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='module options')
     module_parser.add_argument('-L', '--list-modules', action='store_true', help='list available modules')
@@ -83,7 +84,6 @@ def gen_cli_args():
         sys.exit(1)
 
     args = parser.parse_args()
-
 
     if args.version:
         print(VERSION + " - " + CODENAME)

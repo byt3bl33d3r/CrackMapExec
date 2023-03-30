@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import imp
-import types
-from importlib.machinery import SourceFileLoader
+import importlib
+import logging
 import os
-import sys
+
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
 
 
-class module_loader:
+class ModuleLoader:
     def __init__(self, args, db, logger):
         self.args = args
         self.db = db
@@ -19,7 +18,6 @@ class module_loader:
 
     def module_is_sane(self, module, module_path):
         module_error = False
-
         if not hasattr(module, 'name'):
             self.logger.error('{} missing the name variable'.format(module_path))
             module_error = True
@@ -47,44 +45,44 @@ class module_loader:
 
         if module_error:
             return False
-
         return True
 
     def load_module(self, module_path):
         try:
-            module = imp.load_source('payload_module', module_path).CMEModule()
+            spec = importlib.util.spec_from_file_location("CMEModule", module_path)
+            module = spec.loader.load_module().CMEModule()
+
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
             self.logger.error('Failed loading module at {}: {}'.format(module_path, e))
-
         return None
 
     def get_modules(self):
         modules = {}
-
         modules_paths = [os.path.join(os.path.dirname(cme.__file__), 'modules'), os.path.join(self.cme_path, 'modules')]
 
         for path in modules_paths:
             for module in os.listdir(path):
                 if module[-3:] == '.py' and module != 'example_module.py':
                     module_path = os.path.join(path, module)
-                    m = self.load_module(os.path.join(path, module))
-                    if m and (self.args.protocol in m.supported_protocols):
-                        modules[m.name] = {'path': os.path.join(path, module), 'description': m.description, 'options': m.options.__doc__}#'chain_support': m.chain_support}
+                    m = self.load_module(module_path)
 
+                    if m and (self.args.protocol in m.supported_protocols):
+                        modules[m.name.lower()] = {
+                            'path': module_path,
+                            'description': m.description,
+                            'options': m.options.__doc__
+                        }  # 'chain_support': m.chain_support}
         return modules
 
     def init_module(self, module_path):
-
-        module  = None
-
+        module = None
         module = self.load_module(module_path)
 
         if module:
             module_logger = CMEAdapter(extra={'module': module.name.upper()})
             context = Context(self.db, module_logger, self.args)
-
             module_options = {}
 
             for option in self.args.module_options:
@@ -92,5 +90,4 @@ class module_loader:
                 module_options[str(key).upper()] = value
 
             module.options(context, module_options)
-
         return module
