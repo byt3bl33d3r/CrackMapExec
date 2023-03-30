@@ -341,7 +341,6 @@ class CMEDBMenu(cmd.Cmd):
             print("[-] Error reading cme.conf: {}".format(e))
             sys.exit(1)
 
-
         self.conn = None
         self.p_loader = ProtocolLoader()
         self.protocols = self.p_loader.get_protocols()
@@ -373,6 +372,7 @@ class CMEDBMenu(cmd.Cmd):
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
+
     def help_proto(self):
         help_string = """
         proto [smb|mssql|winrm]
