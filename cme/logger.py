@@ -166,7 +166,7 @@ class CMEAdapter(logging.LoggerAdapter):
 
         msg, kwargs = self.format(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         text = Text.from_ansi(msg)
-        cme_console.print(text, *args, **kwargs)
+        self.display(text, *args, **kwargs)
 
     # For Impacket's TDS library
     def logMessage(self, message):
