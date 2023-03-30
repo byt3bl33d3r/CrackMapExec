@@ -164,9 +164,9 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
+        msg, kwargs = self.format(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         text = Text.from_ansi(msg)
-        self.display(text, *args, **kwargs)
+        cme_console.print(text, *args, **kwargs)
 
     # For Impacket's TDS library
     def logMessage(self, message):
