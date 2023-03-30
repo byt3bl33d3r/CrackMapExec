@@ -56,17 +56,22 @@ def create_db_engine(db_path):
 
 
 async def start_run(protocol_obj, args, db, targets):
-    with Progress(console=cme_console) as progress:
         cme_logger.debug(f"Creating ThreadPoolExecutor")
-        with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
-            current = 0
-            total = len(targets)
-            tasks = progress.add_task(f"[green]Running CME against {total} {'target' if total == 1 else 'targets'}", total=total)
-            cme_logger.debug(f"Creating thread for {protocol_obj}")
-            futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
-            for future in concurrent.futures.as_completed(futures):
-                current += 1
-                progress.update(tasks, completed=current)
+        if args.no_progress:
+            with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
+                cme_logger.debug(f"Creating thread for {protocol_obj}")
+                _ = [executor.submit(protocol_obj, args, db, target) for target in targets]
+        else:
+            with Progress(console=cme_console) as progress:
+                with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
+                    current = 0
+                    total = len(targets)
+                    tasks = progress.add_task(f"[green]Running CME against {total} {'target' if total == 1 else 'targets'}", total=total)
+                    cme_logger.debug(f"Creating thread for {protocol_obj}")
+                    futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
+                    for future in concurrent.futures.as_completed(futures):
+                        current += 1
+                        progress.update(tasks, completed=current)
 
 
 def main():
