@@ -5,14 +5,14 @@
 # Website:
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
-
-
-from lsassy import logger
+#from lsassy import logger
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
 from lsassy.impacketfile import ImpacketFile
 from cme.helpers.bloodhound import add_user_bh
+import logging
+
 
 class CMEModule:
     name = 'lsassy'
@@ -30,7 +30,12 @@ class CMEModule:
             self.method = module_options['METHOD']
 
     def on_admin_login(self, context, connection):
-        logger.init(quiet=True)
+        # lsassy uses a custom "success" level, which requires initializing its logger or an error will be thrown
+        # lsassy also removes all other handlers and overwrites the formatter which is terrible
+        # so what we do is define "success" as a logging level, then do nothing with the output
+        logging.addLevelName(25, 'SUCCESS')
+        setattr(logging, 'success', lambda message, *args: ())
+
         host = connection.host
         domain_name = connection.domain
         username = connection.username
@@ -91,7 +96,7 @@ class CMEModule:
         for cred in credentials:
             domain = cred["domain"]
             if "." not in cred["domain"] and cred["domain"].upper() in connection.domain.upper():
-                domain = connection.domain # slim shady
+                domain = connection.domain  # slim shady
             self.save_credentials(context, connection, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             self.print_credentials(context, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
             credz_bh.append({'username': cred["username"].upper(), 'domain': domain.upper()})
