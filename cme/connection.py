@@ -152,7 +152,7 @@ class connection(object):
                 if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module,'on_shutdown'):
                     module.on_shutdown(context, self)
             except Exception as e:
-                logging.error(f"Error while loading module {module}: {e}")
+                self.logger.error(f"Error while loading module {module}: {e}")
                 pass
 
     def inc_failed_login(self, username):
