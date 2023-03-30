@@ -64,7 +64,7 @@ async def start_run(protocol_obj, args, db, targets):
         with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
             current = 0
             total = len(targets)
-            tasks = progress.add_task(f"[green]Running CME against {total} targets", total=total)
+            tasks = progress.add_task(f"[green]Running CME against {total} {'target' if total == 1 else 'targets'}", total=total)
             cme_logger.debug(f"Creating thread for {protocol_obj}")
             futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
             for future in concurrent.futures.as_completed(futures):
