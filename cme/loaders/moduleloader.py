@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import importlib
-import logging
 import os
-
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
