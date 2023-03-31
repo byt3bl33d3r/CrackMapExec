@@ -41,7 +41,7 @@ class CMEModule:
                 for service in product['services']:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service['name'])
-                        context.log.debug(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
+                        context.log.info(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product['name'] not in results:
                             results[product['name']] = {"services": []}
                         results[product['name']]['services'].append(service)
