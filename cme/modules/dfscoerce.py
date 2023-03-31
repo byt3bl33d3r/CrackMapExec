@@ -11,12 +11,15 @@ from cme.logger import cme_logger
 
 
 class CMEModule:
-    
-    name = 'dfscoerce'
-    description = "Module to check if the DC is vulnerable to DFSCocerc, credit to @filip_dragovic/@Wh04m1001 and @topotam"
-    supported_protocols = ['smb']
-    opsec_safe = True 
-    multiple_hosts = True 
+    def __init__(self, context=None, module_options=None):
+        self.name = 'dfscoerce'
+        self.description = "Module to check if the DC is vulnerable to DFSCocerc, credit to @filip_dragovic/@Wh04m1001 and @topotam"
+        self.supported_protocols = ['smb']
+        self.opsec_safe = True
+        self.multiple_hosts = True
+        self.context = context
+        self.module_options = module_options
+        self.listener = None
 
     def options(self, context, module_options):
         self.listener = "127.0.0.1"

@@ -194,11 +194,14 @@ class CMEModule:
     It has been converted to an LDAPConnection session, and improvements on the filtering and the ability to specify multiple targets have been added.
     It could be interesting to implement the write/remove functions here, but a ldap3 session instead of a LDAPConnection one is required to write.
     """
-    name = 'daclread'
-    description = 'Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_. Be carefull, this module cannot read the DACLS recursively, more explains in the options.'
-    supported_protocols = ['ldap']
-    opsec_safe = True
-    multiple_hosts = False
+    def __init__(self, context=None, module_options=None):
+        self.name = 'daclread'
+        self.description = 'Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_. Be carefull, this module cannot read the DACLS recursively, more explains in the  options.'
+        self.supported_protocols = ['ldap']
+        self.opsec_safe = True
+        self.multiple_hosts = False
+        self.context = context
+        self.module_options = module_options
 
     def options(self, context, module_options):
         """

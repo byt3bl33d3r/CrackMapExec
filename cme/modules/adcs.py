@@ -13,11 +13,16 @@ class CMEModule:
 
     Module by Tobias Neitzel (@qtc_de) and Sam Freeside (@snovvcrash)
     """
-    name = 'adcs'
-    description = 'Find PKI Enrollment Services in Active Directory and Certificate Templates Names'
-    supported_protocols = ['ldap']
-    opsec_safe = True
-    multiple_hosts = True
+    def __init__(self, context=None, module_options=None):
+        self.name = 'adcs'
+        self.description = 'Find PKI Enrollment Services in Active Directory and Certificate Templates Names'
+        self.supported_protocols = ['ldap']
+        self.opsec_safe = True
+        self.multiple_hosts = True
+        self.context = context
+        self.module_options = module_options
+        self.server = None
+        self.regex = None
 
     def options(self, context, module_options):
         """
@@ -44,7 +49,7 @@ class CMEModule:
 
         try:
             sc = ldap.SimplePagedResultsControl()
-            baseDN_root = ",".join(connection.ldapConnection._baseDN.split(",")[-2:])
+            base_dn_root = ",".join(connection.ldapConnection._baseDN.split(",")[-2:])
 
             if self.server is None:
                 resp = connection.ldapConnection.search(
@@ -53,15 +58,15 @@ class CMEModule:
                     sizeLimit=0,
                     searchControls=[sc],
                     perRecordCallback=self.process_servers,
-                    searchBase='CN=Configuration,' + baseDN_root
+                    searchBase='CN=Configuration,' + base_dn_root
                 )
             else:
                 resp = connection.ldapConnection.search(
-                    searchFilter=search_filter + baseDN_root + ')',
+                    searchFilter=search_filter + base_dn_root + ')',
                     attributes=['certificateTemplates'],
                     sizeLimit=0, searchControls=[sc],
                     perRecordCallback=self.process_templates,
-                    searchBase='CN=Configuration,' + baseDN_root
+                    searchBase='CN=Configuration,' + base_dn_root
                 )
 
         except LDAPSearchError as e:
