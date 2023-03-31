@@ -7,21 +7,29 @@ from impacket.examples.secretsdump import RemoteOperations
 
 
 class CMEModule:
-    name = 'reg-query'
-    description = 'Performs a registry query on the machine'
-    supported_protocols = ['smb']
-    opsec_safe = True 
-    multiple_hosts = True 
+    def __init__(self, context=None):
+        self.delete = None
+        self.type = None
+        self.value = None
+        self.key = None
+        self.path = None
+        self.name = 'reg-query'
+        self.description = 'Performs a registry query on the machine'
+        self.supported_protocols = ['smb']
+        self.opsec_safe = True
+        self.multiple_hosts = True
+        self.context = context
 
     def options(self, context, module_options):
-        '''
-        PATH:  Registry key path to query
-        KEY:   Registry key value to retrieve
-        VALUE  Registry key value to set (only used for modification). Will add a new regitry key if use on registry key that does not already exist
-        TYPE   Type of registry to modify, add or delete. Default type : REG_SZ. Type supported : REG_NONE, REG_SZ, REG_EXPAND_SZ,REG_BINARY, REG_DWORD, REG_DWORD_BIG_ENDIAN, REG_LINK, REG_MULTI_SZ, REG_QWORD
-        DELETE    If set to True, delete a registry key if it does exist
-        '''
-
+        """
+        PATH    Registry key path to query
+        KEY     Registry key value to retrieve
+        VALUE   Registry key value to set (only used for modification)
+                Will add a new registry key if the registry key does not already exist
+        TYPE    Type of registry to modify, add or delete. Default type : REG_SZ.
+                Type supported: REG_NONE, REG_SZ, REG_EXPAND_SZ,REG_BINARY, REG_DWORD, REG_DWORD_BIG_ENDIAN, REG_LINK, REG_MULTI_SZ, REG_QWORD
+        DELETE  If set to True, delete a registry key if it does exist
+        """
         self.context = context
         self.path = None
         self.key = None
@@ -54,12 +62,12 @@ class CMEModule:
                     try :
                         self.value = int(self.value)
                     except:
-                        context.log.error("Invalid registry value type specified: %s" % self.value)
-                        sys.exit(1)
+                        context.log.error(f"Invalid registry value type specified: {self.value}")
+                        return
                 if self.type in type_dict:
                     self.type = type_dict[self.type]
                 else:
-                    context.log.error("Invalid registry value type specified: %s" % self.type)
+                    context.log.error(f"Invalid registry value type specified: {self.type}")
                     return
             else:
                 self.type = 1
@@ -68,83 +76,114 @@ class CMEModule:
             self.delete = True
 
     def on_admin_login(self, context, connection):
+        self.context = context
         if not self.path:
-            context.log.error("Please provide the path of the registry to query")
+            self.context.log.error("Please provide the path of the registry to query")
             return
-
         if not self.key:
-            context.log.error("Please provide the registry key to query")
+            self.context.log.error("Please provide the registry key to query")
             return
 
-        remoteOps = RemoteOperations(connection.conn, False)
-        remoteOps.enableRegistry()
+        remote_ops = RemoteOperations(connection.conn, False)
+        remote_ops.enableRegistry()
                 
         try:
             if "HKLM" in self.path or "HKEY_LOCAL_MACHINE" in self.path:
-                self.path = (self.path).replace('HKLM\\', '')
-                ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
-
+                self.path = self.path.replace('HKLM\\', '')
+                ans = rrp.hOpenLocalMachine(remote_ops._RemoteOperations__rrp)
             elif "HKCU" in self.path or "HKEY_CURRENT_USER" in self.path:
-                self.path = (self.path).replace('HKCU\\', '')
-                ans = rrp.hOpenCurrentUser(remoteOps._RemoteOperations__rrp)
-
+                self.path = self.path.replace('HKCU\\', '')
+                ans = rrp.hOpenCurrentUser(remote_ops._RemoteOperations__rrp)
             elif "HKCR" in self.path or "HKEY_CLASSES_ROOT" in self.path:
-                self.path = (self.path).replace('HKCR\\', '')
-                ans = rrp.hOpenClassesRoot(remoteOps._RemoteOperations__rrp)
-
+                self.path = self.path.replace('HKCR\\', '')
+                ans = rrp.hOpenClassesRoot(remote_ops._RemoteOperations__rrp)
             else:
-                context.log.error("Unsupported registry hive specified in path: %s" % self.path)
+                self.context.log.error(f"Unsupported registry hive specified in path: {self.path}")
                 return
             
-            regHandle = ans['phKey']
-            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, self.path)
-            keyHandle = ans['phkResult']
+            reg_handle = ans['phKey']
+            ans = rrp.hBaseRegOpenKey(
+                remote_ops._RemoteOperations__rrp,
+                reg_handle,
+                self.path
+            )
+            key_handle = ans['phkResult']
 
             if self.delete:
                 # Delete registry
                 try:
                     # Check if value exists
-                    dataType, reg_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key)
+                    data_type, reg_value = rrp.hBaseRegQueryValue(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle,
+                        self.key
+                    )
                 except:
-                    self.context.log.error("Registry key %s does not exist" % (self.key))
+                    self.context.log.error(f"Registry key {self.key} does not exist")
                     return
                 # Delete value
-                rrp.hBaseRegDeleteValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key)
-                self.context.log.success('Registry key %s has been deleted successfully' % (self.key))
-                rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
+                rrp.hBaseRegDeleteValue(
+                    remote_ops._RemoteOperations__rrp,
+                    key_handle,
+                    self.key
+                )
+                self.context.log.success(f"Registry key {self.key} has been deleted successfully")
+                rrp.hBaseRegCloseKey(
+                    remote_ops._RemoteOperations__rrp,
+                    key_handle
+                )
 
             if self.value is not None:
                 # Check if value exists
                 try:
                     # Check if value exists
-                    dataType, reg_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key)
-                    self.context.log.highlight("Key %s exists with value %s" % (self.key, reg_value))
+                    data_type, reg_value = rrp.hBaseRegQueryValue(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle,
+                        self.key
+                    )
+                    self.context.log.highlight(f"Key {self.key} exists with value {reg_value}")
                     # Modification
-                    rrp.hBaseRegSetValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key, self.type, self.value)
-                    context.log.success("Key %s has been modified to %s" % (self.key, self.value))
+                    rrp.hBaseRegSetValue(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle,
+                        self.key,
+                        self.type,
+                        self.value
+                    )
+                    self.context.log.success(f"Key {self.key} has been modified to {self.value}")
                 except:
-                    rrp.hBaseRegSetValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key, self.type, self.value)
-                    self.context.log.success("New Key %s has been added with value %s" % (self.key, self.value))
-                    rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
-                    
+                    rrp.hBaseRegSetValue(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle,
+                        self.key,
+                        self.type,
+                        self.value
+                    )
+                    self.context.log.success(f"New Key {self.key} has been added with value {self.value}")
+                    rrp.hBaseRegCloseKey(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle
+                    )
             else:
                 # Query
-                try :
-                    dataType, reg_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, self.key)
-                    context.log.highlight("%s: %s" % (self.key, reg_value))
+                try:
+                    data_type, reg_value = rrp.hBaseRegQueryValue(
+                        remote_ops._RemoteOperations__rrp,
+                        key_handle,
+                        self.key
+                    )
+                    self.context.log.highlight(f"{self.key}: {reg_value}")
                 except:
                     if self.delete:
                         pass
-                    else :
-                        self.context.log.error("Registry key %s does not exist" % (self.key))
+                    else:
+                        self.context.log.error(f"Registry key {self.key} does not exist")
                         return
-            rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
-
+            rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
         except DCERPCException as e:
-            #context.log.error("DCERPC Error while querying or modifying registry: %s" % e)
-            pass
+            self.context.log.error(f"DCERPC Error while querying or modifying registry: {e}")
         except Exception as e:
-            context.log.error("Error while querying or modifying registry: %s" % e)
-            
+            self.context.log.error(f"Error while querying or modifying registry: {e}")
         finally:
-            remoteOps.finish()
+            remote_ops.finish()

