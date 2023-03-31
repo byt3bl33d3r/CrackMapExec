@@ -85,7 +85,7 @@ class connection(object):
     def enum_host_info(self):
         return
 
-    def print_host_info(info):
+    def print_host_info(self):
         return
 
     def create_conn_obj(self):
