@@ -76,14 +76,18 @@ async def start_run(protocol_obj, args, db, targets):
 
 def main():
     first_run_setup(cme_logger)
+    root_logger = logging.getLogger("root")
     args = gen_cli_args()
 
     if args.verbose:
         cme_logger.logger.setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)
     elif args.debug:
         cme_logger.logger.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
     else:
         cme_logger.logger.setLevel(logging.ERROR)
+        root_logger.setLevel(logging.ERROR)
 
     cme_logger.debug(f"Passed args: {args}")
 
