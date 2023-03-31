@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # gettgt module for CME python3
+# author of the module : github.com/e1abrador
+# Ticketer: https://github.com/fortra/impacket/blob/master/examples/ticketer.py
+
 
 import os
 
