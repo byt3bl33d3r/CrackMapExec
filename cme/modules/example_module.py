@@ -6,13 +6,15 @@ class CMEModule:
     Example
     Module by @yomama
     """
-    def __init__(self, context=None):
-        self.name = 'example module'
-        self.description = 'I do something'
-        self.supported_protocols = []
-        self.opsec_safe = True  # Does the module touch disk?
-        self.multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
+    name = "example module"
+    description = "I do something"
+    supported_protocols = []
+    opsec_safe = True  # Does the module touch disk?
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
+
+    def __init__(self, context=None, module_options=None):
         self.context = context
+        self.module_options = module_options
 
     def options(self, context, module_options):
         """Required.
