@@ -6,19 +6,23 @@ from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
 from sys import exit
 
-class CMEModule:
 
-    name = 'rdp'
-    description = 'Enables/Disables RDP'
-    supported_protocols = ['smb']
+class CMEModule:
+    name = "rdp"
+    description = "Enables/Disables RDP"
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
-    def options(self, context, module_options):
-        '''
-            ACTION  Enable/Disable RDP (choices: enable, disable)
-        '''
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        self.action = None
 
+    def options(self, context, module_options):
+        """
+        ACTION       Enable/Disable RDP (choices: enable, disable)
+        """
         if not 'ACTION' in module_options:
             context.log.error('ACTION option not specified!')
             exit(1)

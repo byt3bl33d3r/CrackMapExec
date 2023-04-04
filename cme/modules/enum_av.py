@@ -15,12 +15,13 @@ class CMEModule:
     Uses LsarLookupNames and NamedPipes to gather information on all endpoint protection solutions installed on the the remote host(s)
     Module by @mpgn_x64
     """
+    name = "enum_av"
+    description = "Gathers information on all endpoint protection solutions installed on the the remote host(s) via LsarLookupNames (no privilege needed)"
+    supported_protocols = ["smb"]
+    opsec_safe = True
+    multiple_hosts = True
+
     def __init__(self, context=None, module_options=None):
-        self.name = "enum_av"
-        self.description = "Gathers information on all endpoint protection solutions installed on the the remote host(s) via LsarLookupNames (no privilege needed)"
-        self.supported_protocols = ["smb"]
-        self.opsec_safe = True
-        self.multiple_hosts = True
         self.context = context
         self.module_options = module_options
 

@@ -7,18 +7,20 @@ from impacket.examples.secretsdump import RemoteOperations
 
 
 class CMEModule:
-    def __init__(self, context=None):
+    name = 'reg-query'
+    description = 'Performs a registry query on the machine'
+    supported_protocols = ['smb']
+    opsec_safe = True
+    multiple_hosts = True
+
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
         self.delete = None
         self.type = None
         self.value = None
         self.key = None
         self.path = None
-        self.name = 'reg-query'
-        self.description = 'Performs a registry query on the machine'
-        self.supported_protocols = ['smb']
-        self.opsec_safe = True
-        self.multiple_hosts = True
-        self.context = context
 
     def options(self, context, module_options):
         """

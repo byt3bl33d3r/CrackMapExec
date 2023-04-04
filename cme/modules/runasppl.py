@@ -2,17 +2,18 @@
 # -*- coding: utf-8 -*-
 
 class CMEModule:
-    def __init__(self):
-        self.name = "runasppl"
-        self.description = "Check if the registry value RunAsPPL is set or not"
-        self.supported_protocols = ["smb"]
-        self.opsec_safe = True
-        self.multiple_hosts = True
+    name = "runasppl"
+    description = "Check if the registry value RunAsPPL is set or not"
+    supported_protocols = ["smb"]
+    opsec_safe = True
+    multiple_hosts = True
+
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
 
     def options(self, context, module_options):
-        """
-        Check if the registry value RunAsPPL is set via SMBExec and Powershell
-        """
+        """"""
 
     def on_admin_login(self, context, connection):
         command = "reg query HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\ /v RunAsPPL"

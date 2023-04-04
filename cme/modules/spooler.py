@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 # https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/rpcdump.py
-# from impacket.examples import context.log
 from impacket import uuid
 from impacket.dcerpc.v5 import transport, epm
 from impacket.dcerpc.v5.rpch import RPC_PROXY_INVALID_RPC_PORT_ERR, \
@@ -20,13 +19,22 @@ class CMEModule:
     For printnightmare: detect if print spooler is enabled or not. Then use @cube0x0's project https://github.com/cube0x0/CVE-2021-1675 or Mimikatz from Benjamin Delpy
     Module by @mpgn_x64
     """
-    name = 'spooler'
-    description = 'Detect if print spooler is enabled or not'
-    supported_protocols = ['smb']
+    name = "spooler"
+    description = "Detect if print spooler is enabled or not"
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        self.__string_binding = None
+        self.port = None
+
     def options(self, context, module_options):
+        """
+        PORT    Port to check (defaults to 135)
+        """
         self.port = 135
         if 'PORT' in module_options:
             self.port = int(module_options['PORT'])
@@ -37,15 +45,15 @@ class CMEModule:
         lmhash = getattr(connection, "lmhash", "")
         nthash = getattr(connection, "nthash", "")
 
-        self.__stringbinding = KNOWN_PROTOCOLS[self.port]['bindstr'] % connection.host
-        context.log.debug('StringBinding %s' % self.__stringbinding)
-        rpctransport = transport.DCERPCTransportFactory(self.__stringbinding)
-        rpctransport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
-        rpctransport.setRemoteHost(connection.host)
-        rpctransport.set_dport(self.port)
+        self.__string_binding = KNOWN_PROTOCOLS[self.port]['bindstr'] % connection.host
+        context.log.debug('StringBinding %s' % self.__string_binding)
+        rpc_transport = transport.DCERPCTransportFactory(self.__string_binding)
+        rpc_transport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
+        rpc_transport.setRemoteHost(connection.host)
+        rpc_transport.set_dport(self.port)
 
         try:
-            entries = self.__fetchList(rpctransport)
+            entries = self.__fetch_list(rpc_transport)
         except Exception as e:
             error_text = 'Protocol failed: %s' % e
             context.log.critical(error_text)
@@ -63,21 +71,21 @@ class CMEModule:
         # Let's group the UUIDS
         for entry in entries:
             binding = epm.PrintStringBinding(entry['tower']['Floors'])
-            tmpUUID = str(entry['tower']['Floors'][0])
-            if (tmpUUID in endpoints) is not True:
-                endpoints[tmpUUID] = {}
-                endpoints[tmpUUID]['Bindings'] = list()
-            if uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmpUUID))[:18] in epm.KNOWN_UUIDS:
-                endpoints[tmpUUID]['EXE'] = epm.KNOWN_UUIDS[uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmpUUID))[:18]]
+            tmp_uuid = str(entry['tower']['Floors'][0])
+            if (tmp_uuid in endpoints) is not True:
+                endpoints[tmp_uuid] = {}
+                endpoints[tmp_uuid]['Bindings'] = list()
+            if uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18] in epm.KNOWN_UUIDS:
+                endpoints[tmp_uuid]['EXE'] = epm.KNOWN_UUIDS[uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18]]
             else:
-                endpoints[tmpUUID]['EXE'] = 'N/A'
-            endpoints[tmpUUID]['annotation'] = entry['annotation'][:-1].decode('utf-8')
-            endpoints[tmpUUID]['Bindings'].append(binding)
+                endpoints[tmp_uuid]['EXE'] = 'N/A'
+            endpoints[tmp_uuid]['annotation'] = entry['annotation'][:-1].decode('utf-8')
+            endpoints[tmp_uuid]['Bindings'].append(binding)
 
-            if tmpUUID[:36] in epm.KNOWN_PROTOCOLS:
-                endpoints[tmpUUID]['Protocol'] = epm.KNOWN_PROTOCOLS[tmpUUID[:36]]
+            if tmp_uuid[:36] in epm.KNOWN_PROTOCOLS:
+                endpoints[tmp_uuid]['Protocol'] = epm.KNOWN_PROTOCOLS[tmp_uuid[:36]]
             else:
-                endpoints[tmpUUID]['Protocol'] = "N/A"
+                endpoints[tmp_uuid]['Protocol'] = "N/A"
      
         for endpoint in list(endpoints.keys()):
             if "MS-RPRN" in endpoints[endpoint]['Protocol']:
@@ -105,7 +113,7 @@ class CMEModule:
         else:
             context.log.debug(f"[Spooler] No endpoints found")
 
-    def __fetchList(self, rpctransport):
+    def __fetch_list(self, rpctransport):
         dce = rpctransport.get_dce_rpc()
         dce.connect()
         resp = epm.hept_lookup(None, dce=dce)

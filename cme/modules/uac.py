@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import logging
 
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
 
-class CMEModule:
 
-    name = 'uac'
+class CMEModule:
+    name = "uac"
     description = "Checks UAC status"
-    supported_protocols = ['smb']
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        logging.debug("test")
+
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
     def on_admin_login(self, context, connection):
         remoteOps = RemoteOperations(connection.conn, False)

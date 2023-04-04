@@ -174,7 +174,7 @@ def main():
 
     if hasattr(args, 'module'):
         loader = ModuleLoader(args, db, cme_logger)
-        modules = loader.get_modules()
+        modules = loader.list_modules()
 
         if args.list_modules:
             for name, props in sorted(modules.items()):

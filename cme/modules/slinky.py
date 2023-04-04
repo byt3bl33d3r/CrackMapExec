@@ -11,18 +11,20 @@ class CMEModule:
     Original idea and PoC by Justin Angel (@4rch4ngel86)
     Module by @byt3bl33d3r
     """
-    def __init__(self, context=None):
+    name = "slinky"
+    description = "Creates windows shortcuts with the icon attribute containing a UNC path to the specified SMB server in all shares with write permissions"
+    supported_protocols = ["smb"]
+    opsec_safe = False
+    multiple_hosts = True
+
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
         self.server = None
         self.file_path = None
         self.lnk_path = None
         self.lnk_name = None
         self.cleanup = None
-        self.name = "slinky"
-        self.description = "Creates windows shortcuts with the icon attribute containing a UNC path to the specified SMB server in all shares with write permissions"
-        self.supported_protocols = ["smb"]
-        self.opsec_safe = False
-        self.multiple_hosts = True
-        self.context = context
 
     def options(self, context, module_options):
         """

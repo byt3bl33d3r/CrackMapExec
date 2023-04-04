@@ -5,6 +5,7 @@ import re
 
 from impacket.ldap import ldap, ldapasn1
 from impacket.ldap.ldap import LDAPSearchError
+import logging
 
 
 class CMEModule:
@@ -13,12 +14,13 @@ class CMEModule:
 
     Module by Tobias Neitzel (@qtc_de) and Sam Freeside (@snovvcrash)
     """
+    name = 'adcs'
+    description = 'Find PKI Enrollment Services in Active Directory and Certificate Templates Names'
+    supported_protocols = ['ldap']
+    opsec_safe = True
+    multiple_hosts = True
+
     def __init__(self, context=None, module_options=None):
-        self.name = 'adcs'
-        self.description = 'Find PKI Enrollment Services in Active Directory and Certificate Templates Names'
-        self.supported_protocols = ['ldap']
-        self.opsec_safe = True
-        self.multiple_hosts = True
         self.context = context
         self.module_options = module_options
         self.server = None

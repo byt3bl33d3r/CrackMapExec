@@ -11,14 +11,15 @@ class CMEModule:
     URL: https://room362.com/post/2016/smb-http-auth-capture-via-scf/
     Module by: @kierangroome
     """
+    name = "scuffy"
+    description = "Creates and dumps an arbitrary .scf file with the icon property containing a UNC path to the declared SMB server against all writeable shares"
+    supported_protocols = ["smb"]
+    opsec_safe = False
+    multiple_hosts = True
 
-    def __init__(self, context=None):
-        self.name = "scuffy"
-        self.description = "Creates and dumps an arbitrary .scf file with the icon property containing a UNC path to the declared SMB server against all writeable shares"
-        self.supported_protocols = ["smb"]
-        self.opsec_safe = False
-        self.multiple_hosts = True
+    def __init__(self, context=None, module_options=None):
         self.context = context
+        self.module_options = module_options
         self.cleanup = None
         self.server = None
         self.file_path = None

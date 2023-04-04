@@ -10,12 +10,13 @@ import sys
 
 
 class CMEModule:
+    name = 'bh_owned'
+    description = "Set pwned computer as owned in Bloodhound"
+    supported_protocols = ['smb']
+    opsec_safe = True
+    multiple_hosts = True
+
     def __init__(self, context=None, module_options=None):
-        self.name = 'bh_owned'
-        self.description = "Set pwned computer as owned in Bloodhound"
-        self.supported_protocols = ['smb']
-        self.opsec_safe = True
-        self.multiple_hosts = True
         self.context = context
         self.module_options = module_options
         self.neo4j_pass = None

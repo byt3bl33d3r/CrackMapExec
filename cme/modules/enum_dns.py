@@ -10,12 +10,13 @@ class CMEModule:
     Uses WMI to dump DNS from an AD DNS Server.
     Module by @fang0654
     """
+    name = "enum_dns"
+    description = "Uses WMI to dump DNS from an AD DNS Server"
+    supported_protocols = ["smb"]
+    opsec_safe = True
+    multiple_hosts = True
+
     def __init__(self, context=None, module_options=None):
-        self.name = 'enum_dns'
-        self.description = 'Uses WMI to dump DNS from an AD DNS Server'
-        self.supported_protocols = ['smb']
-        self.opsec_safe = True
-        self.multiple_hosts = True
         self.context = context
         self.module_options = module_options
         self.domains = None

@@ -13,18 +13,18 @@ MAX_ATTEMPTS = 2000  # False negative chance: 0.04%
 
 
 class CMEModule:
-    def __init__(self):
-        self.name = 'zerologon'
-        self.description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
-        self.supported_protocols = ['smb']
-        self.opsec_safe = True
-        self.multiple_hosts = False
-        self.context = None
+    name = "zerologon"
+    description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
+    supported_protocols = ["smb"]
+    opsec_safe = True
+    multiple_hosts = False
+
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
 
     def options(self, context, module_options):
-        """
-        NOP            No options
-        """
+        """"""
 
     def on_login(self, context, connection):
         self.context = context
