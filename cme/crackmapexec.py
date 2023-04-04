@@ -57,7 +57,7 @@ def create_db_engine(db_path):
 
 async def start_run(protocol_obj, args, db, targets):
     cme_logger.debug(f"Creating ThreadPoolExecutor")
-    if args.no_progress:
+    if args.no_progress or len(targets) == 1:
         with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
             cme_logger.debug(f"Creating thread for {protocol_obj}")
             _ = [executor.submit(protocol_obj, args, db, target) for target in targets]
