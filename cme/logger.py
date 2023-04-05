@@ -168,6 +168,19 @@ class CMEAdapter(logging.LoggerAdapter):
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
 
+    def fail(self, msg, *args, **kwargs):
+        """
+        Prints a failure (may or may not be an error) - e.g. login creds didn't work
+        """
+        try:
+            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+                return
+        except AttributeError:
+            pass
+        msg, kwargs = self.format(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
+
     # For Impacket's TDS library
     # def logMessage(self, message):
     #     CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
