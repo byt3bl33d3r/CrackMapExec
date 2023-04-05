@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os
 from io import StringIO
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
@@ -158,7 +159,7 @@ class mssql(connection):
             else:
                 return False
         except Exception as e:
-            self.logger.error('Error calling check_if_admin(): {}'.format(e))
+            self.loggerfail('Error calling check_if_admin(): {}'.format(e))
             return False
 
         return True
@@ -216,7 +217,7 @@ class mssql(connection):
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
-            self.logger.error(u'{}\\{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
+            self.logger.fail(u'{}\\{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                                     username,
                                                     # Show what was used between cleartext, nthash, aesKey and ccache
                                                     " from ccache" if useCache
@@ -258,9 +259,9 @@ class mssql(connection):
             if not self.args.continue_on_success:
                 return True
         except BrokenPipeError as e:
-            self.logger.error(f"Broken Pipe Error while attempting to login")
+            self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(
+            self.logger.fail(u'{}\\{}:{} {}'.format(
                 domain,
                 username,
                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
@@ -318,9 +319,9 @@ class mssql(connection):
             if not self.args.continue_on_success:
                 return True
         except BrokenPipeError as e:
-            self.logger.error(f"Broken Pipe Error while attempting to login")
+            self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.error(u'{}\\{}:{} {}'.format(
+            self.logger.fail(u'{}\\{}:{} {}'.format(
                 domain,
                 username,
                 ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
@@ -384,9 +385,9 @@ class mssql(connection):
                 if exec_method.file_exists(self.args.put_file[1]):
                     self.logger.success('File has been uploaded on the remote machine')
                 else:
-                    self.logger.error('File does not exist on the remote system.. erorr during upload')
+                    self.logger.fail('File does not exist on the remote system.. erorr during upload')
             except Exception as e:
-                self.logger.error('Error during upload : {}'.format(e))
+                self.logger.fail('Error during upload : {}'.format(e))
 
     @requires_admin
     def get_file(self):
@@ -396,7 +397,7 @@ class mssql(connection):
             exec_method.get_file(self.args.get_file[0], self.args.get_file[1])
             self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], self.args.get_file[1]))
         except Exception as e:
-            self.logger.error('Error reading file {}: {}'.format(self.args.get_file[0], e))
+            self.logger.fail('Error reading file {}: {}'.format(self.args.get_file[0], e))
 
 
 # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout

