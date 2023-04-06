@@ -32,7 +32,7 @@ class CMEModule:
             self.computer = module_options['COMPUTER']
 
     def on_login(self, context, connection):
-        context.log.info('Getting LAPS Passwords')
+        context.log.display('Getting LAPS Passwords')
         if self.computer is not None:
             searchFilter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name=' + self.computer + '))'
         else:

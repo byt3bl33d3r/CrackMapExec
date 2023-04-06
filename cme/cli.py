@@ -33,9 +33,7 @@ def gen_cli_args():
 
                                                    {highlight('Version', 'red')} : {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
-""",
-
-    formatter_class=RawTextHelpFormatter)
+""", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')

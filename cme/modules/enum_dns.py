@@ -68,5 +68,5 @@ class CMEModule:
 
         log_name = 'DNS-Enum-{}-{}.log'.format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(data, log_name)
-        context.log.info(f"Saved raw output to {log_name}")
+        context.log.display(f"Saved raw output to {log_name}")
 

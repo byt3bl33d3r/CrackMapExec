@@ -24,7 +24,7 @@ class CMEModule:
 
     def on_login(self, context, connection):     
         result = []
-        context.log.info('Getting the MachineAccountQuota')
+        context.log.display('Getting the MachineAccountQuota')
         searchFilter = '(objectClass=*)'
         attributes = ['ms-DS-MachineAccountQuota']
         result = connection.search(searchFilter, attributes)

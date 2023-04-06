@@ -66,7 +66,7 @@ class CMEModule:
             file_args=self.file_args,
         )
 
-        context.log.info("Running Masky on the targeted host")
+        context.log.display("Running Masky on the targeted host")
         rslts = m.run(host)
         tracker = m.get_last_tracker()
 
@@ -76,12 +76,12 @@ class CMEModule:
 
     def process_results(self, connection, context, rslts, tracker):
         if not tracker.nb_hijacked_users:
-            context.log.info("No users' sessions were hijacked")
+            context.log.display("No users' sessions were hijacked")
         else:
-            context.log.info(
+            context.log.display(
                 f"{tracker.nb_hijacked_users} session(s) successfully hijacked"
             )
-            context.log.info("Attempting to retrieve NT hash(es) via PKINIT")
+            context.log.display("Attempting to retrieve NT hash(es) via PKINIT")
 
         if not rslts:
             return False

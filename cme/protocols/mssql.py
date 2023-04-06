@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import logging
 import os
 from io import StringIO
@@ -159,7 +158,7 @@ class mssql(connection):
             else:
                 return False
         except Exception as e:
-            self.loggerfail('Error calling check_if_admin(): {}'.format(e))
+            self.logger.fail('Error calling check_if_admin(): {}'.format(e))
             return False
 
         return True

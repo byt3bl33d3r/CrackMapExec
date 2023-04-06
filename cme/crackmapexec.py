@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import concurrent.futures
-
-import sqlalchemy
-
+import cme
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
@@ -15,27 +12,24 @@ from cme.loaders.moduleloader import ModuleLoader
 from cme.servers.http import CMEServer
 from cme.first_run import first_run_setup
 from cme.context import Context
-from cme.paths import CME_PATH
+from cme.paths import CME_PATH, DATA_PATH
 from cme.console import cme_console
 from cme.logger import cme_logger
+from cme.config import cme_config, cme_workspace
 from concurrent.futures import ThreadPoolExecutor
-from pprint import pformat
 import asyncio
-import configparser
 import cme.helpers.powershell as powershell
-import cme
 import shutil
 import webbrowser
 import random
 import os
 import sys
 import logging
-from sqlalchemy.orm import declarative_base
+import concurrent.futures
+import sqlalchemy
 from sqlalchemy.exc import SAWarning
 import warnings
 from rich.progress import Progress
-
-Base = declarative_base()
 
 try:
     import librlers
@@ -66,7 +60,10 @@ async def start_run(protocol_obj, args, db, targets):
             with ThreadPoolExecutor(max_workers=args.threads + 1) as executor:
                 current = 0
                 total = len(targets)
-                tasks = progress.add_task(f"[green]Running CME against {total} {'target' if total == 1 else 'targets'}", total=total)
+                tasks = progress.add_task(
+                    f"[green]Running CME against {total} {'target' if total == 1 else 'targets'}",
+                    total=total
+                )
                 cme_logger.debug(f"Creating thread for {protocol_obj}")
                 futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
                 for future in concurrent.futures.as_completed(futures):
@@ -92,28 +89,17 @@ def main():
     cme_logger.debug(f"Passed args: {args}")
 
     if args.darrell:
-        links = open(os.path.join(os.path.dirname(cme.__file__), 'data', 'videos_for_darrell.harambe')).read().splitlines()
+        links = open(os.path.join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
         try:
             webbrowser.open(random.choice(links))
-        except:
+            sys.exit(1)
+        except Exception as e:
+            cme_logger.error(f"Error opening le dank meme: {e}")
             sys.exit(1)
 
-    config = configparser.ConfigParser()
-    config.read(os.path.join(CME_PATH, 'cme.conf'))
-
-    module = None
     module_server = None
     targets = []
-    server_port_dict = {'http': 80, 'https': 443, 'smb': 445}
-    current_workspace = config.get('CME', 'workspace')
-
-    # actual jitter performed in connection
-    if args.jitter:
-        if '-' in args.jitter:
-            start, end = args.jitter.split('-')
-            args.jitter = (int(start), int(end))
-        else:
-            args.jitter = (0, int(args.jitter))
+    server_port_dict = {"http": 80, "https": 443, "smb": 445}
 
     if hasattr(args, 'cred_id') and args.cred_id:
         for cred_id in args.cred_id:
@@ -124,7 +110,7 @@ def main():
                         args.cred_id.append(n)
                     args.cred_id.remove(cred_id)
                 except Exception as e:
-                    cme_logger.error('Error parsing database credential id: {}'.format(e))
+                    cme_logger.error(f"Error parsing database credential id: {e}")
                     sys.exit(1)
 
     if hasattr(args, 'target') and args.target:
@@ -163,14 +149,15 @@ def main():
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
     cme_logger.debug(f"Protocol DB Object: {protocol_db_object}")
 
-    db_path = os.path.join(CME_PATH, 'workspaces', current_workspace, args.protocol + '.db')
+    db_path = os.path.join(CME_PATH, 'workspaces', cme_workspace, args.protocol + '.db')
     cme_logger.debug(f"DB Path: {db_path}")
 
     db_engine = create_db_engine(db_path)
 
     db = protocol_db_object(db_engine)
 
-    setattr(protocol_object, 'config', config)
+    # with the new cme/config.py this can be eventually removed, as it can be imported anywhere
+    setattr(protocol_object, 'config', cme_config)
 
     if hasattr(args, 'module'):
         loader = ModuleLoader(args, db, cme_logger)

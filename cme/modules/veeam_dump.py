@@ -32,7 +32,7 @@ class CMEModule:
         pass
 
     def checkVeeamInstalled(self, context, connection):
-        context.log.info("Looking for Veeam installation...")
+        context.log.display("Looking for Veeam installation...")
         SqlDatabase = ""
         SqlInstance = ""
         SqlServer = ""

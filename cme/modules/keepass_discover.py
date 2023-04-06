@@ -51,7 +51,7 @@ class CMEModule:
                 keepass_process_name = row[2]
                 context.log.highlight('Found process "{}" with PID {} (user {})'.format(keepass_process_name, keepass_process_id, keepass_process_username))
             if row_number == 0:
-                context.log.info('No KeePass-related process was found')
+                context.log.display('No KeePass-related process was found')
 
         # search for keepass-related files
         if self.search_type == 'ALL' or self.search_type == 'FILES':
@@ -67,6 +67,6 @@ class CMEModule:
                     found = True
                     context.log.highlight('Found {}'.format(file))
             if not found:
-                context.log.info('No KeePass-related file were found')
+                context.log.display('No KeePass-related file were found')
             elif not found_xml:
                 context.log.error('No config settings file found !!!')

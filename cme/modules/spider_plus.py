@@ -316,11 +316,11 @@ class CMEModule:
 
     def on_login(self, context, connection):
 
-        context.log.info('Started spidering plus with option:')
-        context.log.info('       DIR: {dir}'.format(dir=self.exlude_dirs))
-        context.log.info('       EXT: {ext}'.format(ext=self.exclude_exts))
-        context.log.info('      SIZE: {size}'.format(size=self.max_file_size))
-        context.log.info('    OUTPUT: {output}'.format(output=self.output_folder))
+        context.log.display('Started spidering plus with option:')
+        context.log.display('       DIR: {dir}'.format(dir=self.exlude_dirs))
+        context.log.display('       EXT: {ext}'.format(ext=self.exclude_exts))
+        context.log.display('      SIZE: {size}'.format(size=self.max_file_size))
+        context.log.display('    OUTPUT: {output}'.format(output=self.output_folder))
 
         spider = SMBSpiderPlus(
             connection,

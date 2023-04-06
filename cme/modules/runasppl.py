@@ -17,9 +17,9 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         command = "reg query HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\ /v RunAsPPL"
-        context.log.info("Executing command")
+        context.log.display("Executing command")
         p = connection.execute(command, True)
         if "The system was unable to find the specified registry key or value" in p:
-            context.log.info(f"Unable to find RunAsPPL Registry Key")
+            context.log.debug(f"Unable to find RunAsPPL Registry Key")
         else:
             context.log.highlight(p)

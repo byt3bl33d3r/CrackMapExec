@@ -36,5 +36,5 @@ class CMEModule:
 
         log_name = 'network-connections-{}-{}.log'.format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(json.dumps(data), log_name)
-        context.log.info("Saved raw output to {}".format(log_name))
+        context.log.display("Saved raw output to {}".format(log_name))
 

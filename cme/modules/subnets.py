@@ -43,7 +43,7 @@ class CMEModule:
     def on_login(self, context, connection):
         dn = ','.join(["DC=%s" % part for part in connection.domain.split('.')][-2:])
 
-        context.log.info('Getting the Sites and Subnets from domain')
+        context.log.display('Getting the Sites and Subnets from domain')
 
         list_sites = connection.ldapConnection.search(
             searchBase="CN=Configuration,%s" % dn,

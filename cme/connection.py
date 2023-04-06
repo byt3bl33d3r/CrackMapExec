@@ -56,21 +56,29 @@ class connection(object):
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
+        self.logger = cme_logger
 
         if self.log_file:
-            cme_logger.setup_logfile(self.log_file[0])
+            self.logger.setup_logfile(self.log_file[0])
 
         try:
             self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
         except Exception as e:
-            cme_logger.info(f"Error resolving hostname {self.hostname}: {e}")
+            self.logger.info(f"Error resolving hostname {self.hostname}: {e}")
             return
 
         if args.jitter:
-            value = random.choice(range(args.jitter[0], args.jitter[1]))
-            cme_logger.debug(f"Doin' the jitterbug for {value} second(s)")
+            jitter = args.jitter
+            if '-' in jitter:
+                start, end = jitter.split('-')
+                jitter = (int(start), int(end))
+            else:
+                jitter = (0, int(jitter))
+
+            value = random.choice(range(jitter[0], jitter[1]))
+            self.logger.debug(f"Doin' the jitterbug for {value} second(s)")
             sleep(value)
 
         self.proto_flow()
@@ -138,35 +146,35 @@ class connection(object):
             context = Context(self.db, module_logger, self.args)
             context.localip = self.local_ip
 
-            try:
-                if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
-                    self.logger.debug(f"Module {module.name} has on_request or has_response methods")
-                    self.server.connection = self
-                    self.server.context.localip = self.local_ip
-            except Exception as e:
-                self.logger.error(f"Error while calling {module.name}'s on_request or has_response methods: {e}")
+            #try:
+            if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
+                self.logger.debug(f"Module {module.name} has on_request or has_response methods")
+                self.server.connection = self
+                self.server.context.localip = self.local_ip
+            # except Exception as e:
+            #     self.logger.error(f"Error while calling {module.name}'s on_request or has_response methods: {e}")
 
-            try:
-                if hasattr(module, 'on_login'):
-                    self.logger.debug(f"Module {module.name} has on_login method")
-                    module.on_login(context, self)
-            except Exception as e:
-                self.logger.error(f"Error while calling {module.name}'s on_login method: {e}")
+            #try:
+            if hasattr(module, 'on_login'):
+                self.logger.debug(f"Module {module.name} has on_login method")
+                module.on_login(context, self)
+            # except Exception as e:
+            #     self.logger.error(f"Error while calling {module.name}'s on_login method: {e}")
 
-            try:
-                if self.admin_privs and hasattr(module, 'on_admin_login'):
-                    self.logger.debug(f"Module {module.name} has on_admin_login method")
-                    module.on_admin_login(context, self)
-            except Exception as e:
-                self.logger.error(f"Error while calling {module.name}'s on_admin_login method: {e}")
+            #try:
+            if self.admin_privs and hasattr(module, 'on_admin_login'):
+                self.logger.debug(f"Module {module.name} has on_admin_login method")
+                module.on_admin_login(context, self)
+            # except Exception as e:
+            #     self.logger.error(f"Error while calling {module.name}'s on_admin_login method: {e}")
 
-            try:
-                if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module,'on_shutdown'):
-                    self.logger.debug(f"Module {module.name} has on_shutdown method")
-                    module.on_shutdown(context, self)
-            except Exception as e:
-                self.logger.error(f"Error while calling {module.name}'s on_shutdown method: {e}")
-                pass
+            #try:
+            if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module,'on_shutdown'):
+                self.logger.debug(f"Module {module.name} has on_shutdown method")
+                module.on_shutdown(context, self)
+            # except Exception as e:
+            #     self.logger.error(f"Error while calling {module.name}'s on_shutdown method: {e}")
+            #     pass
 
     def inc_failed_login(self, username):
         global global_failed_logins

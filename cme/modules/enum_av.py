@@ -42,7 +42,7 @@ class CMEModule:
                 for service in product['services']:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service['name'])
-                        context.log.info(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
+                        context.log.display(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product['name'] not in results:
                             results[product['name']] = {"services": []}
                         results[product['name']]['services'].append(service)
@@ -52,7 +52,7 @@ class CMEModule:
         except Exception as e:
             context.log.error(str(e))
 
-        context.log.info(f"Detecting running processes on {connection.host} by enumerating pipes...")
+        context.log.display(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:
             for f in connection.conn.listPath('IPC$', '\\*'):
                 fl = f.get_longname()

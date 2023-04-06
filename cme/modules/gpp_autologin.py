@@ -26,12 +26,12 @@ class CMEModule:
             if share['name'] == 'SYSVOL' and 'READ' in share['access']:
 
                 context.log.success('Found SYSVOL share')
-                context.log.info('Searching for Registry.xml')
+                context.log.display('Searching for Registry.xml')
 
                 paths = connection.spider('SYSVOL', pattern=['Registry.xml'])
 
                 for path in paths:
-                    context.log.info('Found {}'.format(path))
+                    context.log.display('Found {}'.format(path))
 
                     buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)

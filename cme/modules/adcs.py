@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import re
-
 from impacket.ldap import ldap, ldapasn1
 from impacket.ldap.ldap import LDAPSearchError
-import logging
 
 
 class CMEModule:
@@ -47,7 +44,7 @@ class CMEModule:
             search_filter = f"(distinguishedName=CN={self.server},CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,"
             self.context.log.highlight('Using PKI CN: {}'.format(self.server))
 
-        context.log.info("Starting LDAP search with search filter '{}'".format(search_filter))
+        context.log.display("Starting LDAP search with search filter '{}'".format(search_filter))
 
         try:
             sc = ldap.SimplePagedResultsControl()
@@ -70,7 +67,6 @@ class CMEModule:
                     perRecordCallback=self.process_templates,
                     searchBase='CN=Configuration,' + base_dn_root
                 )
-
         except LDAPSearchError as e:
             context.log.error('Obtained unexpected exception: {}'.format(str(e)))
 

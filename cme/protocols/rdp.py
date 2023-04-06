@@ -142,8 +142,8 @@ class rdp(connection):
                     return False
                 if "Reason:" not in str(e):
                     info_domain = self.conn.get_extra_info()
-                    self.domain    = info_domain['dnsdomainname']
-                    self.hostname  = info_domain['computername']
+                    self.domain = info_domain['dnsdomainname']
+                    self.hostname = info_domain['computername']
                     self.server_os = info_domain['os_guess'] + " Build " + str(info_domain['os_build'])
 
                     self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
@@ -206,7 +206,7 @@ class rdp(connection):
                 if not password:
                     password = getenv('KRB5CCNAME') if not password else password
                     if "/" in password:
-                        self.logger.error("Kerberos ticket need to be on the local directory")
+                        self.logger.fail("Kerberos ticket need to be on the local directory")
                         return False
                     ccache = CCache.loadFile(getenv('KRB5CCNAME'))
                     ticketCreds = ccache.credentials[0]
@@ -255,7 +255,7 @@ class rdp(connection):
                 for word in rdp_error_status.keys():
                     if word in str(e):
                         reason = rdp_error_status[word]
-                self.logger.error(u'{}\\{}{} {}'.format(
+                self.logger.fail(u'{}\\{}{} {}'.format(
                     domain,
                     username,
                     # Show what was used between cleartext, nthash, aesKey and ccache
@@ -273,7 +273,7 @@ class rdp(connection):
                     )
                 )
             elif "No such file" in str(e):
-                self.logger.error(str(e))
+                self.logger.fail(str(e))
             else:
                 reason = None
                 for word in rdp_error_status.keys():
@@ -281,7 +281,7 @@ class rdp(connection):
                         reason = rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
-                self.logger.error(
+                self.logger.fail(
                     u'{}\\{}{} {}'.format(
                         domain,
                         username,
@@ -328,7 +328,7 @@ class rdp(connection):
                         reason = rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
-                self.logger.error(
+                self.logger.fail(
                     u'{}\\{}:{} {}'.format(
                         domain,
                         username,
@@ -357,7 +357,6 @@ class rdp(connection):
                 add_user_bh(username, domain, self.logger, self.config)            
             if not self.args.continue_on_success:
                 return True
-
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(
@@ -376,7 +375,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 
-                self.logger.error(
+                self.logger.fail(
                     u'{}\\{}:{} {}'.format(
                         domain,
                         username,

@@ -112,7 +112,7 @@ class CMEModule:
         zone = ldap2domain(connection.baseDN)
         dnsroot = 'CN=MicrosoftDNS,DC=DomainDnsZones,%s' % connection.baseDN
         searchtarget = 'DC=%s,%s' % (zone, dnsroot)
-        context.log.info('Querying zone for records')
+        context.log.display('Querying zone for records')
         sfilter = '(DC=*)'
 
         try:
@@ -171,7 +171,7 @@ class CMEModule:
                     outfile.write('{}\n'.format(row['value']))
         context.log.success('Dumped {} records to {}'.format(len(outdata), path))
         if not self.showall and not self.showhosts:
-            context.log.info("To extract CIDR from the {} ip, run  the following command: cat your_file | mapcidr -aa -silent | mapcidr -a -silent".format(len(outdata)))
+            context.log.display("To extract CIDR from the {} ip, run  the following command: cat your_file | mapcidr -aa -silent | mapcidr -a -silent".format(len(outdata)))
 
 
 

@@ -19,7 +19,7 @@ class CMEModule:
         '''
 
     def on_admin_login(self, context, connection):
-        context.log.info('Killing all Teams process to open the cookie file')
+        context.log.display('Killing all Teams process to open the cookie file')
         connection.execute("taskkill /F /T /IM teams.exe")
         #sleep(3)
         found = 0
@@ -40,7 +40,7 @@ class CMEModule:
                         context.log.highlight("Found Cookie file in path " + path)
                         context.log.error('Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database')
         if found == 0:
-            context.log.info('No cookie file found in Users folder')
+            context.log.display('No cookie file found in Users folder')
 
     @staticmethod
     def parse_file(context, name):

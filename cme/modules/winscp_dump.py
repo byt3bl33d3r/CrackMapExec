@@ -301,7 +301,7 @@ class CMEModule:
         return useMasterPassword
 
     def registryDiscover(self, context, connection):
-        context.log.info("Looking for WinSCP creds in Registry...")
+        context.log.display("Looking for WinSCP creds in Registry...")
         try:
             remoteOps = RemoteOperations(connection.conn, False)
             remoteOps.enableRegistry()
@@ -394,7 +394,7 @@ class CMEModule:
                 context.log.error("Error! No config file found at {}".format(self.filepath))
                 traceback.print_exc()
         else:
-            context.log.info("Looking for WinSCP creds in User documents and AppData...")
+            context.log.display("Looking for WinSCP creds in User documents and AppData...")
             output = connection.execute('powershell.exe "Get-LocalUser | Select name"', True)
             users = []
             for row in output.split('\r\n'):

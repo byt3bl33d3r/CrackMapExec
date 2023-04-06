@@ -3,10 +3,9 @@
 
 import os
 import shutil
-import cme
 import configparser
 from configparser import NoSectionError, NoOptionError
-from cme.paths import CME_PATH, CONFIG_PATH, TMP_PATH
+from cme.paths import CME_PATH, CONFIG_PATH, TMP_PATH, DATA_PATH
 from cme.cmedb import initialize_db
 
 
@@ -29,7 +28,7 @@ def first_run_setup(logger):
 
     if not os.path.exists(CONFIG_PATH):
         logger.display('Copying default configuration file')
-        default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
+        default_path = os.path.join(DATA_PATH, 'cme.conf')
         shutil.copy(default_path, CME_PATH)
     else:
         # This is just a quick check to make sure the config file isn't the old 3.x format
@@ -43,7 +42,7 @@ def first_run_setup(logger):
             config.get('CME', 'log_mode')
         except (NoSectionError, NoOptionError):
             logger.display('Old configuration file detected, replacing with new version')
-            default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'cme.conf')
+            default_path = os.path.join(DATA_PATH, 'cme.conf')
             shutil.copy(default_path, CME_PATH)
 
     # if not os.path.exists(CERT_PATH):
@@ -57,7 +56,7 @@ def first_run_setup(logger):
     #     except OSError as e:
     #         if e.errno == errno.ENOENT:
     #             logger.error('OpenSSL command line utility is not installed, could not generate certificate, using default certificate')
-    #             default_path = os.path.join(os.path.dirname(cme.__file__), 'data', 'default.pem')
+    #             default_path = os.path.join(DATA_PATH, 'default.pem')
     #             shutil.copy(default_path, CERT_PATH)                
     #         else:
     #             logger.error('Error while generating SSL certificate: {}'.format(e))

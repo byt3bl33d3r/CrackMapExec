@@ -51,7 +51,7 @@ class CMEModule:
                context.log.error(f"Cannot open {self.MSOL_PS1}")
                exit(1)
 
-        context.log.info(f"Uploading {self.msol}")
+        context.log.display(f"Uploading {self.msol}")
         with open(file_to_upload, 'rb') as msol:
             try:
                connection.conn.putFile(self.share, f"{self.tmp_share}{self.msol}", msol.read)
@@ -61,7 +61,7 @@ class CMEModule:
                return
         try:
             if self.cmd == "":
-                context.log.info(f"Executing the script")
+                context.log.display(f"Executing the script")
                 p = self.execscript(context, connection)
                 for line in p.splitlines():
                     p1, p2 = line.split(" ", 1)

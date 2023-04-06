@@ -136,7 +136,7 @@ class CMEModule:
                 )
                 return grantor
             else:
-                context.log.info(
+                context.log.display(
                     f"{user.username} can impersonate {grantor.username}"
                 )
             return self.browse_path(context, initial_user, grantor)

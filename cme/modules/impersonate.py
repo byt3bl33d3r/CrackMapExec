@@ -57,7 +57,7 @@ class CMEModule:
                 context.log.error(f"Cannot open {self.imp_exe}")
                 exit(1)
 
-        context.log.info(f"Uploading {self.impersonate}")
+        context.log.display(f"Uploading {self.impersonate}")
         with open(file_to_upload, 'rb') as impersonate:
             try:
                 connection.conn.putFile(self.share, f"{self.tmp_share}{self.impersonate}", impersonate.read)
@@ -68,7 +68,7 @@ class CMEModule:
 
         try:
             if self.cmd == "" or self.token == "":
-                context.log.info(f"Listing available primary tokens")
+                context.log.display(f"Listing available primary tokens")
                 p = self.list_available_primary_tokens(context, connection)
                 for line in p.splitlines():
                     token, token_owner = line.split(" ", 1)
@@ -83,7 +83,7 @@ class CMEModule:
                         break
 
                 if impersonated_user:  
-                    context.log.info(f"Executing {self.cmd} as {impersonated_user}")
+                    context.log.display(f"Executing {self.cmd} as {impersonated_user}")
                     command = f"{self.tmp_dir}Impersonate.exe exec {self.token} \"{self.cmd}\""
                     for line in connection.execute(command, True, methods=["smbexec"]).splitlines():
                         context.log.highlight(line)
