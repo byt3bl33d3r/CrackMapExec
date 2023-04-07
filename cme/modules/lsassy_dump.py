@@ -124,7 +124,6 @@ class CMEModule:
 
     @staticmethod
     def print_credentials(context, domain, username, password, lmhash, nthash):
-        context.log.debug(f"Inside print_credentials")
         if password is None:
             password = ':'.join(h for h in [lmhash, nthash] if h is not None)
         output = "%s\\%s %s" % (domain, username, password)
