@@ -52,14 +52,10 @@ class connection(object):
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
-        self.log_file = None if not self.args.log else self.args.log
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
         self.logger = cme_logger
-
-        if self.log_file:
-            self.logger.setup_logfile(self.log_file[0])
 
         try:
             self.host = gethost_addrinfo(self.hostname)
@@ -112,6 +108,7 @@ class connection(object):
         return
 
     def proto_flow(self):
+        cme_logger.debug(f"Kicking off proto_flow")
         self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
