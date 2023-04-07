@@ -46,7 +46,7 @@ class CMEModule:
         nthash = getattr(connection, "nthash", "")
 
         self.__stringbinding = KNOWN_PROTOCOLS[self.port]['bindstr'] % connection.host
-        logging.debug('StringBinding %s' % self.__stringbinding)
+        context.log.debug('StringBinding %s' % self.__stringbinding)
         rpctransport = transport.DCERPCTransportFactory(self.__stringbinding)
         rpctransport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
         rpctransport.setRemoteHost(connection.host if not connection.kerberos else connection.hostname + "." + connection.domain)
@@ -56,7 +56,7 @@ class CMEModule:
             rpctransport.set_kerberos(connection.kerberos, connection.kdcHost)
 
         try:
-            entries = self.__fetch_list(rpc_transport)
+            entries = self.__fetch_list(rpctransport)
         except Exception as e:
             error_text = 'Protocol failed: %s' % e
             context.log.critical(error_text)
