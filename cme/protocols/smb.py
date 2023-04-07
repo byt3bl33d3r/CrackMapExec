@@ -454,6 +454,7 @@ class smb(connection):
             else:
                 kerb_pass = ''
 
+            self.logger.debug(f"Attempting to do Kerberos Login with useCache: {useCache}")
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
             self.check_if_admin()
 
@@ -1298,13 +1299,20 @@ class smb(connection):
         self.logger.display('Started spidering')
         start_time = time()
         if not share:
-            spider.spider(self.args.spider, self.args.spider_folder, self.args.pattern,
-                          self.args.regex, self.args.exclude_dirs, self.args.depth,
-                          self.args.content, self.args.only_files)
+            spider.spider(
+                self.args.spider,
+                self.args.spider_folder,
+                self.args.pattern,
+                self.args.regex,
+                self.args.exclude_dirs,
+                self.args.depth,
+                self.args.content,
+                self.args.only_files
+            )
         else:
             spider.spider(share, folder, pattern, regex, exclude_dirs, depth, content, only_files)
 
-        self.logger.display("Done spidering (Completed in {})".format(time() - start_time))
+        self.logger.display(f"Done spidering (Completed in {time() - start_time})")
 
         return spider.results
 
@@ -1321,7 +1329,7 @@ class smb(connection):
 
         try:
             string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host)
-            self.logger.info('StringBinding {}'.format(string_binding))
+            self.logger.info("StringBinding {string_binding}")
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
 
