@@ -1062,8 +1062,9 @@ class smb(connection):
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
-            except SessionError as e:
-                self.logger.fail(f"Error connecting via SMB: {e}")
+            # except SessionError as e:
+            #     print("dddfdfdf")
+            #     self.logger.error(f"Error connecting via SMB: {e}")
             except Exception as e:
                 self.logger.fail(f"Error enumerating local groups of {self.host}: {e}")
                 self.logger.display('Trying with SAMRPC protocol')
@@ -1073,6 +1074,7 @@ class smb(connection):
                     self.logger.display(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
+                    self.logger.highlight(f"rid => {group_rid} => {group_name}")
                     group_id = self.db.add_group(
                         self.hostname,
                         group_name,
@@ -1328,19 +1330,25 @@ class smb(connection):
         }
 
         try:
-            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host)
-            self.logger.info("StringBinding {string_binding}")
+            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host if not self.kerberos else self.hostname + '.' + self.domain)
+            logging.debug('StringBinding {}'.format(string_binding))
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
 
             if KNOWN_PROTOCOLS[self.args.port]['set_host']:
-                rpc_transport.setRemoteHost(self.host)
+                rpc_transport.setRemoteHost(self.host if not self.kerberos else self.hostname + '.' + self.domain)
 
             if hasattr(rpc_transport, 'set_credentials'):
                 # This method exists only for selected protocol sequences.
                 rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
 
+            if self.kerberos:
+                rpc_transport.set_kerberos(self.kerberos, self.kdcHost)
+
             dce = rpc_transport.get_dce_rpc()
+            if self.kerberos:
+                dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
+
             dce.connect()
         except Exception as e:
             self.logger.fail('Error creating DCERPC connection: {}'.format(e))

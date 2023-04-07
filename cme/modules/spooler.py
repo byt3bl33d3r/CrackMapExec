@@ -45,12 +45,15 @@ class CMEModule:
         lmhash = getattr(connection, "lmhash", "")
         nthash = getattr(connection, "nthash", "")
 
-        self.__string_binding = KNOWN_PROTOCOLS[self.port]['bindstr'] % connection.host
-        context.log.debug('StringBinding %s' % self.__string_binding)
-        rpc_transport = transport.DCERPCTransportFactory(self.__string_binding)
-        rpc_transport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
-        rpc_transport.setRemoteHost(connection.host)
-        rpc_transport.set_dport(self.port)
+        self.__stringbinding = KNOWN_PROTOCOLS[self.port]['bindstr'] % connection.host
+        logging.debug('StringBinding %s' % self.__stringbinding)
+        rpctransport = transport.DCERPCTransportFactory(self.__stringbinding)
+        rpctransport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
+        rpctransport.setRemoteHost(connection.host if not connection.kerberos else connection.hostname + "." + connection.domain)
+        rpctransport.set_dport(self.port)
+
+        if connection.kerberos:
+            rpctransport.set_kerberos(connection.kerberos, connection.kdcHost)
 
         try:
             entries = self.__fetch_list(rpc_transport)

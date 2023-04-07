@@ -35,14 +35,14 @@ class CMEModule:
 
     def on_login(self, context, connection):
         c = CoerceAuth()
-        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc", doKerberos=connection.kerberos, dcHost=connection.kdcHost)
+        dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain , pipe="FssagentRpc", doKerberos=connection.kerberos, dcHost=connection.kdcHost)
 
         # If pipe not available, try again. "TL;DR: run the command twice if it doesn't work." - @Shutdown
         if dce == 1:
             context.log.debug("First try failed. Creating another dce connection...")
             # Sleeping mandatory for second try
             time.sleep(2)
-            dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, pipe="FssagentRpc")
+            dce = c.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain, pipe="FssagentRpc")
         
         if self.ipsc: 
             context.log.debug("ipsc = %s", self.ipsc)

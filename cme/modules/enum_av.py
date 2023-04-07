@@ -32,9 +32,11 @@ class CMEModule:
 
         success = 0
         results = {}
-        context.log.debug(f"Detecting installed services on {connection.host} using LsarLookupNames()...")
+        target = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
+        context.log.debug("Detecting installed services on {} using LsarLookupNames()...".format(target))
+
         try:
-            lsa = LsaLookupNames(connection.domain, connection.username, connection.password, connection.hostname if connection.kerberos else connection.host, connection.kerberos, connection.domain, connection.lmhash, connection.nthash)
+            lsa = LsaLookupNames(connection.domain, connection.username, connection.password, target, connection.kerberos, connection.domain, connection.lmhash, connection.nthash)
             dce, rpctransport = lsa.connect()
             policyHandle = lsa.open_policy(dce)
 

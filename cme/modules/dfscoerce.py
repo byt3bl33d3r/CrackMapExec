@@ -32,7 +32,7 @@ class CMEModule:
 
     def on_login(self, context, connection):
         trigger = TriggerAuth()
-        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
+        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
 
         if dce is not None: 
             context.log.debug("Target is vulnerable to DFSCoerce")
