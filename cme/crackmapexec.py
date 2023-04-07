@@ -15,7 +15,7 @@ from cme.context import Context
 from cme.paths import CME_PATH, DATA_PATH
 from cme.console import cme_console
 from cme.logger import cme_logger
-from cme.config import cme_config, cme_workspace
+from cme.config import cme_config, cme_workspace, config_log
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import cme.helpers.powershell as powershell
@@ -85,6 +85,20 @@ def main():
     else:
         cme_logger.logger.setLevel(logging.ERROR)
         root_logger.setLevel(logging.ERROR)
+
+    cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
+    # if these are the same, it will double log to file (two FileHandlers will be added)
+    cme_logger.debug(f"File log: {config_log}")
+    if config_log:
+        cme_logger.add_file_log()
+        cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
+    if args.log:
+        cme_logger.debug(f"args.log: {args.log}")
+        cme_logger.debug(f"args.log type: {type(args.log)}")
+        cme_logger.add_file_log(args.log)
+        cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
+
+    cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
 
     cme_logger.debug(f"Passed args: {args}")
 

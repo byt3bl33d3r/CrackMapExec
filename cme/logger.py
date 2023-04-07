@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import logging
 import os.path
 import sys
@@ -11,23 +10,6 @@ from termcolor import colored
 from datetime import datetime
 from rich.text import Text
 from rich.logging import RichHandler
-from rich.traceback import install
-
-# The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
-# There must be a better way of doing this, but this way we might save some penguins!
-ansi_escape = re.compile(r'\x1b[^m]*m')
-
-
-def antiansi_emit(self, record):
-
-    if self.stream is None:
-        self.stream = self._open()
-
-    record.msg = ansi_escape.sub('', record.message)
-    logging.StreamHandler.emit(self, record)
-
-
-logging.FileHandler.emit = antiansi_emit
 
 
 class CMEAdapter(logging.LoggerAdapter):
@@ -42,7 +24,7 @@ class CMEAdapter(logging.LoggerAdapter):
         )
         self.logger = logging.getLogger("rich")
         self.extra = extra
-        self.outputfile = None
+        self.output_file = None
 
         logging.getLogger("pypykatz").disabled = True
         logging.getLogger("minidump").disabled = True
@@ -135,27 +117,49 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.format(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
-    
-    def setup_logfile(self, log_file=None):
-        formatter = logging.Formatter("%(message)s")
-        self.outputfile = init_log_file() if log_file is None else log_file
+
+    def add_file_log(self, log_file=None):
+        file_formatter = TermEscapeCodeFormatter("%(asctime)s - %(levelname)s - %(message)s")
+        output_file = self.init_log_file() if log_file is None else log_file
         file_creation = False
-        if not os.path.isfile(self.outputfile):
-            open(self.outputfile, 'x')
+
+        if not os.path.isfile(output_file):
+            open(output_file, 'x')
             file_creation = True
-        file_handler = logging.FileHandler(filename=self.outputfile, mode="a")
+
+        file_handler = logging.FileHandler(filename=output_file, mode="a")
+
         with file_handler._open() as f:
             if file_creation:
                 f.write("[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
             else:
                 f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
-        file_handler.setFormatter(formatter)
+
+        file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)
 
+    @staticmethod
+    def init_log_file():
+        log_filename = os.path.join(
+            os.path.expanduser(
+                "~/.cme"
+            ),
+            "logs",
+            f"full-log_{datetime.now().strftime('%Y-%m-%d')}.log"
+        )
+        return log_filename
 
-def init_log_file():
-    log_filename = os.path.join(os.path.expanduser('~/.cme'), 'logs', 'full-log_{}.log'.format(datetime.now().strftime('%Y-%m-%d')))
-    return log_filename
+
+class TermEscapeCodeFormatter(logging.Formatter):
+    """A class to strip the escape codes from the """
+    def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
+        super().__init__(fmt, datefmt, style, validate)
+
+    def format(self, record):
+        escape_re = re.compile(r'\x1b\[[0-9;]*m')
+        record.msg = re.sub(escape_re, "", str(record.msg))
+        return super().format(record)
 
 
+# initialize the logger for all of CME - this is imported everywhere
 cme_logger = CMEAdapter()
