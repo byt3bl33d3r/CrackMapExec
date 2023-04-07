@@ -28,7 +28,7 @@ cmedb = 'cme.cmedb:main'
 python = "^3.7.0"
 requests = ">=2.27.1"
 beautifulsoup4 = ">=4.11,<5"
-lsassy = ">=3.1.3"
+lsassy = ">=3.1.7"
 termcolor = "^1.1.0"
 msgpack = "^1.0.0"
 neo4j = "^4.1.1"
