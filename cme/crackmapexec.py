@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import cme
 from cme.helpers.logger import highlight
 from cme.helpers.misc import identify_target_file
 from cme.parsers.ip import parse_targets
@@ -27,8 +26,6 @@ import sys
 import logging
 import concurrent.futures
 import sqlalchemy
-from sqlalchemy.exc import SAWarning
-import warnings
 from rich.progress import Progress
 
 try:
@@ -36,8 +33,6 @@ try:
 except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     sys.exit()
-# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
-warnings.filterwarnings("ignore", category=SAWarning)
 
 
 def create_db_engine(db_path):
@@ -86,19 +81,11 @@ def main():
         cme_logger.logger.setLevel(logging.ERROR)
         root_logger.setLevel(logging.ERROR)
 
-    cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
-    # if these are the same, it will double log to file (two FileHandlers will be added)
-    cme_logger.debug(f"File log: {config_log}")
+    # if these are the same, it might double log to file (two FileHandlers will be added)
     if config_log:
         cme_logger.add_file_log()
-        cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
     if args.log:
-        cme_logger.debug(f"args.log: {args.log}")
-        cme_logger.debug(f"args.log type: {type(args.log)}")
         cme_logger.add_file_log(args.log)
-        cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
-
-    cme_logger.debug(f"handlers: {logging.getLogger('rich').handlers}")
 
     cme_logger.debug(f"Passed args: {args}")
 
