@@ -44,8 +44,11 @@ class CMEModule:
         logging.debug('StringBinding %s' % self.__stringbinding)
         rpctransport = transport.DCERPCTransportFactory(self.__stringbinding)
         rpctransport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
-        rpctransport.setRemoteHost(connection.host)
+        rpctransport.setRemoteHost(connection.host if not connection.kerberos else connection.hostname + "." + connection.domain)
         rpctransport.set_dport(self.port)
+
+        if connection.kerberos:
+            rpctransport.set_kerberos(connection.kerberos, connection.kdcHost)
 
         try:
             entries = self.__fetchList(rpctransport)

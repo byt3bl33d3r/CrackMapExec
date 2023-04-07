@@ -42,7 +42,7 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
-            target=connection.host,
+            target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe=self.pipe,
             do_kerberos=connection.kerberos,
             dc_host=connection.kdcHost,
