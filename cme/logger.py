@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
+from logging.handlers import RotatingFileHandler
 import os.path
 import sys
 import re
@@ -22,7 +23,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 rich_tracebacks=True
             )]
         )
-        self.logger = logging.getLogger("rich")
+        self.logger = logging.getLogger("cme")
         self.extra = extra
         self.output_file = None
 
@@ -76,6 +77,7 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.format(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
     def success(self, msg, *args, **kwargs):
         """
@@ -90,6 +92,7 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.format(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
     def highlight(self, msg, *args, **kwargs):
         """
@@ -104,6 +107,7 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.format(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
     def fail(self, msg, *args, **kwargs):
         """
@@ -117,9 +121,35 @@ class CMEAdapter(logging.LoggerAdapter):
         msg, kwargs = self.format(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
+
+    def log_console_to_file(self, text, *args, **kwargs):
+        """
+        If debug or info logging is not enabled, we still want display/success/fail logged to the file specified,
+        so we create a custom LogRecord and pass it to all the additional handlers (which will be all the file handlers
+        """
+        if self.logger.getEffectiveLevel() >= logging.INFO:
+            # will be 0 if it's just the console output, so only do this if we actually have file loggers
+            if len(self.logger.handlers):
+                for handler in self.logger.handlers:
+                    try:
+                        handler.handle(
+                            logging.LogRecord(
+                                "cme",
+                                20,
+                                "",
+                                kwargs,
+                                msg=text,
+                                args=args,
+                                exc_info=None,
+                            )
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Issue while trying to custom print handler: {e}")
+        else:
+            self.logger.info(text)
 
     def add_file_log(self, log_file=None):
-        logger = logging.getLogger("rich")
         file_formatter = TermEscapeCodeFormatter("%(asctime)s - %(levelname)s - %(message)s")
         output_file = self.init_log_file() if log_file is None else log_file
         file_creation = False
@@ -128,7 +158,7 @@ class CMEAdapter(logging.LoggerAdapter):
             open(output_file, 'x')
             file_creation = True
 
-        file_handler = logging.FileHandler(filename=output_file, mode="a")
+        file_handler = RotatingFileHandler(output_file, maxBytes=100000)
 
         with file_handler._open() as f:
             if file_creation:
@@ -137,7 +167,8 @@ class CMEAdapter(logging.LoggerAdapter):
                 f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
 
         file_handler.setFormatter(file_formatter)
-        logger.addHandler(file_handler)
+        self.logger.addHandler(file_handler)
+        self.logger.debug(f"Added file handler: {file_handler}")
 
     @staticmethod
     def init_log_file():
