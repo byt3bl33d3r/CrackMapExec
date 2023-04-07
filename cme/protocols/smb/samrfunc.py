@@ -4,13 +4,10 @@
 # Which in turn stole from Impacket :)
 # Code refactored and added to by @mjhallenbeck (Marshall-Hallenbeck on GitHub)
 
-import sys
 import logging
-import argparse
-
-import impacket
 from impacket.dcerpc.v5 import transport, lsat, lsad, samr
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
 
 class SamrFunc:
@@ -72,8 +69,6 @@ class SamrFunc:
                 continue
             domain_handle = self.samr_query.get_domain_handle(domain)
             custom_groups.update(self.samr_query.get_domain_aliases(domain_handle))
-
-        print(f"Local Groups: {custom_groups}")
         return custom_groups
 
     def get_local_groups(self):
@@ -209,8 +204,8 @@ class LSAQuery:
         rpc_transport = transport.DCERPCTransportFactory(string_binding)
         rpc_transport.set_dport(self.__port)
         rpc_transport.setRemoteHost(self.__remote_host)
-        if self.kerberos:
-            rpc_transport.set_kerberos(True, self.__domain)
+        if self.__kerberos:
+            rpc_transport.set_kerberos(True, None)
         if hasattr(rpc_transport, 'set_credentials'):
             # This method exists only for selected protocol sequences.
             rpc_transport.set_credentials(
@@ -227,6 +222,8 @@ class LSAQuery:
         rpc_transport = self.get_transport()
         try:
             dce = rpc_transport.get_dce_rpc()
+            if self.__kerberos:
+                dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             dce.bind(lsat.MSRPC_UUID_LSAT)
         except impacket.nmb.NetBIOSError as e:
@@ -244,44 +241,3 @@ class LSAQuery:
         for translated_names in resp['TranslatedNames']['Names']:
             names.append(translated_names['Name'])
         return names
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('target', action='store', help='[[domain/]username[:password]@]<targetName or address>')
-
-    group = parser.add_argument_group('authentication')
-    group.add_argument('-no-pass', action='store_true', help='don\'t ask for password')
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
-    options = parser.parse_args()
-
-    import re
-
-    domain, username, password, remote_name = re.compile('(?:(?:([^/@:]*)/)?([^@:]*)(?::([^@]*))?@)?(.*)').match(
-        options.target).groups('')
-
-    # In case the password contains '@'
-    if '@' in remote_name:
-        password = password + '@' + remote_name.rpartition('@')[0]
-        remote_name = remote_name.rpartition('@')[2]
-
-    if domain is None:
-        domain = ''
-
-    if password == '' and username != '' and options.no_pass is False:
-        from getpass import getpass
-
-        password = getpass("Password:")
-
-    samr_func = SamrFunc(
-        username=username,
-        password=password,
-        remote_name=remote_name,
-        remot_host=remote_name
-    )
-    builtin_groups = samr_func.get_builtin_groups()
-    print(f"Built In Groups: {builtin_groups}")
