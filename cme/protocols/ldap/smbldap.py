@@ -43,7 +43,7 @@ class LDAPConnect:
         if kdc is None:
             kdc = domain        
 
-        #This checks to see if we didn't provide the LM Hash
+        # This checks to see if we didn't provide the LM Hash
         if ntlm_hash and ntlm_hash.find(':') != -1:
             lmhash, nthash = ntlm_hash.split(':')
         elif ntlm_hash:
@@ -61,9 +61,7 @@ class LDAPConnect:
             ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % kdc, baseDN)
             ldapConnection.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdc, useCache=False)
             # Connect to LDAP
-            out = u'{}{}:{}'.format('{}\\'.format(domain),
-                                                username,
-                                                password if password else ntlm_hash)
+            out = f"{domain}{username}:{password if password else ntlm_hash}"
             self.logger.extra['protocol'] = "LDAP"
             self.logger.extra['port'] = "389"
             return ldapConnection
