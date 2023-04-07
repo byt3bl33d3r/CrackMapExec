@@ -5,12 +5,12 @@ from cme.helpers.powershell import *
 from sys import exit
 
 class CMEModule:
-    '''
+    """
         Kicks off a Metasploit Payload using the exploit/multi/script/web_delivery module
         Reference: https://github.com/EmpireProject/Empire/blob/2.0_beta/data/module_source/code_execution/Invoke-MetasploitPayload.ps1
 
         Module by @byt3bl33d3r
-    '''
+    """
 
     name = 'web_delivery'
     description = 'Kicks off a Metasploit Payload using the exploit/multi/script/web_delivery module'
@@ -19,10 +19,10 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
         URL  URL for the download cradle
         PAYLOAD  Payload architecture (choices: 64 or 32) Default: 64
-        '''
+        """
 
         if not 'URL' in module_options:
             context.log.error('URL option is required!')

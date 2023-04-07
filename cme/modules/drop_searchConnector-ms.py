@@ -4,11 +4,11 @@
 import ntpath
 
 class CMEModule:
-    '''
+    """
         Technique discovered by @DTMSecurity and @domchell to remotely coerce an host to start WebClient service.
         https://dtm.uk/exploring-search-connectors-and-library-files-on-windows/
         Module by @zblurx
-    '''
+    """
 
     name = 'drop-sc'
     description = 'Drop a searchConnector-ms file on each writable share'
@@ -17,7 +17,7 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             Technique discovered by @DTMSecurity and @domchell to remotely coerce an host to start WebClient service.
             https://dtm.uk/exploring-search-connectors-and-library-files-on-windows/
             Module by @zblurx
@@ -25,7 +25,7 @@ class CMEModule:
             CLEANUP     Cleanup (choices: True or False)
             SHARE       Specify a share to target
             FILENAME    Specify the filename used WITHOUT the extension searchConnector-ms (it's automatically added), default is "Documents"
-        '''
+        """
         self.cleanup = False
         if 'CLEANUP' in module_options:
             self.cleanup = bool(module_options['CLEANUP'])

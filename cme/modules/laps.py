@@ -5,7 +5,7 @@ from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
 
 class CMEModule:
-    '''
+    """
       Module by technobro refactored by @mpgn (now compatible with LDAP protocol + filter by computer)
 
       Initial module:
@@ -14,7 +14,7 @@ class CMEModule:
       Credit: @n00py1
         Reference: https://www.n00py.io/2020/12/dumping-laps-passwords-from-linux/
         https://github.com/n00py/LAPSDumper
-    '''
+    """
 
     name = 'laps'
     description = 'Retrieves the LAPS passwords'

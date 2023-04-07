@@ -11,10 +11,10 @@ from base64 import b64encode
 from cme.helpers.powershell import get_ps_script
 
 class CMEModule:
-    '''
+    """
         Module by @NeffIsBack
 
-    '''
+    """
     name = 'veeam'
     description = 'Extracts credentials from local Veeam SQL Database'
     supported_protocols = ['smb']
@@ -26,9 +26,9 @@ class CMEModule:
             self.psScript = psFile.read()
 
     def options(self, context, module_options):
-        '''
+        """
         No options
-        '''
+        """
         pass
 
     def checkVeeamInstalled(self, context, connection):

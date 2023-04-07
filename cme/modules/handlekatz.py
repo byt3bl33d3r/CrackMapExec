@@ -21,12 +21,12 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             TMP_DIR             Path where process dump should be saved on target system (default: C:\\Windows\\Temp\\)
             HANDLEKATZ_PATH       Path where handlekatz.exe is on your system (default: /tmp/)
             HANDLEKATZ_EXE_NAME   Name of the handlekatz executable (default: handlekatz.exe)
             DIR_RESULT          Location where the dmp are stored (default: DIR_RESULT = HANDLEKATZ_PATH)
-        '''
+        """
 
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.share = "C$"

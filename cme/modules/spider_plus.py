@@ -287,10 +287,10 @@ class SMBSpiderPlus:
 
 
 class CMEModule:
-    '''
+    """
         Spider plus module
         Module by @vincd
-    '''
+    """
 
     name = 'spider_plus'
     description = 'List files on the target server (excluding `DIR` directories and `EXT` extensions) and save them to the `OUTPUT` directory if they are smaller then `SIZE`'

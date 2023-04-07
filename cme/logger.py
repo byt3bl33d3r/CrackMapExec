@@ -119,6 +119,7 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
 
     def add_file_log(self, log_file=None):
+        logger = logging.getLogger("rich")
         file_formatter = TermEscapeCodeFormatter("%(asctime)s - %(levelname)s - %(message)s")
         output_file = self.init_log_file() if log_file is None else log_file
         file_creation = False
@@ -136,7 +137,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
 
         file_handler.setFormatter(file_formatter)
-        self.logger.addHandler(file_handler)
+        logger.addHandler(file_handler)
 
     @staticmethod
     def init_log_file():

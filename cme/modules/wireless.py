@@ -18,8 +18,8 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-        '''     
+        """
+        """
 
     def on_admin_login(self, context, connection):
         host = connection.hostname + "." + connection.domain

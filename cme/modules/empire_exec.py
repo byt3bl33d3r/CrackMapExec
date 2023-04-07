@@ -10,10 +10,10 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class CMEModule:
-    '''
+    """
         Uses Empire's RESTful API to generate a launcher for the specified listener and executes it
         Module by @byt3bl33d3r
-    '''
+    """
 
     name='empire_exec'
     description = "Uses Empire's RESTful API to generate a launcher for the specified listener and executes it"
@@ -22,9 +22,9 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             LISTENER    Listener name to generate the launcher for
-        '''
+        """
 
         if not 'LISTENER' in module_options:
             context.log.error('LISTENER option is required!')

@@ -1,4 +1,4 @@
-'''
+"""
 Impacket - Collection of Python classes for working with network protocols.
 
 SECUREAUTH LABS. Copyright (C) 2020 SecureAuth Corporation. All rights reserved.
@@ -22,7 +22,7 @@ References:
 
 
 This library is, for the moment, not present in the Impacket version used by CrackMapExec, so I add it manually in helpers.
-'''
+"""
 
 SCHEMA_OBJECTS = {
 	'2a132580-9373-11d1-aebc-0000f80367c1': 'FRS-Partner-Auth-Level',

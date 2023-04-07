@@ -6,13 +6,13 @@ from impacket.ldap import ldap as ldap_impacket
 
 
 class CMEModule:
-    '''
+    """
         Created as a contributtion from HackTheBox Academy team for CrackMapExec
         Reference: https://academy.hackthebox.com/module/details/84
 
-        Module by @juliourena 
+        Module by @juliourena
         Based on: https://github.com/juliourena/CrackMapExec/blob/master/cme/modules/get_description.py
-    '''
+    """
 
     name = 'groupmembership'
     description = "Query the groups to which a user belongs."
@@ -21,9 +21,9 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
         USER	Choose a username to query group membership
-        '''
+        """
 
         self.user = ""
         if 'USER' in module_options:
@@ -36,7 +36,7 @@ class CMEModule:
             exit(1)
 
     def on_login(self, context, connection):
-        '''Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection'''
+        """Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection"""
         # Building the search filter
         searchFilter = "(&(objectClass=user)(sAMAccountName={}))".format(self.user)
 

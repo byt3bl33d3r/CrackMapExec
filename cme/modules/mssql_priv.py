@@ -21,9 +21,9 @@ class User:
 
 
 class CMEModule:
-    '''
+    """
         Enumerate MSSQL privileges and exploit them
-    '''
+    """
 
     name = 'mssql_priv'
     description = "Enumerate and exploit MSSQL privileges"

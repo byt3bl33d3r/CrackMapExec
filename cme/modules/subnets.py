@@ -12,12 +12,12 @@ def searchResEntry_to_dict(results):
     return data
 
 class CMEModule:
-    '''
+    """
       Retrieves the different Sites and Subnets of an Active Directory
 
       Authors:
         Podalirius: @podalirius_
-    '''
+    """
 
     def options(self, context, module_options):
         """

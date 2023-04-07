@@ -22,11 +22,11 @@ class FirefoxData:
         
 
 class FirefoxTriage:
-    '''
+    """
         Firefox by @zblurx
         Inspired by firefox looting from DonPAPI
         https://github.com/login-securite/DonPAPI
-    '''
+    """
     firefox_generic_path = 'Users\\{}\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles'
     share = 'C$'
     false_positive = ['.','..', 'desktop.ini','Public','Default','Default User','All Users']

@@ -21,10 +21,10 @@ class CMEModule:
     multiple_hosts = True 
 
     def options(self, context, module_options):
-        '''
+        """
             IPSC             Use IsPathShadowCopied (default: False). ex. IPSC=true
             LISTENER         Listener IP address (default: 127.0.0.1)
-        '''
+        """
         self.ipsc = False 
         self.listener = "127.0.0.1"
         if 'LISTENER' in module_options:

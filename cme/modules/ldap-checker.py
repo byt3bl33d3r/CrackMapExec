@@ -13,12 +13,12 @@ from asyauth.common.credentials.ntlm import NTLMCredential
 
 
 class CMEModule:
-    '''
+    """
     Checks whether LDAP signing and channelbinding are required.
 
     Module by LuemmelSec (@theluemmel), updated by @zblurx
     Original work thankfully taken from @zyn3rgy's Ldap Relay Scan project: https://github.com/zyn3rgy/LdapRelayScan
-    '''
+    """
     name = 'ldap-checker'
     description = 'Checks whether LDAP signing and binding are required and / or enforced'
     supported_protocols = ['ldap']
@@ -26,9 +26,9 @@ class CMEModule:
     multiple_hosts = True 
 
     def options(self, context, module_options):
-        '''
+        """
         No options available.
-        '''
+        """
         pass
 
     def on_login(self, context, connection):

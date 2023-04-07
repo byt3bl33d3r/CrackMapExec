@@ -15,8 +15,8 @@ class CMEModule:
     multiple_hosts = False
 
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
     def on_admin_login(self, context, connection):
         context.log.display('Killing all Teams process to open the cookie file')

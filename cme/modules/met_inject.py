@@ -5,10 +5,10 @@ from sys import exit
 
 
 class CMEModule:
-    '''
+    """
         Downloads the Meterpreter stager and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script
         Module by @byt3bl33d3r
-    '''
+    """
     name = 'met_inject'
     description = "Downloads the Meterpreter stager and injects it into memory"
     supported_protocols = ['smb', 'mssql']
@@ -16,12 +16,12 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             SRVHOST     IP hosting of the stager server
             SRVPORT     Stager port
             RAND        Random string given by metasploit
             SSL         Stager server use https or http (default: https)
-        '''
+        """
 
         self.met_ssl = 'https'
 

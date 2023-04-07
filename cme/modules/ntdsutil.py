@@ -9,11 +9,11 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import validate_ntlm
 
 class CMEModule:
-    '''
+    """
         Dump NTDS with ntdsutil
         Module by @zblurx
 
-    '''
+    """
     name = 'ntdsutil'
     description = 'Dump NTDS with ntdsutil'
     supported_protocols = ['smb']
@@ -21,12 +21,12 @@ class CMEModule:
     multiple_hosts = False
 
     def options(self, context, module_options):
-        '''
+        """
         Dump NTDS with ntdsutil
         Module by @zblurx
 
         DIR_RESULT  Local dir to write ntds dump. If specified, the local dump will not be deleted after parsing
-        '''
+        """
         self.share = "ADMIN$"
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.tmp_share = self.tmp_dir.split("C:\\Windows\\")[1]
