@@ -178,7 +178,6 @@ class ldap(connection):
         return parser
 
     def proto_logger(self):
-        cme_console.print("Creating logger)")
         # self.logger = cme_logger
         self.logger = CMEAdapter(
             extra={
