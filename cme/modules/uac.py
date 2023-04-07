@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
 

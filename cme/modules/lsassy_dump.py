@@ -5,12 +5,12 @@
 # Website:
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
-import logging
 
 from lsassy.dumper import Dumper
+from lsassy.impacketfile import ImpacketFile
 from lsassy.parser import Parser
 from lsassy.session import Session
-from lsassy.impacketfile import ImpacketFile
+
 from cme.helpers.bloodhound import add_user_bh
 
 

@@ -2,18 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import random
+from binascii import hexlify, unhexlify
+from datetime import datetime, timedelta
 from os import getenv
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type.univ import noValue
+
+from impacket.krb5 import constants
 from impacket.krb5.asn1 import TGS_REP, AS_REQ, KERB_PA_PAC_REQUEST, KRB_ERROR, AS_REP, seq_set, seq_set_iter
 from impacket.krb5.ccache import CCache
-from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS
+from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT
 from impacket.krb5.types import KerberosTime, Principal
-from impacket.krb5 import constants
 from impacket.ntlm import compute_lmhash, compute_nthash
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type.univ import noValue
+
 from cme.logger import cme_logger
-from binascii import hexlify, unhexlify
-from datetime import datetime,timedelta
 
 
 class KerberosAttacks:

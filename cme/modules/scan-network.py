@@ -2,15 +2,17 @@
 # Credit to https://github.com/dirkjanm/adidnsdump @_dirkjan
 # module by @mpgn_x64
 
-from struct import unpack, pack
-from impacket.structure import Structure
-from ldap3 import NTLM, Server, Connection, ALL, LEVEL, BASE, MODIFY_DELETE, MODIFY_ADD, MODIFY_REPLACE, Tls
-from datetime import datetime
-from builtins import str
-import socket
 import codecs
-import dns.resolver
+import socket
+from builtins import str
+from datetime import datetime
+from struct import unpack
+
 import dns.name
+import dns.resolver
+from impacket.structure import Structure
+from ldap3 import LEVEL
+
 
 def get_dns_zones(connection, root, debug=False):
     connection.search(root, '(objectClass=dnsZone)', search_scope=LEVEL, attributes=['dc'])

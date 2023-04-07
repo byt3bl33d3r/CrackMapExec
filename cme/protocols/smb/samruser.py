@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 #Stolen from Impacket
 
-from impacket.dcerpc.v5.rpcrt import DCERPC_v5
-from impacket.dcerpc.v5 import transport, samr 
-from impacket.dcerpc.v5.samr import DCERPCSessionError
+from impacket.dcerpc.v5 import transport, samr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
+from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 
 

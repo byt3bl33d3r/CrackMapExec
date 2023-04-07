@@ -2,21 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import cmd
+import configparser
+import csv
+import os
 import shutil
 import sqlite3
 import sys
-import os
+from textwrap import dedent
+
 import requests
+from requests import ConnectionError
 from sqlalchemy import create_engine
 from terminaltables import AsciiTable
-import configparser
+
 from cme.loaders.protocolloader import ProtocolLoader
 from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
-from requests import ConnectionError
-from sqlalchemy.exc import SAWarning
-import csv
-import warnings
-from textwrap import dedent
+
 
 # # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
 # from requests.packages.urllib3.exceptions import InsecureRequestWarning

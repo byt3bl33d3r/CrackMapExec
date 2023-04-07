@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import urllib.parse
 import sqlite3
-from csv import reader
-from time import sleep
+
 
 class CMEModule:
 

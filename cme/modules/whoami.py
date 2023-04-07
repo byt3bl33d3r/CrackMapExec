@@ -1,5 +1,3 @@
-from ldap3 import Server, Connection, NTLM, ALL
-
 class CMEModule:
     """
         Basic enumeration of provided user information and privileges

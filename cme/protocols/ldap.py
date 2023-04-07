@@ -5,43 +5,37 @@
 
 import hmac
 import os
-from datetime import datetime
-
-from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
-from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_GSS_NEGOTIATE
-from impacket.dcerpc.v5.transport import DCERPCTransportFactory
-
-from cme.connection import *
-from cme.helpers.logger import highlight
-from cme.logger import CMEAdapter, cme_logger
-from cme.helpers.bloodhound import add_user_bh
-from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
-from cme.protocols.ldap.kerberos import KerberosAttacks
-from cme.protocols.ldap.bloodhound import BloodHound
-from cme.console import cme_console
-
-from impacket.smbconnection import SMBConnection, SessionError
-from impacket.smb import SMB_DIALECT
-from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
-from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS, SessionKeyDecryptionError
-from impacket.krb5.types import KerberosTime, Principal, KerberosException
-from impacket.ldap import ldap as ldap_impacket
-from impacket.krb5 import constants
-from impacket.ldap import ldapasn1 as ldapasn1_impacket
-from impacket.ldap.ldaptypes import SR_SECURITY_DESCRIPTOR
-
-from bloodhound.ad.domain import AD
-from bloodhound.ad.authentication import ADAuthentication
-
 from argparse import _StoreTrueAction
-from binascii import b2a_hex, unhexlify, hexlify
-from Cryptodome.Hash import MD4
-from io import StringIO
-from pywerview.cli.helpers import *
+from binascii import hexlify
+from datetime import datetime
 from re import sub, I
 from zipfile import ZipFile
 
+from Cryptodome.Hash import MD4
 from OpenSSL.SSL import SysCallError
+from bloodhound.ad.authentication import ADAuthentication
+from bloodhound.ad.domain import AD
+from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
+from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.dcerpc.v5.samr import UF_ACCOUNTDISABLE, UF_DONT_REQUIRE_PREAUTH, UF_TRUSTED_FOR_DELEGATION, \
+    UF_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION
+from impacket.dcerpc.v5.transport import DCERPCTransportFactory
+from impacket.krb5 import constants
+from impacket.krb5.kerberosv5 import getKerberosTGS, SessionKeyDecryptionError
+from impacket.krb5.types import Principal, KerberosException
+from impacket.ldap import ldap as ldap_impacket
+from impacket.ldap import ldapasn1 as ldapasn1_impacket
+from impacket.smb import SMB_DIALECT
+from impacket.smbconnection import SMBConnection, SessionError
+
+from cme.connection import *
+from cme.console import cme_console
+from cme.helpers.bloodhound import add_user_bh
+from cme.helpers.logger import highlight
+from cme.logger import CMEAdapter, cme_logger
+from cme.protocols.ldap.bloodhound import BloodHound
+from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
+from cme.protocols.ldap.kerberos import KerberosAttacks
 
 ldap_error_status = {
     "1": "STATUS_NOT_SUPPORTED",

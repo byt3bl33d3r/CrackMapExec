@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from impacket.dcerpc.v5.rpcrt import DCERPCException
+from sys import exit
+
 from impacket.dcerpc.v5 import rrp
 from impacket.examples.secretsdump import RemoteOperations
-from sys import exit
 
 
 class CMEModule:

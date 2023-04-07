@@ -5,9 +5,10 @@
 # thanks to pixis (@HackAndDo) for making it pretty l33t :)
 # v0.4
 
-from io import StringIO
 import base64
+
 from pypykatz.pypykatz import pypykatz
+
 
 class CMEModule:
 

@@ -5,12 +5,10 @@
 # author of the module : github.com/mpgn
 # HandleKatz: https://github.com/codewhitesec/HandleKatz
 
-from io import StringIO
-import os
-import sys
-import re
-import time
 import base64
+import re
+import sys
+
 
 class CMEModule:
 

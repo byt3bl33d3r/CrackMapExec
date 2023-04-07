@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
-import os
 import configparser
+import os
 
 
 class Context:

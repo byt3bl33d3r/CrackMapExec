@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
-from sqlalchemy import MetaData, func, Table, select, update, delete
+import base64
+import warnings
+from datetime import datetime
+
+from sqlalchemy import MetaData, func, Table, select, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
 from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
-from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
-from datetime import datetime
-import asyncio
-import warnings
-import base64
+from sqlalchemy.orm import sessionmaker, scoped_session
+
 from cme.logger import cme_logger
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
