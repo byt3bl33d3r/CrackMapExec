@@ -1306,19 +1306,25 @@ class smb(connection):
         }
 
         try:
-            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host)
+            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host if not self.kerberos else self.hostname + '.' + self.domain)
             logging.debug('StringBinding {}'.format(string_binding))
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
 
             if KNOWN_PROTOCOLS[self.args.port]['set_host']:
-                rpc_transport.setRemoteHost(self.host)
+                rpc_transport.setRemoteHost(self.host if not self.kerberos else self.hostname + '.' + self.domain)
 
             if hasattr(rpc_transport, 'set_credentials'):
                 # This method exists only for selected protocol sequences.
                 rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
 
+            if self.kerberos:
+                rpc_transport.set_kerberos(self.kerberos, self.kdcHost)
+
             dce = rpc_transport.get_dce_rpc()
+            if self.kerberos:
+                dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
+
             dce.connect()
         except Exception as e:
             self.logger.error('Error creating DCERPC connection: {}'.format(e))
