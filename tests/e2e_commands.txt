@@ -20,7 +20,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --dpapi
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -x whoami
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami --obfs
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --wmi "os get"
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --wmi "select Name from win32_computersystem"
 ##### SMB Modules
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -L
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M bh_owned
