@@ -18,7 +18,7 @@ class CMEModule:
     name = 'lsassy'
     description = "Dump lsass and parse the result remotely with lsassy"
     supported_protocols = ['smb']
-    opsec_safe = True
+    opsec_safe = False  # writes temporary files, and it's possible for them to not be deleted
     multiple_hosts = True
 
     def __init__(self, context=None, module_options=None):
