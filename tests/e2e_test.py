@@ -11,8 +11,9 @@ def get_cli_args():
     parser.add_argument("-t", "--target", dest="target", required=True)
     parser.add_argument("-u", "--user", "--username", dest="username", required=True)
     parser.add_argument("-p", "--pass", "--password", dest="password", required=True)
-    parser.add_argument("-k", "--kerberos", action="store_true", required=False)
-    parser.add_argument("-v", "--verbose", action="store_true", required=False)
+    parser.add_argument("-k", "--kerberos", action="store_true", required=False, help="Use kerberos authentication")
+    parser.add_argument("-v", "--verbose", action="store_true", required=False, help="Display full command output")
+    parser.add_argument("-e", "--errors", action="store_true", required=False, help="Display errors from commands")
 
     parsed_args = parser.parse_args()
     return parsed_args
@@ -77,6 +78,11 @@ def run_e2e_tests(args):
             else:
                 console.log(f"[bold red]{task.strip()} :cross_mark:[/]")
                 failed += 1
+
+            if args.errors:
+                raw_text = text.decode("utf-8")
+                if "error" in raw_text.lower() or "failure" in raw_text.lower():
+                    console.log(f"[bold red] Error Detected: {raw_text}")
 
             if args.verbose:
                 # this prints sorta janky, but it does its job
