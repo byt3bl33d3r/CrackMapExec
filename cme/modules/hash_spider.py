@@ -8,7 +8,6 @@ from sqlite3 import connect
 from sys import exit
 from neo4j import GraphDatabase, basic_auth
 from neo4j.exceptions import AuthError, ServiceUnavailable
-from lsassy import logger
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
@@ -131,7 +130,6 @@ class CMEModule:
 
 
     def run_lsassy(self, context, connection): # Couldn't figure out how to properly retrieve output from the module without editing. Blatantly ripped from lsassy_dump.py. Thanks pixis - @hackanddo!
-        logger.init(quiet=True)
         host = connection.host
         domain_name = connection.domain
         username = connection.username
