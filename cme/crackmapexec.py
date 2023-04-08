@@ -14,7 +14,7 @@ from cme.context import Context
 from cme.paths import CME_PATH, DATA_PATH
 from cme.console import cme_console
 from cme.logger import cme_logger
-from cme.config import cme_config, cme_workspace, config_log
+from cme.config import cme_config, cme_workspace, config_log, ignore_opsec
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import cme.helpers.powershell as powershell
@@ -183,10 +183,14 @@ def main():
                 module = loader.init_module(modules[m]['path'])
 
                 if not module.opsec_safe:
-                    ans = input(
-                        highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
-                    if ans.lower() not in ['y', 'yes', '']:
-                        sys.exit(1)
+                    if ignore_opsec:
+                        cme_logger.debug(f"ignore_opsec is set in the configuration, skipping prompt")
+                        cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
+                    else:
+                        ans = input(
+                            highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
+                        if ans.lower() not in ['y', 'yes', '']:
+                            sys.exit(1)
 
                 if not module.multiple_hosts and len(targets) > 1:
                     ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))

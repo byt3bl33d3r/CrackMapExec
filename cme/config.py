@@ -14,3 +14,4 @@ except configparser.NoSectionError:
 
 cme_workspace = cme_config.get("CME", "workspace", fallback="default")
 config_log = cme_config.getboolean("CME", "log_mode", fallback=False)
+ignore_opsec = cme_config.getboolean("CME", "ignore_opsec", fallback=False)
