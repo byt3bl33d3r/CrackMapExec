@@ -26,10 +26,11 @@ class CMEModule:
         self.module_options = module_options
 
     def options(self, context, module_options):
+        """
+        """
         pass
 
     def on_login(self, context, connection):
-
         success = 0
         results = {}
         target = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
