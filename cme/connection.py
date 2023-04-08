@@ -233,7 +233,7 @@ class connection(object):
                                         return True
                                 elif self.plaintext_login(domain, username, password): return True
                     except IndexError:
-                        self.log.error("Invalid database credential ID!")
+                        self.logger.error("Invalid database credential ID!")
         if self.args.use_kcache:
             with sem:
                 username = self.args.username[0] if len(self.args.username) else ''
