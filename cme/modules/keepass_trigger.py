@@ -12,19 +12,20 @@ from cme.helpers.powershell import get_ps_script
 
 class CMEModule:
     """
-        Make use of KeePass' trigger system to export the database in cleartext
-        References: https://keepass.info/help/v2/triggers.html
-                    https://web.archive.org/web/20211017083926/http://www.harmj0y.net:80/blog/redteaming/keethief-a-case-study-in-attacking-keepass-part-2/
+    Make use of KeePass' trigger system to export the database in cleartext
+    References: https://keepass.info/help/v2/triggers.html
+                https://web.archive.org/web/20211017083926/http://www.harmj0y.net:80/blog/redteaming/keethief-a-case-study-in-attacking-keepass-part-2/
 
-        Module by @d3lb3, inspired by @harmj0y work
+    Module by @d3lb3, inspired by @harmj0y work
     """
 
     name = 'keepass_trigger'
     description = "Set up a malicious KeePass trigger to export the database in cleartext."
     supported_protocols = ['smb']
-    opsec_safe = False   # while the module only executes legit powershell commands on the target (search and edit files)
-                        # some EDR like Trend Micro flag base64-encoded powershell as malicious
-                        # the option PSH_EXEC_METHOD can be used to avoid such execution, and will drop scripts on the target
+    # while the module only executes legit powershell commands on the target (search and edit files)
+    # some EDR like Trend Micro flag base64-encoded powershell as malicious
+    # the option PSH_EXEC_METHOD can be used to avoid such execution, and will drop scripts on the target
+    opsec_safe = False
     multiple_hosts = False
 
     def __init__(self):
@@ -36,7 +37,7 @@ class CMEModule:
         self.export_path = 'C:\\Users\\Public'
         self.powershell_exec_method = 'PS1'
 
-        # additionnal parameters
+        # additional parameters
         self.share = 'C$'
         self.remote_temp_script_path = 'C:\\Windows\\Temp\\temp.ps1'
         self.keepass_binary_path = 'C:\\Program Files\\KeePass Password Safe 2\\KeePass.exe'
@@ -58,23 +59,32 @@ class CMEModule:
         """
         ACTION (mandatory)      Performs one of the following actions, specified by the user:
                                   ADD           insert a new malicious trigger into KEEPASS_CONFIG_PATH's specified file
-                                  CHECK         check if a malicious trigger is currently set in KEEPASS_CONFIG_PATH's specified file
-                                  RESTART       restart KeePass using a Windows service (used to force trigger reload), if multiple KeePass process are running, rely on USER option
-                                  POLL          search for EXPORT_NAME file in EXPORT_PATH folder (until found, or manually exited by the user)
-                                  CLEAN         remove malicious trigger from KEEPASS_CONFIG_PATH as well as database export files from EXPORT_PATH
+                                  CHECK         check if a malicious trigger is currently set in KEEPASS_CONFIG_PATH's
+                                                specified file
+                                  RESTART       restart KeePass using a Windows service (used to force trigger reload),
+                                                if multiple KeePass process are running, rely on USER option
+                                  POLL          search for EXPORT_NAME file in EXPORT_PATH folder
+                                                (until found, or manually exited by the user)
+                                  CLEAN         remove malicious trigger from KEEPASS_CONFIG_PATH as well as database
+                                                export files from EXPORT_PATH
                                   ALL           performs ADD, CHECK, RESTART, POLL, CLEAN actions one after the other
 
-        KEEPASS_CONFIG_PATH     Path of the remote KeePass configuration file where to add a malicious trigger (used by ADD, CHECK and CLEAN actions)
-        USER                    Targeted user running KeePass, used to restart the appropriate process (used by RESTART action)
+        KEEPASS_CONFIG_PATH     Path of the remote KeePass configuration file where to add a malicious trigger
+                                (used by ADD, CHECK and CLEAN actions)
+        USER                    Targeted user running KeePass, used to restart the appropriate process
+                                (used by RESTART action)
 
         EXPORT_NAME             Name fo the database export file, default: export.xml
-        EXPORT_PATH             Path where to export the KeePass database in cleartext, default: C:\\Users\\Public, %APPDATA% works well too for user permissions
+        EXPORT_PATH             Path where to export the KeePass database in cleartext
+                                default: C:\\Users\\Public, %APPDATA% works well too for user permissions
 
-        PSH_EXEC_METHOD         Powershell execution method, may avoid detections depending on the AV/EDR in use (while no 'malicious' command is executed..):
+        PSH_EXEC_METHOD         Powershell execution method, may avoid detections depending on the AV/EDR in use
+                                (while no 'malicious' command is executed):
                                   ENCODE        run scripts through encoded oneliners
                                   PS1           run scripts through a file dropped in C:\\Windows\\Temp (default)
 
-        Not all variables used by the module are available as options (ex: trigger name, temp folder path, etc.) but they can still be easily edited in the module __init__ code if needed
+        Not all variables used by the module are available as options (ex: trigger name, temp folder path, etc.),
+        but they can still be easily edited in the module __init__ code if needed
         """
 
         if 'ACTION' in module_options:
