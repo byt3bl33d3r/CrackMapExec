@@ -183,7 +183,7 @@ class CMEAdapter(logging.LoggerAdapter):
 
 
 class TermEscapeCodeFormatter(logging.Formatter):
-    """A class to strip the escape codes from the """
+    """A class to strip the escape codes for logging to files"""
     def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
         super().__init__(fmt, datefmt, style, validate)
 
