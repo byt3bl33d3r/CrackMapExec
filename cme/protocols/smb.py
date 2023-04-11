@@ -116,7 +116,8 @@ def requires_smb_server(func):
         if 'methods' in kwargs:
             methods = kwargs['methods']
         if not payload and self.args.execute:
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
         if get_output or (methods and ('smbexec' in methods)):
             if not smb_server:
                 self.cme_logger.debug('Starting SMB server')
@@ -301,7 +302,7 @@ class smb(connection):
         no_ntlm = False
         try:
             self.conn.login('', '')
-        except BrokenPipeError as e:
+        except BrokenPipeError:
             self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
             if "STATUS_NOT_SUPPORTED" in str(e):
@@ -538,7 +539,7 @@ class smb(connection):
             self.domain = domain
             try:
                 self.conn.login(self.username, self.password, domain)
-            except BrokenPipeError as e:
+            except BrokenPipeError:
                 self.logger.fail(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
@@ -606,15 +607,17 @@ class smb(connection):
                 else:
                     nthash = ntlm_hash
                     self.hash = ntlm_hash
-                if lmhash: self.lmhash = lmhash
-                if nthash: self.nthash = nthash
+                if lmhash:
+                    self.lmhash = lmhash
+                if nthash:
+                    self.nthash = nthash
             else:
                 nthash = self.hash
 
             self.domain = domain
             try:
                 self.conn.login(self.username, '', domain, lmhash, nthash)
-            except BrokenPipeError as e:
+            except BrokenPipeError:
                 self.logger.fail(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
@@ -726,7 +729,7 @@ class smb(connection):
                 # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
                 ans = scmr.hROpenSCManagerW(dce, f"{self.host}\x00", "ServicesActive\x00", 0xF003F)
                 self.admin_privs = True
-            except scmr.DCERPCException as e:
+            except scmr.DCERPCException:
                 self.admin_privs = False
                 pass
         return
@@ -1193,7 +1196,6 @@ class smb(connection):
         return groups
 
     def users(self):
-        users = []
         self.logger.display("Trying to dump local users with SAMRPC protocol")
         users = UserSamrDump(self).dump()
         return users
@@ -1412,20 +1414,20 @@ class smb(connection):
                     domain = resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name']
                     user = item['Name']
                     sid_type = SID_NAME_USE.enumItems(item['Use']).name
-                    self.logger.highlight("{}: {}\\{} ({})".format(rid, domain, user, sid_type))
+                    self.logger.highlight("f{rid}: {domain}\\{user} ({sid_type})")
                     entries.append({'rid': rid, 'domain': domain, 'username': user, 'sidtype': sid_type})
             so_far += simultaneous
         dce.disconnect()
         return entries
 
     def put_file(self):
-        self.logger.display('Copying {} to {}'.format(self.args.put_file[0], self.args.put_file[1]))
+        self.logger.display(f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}")
         with open(self.args.put_file[0], 'rb') as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
                 self.logger.success(f"Created file {self.args.put_file[0]} on \\\\{self.args.share}\\{self.args.put_file[1]}")
             except Exception as e:
-                self.logger.fail('Error writing file to share {}: {}'.format(self.args.share, e))
+                self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
     def get_file(self):
         self.logger.display('Copying {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
