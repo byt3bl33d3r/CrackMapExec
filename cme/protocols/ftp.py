@@ -23,10 +23,10 @@ class ftp(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'FTP',
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
+                "protocol": "FTP",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
             }
         )
 
@@ -44,8 +44,8 @@ class ftp(connection):
         return True
 
     def print_host_info(self):
-        self.logger.extra['protocol'] = "FTP"
-        self.logger.display(u"Banner:{}".format(self.remote_version))
+        self.logger.extra["protocol"] = "FTP"
+        self.logger.display(f"Banner:{self.remote_version}")
         return True
 
     def create_conn_obj(self):
@@ -68,9 +68,8 @@ class ftp(connection):
         try:
             self.conn.login(user=username, passwd=password)
 
-            self.logger.success(u'{}:{}'.format(
-                username,
-                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8)
+            self.logger.success(
+                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
             )
 
             if not self.args.continue_on_success:
@@ -78,10 +77,8 @@ class ftp(connection):
                 return True
             self.conn.close()
         except Exception as e:
-            self.logger.fail(u'{}:{} (Response:{})'.format(
-                username,
-                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                e
-            ))
+            self.logger.fail(
+                f'{username}:{password if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8} (Response:{e})'
+            )
             self.conn.close()
             return False
