@@ -322,7 +322,8 @@ class connection(object):
                             else:  # ntlm_hash is a string
                                 if not self.over_fail_limit(user):
                                     if self.args.kerberos:
-                                        if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False): return True
+                                        if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False):
+                                            return True
                                     elif self.hash_login(self.domain, user, ntlm_hash.strip()):
                                         return True
                 elif self.args.password:

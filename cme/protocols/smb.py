@@ -1381,7 +1381,6 @@ class smb(connection):
             policy_handle,
             lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation
         )
-
         domain_sid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
 
         so_far = 0
@@ -1416,7 +1415,12 @@ class smb(connection):
                     user = item['Name']
                     sid_type = SID_NAME_USE.enumItems(item['Use']).name
                     self.logger.highlight("f{rid}: {domain}\\{user} ({sid_type})")
-                    entries.append({"rid": rid, "domain": domain, "username": user, "sidtype": sid_type})
+                    entries.append({
+                        "rid": rid,
+                        "domain": domain,
+                        "username": user,
+                        "sidtype": sid_type
+                    })
             so_far += simultaneous
         dce.disconnect()
         return entries
@@ -1426,7 +1430,9 @@ class smb(connection):
         with open(self.args.put_file[0], 'rb') as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
-                self.logger.success(f"Created file {self.args.put_file[0]} on \\\\{self.args.share}\\{self.args.put_file[1]}")
+                self.logger.success(
+                    f"Created file {self.args.put_file[0]} on \\\\{self.args.share}\\{self.args.put_file[1]}"
+                )
             except Exception as e:
                 self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
