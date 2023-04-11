@@ -30,15 +30,15 @@ class vnc(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        vnc_parser = parser.add_parser('vnc', help="own stuff using VNC", parents=[std_parser, module_parser])
-        vnc_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        vnc_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        vnc_parser = parser.add_parser("vnc", help="own stuff using VNC", parents=[std_parser, module_parser])
+        vnc_parser.add_argument("--no-bruteforce", action='store_true', help="No spray when using file for username and password (user1 => password1, user2 => password2")
+        vnc_parser.add_argument("--continue-on-success", action="store_true", help="continues authentication attempts even after successes")
         vnc_parser.add_argument("--port", type=int, default=5900, help="Custom VNC port")
         vnc_parser.add_argument("--vnc-sleep", type=int, default=5, help="VNC Sleep on socket connection to avoid rate limit")
 
         egroup = vnc_parser.add_argument_group("Screenshot", "VNC Server")
         egroup.add_argument("--screenshot", action="store_true", help="Screenshot VNC if connection success")
-        egroup.add_argument('--screentime', type=int, default=5, help='Time to wait for desktop image')
+        egroup.add_argument("--screentime", type=int, default=5, help="Time to wait for desktop image")
 
         return parser
 
@@ -47,7 +47,7 @@ class vnc(connection):
         if self.create_conn_obj():
             self.print_host_info()
             if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
+                if hasattr(self.args, "module") and self.args.module:
                     self.call_modules()
                 else:
                     self.call_cmd_args()
@@ -55,15 +55,15 @@ class vnc(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'VNC',
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
+                "protocol": "VNC",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
             }
         )
 
     def print_host_info(self):
-        self.logger.display(u"VNC connecting to {}".format(self.hostname))
+        self.logger.display(f"VNC connecting to {self.hostname}")
 
     def create_conn_obj(self):
         try:
@@ -89,17 +89,16 @@ class vnc(connection):
         try:
             stype = asyauthSecret.PASS
             if password == "":
-                stype = stype = asyauthSecret.NONE
+                stype = asyauthSecret.NONE
             self.credential = UniCredential(secret=password, protocol=asyauthProtocol.PLAIN, stype=stype)
             self.conn = VNCConnection(target=self.target, credentials=self.credential, iosettings=self.iosettings)
             asyncio.run(self.connect_vnc())
 
             self.admin_privs = True
             self.logger.success(
-                u'{} {}'.format(
+                u"{} {}".format(
                     password,
-                    highlight('({})'.format(
-                        self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    highlight(f"({self.config.get('CME', 'pwn3d_label')})" if self.admin_privs else '')
                 )
             )
             if not self.args.continue_on_success:
@@ -109,16 +108,11 @@ class vnc(connection):
             self.logger.debug(str(e))
             if "Server supports: 1" in str(e):
                 self.logger.success(
-                    u'{} {}'.format(
+                    u"{} {}".format(
                         "No password seems to be accepted by the server",
-                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+                        highlight(f"({self.config.get('CME', 'pwn3d_label')})" if self.admin_privs else '')))
             else:
-                self.logger.error(
-                    u'{} {}'.format(
-                        password,
-                        "Authentication failed"
-                    )
-                )
+                self.logger.error(f"{password} {'Authentication failed'}")
             return False
 
     async def screen(self):
@@ -127,13 +121,11 @@ class vnc(connection):
         await asyncio.sleep(int(self.args.screentime))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(
-                self.hostname,
-                self.host,
-                datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-
-            buffer.save(filename, 'png')
-            self.logger.highlight("Screenshot saved {}".format(filename))
+            filename = os.path.expanduser(
+                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
+            )
+            buffer.save(filename, "png")
+            self.logger.highlight(f"Screenshot saved {filename}")
 
     def screenshot(self):
         asyncio.run(self.screen())
