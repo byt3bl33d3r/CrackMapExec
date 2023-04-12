@@ -20,7 +20,8 @@ class CMEAdapter(logging.LoggerAdapter):
             datefmt="[%X]",
             handlers=[RichHandler(
                 console=cme_console,
-                rich_tracebacks=True
+                rich_tracebacks=True,
+                tracebacks_show_locals=False
             )]
         )
         self.logger = logging.getLogger("cme")
