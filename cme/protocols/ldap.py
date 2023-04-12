@@ -5,6 +5,12 @@
 
 import logging
 import hmac
+import os
+from datetime import datetime
+
+from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE, DCERPCException
+from impacket.dcerpc.v5.transport import DCERPCTransportFactory
 
 from cme.connection import *
 from cme.helpers.logger import highlight
@@ -133,7 +139,6 @@ class ldap(connection):
         self.output_filename = None
         self.smbv1 = None
         self.signing = False
-        self.smb_share_name = smb_share_name
         self.admin_privs = False
         self.no_ntlm = False
         self.sid_domain = ""
