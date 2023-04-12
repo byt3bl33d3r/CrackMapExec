@@ -32,7 +32,7 @@ try:
     import librlers
 except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
-    sys.exit()
+    sys.exit(1)
 
 
 def create_db_engine(db_path):
@@ -106,10 +106,10 @@ def main():
     targets = []
     server_port_dict = {"http": 80, "https": 443, "smb": 445}
 
-    if hasattr(args, 'cred_id') and args.cred_id:
+    if hasattr(args, "cred_id") and args.cred_id:
         for cred_id in args.cred_id:
-            if '-' in str(cred_id):
-                start_id, end_id = cred_id.split('-')
+            if "-" in str(cred_id):
+                start_id, end_id = cred_id.split("-")
                 try:
                     for n in range(int(start_id), int(end_id) + 1):
                         args.cred_id.append(n)
@@ -118,43 +118,43 @@ def main():
                     cme_logger.error(f"Error parsing database credential id: {e}")
                     sys.exit(1)
 
-    if hasattr(args, 'target') and args.target:
+    if hasattr(args, "target") and args.target:
         for target in args.target:
             if os.path.exists(target):
                 target_file_type = identify_target_file(target)
-                if target_file_type == 'nmap':
+                if target_file_type == "nmap":
                     targets.extend(parse_nmap_xml(target, args.protocol))
-                elif target_file_type == 'nessus':
+                elif target_file_type == "nessus":
                     targets.extend(parse_nessus_file(target, args.protocol))
                 else:
-                    with open(target, 'r') as target_file:
+                    with open(target, "r") as target_file:
                         for target_entry in target_file:
                             targets.extend(parse_targets(target_entry.strip()))
             else:
                 targets.extend(parse_targets(target))
 
     # The following is a quick hack for the powershell obfuscation functionality, I know this is yucky
-    if hasattr(args, 'clear_obfscripts') and args.clear_obfscripts:
-        shutil.rmtree(os.path.expanduser('~/.cme/obfuscated_scripts/'))
-        os.mkdir(os.path.expanduser('~/.cme/obfuscated_scripts/'))
-        cme_logger.success('Cleared cached obfuscated PowerShell scripts')
+    if hasattr(args, "clear_obfscripts") and args.clear_obfscripts:
+        shutil.rmtree(os.path.expanduser("~/.cme/obfuscated_scripts/"))
+        os.mkdir(os.path.expanduser("~/.cme/obfuscated_scripts/"))
+        cme_logger.success("Cleared cached obfuscated PowerShell scripts")
 
-    if hasattr(args, 'obfs') and args.obfs:
+    if hasattr(args, "obfs") and args.obfs:
         powershell.obfuscate_ps_scripts = True
 
     cme_logger.debug(f"Protocol: {args.protocol}")
     p_loader = ProtocolLoader()
-    protocol_path = p_loader.get_protocols()[args.protocol]['path']
+    protocol_path = p_loader.get_protocols()[args.protocol]["path"]
     cme_logger.debug(f"Protocol Path: {protocol_path}")
-    protocol_db_path = p_loader.get_protocols()[args.protocol]['dbpath']
+    protocol_db_path = p_loader.get_protocols()[args.protocol]["dbpath"]
     cme_logger.debug(f"Protocol DB Path: {protocol_db_path}")
 
     protocol_object = getattr(p_loader.load_protocol(protocol_path), args.protocol)
     cme_logger.debug(f"Protocol Object: {protocol_object}")
-    protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), 'database')
+    protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), "database")
     cme_logger.debug(f"Protocol DB Object: {protocol_db_object}")
 
-    db_path = os.path.join(CME_PATH, 'workspaces', cme_workspace, args.protocol + '.db')
+    db_path = os.path.join(CME_PATH, "workspaces", cme_workspace, args.protocol + ".db")
     cme_logger.debug(f"DB Path: {db_path}")
 
     db_engine = create_db_engine(db_path)
@@ -162,9 +162,9 @@ def main():
     db = protocol_db_object(db_engine)
 
     # with the new cme/config.py this can be eventually removed, as it can be imported anywhere
-    setattr(protocol_object, 'config', cme_config)
+    setattr(protocol_object, "config", cme_config)
 
-    if hasattr(args, 'module'):
+    if hasattr(args, "module"):
         loader = ModuleLoader(args, db, cme_logger)
         modules = loader.list_modules()
 
@@ -184,7 +184,7 @@ def main():
                     exit(1)
 
                 cme_logger.debug(f"Loading module {m} at path {modules[m]['path']}")
-                module = loader.init_module(modules[m]['path'])
+                module = loader.init_module(modules[m]["path"])
 
                 if not module.opsec_safe:
                     if ignore_opsec:
@@ -192,17 +192,17 @@ def main():
                         cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
                     else:
                         ans = input(
-                            highlight('[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ', 'red'))
-                        if ans.lower() not in ['y', 'yes', '']:
+                            highlight("[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ", 'red'))
+                        if ans.lower() not in ["y", "yes", ""]:
                             sys.exit(1)
 
                 if not module.multiple_hosts and len(targets) > 1:
                     ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
-                    if ans.lower() not in ['y', 'yes', '']:
+                    if ans.lower() not in ["y", "yes", ""]:
                         sys.exit(1)
 
-                if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
-                    if hasattr(module, 'required_server'):
+                if hasattr(module, "on_request") or hasattr(module, "has_response"):
+                    if hasattr(module, "required_server"):
                         args.server = module.required_server
 
                     if not args.server_port:
@@ -211,7 +211,14 @@ def main():
                     # loading a module server multiple times will obviously fail
                     try:
                         context = Context(db, cme_logger, args)
-                        module_server = CMEServer(module, context, cme_logger, args.server_host, args.server_port, args.server)
+                        module_server = CMEServer(
+                            module,
+                            context,
+                            cme_logger,
+                            args.server_host,
+                            args.server_port,
+                            args.server
+                        )
                         module_server.start()
                         protocol_object.server = module_server.server
                     except Exception as e:
@@ -220,12 +227,12 @@ def main():
                 cme_logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
                 cme_logger.debug(f"proto object dir: {dir(protocol_object)}")
                 # get currently set modules, otherwise default to empty list
-                current_modules = getattr(protocol_object, 'module', [])
+                current_modules = getattr(protocol_object, "module", [])
                 current_modules.append(module)
-                setattr(protocol_object, 'module', current_modules)
+                setattr(protocol_object, "module", current_modules)
                 cme_logger.debug(f"proto object module after adding: {protocol_object.module}")
 
-    if hasattr(args, 'ntds') and args.ntds and not args.userntds:
+    if hasattr(args, "ntds") and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ', 'red'))
         if ans.lower() not in ['y', 'yes', '']:
             sys.exit(1)
@@ -242,5 +249,5 @@ def main():
         db_engine.dispose()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
