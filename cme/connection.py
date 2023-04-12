@@ -9,6 +9,7 @@ from functools import wraps
 from time import sleep
 
 from cme.config import pwned_label
+from cme.console import cme_console
 from cme.helpers.logger import highlight
 from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
@@ -79,7 +80,10 @@ class connection(object):
             self.logger.debug(f"Doin' the jitterbug for {value} second(s)")
             sleep(value)
 
-        self.proto_flow()
+        try:
+            self.proto_flow()
+        except Exception as e:
+            self.logger.exception(f"Exception while calling proto_flow(): {e}")
 
     @staticmethod
     def proto_args(std_parser, module_parser):
@@ -110,7 +114,7 @@ class connection(object):
         return
 
     def proto_flow(self):
-        cme_logger.debug(f"Kicking off proto_flow")
+        self.logger.debug(f"Kicking off proto_flow")
         self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
