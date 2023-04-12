@@ -40,28 +40,28 @@ class CMEAdapter(logging.LoggerAdapter):
             return u'{}'.format(msg), kwargs
 
         if 'module_name' in self.extra.keys():
-            if len(self.extra['module_name']) > 8:
-                self.extra['module_name'] = self.extra['module_name'][:8] + '...'
+            if len(self.extra["module_name"]) > 8:
+                self.extra["module_name"] = self.extra["module_name"][:8] + "..."
 
         # If the logger is being called when hooking the 'options' module function
-        if len(self.extra) == 1 and ('module_name' in self.extra.keys()):
-            return u'{:<64} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), msg), kwargs
+        if len(self.extra) == 1 and ("module_name" in self.extra.keys()):
+            return f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<64} {msg}", kwargs
 
         # If the logger is being called from CMEServer
-        if len(self.extra) == 2 and ('module_name' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<24} {:<39} {}'.format(colored(self.extra['module_name'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+        if len(self.extra) == 2 and ("module_name" in self.extra.keys()) and ("host" in self.extra.keys()):
+            return f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<24} {self.extra['host']:<39} {msg}", kwargs
 
         # If the logger is being called from a protocol
-        if 'module_name' in self.extra.keys():
-            module_name = colored(self.extra['module_name'], 'cyan', attrs=['bold'])
+        if "module_name" in self.extra.keys():
+            module_name = colored(self.extra["module_name"], 'cyan', attrs=["bold"])
         else:
-            module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
+            module_name = colored(self.extra["protocol"], 'blue', attrs=["bold"])
 
         return '{:<24} {:<15} {:<6} {:<16} {}'.format(
             module_name,
-            self.extra['host'],
-            self.extra['port'],
-            self.extra['hostname'] if self.extra['hostname'] else 'NONE',
+            self.extra["host"],
+            self.extra["port"],
+            self.extra["hostname"] if self.extra["hostname"] else "NONE",
             msg), kwargs
 
     def display(self, msg, *args, **kwargs):
@@ -69,12 +69,12 @@ class CMEAdapter(logging.LoggerAdapter):
         Display text to console, formatted for CME
         """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
+        msg, kwargs = self.format(f"{colored('[*]', 'blue', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -89,7 +89,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
+        msg, kwargs = self.format(f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -104,7 +104,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
+        msg, kwargs = self.format(f"{colored(msg, 'yellow', attrs=['bold'])}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -118,7 +118,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 return
         except AttributeError:
             pass
-        msg, kwargs = self.format(u'{} {}'.format(colored("[-]", 'red', attrs=['bold']), msg), kwargs)
+        msg, kwargs = self.format(f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -162,9 +162,9 @@ class CMEAdapter(logging.LoggerAdapter):
 
         with file_handler._open() as f:
             if file_creation:
-                f.write("[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
+                f.write("[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
             else:
-                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime('%d-%m-%Y %H:%M:%S'), " ".join(sys.argv)))
+                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
 
         file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)
@@ -184,11 +184,11 @@ class CMEAdapter(logging.LoggerAdapter):
 
 class TermEscapeCodeFormatter(logging.Formatter):
     """A class to strip the escape codes for logging to files"""
-    def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
+    def __init__(self, fmt=None, datefmt=None, style="%", validate=True):
         super().__init__(fmt, datefmt, style, validate)
 
     def format(self, record):
-        escape_re = re.compile(r'\x1b\[[0-9;]*m')
+        escape_re = re.compile(r"\x1b\[[0-9;]*m")
         record.msg = re.sub(escape_re, "", str(record.msg))
         return super().format(record)
 
