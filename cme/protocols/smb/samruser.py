@@ -47,15 +47,25 @@ class UserSamrDump:
                 protodef = UserSamrDump.KNOWN_PROTOCOLS[protocol]
                 port = protodef[1]
             except KeyError as e:
-                self.logger.debug("Invalid Protocol '{}'".format(protocol))
-            self.logger.debug("Trying protocol {}".format(protocol))
-            rpctransport = transport.SMBTransport(self.addr, port, r'\samr', self.username, self.password, self.domain, 
-                                                  self.lmhash, self.nthash, self.aesKey, doKerberos = self.doKerberos)
+                self.logger.debug(f"Invalid Protocol '{protocol}'")
+            self.logger.debug(f"Trying protocol {protocol}")
+            rpctransport = transport.SMBTransport(
+                self.addr,
+                port,
+                r"\samr",
+                self.username,
+                self.password,
+                self.domain,
+                self.lmhash,
+                self.nthash,
+                self.aesKey,
+                doKerberos=self.doKerberos
+            )
             try:
                 self.fetchList(rpctransport)
                 break
             except Exception as e:
-                self.logger.debug('Protocol failed: {}'.format(e))
+                self.logger.debug(f"Protocol failed: {e}")
         return self.users
 
     def fetchList(self, rpctransport):
@@ -65,28 +75,28 @@ class UserSamrDump:
 
         # Setup Connection
         resp = samr.hSamrConnect2(dce)
-        if resp['ErrorCode'] != 0:
-            raise Exception('Connect error')
+        if resp["ErrorCode"] != 0:
+            raise Exception("Connect error")
 
-        resp2 = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle=resp['ServerHandle'],
+        resp2 = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle=resp["ServerHandle"],
                                                       enumerationContext=0,
                                                       preferedMaximumLength=500)
-        if resp2['ErrorCode'] != 0:
-            raise Exception('Connect error')
+        if resp2["ErrorCode"] != 0:
+            raise Exception("Connect error")
 
-        resp3 = samr.hSamrLookupDomainInSamServer(dce, serverHandle=resp['ServerHandle'],
-                                                  name=resp2['Buffer']['Buffer'][0]['Name'])
-        if resp3['ErrorCode'] != 0:
-            raise Exception('Connect error')
+        resp3 = samr.hSamrLookupDomainInSamServer(dce, serverHandle=resp["ServerHandle"],
+                                                  name=resp2["Buffer"]["Buffer"][0]["Name"])
+        if resp3["ErrorCode"] != 0:
+            raise Exception("Connect error")
 
-        resp4 = samr.hSamrOpenDomain(dce, serverHandle=resp['ServerHandle'],
+        resp4 = samr.hSamrOpenDomain(dce, serverHandle=resp["ServerHandle"],
                                      desiredAccess=samr.MAXIMUM_ALLOWED,
-                                     domainId=resp3['DomainId'])
-        if resp4['ErrorCode'] != 0:
-            raise Exception('Connect error')
+                                     domainId=resp3["DomainId"])
+        if resp4["ErrorCode"] != 0:
+            raise Exception("Connect error")
 
-        self.__domains = resp2['Buffer']['Buffer']
-        domainHandle = resp4['DomainHandle']
+        self.__domains = resp2["Buffer"]["Buffer"]
+        domainHandle = resp4["DomainHandle"]
         # End Setup
 
         status = STATUS_MORE_ENTRIES
@@ -95,20 +105,20 @@ class UserSamrDump:
             try:
                 resp = samr.hSamrEnumerateUsersInDomain(dce, domainHandle, enumerationContext = enumerationContext)
             except DCERPCException as e:
-                if str(e).find('STATUS_MORE_ENTRIES') < 0:
-                    self.logger.error('Error enumerating domain user(s)')
+                if str(e).find("STATUS_MORE_ENTRIES") < 0:
+                    self.logger.error("Error enumerating domain user(s)")
                     break 
                 resp = e.get_packet()
-            self.logger.success('Enumerated domain user(s)')
-            for user in resp['Buffer']['Buffer']:
-                r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user['RelativeId'])
-                info = samr.hSamrQueryInformationUser2(dce, r['UserHandle'],samr.USER_INFORMATION_CLASS.UserAllInformation)
-                (username, uid, info_user) = (user['Name'], user['RelativeId'], info['Buffer']['All'])
-                self.logger.highlight('{}\\{:<30} {}'.format(self.domain, user['Name'], info_user['AdminComment']))
-                self.users.append(user['Name'])
-                samr.hSamrCloseHandle(dce, r['UserHandle'])
+            self.logger.success("Enumerated domain user(s)")
+            for user in resp["Buffer"]["Buffer"]:
+                r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user["RelativeId"])
+                info = samr.hSamrQueryInformationUser2(dce, r["UserHandle"], samr.USER_INFORMATION_CLASS.UserAllInformation)
+                (username, uid, info_user) = (user["Name"], user["RelativeId"], info["Buffer"]["All"])
+                self.logger.highlight(f"{self.domain}\\{user['Name']:<30} {info_user['AdminComment']}")
+                self.users.append(user["Name"])
+                samr.hSamrCloseHandle(dce, r["UserHandle"])
 
-            enumerationContext = resp['EnumerationContext'] 
-            status = resp['ErrorCode']
+            enumerationContext = resp["EnumerationContext"]
+            status = resp["ErrorCode"]
 
         dce.disconnect()

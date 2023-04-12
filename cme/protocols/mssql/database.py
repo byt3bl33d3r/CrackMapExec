@@ -186,13 +186,9 @@ class database:
                     results = self.conn.execute(q) # .first()
                     # user_rowid = results.id
 
-        cme_logger.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
-            credtype,
-            domain,
-            username,
-            password,
-            pillaged_from
-        ))
+        cme_logger.debug(
+            f"add_credential(credtype={credtype}, domain={domain}, username={username}, password={password}, pillaged_from={pillaged_from})"
+        )
         return user_rowid
 
     def remove_credentials(self, creds_id):

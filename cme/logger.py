@@ -37,7 +37,7 @@ class CMEAdapter(logging.LoggerAdapter):
         This is used instead of process() since process() applies to _all_ messages, including debug calls
         """
         if self.extra is None:
-            return u'{}'.format(msg), kwargs
+            return f"{msg}", kwargs
 
         if 'module_name' in self.extra.keys():
             if len(self.extra["module_name"]) > 8:
@@ -57,12 +57,7 @@ class CMEAdapter(logging.LoggerAdapter):
         else:
             module_name = colored(self.extra["protocol"], 'blue', attrs=["bold"])
 
-        return '{:<24} {:<15} {:<6} {:<16} {}'.format(
-            module_name,
-            self.extra["host"],
-            self.extra["port"],
-            self.extra["hostname"] if self.extra["hostname"] else "NONE",
-            msg), kwargs
+        return f"{module_name:<24} {self.extra['host']:<15} {self.extra['port']:<6} {self.extra['hostname'] if self.extra['hostname'] else 'NONE':<16} {msg}", kwargs
 
     def display(self, msg, *args, **kwargs):
         """

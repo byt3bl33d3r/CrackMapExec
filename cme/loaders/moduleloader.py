@@ -19,26 +19,26 @@ class ModuleLoader:
         Check if a module has the proper attributes
         """
         module_error = False
-        if not hasattr(module, 'name'):
-            self.logger.error('{} missing the name variable'.format(module_path))
+        if not hasattr(module, "name"):
+            self.logger.error(f"{module_path} missing the name variable")
             module_error = True
-        elif not hasattr(module, 'description'):
-            self.logger.error('{} missing the description variable'.format(module_path))
+        elif not hasattr(module, "description"):
+            self.logger.error(f"{module_path} missing the description variable")
             module_error = True
-        elif not hasattr(module, 'supported_protocols'):
-            self.logger.error('{} missing the supported_protocols variable'.format(module_path))
+        elif not hasattr(module, "supported_protocols"):
+            self.logger.error(f"{module_path} missing the supported_protocols variable")
             module_error = True
-        elif not hasattr(module, 'opsec_safe'):
-            self.logger.error('{} missing the opsec_safe variable'.format(module_path))
+        elif not hasattr(module, "opsec_safe"):
+            self.logger.error(f"{module_path} missing the opsec_safe variable")
             module_error = True
-        elif not hasattr(module, 'multiple_hosts'):
-            self.logger.error('{} missing the multiple_hosts variable'.format(module_path))
+        elif not hasattr(module, "multiple_hosts"):
+            self.logger.error(f"{module_path} missing the multiple_hosts variable")
             module_error = True
-        elif not hasattr(module, 'options'):
-            self.logger.error('{} missing the options function'.format(module_path))
+        elif not hasattr(module, "options"):
+            self.logger.error(f"{module_path} missing the options function")
             module_error = True
-        elif not hasattr(module, 'on_login') and not (module, 'on_admin_login'):
-            self.logger.error('{} missing the on_login/on_admin_login function(s)'.format(module_path))
+        elif not hasattr(module, "on_login") and not (module, "on_admin_login"):
+            self.logger.error(f"{module_path} missing the on_login/on_admin_login function(s)")
             module_error = True
         # elif not hasattr(module, 'chain_support'):
         #    self.logger.error('{} missing the chain_support variable'.format(module_path))
@@ -59,7 +59,7 @@ class ModuleLoader:
             if self.module_is_sane(module, module_path):
                 return module
         except Exception as e:
-            self.logger.error('Failed loading module at {}: {}'.format(module_path, e))
+            self.logger.error(f"Failed loading module at {module_path}: {e}")
         return None
 
     def init_module(self, module_path):
@@ -103,7 +103,7 @@ class ModuleLoader:
             if self.module_is_sane(module_spec, module_path):
                 return module
         except Exception as e:
-            self.logger.error('Failed loading module at {}: {}'.format(module_path, e))
+            self.logger.error(f"Failed loading module at {module_path}: {e}")
         return None
 
     def list_modules(self):

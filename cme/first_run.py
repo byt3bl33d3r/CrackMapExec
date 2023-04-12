@@ -22,7 +22,7 @@ def first_run_setup(logger=cme_logger):
     folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
-            logger.display("Creating missing folder {}".format(folder))
+            logger.display(f"Creating missing folder {folder}")
             os.mkdir(os.path.join(CME_PATH, folder))
 
     initialize_db(logger)

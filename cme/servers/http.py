@@ -44,7 +44,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 class CMEServer(threading.Thread):
 
-    def __init__(self, module, context, logger, srv_host, port, server_type='https'):
+    def __init__(self, module, context, logger, srv_host, port, server_type="https"):
         try:
             threading.Thread.__init__(self)
 
@@ -52,8 +52,8 @@ class CMEServer(threading.Thread):
             self.server.hosts = []
             self.server.module = module
             self.server.context = context
-            self.server.log = CMEAdapter(extra={'module_name': self.server.module.name.upper()})
-            self.cert_path = os.path.join(os.path.expanduser('~/.cme'), 'cme.pem')
+            self.server.log = CMEAdapter(extra={"module_name": self.server.module.name.upper()})
+            self.cert_path = os.path.join(os.path.expanduser("~/.cme"), "cme.pem")
             self.server.track_host = self.track_host
 
             logger.debug('CME server type: ' + server_type)
@@ -63,9 +63,11 @@ class CMEServer(threading.Thread):
         except Exception as e:
             errno, message = e.args
             if errno == 98 and message == 'Address already in use':
-                logger.error('Error starting HTTP(S) server: the port is already in use, try specifying a diffrent port using --server-port')
+                logger.error(
+                    "Error starting HTTP(S) server: the port is already in use, try specifying a diffrent port using --server-port"
+                    )
             else:
-                logger.error('Error starting HTTP(S) server: {}'.format(message))
+                logger.error(f"Error starting HTTP(S) server: {message}")
 
             sys.exit(1)
 
@@ -84,7 +86,7 @@ class CMEServer(threading.Thread):
     def shutdown(self):
         try:
             while len(self.server.hosts) > 0:
-                self.server.log.info('Waiting on {} host(s)'.format(highlight(len(self.server.hosts))))
+                self.server.log.info(f"Waiting on {highlight(len(self.server.hosts))} host(s)")
                 sleep(15)
         except KeyboardInterrupt:
             pass

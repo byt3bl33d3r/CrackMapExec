@@ -80,26 +80,22 @@ class winrm(connection):
         # smb no open, specify the domain
         if self.args.domain:
             self.domain = self.args.domain
-            self.logger.extra['hostname'] = self.hostname
+            self.logger.extra["hostname"] = self.hostname
         else:
             try:
                 smb_conn = SMBConnection(self.host, self.host, None, timeout=5)
                 try:
-                    smb_conn.login('', '')
+                    smb_conn.login("", "")
                 except SessionError as e:
                     pass
 
                 self.domain = smb_conn.getServerDNSDomainName()
                 self.hostname = smb_conn.getServerName()
                 self.server_os = smb_conn.getServerOS()
-                self.logger.extra['hostname'] = self.hostname
+                self.logger.extra["hostname"] = self.hostname
 
                 self.output_filename = os.path.expanduser(
-                    '~/.cme/logs/{}_{}_{}'.format(
-                        self.hostname,
-                        self.host,
-                        datetime.now().strftime("%Y-%m-%d_%H%M%S")
-                    )
+                    f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
                 )
 
                 try:
@@ -107,7 +103,7 @@ class winrm(connection):
                 except:
                     pass
             except Exception as e:
-                self.logger.error("Error retrieving host domain: {} specify one manually with the '-d' flag".format(e))
+                self.logger.error(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
 
             if self.args.domain:
                 self.domain = self.args.domain
@@ -116,32 +112,30 @@ class winrm(connection):
                 self.domain = self.hostname
 
             if self.server_os is None:
-                self.server_os = ''
+                self.server_os = ""
             if self.domain is None:
-                self.domain = ''
+                self.domain = ""
 
             self.db.add_host(self.host, self.port, self.hostname, self.domain, self.server_os)
 
-        self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(
-            self.hostname,
-            self.host,
-            datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        ))
+        self.output_filename = os.path.expanduser(
+            f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
+        )
         self.output_filename = self.output_filename.replace(":", "-")
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldap_conn = LDAPConnect(self.domain, "389", self.domain)
         login = ldap_conn.plaintext_login(
             domain,
-            username[0] if username else '',
-            password[0] if password else '',
-            ntlm_hash[0] if ntlm_hash else ''
+            username[0] if username else "",
+            password[0] if password else "",
+            ntlm_hash[0] if ntlm_hash else ""
         )
         if not login:
             self.logger.debug(f"LAPS login failed with account {username}")
             return False
         search_filter = f"(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='{self.hostname}))"
-        attributes = ['ms-MCS-AdmPwd', 'samAccountname']
+        attributes = ["ms-MCS-AdmPwd", "samAccountname"]
         result = login.search(
             searchFilter=search_filter,
             attributes=attributes,
@@ -153,41 +147,41 @@ class winrm(connection):
         for item in result:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
-            for host in item['attributes']:
-                if str(host['type']) == "sAMAccountName":
-                    sAMAccountName = str(host['vals'][0])
+            for host in item["attributes"]:
+                if str(host["type"]) == "sAMAccountName":
+                    sAMAccountName = str(host["vals"][0])
                 else:
-                    msMCSAdmPwd = str(host['vals'][0])
-            self.logger.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+                    msMCSAdmPwd = str(host["vals"][0])
+            self.logger.debug(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
         self.username = self.args.laps
         self.password = msMCSAdmPwd
         if msMCSAdmPwd == '':
-            self.logger.debug('msMCSAdmPwd is empty, account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.debug(f"msMCSAdmPwd is empty, account cannot read LAPS property for {self.hostname}")
             return False
         if ntlm_hash:
-            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            hash_ntlm = hashlib.new("md4", msMCSAdmPwd.encode("utf-16le")).digest()
             self.hash = binascii.hexlify(hash_ntlm).decode()
         self.domain = self.hostname
         return True
 
     def print_host_info(self):
         if self.args.domain:
-            self.logger.extra['protocol'] = "HTTP"
+            self.logger.extra["protocol"] = "HTTP"
             self.logger.display(self.endpoint)
         else:
-            self.logger.extra['protocol'] = "SMB"
-            self.logger.display(u"{} (name:{}) (domain:{})".format(self.server_os, self.hostname, self.domain))
-            self.logger.extra['protocol'] = "HTTP"
+            self.logger.extra["protocol"] = "SMB"
+            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})")
+            self.logger.extra["protocol"] = "HTTP"
             self.logger.display(self.endpoint)
-        self.logger.extra['protocol'] = "WINRM"
+        self.logger.extra["protocol"] = "WINRM"
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
         return True
 
     def create_conn_obj(self):
         endpoints = [
-            'https://{}:{}/wsman'.format(self.host, self.args.port if self.args.port else 5986),
-            'http://{}:{}/wsman'.format(self.host, self.args.port if self.args.port else 5985)
+            f"https://{self.host}:{self.args.port if self.args.port else 5986}/wsman",
+            f"http://{self.host}:{self.args.port if self.args.port else 5985}/wsman"
         ]
 
         for url in endpoints:
@@ -223,7 +217,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(domain, self.username),
+                    username=f"{domain}\\{self.username}",
                     password=self.password,
                     ssl=True,
                     cert_validation=False
@@ -232,7 +226,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(domain, self.username),
+                    username=f'{domain}\\{self.username}',
                     password=self.password,
                     ssl=True
                 )
@@ -240,7 +234,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(domain, self.username),
+                    username=f'{domain}\\{self.username}',
                     password=self.password,
                     ssl=False
                 )
@@ -250,12 +244,7 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(
-                u'{}\\{}:{} {}'.format(
-                    self.domain,
-                    self.username,
-                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
-                )
+                f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
             )
 
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
@@ -266,7 +255,7 @@ class winrm(connection):
 
             if self.admin_privs:
                 self.logger.debug(f"Inside admin privs")
-                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host) # , user_id=user_id)
+                self.db.add_admin_user("plaintext", domain, self.username, self.password, self.host) # , user_id=user_id)
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
@@ -275,20 +264,11 @@ class winrm(connection):
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(
-                    u'{}\\{}:{}'.format(
-                        self.domain,
-                        self.username,
-                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8
-                    )
+                    f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
                 )
             else:
                 self.logger.error(
-                    u'{}\\{}:{} "{}"'.format(
-                        self.domain,
-                        self.username,
-                        self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                        e
-                    )
+                    f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} \"{e}\""
                 )
 
             return False
@@ -320,7 +300,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(self.domain, self.username),
+                    username=f"{self.domain}\\{self.username}",
                     password=lmhash + nthash,
                     ssl=True,
                     cert_validation=False
@@ -329,7 +309,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(self.domain, self.username),
+                    username=f"{self.domain}\\{self.username}",
                     password=lmhash + nthash,
                     ssl=True
                 )
@@ -337,7 +317,7 @@ class winrm(connection):
                 self.conn = Client(
                     self.host,
                     auth='ntlm',
-                    username=u'{}\\{}'.format(self.domain, self.username),
+                    username=f"{self.domain}\\{self.username}",
                     password=lmhash + nthash,
                     ssl=False
                 )
@@ -347,17 +327,12 @@ class winrm(connection):
             self.conn.execute_ps("hostname")
             self.admin_privs = True
             self.logger.success(
-                u'{}\\{}:{} {}'.format(
-                    self.domain,
-                    self.username,
-                    nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
-                )
+                f"{self.domain}\\{self.username}:{nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
             )
-            self.db.add_credential('hash', domain, self.username, nthash)
+            self.db.add_credential("hash", domain, self.username, nthash)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, self.username, nthash, self.host)
+                self.db.add_admin_user("hash", domain, self.username, nthash, self.host)
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -367,20 +342,11 @@ class winrm(connection):
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(
-                    u'{}\\{}:{}'.format(
-                        self.domain,
-                        self.username,
-                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8
-                    )
+                    f"{self.domain}\\{self.username}:{nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
                 )
             else:
                 self.logger.error(
-                    u'{}\\{}:{} "{}"'.format(
-                        self.domain,
-                        self.username,
-                        nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                        e
-                    )
+                    f"{self.domain}\\{self.username}:{nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} \"{e}\""
                 )
             return False
 
@@ -388,9 +354,11 @@ class winrm(connection):
         try:
             r = self.conn.execute_cmd(self.args.execute)
         except:
-            self.logger.info('Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !')
+            self.logger.info(
+                "Cannot execute cmd command, probably because user is not local admin, but powershell command should be ok !"
+            )
             r = self.conn.execute_ps(self.args.execute)
-        self.logger.success('Executed command')
+        self.logger.success("Executed command")
         self.logger.highlight(r[0])
 
     def ps_execute(self, payload=None, get_output=False):

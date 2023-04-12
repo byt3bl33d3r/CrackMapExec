@@ -8,6 +8,8 @@ from threading import BoundedSemaphore
 from functools import wraps
 from time import sleep
 
+from cme.config import pwned_label
+from cme.helpers.logger import highlight
 from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
 
@@ -124,7 +126,7 @@ class connection(object):
         for k, v in vars(self.args).items():
             if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
                 if v is not False and v is not None:
-                    self.logger.debug('Calling {}()'.format(k))
+                    self.logger.debug(f"Calling {k}()")
                     r = getattr(self, k)()
 
     def call_modules(self):
@@ -359,3 +361,6 @@ class connection(object):
                             if not self.over_fail_limit(user):
                                 if self.kerberos_login(self.domain, user, '', '', aesKey.strip(), self.kdcHost, False):
                                     return True
+
+    def mark_pwned(self):
+        return highlight(f"({pwned_label})" if self.admin_privs else "")

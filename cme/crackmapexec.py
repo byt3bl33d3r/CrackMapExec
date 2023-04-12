@@ -166,7 +166,7 @@ def main():
 
         if args.list_modules:
             for name, props in sorted(modules.items()):
-                cme_logger.display('{:<25} {}'.format(name, props['description']))
+                cme_logger.display(f"{name:<25} {props['description']}")
             sys.exit(0)
         elif args.module and args.show_module_options:
             for module in args.module:

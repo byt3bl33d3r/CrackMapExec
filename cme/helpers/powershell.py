@@ -42,11 +42,7 @@ def obfs_ps_script(path_to_script):
 
         cme_logger.display('Performing one-time script obfuscation, go look at some memes cause this can take a bit...')
 
-        invoke_obfs_command = 'powershell -C \'Import-Module {};Invoke-Obfuscation -ScriptPath {} -Command "TOKEN,ALL,1,OUT {}" -Quiet\''.format(
-            get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1'),
-            get_ps_script(path_to_script),
-            obfs_ps_script
-        )
+        invoke_obfs_command = f"powershell -C 'Import-Module {get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1')};Invoke-Obfuscation -ScriptPath {get_ps_script(path_to_script)} -Command \"TOKEN,ALL,1,OUT {obfs_ps_script}\" -Quiet'"
         cme_logger.debug(invoke_obfs_command)
 
         with open(os.devnull, 'w') as devnull:

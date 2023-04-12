@@ -104,23 +104,18 @@ class rdp(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'RDP',
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
+                "protocol": "RDP",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
             }
         )
 
     def print_host_info(self):
         if self.domain is None:
-            self.logger.display(u"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{})".format(self.nla))
+            self.logger.display(f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})")
         else:
-            self.logger.display(u"{} (name:{}) (domain:{}) (nla:{})".format(
-                self.server_os,
-                self.hostname,
-                self.domain,
-                self.nla
-            ))
+            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})")
         return True
 
     def create_conn_obj(self):
@@ -142,11 +137,13 @@ class rdp(connection):
                     return False
                 if "Reason:" not in str(e):
                     info_domain = self.conn.get_extra_info()
-                    self.domain = info_domain['dnsdomainname']
-                    self.hostname = info_domain['computername']
-                    self.server_os = info_domain['os_guess'] + " Build " + str(info_domain['os_build'])
+                    self.domain = info_domain["dnsdomainname"]
+                    self.hostname = info_domain["computername"]
+                    self.server_os = info_domain["os_guess"] + " Build " + str(info_domain['os_build'])
 
-                    self.output_filename = os.path.expanduser('~/.cme/logs/{}_{}_{}'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
+                    self.output_filename = os.path.expanduser(
+                        f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
+                    )
                     self.output_filename = self.output_filename.replace(":", "-")
                     break
 
@@ -237,12 +234,13 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(u'{}\\{}{} {}'.format(
+            self.logger.success(
+                u"{}\\{}{} {}".format(
                 domain,
                 username,
                 # Show what was used between cleartext, nthash, aesKey and ccache
                 " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else ''))
+                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ''))
             )
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
@@ -255,25 +253,21 @@ class rdp(connection):
                 for word in rdp_error_status.keys():
                     if word in str(e):
                         reason = rdp_error_status[word]
-                self.logger.fail(u'{}\\{}{} {}'.format(
-                    domain,
-                    username,
-                    # Show what was used between cleartext, nthash, aesKey and ccache
-                    " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                    '({})'.format(reason) if reason else str(e)),
+                self.logger.fail(
+                    f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}",
                     color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN") else 'red'
                 )
             elif "Authentication failed!" in str(e):
                 self.logger.success(
-                    u'{}\\{}:{} {}'.format(
+                    u"{}\\{}:{} {}".format(
                         domain,
                         username,
                         password,
-                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                        highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                     )
                 )
             elif "No such file" in str(e):
-                self.logger.fail(str(e))
+                self.logger.fail(e)
             else:
                 reason = None
                 for word in rdp_error_status.keys():
@@ -282,12 +276,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    u'{}\\{}{} {}'.format(
-                        domain,
-                        username,
-                        # Show what was used between cleartext, nthash, aesKey and ccache
-                        " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                        '({})'.format(reason) if reason else ''),
+                    f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}",
                     color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red'
                 )
             return False
@@ -300,11 +289,11 @@ class rdp(connection):
 
             self.admin_privs = True
             self.logger.success(
-                u'{}\\{}:{} {}'.format(
+                u"{}\\{}:{} {}".format(
                     domain,
                     username,
                     password,
-                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                 )
             )
             if not self.args.local_auth:
@@ -314,11 +303,11 @@ class rdp(connection):
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(
-                    u'{}\\{}:{} {}'.format(
+                    u"{}\\{}:{} {}".format(
                         domain,
                         username,
                         password,
-                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                        highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                     )
                 )
             else:
@@ -329,11 +318,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    u'{}\\{}:{} {}'.format(
-                        domain,
-                        username,
-                        password,
-                        '({})'.format(reason) if reason else ''),
+                    f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}",
                     color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red'
                 )
             return False
@@ -346,11 +331,11 @@ class rdp(connection):
 
             self.admin_privs = True
             self.logger.success(
-                u'{}\\{}:{} {}'.format(
+                u"{}\\{}:{} {}".format(
                     self.domain,
                     username,
                     ntlm_hash,
-                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                 )
             )
             if not self.args.local_auth:
@@ -360,11 +345,11 @@ class rdp(connection):
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(
-                    u'{}\\{}:{} {}'.format(
+                    u"{}\\{}:{} {}".format(
                         domain,
                         username,
                         ntlm_hash,
-                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                        highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                     )
                 )
             else:
@@ -376,11 +361,7 @@ class rdp(connection):
                     reason = "User valid but cannot connect"
                 
                 self.logger.fail(
-                    u'{}\\{}:{} {}'.format(
-                        domain,
-                        username,
-                        ntlm_hash,
-                        '({})'.format(reason) if reason else ''),
+                    f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}",
                     color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red'
                 )
             return False
@@ -395,9 +376,11 @@ class rdp(connection):
         await asyncio.sleep(int(5))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-            buffer.save(filename,'png')
-            self.logger.highlight("Screenshot saved {}".format(filename))
+            filename = os.path.expanduser(
+                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
+            )
+            buffer.save(filename, "png")
+            self.logger.highlight(f"Screenshot saved {filename}")
 
     def screenshot(self):
         asyncio.run(self.screen())
@@ -412,9 +395,11 @@ class rdp(connection):
 
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser('~/.cme/screenshots/{}_{}_{}.png'.format(self.hostname, self.host, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
-            buffer.save(filename,'png')
-            self.logger.highlight("NLA Screenshot saved {}".format(filename))
+            filename = os.path.expanduser(
+                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
+            )
+            buffer.save(filename, "png")
+            self.logger.highlight(f"NLA Screenshot saved {filename}")
 
     def nla_screenshot(self):
         if not self.nla:

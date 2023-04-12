@@ -104,14 +104,14 @@ class TSCH_EXEC:
         if self.__retOutput:
             if fileless:
                 local_ip = self.__rpctransport.get_socket().getsockname()[0]
-                argument_xml = "      <Arguments>/C {} &gt; \\\\{}\\{}\\{} 2&gt;&amp;1</Arguments>".format(command, local_ip, self.__share_name, tmpFileName)
+                argument_xml = f"      <Arguments>/C {command} &gt; \\\\{local_ip}\\{self.__share_name}\\{tmpFileName} 2&gt;&amp;1</Arguments>"
             else:
-                argument_xml = "      <Arguments>/C {} &gt; %windir%\\Temp\\{} 2&gt;&amp;1</Arguments>".format(command, tmpFileName)
+                argument_xml = f"      <Arguments>/C {command} &gt; %windir%\\Temp\\{tmpFileName} 2&gt;&amp;1</Arguments>"
 
         elif self.__retOutput is False:
-            argument_xml = "      <Arguments>/C {}</Arguments>".format(command)
+            argument_xml = f"      <Arguments>/C {command}</Arguments>"
 
-        cme_logger.debug('Generated argument XML: ' + argument_xml)
+        cme_logger.debug("Generated argument XML: " + argument_xml)
         xml += argument_xml
 
         xml += """
@@ -136,26 +136,26 @@ class TSCH_EXEC:
 
         xml = self.gen_xml(command, tmpFileName, fileless)
 
-        logging.info("Task XML: {}".format(xml))
+        logging.info(f"Task XML: {xml}")
         taskCreated = False
-        logging.info('Creating task \\%s' % tmpName)
-        tsch.hSchRpcRegisterTask(dce, '\\%s' % tmpName, xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        logging.info(f"Creating task \\{tmpName}")
+        tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
         taskCreated = True
 
-        logging.info('Running task \\%s' % tmpName)
-        tsch.hSchRpcRun(dce, '\\%s' % tmpName)
+        logging.info(f"Running task \\{tmpName}")
+        tsch.hSchRpcRun(dce, f"\\{tmpName}")
 
         done = False
         while not done:
-            cme_logger.debug('Calling SchRpcGetLastRunInfo for \\%s' % tmpName)
-            resp = tsch.hSchRpcGetLastRunInfo(dce, '\\%s' % tmpName)
-            if resp['pLastRuntime']['wYear'] != 0:
+            cme_logger.debug(f"Calling SchRpcGetLastRunInfo for \\{tmpName}")
+            resp = tsch.hSchRpcGetLastRunInfo(dce, f"\\{tmpName}")
+            if resp["pLastRuntime"]["wYear"] != 0:
                 done = True
             else:
                 sleep(2)
 
-        logging.info('Deleting task \\%s' % tmpName)
-        tsch.hSchRpcDelete(dce, '\\%s' % tmpName)
+        logging.info(f"Deleting task \\{tmpName}")
+        tsch.hSchRpcDelete(dce, f"\\{tmpName}")
         taskCreated = False
 
         if taskCreated is True:
@@ -165,7 +165,7 @@ class TSCH_EXEC:
             if fileless:
                 while True:
                     try:
-                        with open(os.path.join('/tmp', 'cme_hosted', tmpFileName), 'r') as output:
+                        with open(os.path.join("/tmp", "cme_hosted", tmpFileName), "r") as output:
                             self.output_callback(output.read())
                         break
                     except IOError:
@@ -175,17 +175,17 @@ class TSCH_EXEC:
                 smbConnection = self.__rpctransport.get_smb_connection()
                 while True:
                     try:
-                        logging.info('Attempting to read ADMIN$\\Temp\\%s' % tmpFileName)
-                        smbConnection.getFile('ADMIN$', 'Temp\\%s' % tmpFileName, self.output_callback)
+                        logging.info(f"Attempting to read ADMIN$\\Temp\\{tmpFileName}")
+                        smbConnection.getFile("ADMIN$", f"Temp\\{tmpFileName}", self.output_callback)
                         break
                     except Exception as e:
-                        if str(e).find('SHARING') > 0:
+                        if str(e).find("SHARING") > 0:
                             sleep(3)
-                        elif str(e).find('STATUS_OBJECT_NAME_NOT_FOUND') >= 0:
+                        elif str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                             sleep(3)
                         else:
                             raise
-                cme_logger.debug('Deleting file ADMIN$\\Temp\\%s' % tmpFileName)
-                smbConnection.deleteFile('ADMIN$', 'Temp\\%s' % tmpFileName)
+                cme_logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")
+                smbConnection.deleteFile("ADMIN$", f"Temp\\{tmpFileName}")
 
         dce.disconnect()

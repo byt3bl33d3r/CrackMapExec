@@ -60,8 +60,8 @@ class ssh(connection):
         self.conn.close()
 
     def check_if_admin(self):
-        stdin, stdout, stderr = self.conn.exec_command('id')
-        if stdout.read().decode('utf-8').find('uid=0(root)') != -1:
+        stdin, stdout, stderr = self.conn.exec_command("id")
+        if stdout.read().decode("utf-8").find("uid=0(root)") != -1:
             self.admin_privs = True
 
     def plaintext_login(self, username, password):
@@ -90,21 +90,17 @@ class ssh(connection):
 
             self.check_if_admin()
             self.logger.success(
-                u'{}:{} {}'.format(
+                u"{}:{} {}".format(
                     username,
                     password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
+                    highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
                 )
             )
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
             self.logger.error(
-                u'{}:{} {}'.format(
-                    username,
-                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                    e
-                )
+                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
             )
             self.client_close()
             return False
@@ -113,8 +109,8 @@ class ssh(connection):
         try:
             stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
         except AttributeError:
-            return ''
-        self.logger.success('Executed command')
+            return ""
+        self.logger.success("Executed command")
         for line in stdout:
             self.logger.highlight(line.strip())
 
