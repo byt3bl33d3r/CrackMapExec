@@ -265,16 +265,16 @@ class smb(connection):
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'SMB',
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
+                "protocol": "SMB",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
             }
         )
 
     def get_os_arch(self):
         try:
-            string_binding = r'ncacn_ip_tcp:{}[135]'.format(self.host)
+            string_binding = fr"ncacn_ip_tcp:{self.host}[135]"
             transport = DCERPCTransportFactory(string_binding)
             transport.set_connect_timeout(5)
             dce = transport.get_dce_rpc()
@@ -282,16 +282,16 @@ class smb(connection):
                 dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:
-                dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
+                dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=("71710533-BEBA-4937-8319-B5DBEF9CCC36", "1.0"))
             except DCERPCException as e:
-                if str(e).find('syntaxes_not_supported') >= 0:
+                if str(e).find("syntaxes_not_supported") >= 0:
                     dce.disconnect()
                     return 32
             else:
                 dce.disconnect()
                 return 64
         except Exception as e:
-            self.logger.debug('Error retrieving os arch of {}: {}'.format(self.host, str(e)))
+            self.logger.debug(f"Error retrieving os arch of {self.host}: {str(e)}")
 
         return 0
 
@@ -314,18 +314,14 @@ class smb(connection):
 
         try:
             self.signing = self.conn.isSigningRequired() \
-                if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+                if self.smbv1 else self.conn._SMBConnection._Connection["RequireSigning"]
         except Exception as e:
             self.logger.debug(e)
             pass
 
         self.os_arch = self.get_os_arch()
         self.output_filename = os.path.expanduser(
-            '~/.cme/logs/{}_{}_{}'.format(
-                self.hostname,
-                self.host,
-                datetime.now().strftime("%Y-%m-%d_%H%M%S")
-            )
+            f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
         )
         self.output_filename = self.output_filename.replace(":", "-")
 
@@ -347,13 +343,13 @@ class smb(connection):
             self.domain = self.hostname
 
     def laps_search(self, username, password, ntlm_hash, domain):
-        self.logger.extra['protocol'] = "LDAP"
-        self.logger.extra['port'] = "389"
+        self.logger.extra["protocol"] = "LDAP"
+        self.logger.extra["port"] = "389"
         ldapco = LDAPConnect(self.domain, "389", self.domain)
 
         if self.kerberos:
             if self.kdcHost is None:
-                self.logger.error('Provide --kdcHost parameter')
+                self.logger.error("Provide --kdcHost parameter")
                 return False
             connection = ldapco.kerberos_login(
                 domain,
@@ -371,11 +367,11 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.info('LAPS connection failed with account {}'.format(username))
+            self.logger.info(f"LAPS connection failed with account {username}")
             return False
 
-        search_filter = '(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name=' + self.hostname + '))'
-        attributes = ['ms-MCS-AdmPwd', 'samAccountname']
+        search_filter = f"(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name={self.hostname}))"
+        attributes = ["ms-MCS-AdmPwd", "samAccountname"]
         result = connection.search(
             searchFilter=search_filter,
             attributes=attributes,
@@ -387,12 +383,12 @@ class smb(connection):
         for item in result:
             if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
-            for host in item['attributes']:
-                if str(host['type']) == "sAMAccountName":
-                    sAMAccountName = str(host['vals'][0])
+            for host in item["attributes"]:
+                if str(host["type"]) == "sAMAccountName":
+                    sAMAccountName = str(host["vals"][0])
                 else:
-                    msMCSAdmPwd = str(host['vals'][0])
-            self.logger.info("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
+                    msMCSAdmPwd = str(host["vals"][0])
+            self.logger.info(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
 
         self.username = self.args.laps
         self.password = msMCSAdmPwd
@@ -401,24 +397,17 @@ class smb(connection):
             self.logger.fail(f"msMCSAdmPwd is empty or account cannot read LAPS property for {self.hostname}")
             return False
         if ntlm_hash:
-            hash_ntlm = hashlib.new('md4', msMCSAdmPwd.encode('utf-16le')).digest()
+            hash_ntlm = hashlib.new("md4", msMCSAdmPwd.encode("utf-16le")).digest()
             self.hash = binascii.hexlify(hash_ntlm).decode()
 
         self.domain = self.hostname
-        self.logger.extra['protocol'] = "SMB"
-        self.logger.extra['port'] = "445"
+        self.logger.extra["protocol"] = "SMB"
+        self.logger.extra["port"] = "445"
         return True
 
     def print_host_info(self):
         self.logger.display(
-            u"{}{} (name:{}) (domain:{}) (signing:{}) (SMBv1:{})".format(
-                self.server_os,
-                ' x{}'.format(self.os_arch) if self.os_arch else '',
-                self.hostname,
-                self.domain,
-                self.signing,
-                self.smbv1
-            )
+            f"{self.server_os}{' x{}'.format(self.os_arch) if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
         )
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
@@ -429,8 +418,8 @@ class smb(connection):
         # Re-connect since we logged off
         fqdn_host = self.hostname + "." + self.domain
         self.create_conn_obj(fqdn_host)
-        lmhash = ''
-        nthash = ''
+        lmhash = ""
+        nthash = ""
 
         try:
             if not self.args.laps:
@@ -490,11 +479,11 @@ class smb(connection):
             )
             return False
         except (FileNotFoundError, KerberosException) as e:
-            self.logger.fail('CCache Error: {}'.format(e))
+            self.logger.fail(f"CCache Error: {e}")
             return False
         except OSError as e:
             self.logger.fail(
-                u'{}\\{}{} {} {}'.format(
+                u"{}\\{}{} {} {}".format(
                     domain,
                     self.username,
                     # Show what was used between cleartext, nthash, aesKey and ccache
@@ -539,15 +528,15 @@ class smb(connection):
 
             self.check_if_admin()
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
-            self.db.add_credential('plaintext', domain, self.username, self.password)
-            user_id = self.db.get_credential('plaintext', domain, self.username, self.password)
+            self.db.add_credential("plaintext", domain, self.username, self.password)
+            user_id = self.db.get_credential("plaintext", domain, self.username, self.password)
             host_id = self.db.get_hosts(self.host)[0].id
 
             self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
                 self.logger.debug(f"Adding admin user: {self.domain}/{self.username}:{self.password}@{self.host}")
-                self.db.add_admin_user('plaintext', domain, self.username, self.password, self.host, user_id=user_id)
+                self.db.add_admin_user("plaintext", domain, self.username, self.password, self.host, user_id=user_id)
 
             out = u'{}\\{}:{} {}'.format(
                 domain,
@@ -571,33 +560,27 @@ class smb(connection):
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.fail(
-                u'{}\\{}:{} {} {}'.format(
-                    domain,
-                    self.username,
-                    self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                    error,
-                    '({})'.format(desc) if self.args.verbose else ''
-                ),
+                f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {error} {'({})'.format(desc) if self.args.verbose else ''}",
                 color='magenta' if error in smb_error_status else 'red'
             )
             if error not in smb_error_status:
                 self.inc_failed_login(username)
                 return False
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
-            self.logger.fail('Connection Error: {}'.format(e))
+            self.logger.fail(f"Connection Error: {e}")
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
         # Re-connect since we logged off
         self.create_conn_obj()
-        lmhash = ''
-        nthash = ''
+        lmhash = ""
+        nthash = ""
         try:
             if not self.args.laps:
                 self.username = username
                 # This checks to see if we didn't provide the LM Hash
-                if ntlm_hash.find(':') != -1:
-                    lmhash, nthash = ntlm_hash.split(':')
+                if ntlm_hash.find(":") != -1:
+                    lmhash, nthash = ntlm_hash.split(":")
                     self.hash = nthash
                 else:
                     nthash = ntlm_hash
@@ -616,20 +599,15 @@ class smb(connection):
                 self.logger.fail(f"Broken Pipe Error while attempting to login")
 
             self.check_if_admin()
-            user_id = self.db.add_credential('hash', domain, self.username, nthash)
+            user_id = self.db.add_credential("hash", domain, self.username, nthash)
             host_id = self.db.get_hosts(self.host)[0].id
 
             self.db.add_loggedin_relation(user_id, host_id)
 
             if self.admin_privs:
-                self.db.add_admin_user('hash', domain, self.username, nthash, self.host, user_id=user_id)
+                self.db.add_admin_user("hash", domain, self.username, nthash, self.host, user_id=user_id)
 
-            out = u'{}\\{}:{} {}'.format(
-                domain,
-                self.username,
-                self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
-            )
+            out = f"{domain}\\{self.username}:{self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -646,13 +624,7 @@ class smb(connection):
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.fail(
-                u'{}\\{}:{} {} {}'.format(
-                    domain,
-                    self.username,
-                    self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                    error,
-                    '({})'.format(desc) if self.args.verbose else ''
-                ),
+                f"{domain}\\{self.username}:{self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {error} {'({})'.format(desc) if self.args.verbose else ''}",
                 color='magenta' if error in smb_error_status else 'red'
             )
 
@@ -660,7 +632,7 @@ class smb(connection):
                 self.inc_failed_login(self.username)
                 return False
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
-            self.logger.fail('Connection Error: {}'.format(e))
+            self.logger.fail(f"Connection Error: {e}")
             return False
 
     def create_smbv1_conn(self, kdc=''):
@@ -675,7 +647,7 @@ class smb(connection):
             )
             self.smbv1 = True
         except socket.error as e:
-            if str(e).find('Connection reset by peer') != -1:
+            if str(e).find("Connection reset by peer") != -1:
                 self.logger.info(f"SMBv1 might be disabled on {self.host if not kdc else kdc}")
             return False
         except (Exception, NetBIOSTimeout) as e:
@@ -695,7 +667,7 @@ class smb(connection):
             )
             self.smbv1 = False
         except socket.error as e:
-            if str(e).find('Too many open files') != -1:
+            if str(e).find("Too many open files") != -1:
                 self.logger.fail(f"SMBv3 connection error on {self.host if not kdc else kdc}: {e}")
             return False
         except (Exception, NetBIOSTimeout) as e:
@@ -703,7 +675,7 @@ class smb(connection):
             return False
         return True
 
-    def create_conn_obj(self, kdc=''):
+    def create_conn_obj(self, kdc=""):
         if self.create_smbv1_conn(kdc):
             return True
         elif self.create_smbv3_conn(kdc):
@@ -711,7 +683,7 @@ class smb(connection):
         return False
 
     def check_if_admin(self):
-        rpctransport = SMBTransport(self.conn.getRemoteHost(), 445, r'\svcctl', smb_connection=self.conn)
+        rpctransport = SMBTransport(self.conn.getRemoteHost(), 445, r"\svcctl", smb_connection=self.conn)
         dce = rpctransport.get_dce_rpc()
         try:
             dce.connect()
@@ -730,9 +702,9 @@ class smb(connection):
         return
 
     def gen_relay_list(self):
-        if self.server_os.lower().find('windows') != -1 and self.signing is False:
+        if self.server_os.lower().find("windows") != -1 and self.signing is False:
             with sem:
-                with open(self.args.gen_relay_list, 'a+') as relay_list:
+                with open(self.args.gen_relay_list, "a+") as relay_list:
                     if self.host not in relay_list.read():
                         relay_list.write(self.host + '\n')
 
@@ -742,14 +714,14 @@ class smb(connection):
         if self.args.exec_method:
             methods = [self.args.exec_method]
         if not methods:
-            methods = ['wmiexec', 'smbexec', 'mmcexec', 'atexec']
+            methods = ["wmiexec", "smbexec", "mmcexec", "atexec"]
 
         if not payload and self.args.execute:
             payload = self.args.execute
             if not self.args.no_output: get_output = True
 
         for method in methods:
-            if method == 'wmiexec':
+            if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
                         self.host if not self.kerberos else self.hostname + '.' + self.domain,
@@ -764,13 +736,13 @@ class smb(connection):
                         self.hash,
                         self.args.share
                     )
-                    self.logger.info('Executed command via wmiexec')
+                    self.logger.info("Executed command via wmiexec")
                     break
                 except:
-                    self.logger.debug('Error executing command via wmiexec, traceback:')
+                    self.logger.debug("Error executing command via wmiexec, traceback:")
                     self.logger.debug(format_exc())
                     continue
-            elif method == 'mmcexec':
+            elif method == "mmcexec":
                 try:
                     exec_method = MMCEXEC(
                         self.host if not self.kerberos else self.hostname + '.' + self.domain,
@@ -781,16 +753,16 @@ class smb(connection):
                         self.conn,
                         self.hash
                     )
-                    self.logger.info('Executed command via mmcexec')
+                    self.logger.info("Executed command via mmcexec")
                     break
                 except:
-                    self.logger.debug('Error executing command via mmcexec, traceback:')
+                    self.logger.debug("Error executing command via mmcexec, traceback:")
                     self.logger.debug(format_exc())
                     continue
-            elif method == 'atexec':
+            elif method == "atexec":
                 try:
                     exec_method = TSCH_EXEC(
-                        self.host if not self.kerberos else self.hostname + '.' + self.domain,
+                        self.host if not self.kerberos else self.hostname + "." + self.domain,
                         self.smb_share_name,
                         self.username,
                         self.password,
@@ -800,13 +772,13 @@ class smb(connection):
                         self.kdcHost,
                         self.hash
                     )  # self.args.share)
-                    self.logger.info('Executed command via atexec')
+                    self.logger.info("Executed command via atexec")
                     break
                 except:
-                    self.logger.debug('Error executing command via atexec, traceback:')
+                    self.logger.debug("Error executing command via atexec, traceback:")
                     self.logger.debug(format_exc())
                     continue
-            elif method == 'smbexec':
+            elif method == "smbexec":
                 try:
                     exec_method = SMBEXEC(
                         self.host if not self.kerberos else self.hostname + '.' + self.domain,
@@ -822,14 +794,14 @@ class smb(connection):
                         self.hash,
                         self.args.share
                     )
-                    self.logger.info('Executed command via smbexec')
+                    self.logger.info("Executed command via smbexec")
                     break
                 except:
-                    self.logger.debug('Error executing command via smbexec, traceback:')
+                    self.logger.debug("Error executing command via smbexec, traceback:")
                     self.logger.debug(format_exc())
                     continue
 
-        if hasattr(self, 'server'):
+        if hasattr(self, "server"):
             self.server.track_host(self.host)
 
         output = exec_method.execute(payload, get_output)
@@ -905,27 +877,27 @@ class smb(connection):
             self.logger.info(f"Shares returned: {shares}")
         except SessionError as e:
             error = get_error_string(e)
-            self.logger.fail('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
+            self.logger.fail(f"Error enumerating shares: {error}", color='magenta' if error in smb_error_status else 'red')
             return permissions
         except Exception as e:
             error = get_error_string(e)
-            self.logger.fail('Error enumerating shares: {}'.format(error), color='magenta' if error in smb_error_status else 'red')
+            self.logger.fail(f"Error enumerating shares: {error}", color='magenta' if error in smb_error_status else 'red')
             return permissions
 
         for share in shares:
-            share_name = share['shi1_netname'][:-1]
-            share_remark = share['shi1_remark'][:-1]
+            share_name = share["shi1_netname"][:-1]
+            share_remark = share["shi1_remark"][:-1]
             share_info = {
-                'name': share_name,
-                'remark': share_remark,
-                'access': []
+                "name": share_name,
+                "remark": share_remark,
+                "access": []
             }
             read = False
             write = False
             try:
-                self.conn.listPath(share_name, '*')
+                self.conn.listPath(share_name, "*")
                 read = True
-                share_info['access'].append('READ')
+                share_info["access"].append("READ")
             except SessionError as e:
                 error = get_error_string(e)
                 self.logger.debug(f"Error checking READ access on share: {error}")
@@ -935,7 +907,7 @@ class smb(connection):
                 self.conn.createDirectory(share_name, temp_dir)
                 self.conn.deleteDirectory(share_name, temp_dir)
                 write = True
-                share_info['access'].append('WRITE')
+                share_info["access"].append("WRITE")
             except SessionError as e:
                 error = get_error_string(e)
                 self.logger.debug(f"Error checking WRITE access on share: {error}")
@@ -952,17 +924,17 @@ class smb(connection):
                     self.logger.debug(f"Error adding share: {error}")
                     pass
 
-        self.logger.display('Enumerated shares')
-        self.logger.highlight('{:<15} {:<15} {}'.format('Share', 'Permissions', 'Remark'))
-        self.logger.highlight('{:<15} {:<15} {}'.format('-----', '-----------', '------'))
+        self.logger.display("Enumerated shares")
+        self.logger.highlight(f"{'Share':<15} {'Permissions':<15} {'Remark'}")
+        self.logger.highlight(f"{'-----':<15} {'-----------':<15} {'------'}")
         for share in permissions:
-            name = share['name']
-            remark = share['remark']
-            perms = share['access']
+            name = share["name"]
+            remark = share["remark"]
+            perms = share["access"]
 
             if self.args.filter_shares and self.args.filter_shares != perms:
                 continue
-            self.logger.highlight(u'{:<15} {:<15} {}'.format(name, ','.join(perms), remark))
+            self.logger.highlight(f"{name:<15} {','.join(perms):<15} {remark}")
         return permissions
 
     def get_dc_ips(self):
@@ -976,10 +948,10 @@ class smb(connection):
     def sessions(self):
         try:
             sessions = get_netsession(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-            self.logger.display('Enumerated sessions')
+            self.logger.display("Enumerated sessions")
             for session in sessions:
                 if session.sesi10_cname.find(self.local_ip) == -1:
-                    self.logger.highlight('{:<25} User:{}'.format(session.sesi10_cname, session.sesi10_username))
+                    self.logger.highlight(f"{session.sesi10_cname:<25} User:{session.sesi10_username}")
             return sessions
         except:
             pass
@@ -988,7 +960,7 @@ class smb(connection):
         disks = []
         try:
             disks = get_localdisks(self.host, self.domain, self.username, self.password, self.lmhash, self.nthash)
-            self.logger.display('Enumerated disks')
+            self.logger.display("Enumerated disks")
             for disk in disks:
                 self.logger.highlight(disk.disk)
         except Exception as e:
@@ -1009,7 +981,7 @@ class smb(connection):
                 groups = get_netlocalgroup(
                     self.host,
                     dc_ip,
-                    '',
+                    "",
                     self.username,
                     self.password,
                     self.lmhash,
@@ -1020,24 +992,23 @@ class smb(connection):
                 )
 
                 if self.args.local_groups:
-                    self.logger.success('Enumerated members of local group')
+                    self.logger.success("Enumerated members of local group")
                 else:
-                    self.logger.success('Enumerated local groups')
+                    self.logger.success("Enumerated local groups")
 
                 for group in groups:
                     if group.name:
                         if not self.args.local_groups:
-                            self.logger.highlight('{:<40} membercount: {}'.format(
-                                group.name,
-                                group.membercount
-                            ))
+                            self.logger.highlight(
+                                f"{group.name:<40} membercount: {group.membercount}"
+                            )
                             group_id = self.db.add_group(
                                 self.hostname,
                                 group.name,
                                 member_count_ad=group.membercount
                             )[0]
                         else:
-                            domain, name = group.name.split('/')
+                            domain, name = group.name.split("/")
                             self.logger.highlight(f"domain: {domain}, name: {name}")
                             self.logger.highlight(f"{domain.upper()}\\{name}")
                             try:
@@ -1060,15 +1031,12 @@ class smb(connection):
                             elif group.isgroup:
                                 self.db.add_group(domain, name, member_count_ad=group.membercount)
                 break
-            # except SessionError as e:
-            #     print("dddfdfdf")
-            #     self.logger.error(f"Error connecting via SMB: {e}")
             except Exception as e:
                 self.logger.fail(f"Error enumerating local groups of {self.host}: {e}")
-                self.logger.display('Trying with SAMRPC protocol')
+                self.logger.display("Trying with SAMRPC protocol")
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
-                    self.logger.success('Enumerated local groups')
+                    self.logger.success("Enumerated local groups")
                     self.logger.display(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
@@ -1082,7 +1050,7 @@ class smb(connection):
         return groups
 
     def domainfromdsn(self, dsn):
-        dsnparts = dsn.split(',')
+        dsnparts = dsn.split(",")
         domain = ""
         for part in dsnparts:
             k, v = part.split("=")
@@ -1120,13 +1088,12 @@ class smb(connection):
                         custom_filter=str()
                     )
 
-                    self.logger.success('Enumerated members of domain group')
+                    self.logger.success("Enumerated members of domain group")
                     for group in groups:
-                        member_count = len(group.member) if hasattr(group, 'member') else 0
-                        self.logger.highlight('{}\\{}'.format(
-                            group.memberdomain,
-                            group.membername
-                        ))
+                        member_count = len(group.member) if hasattr(group, "member") else 0
+                        self.logger.highlight(
+                            f"{group.memberdomain}\\{group.membername}"
+                        )
                         try:
                             group_id = self.db.get_groups(
                                 group_name=self.args.groups,
@@ -1148,7 +1115,7 @@ class smb(connection):
                             )[0]
                     break
                 except Exception as e:
-                    self.logger.fail('Error enumerating domain group members using dc ip {}: {}'.format(dc_ip, e))
+                    self.logger.fail(f"Error enumerating domain group members using dc ip {dc_ip}: {e}")
             else:
                 try:
                     groups = get_netgroup(
@@ -1168,13 +1135,12 @@ class smb(connection):
                         custom_filter=str()
                     )
 
-                    self.logger.success('Enumerated domain group(s)')
+                    self.logger.success("Enumerated domain group(s)")
                     for group in groups:
-                        member_count = len(group.member) if hasattr(group, 'member') else 0
-                        self.logger.highlight('{:<40} membercount: {}'.format(
-                            group.samaccountname,
-                            member_count
-                        ))
+                        member_count = len(group.member) if hasattr(group, "member") else 0
+                        self.logger.highlight(
+                            f"{group.samaccountname:<40} membercount: {member_count}"
+                        )
 
                         if bool(group.isgroup) is True:
                             # Since there isn't a groupmember attribute on the returned object from get_netgroup
@@ -1187,7 +1153,7 @@ class smb(connection):
                             )[0]
                     break
                 except Exception as e:
-                    self.logger.fail('Error enumerating domain group using dc ip {}: {}'.format(dc_ip, e))
+                    self.logger.fail(f"Error enumerating domain group using dc ip {dc_ip}: {e}")
         return groups
 
     def users(self):
@@ -1211,7 +1177,7 @@ class smb(connection):
                     custom_filter=str()
                 )
 
-                self.logger.success('Enumerated domain computer(s)')
+                self.logger.success("Enumerated domain computer(s)")
                 for hosts in hosts:
                     domain, host_clean = self.domainfromdnshostname(hosts.dnshostname)
                     self.logger.highlight('{}\\{:<30}'.format(domain, host_clean))
@@ -1232,28 +1198,20 @@ class smb(connection):
                 lmhash=self.lmhash,
                 nthash=self.nthash
             )
-            self.logger.success('Enumerated logged_on users')
+            self.logger.success("Enumerated logged_on users")
             if self.args.loggedon_users_filter:
                 for user in logged_on:
                     if re.match(self.args.loggedon_users_filter, user.wkui1_username):
-                        self.logger.highlight('{}\\{:<25} {}'.format(
-                            user.wkui1_logon_domain,
-                            user.wkui1_username,
-                            'logon_server: {}'.format(
-                                user.wkui1_logon_server
-                            ) if user.wkui1_logon_server else '')
+                        self.logger.highlight(
+                            f"{user.wkui1_logon_domain}\\{user.wkui1_username:<25} {f'logon_server: {user.wkui1_logon_server}' if user.wkui1_logon_server else ''}"
                         )
             else:
                 for user in logged_on:
-                    self.logger.highlight('{}\\{:<25} {}'.format(
-                        user.wkui1_logon_domain,
-                        user.wkui1_username,
-                        'logon_server: {}'.format(
-                            user.wkui1_logon_server
-                        ) if user.wkui1_logon_server else '')
+                    self.logger.highlight(
+                        f"{user.wkui1_logon_domain}\\{user.wkui1_username:<25} {f'logon_server: {user.wkui1_logon_server}' if user.wkui1_logon_server else ''}"
                     )
         except Exception as e:
-            self.logger.fail('Error enumerating logged on users: {}'.format(e))
+            self.logger.fail(f"Error enumerating logged on users: {e}")
         return logged_on
 
     def pass_pol(self):
@@ -1282,20 +1240,20 @@ class smb(connection):
                 record = wmi_results.getProperties()
                 records.append(record)
                 for k, v in record.items():
-                    self.logger.highlight('{} => {}'.format(k, v['value']))
+                    self.logger.highlight(f"{k} => {v['value']}")
                 self.logger.highlight('')
             except Exception as e:
-                if str(e).find('S_FALSE') < 0:
+                if str(e).find("S_FALSE") < 0:
                     raise e
                 else:
                     break
 
         return records
 
-    def spider(self, share=None, folder='.', pattern=[], regex=[], exclude_dirs=[], depth=None, content=False, only_files=True):
+    def spider(self, share=None, folder=".", pattern=[], regex=[], exclude_dirs=[], depth=None, content=False, only_files=True):
         spider = SMBSpider(self.conn, self.logger)
 
-        self.logger.display('Started spidering')
+        self.logger.display("Started spidering")
         start_time = time()
         if not share:
             spider.spider(
@@ -1321,22 +1279,22 @@ class smb(connection):
             max_rid = int(self.args.rid_brute)
 
         KNOWN_PROTOCOLS = {
-            135: {'bindstr': r'ncacn_ip_tcp:%s', 'set_host': False},
-            139: {'bindstr': r'ncacn_np:{}[\pipe\lsarpc]', 'set_host': True},
-            445: {'bindstr': r'ncacn_np:{}[\pipe\lsarpc]', 'set_host': True},
+            135: {"bindstr": r"ncacn_ip_tcp:%s", "set_host": False},
+            139: {"bindstr": r"ncacn_np:{}[\pipe\lsarpc]", "set_host": True},
+            445: {"bindstr": r"ncacn_np:{}[\pipe\lsarpc]", 'set_host': True},
         }
 
         try:
-            full_hostname = self.host if not self.kerberos else self.hostname + '.' + self.domain
+            full_hostname = self.host if not self.kerberos else self.hostname + "." + self.domain
             string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format()
             logging.debug(f"StringBinding {string_binding}")
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
 
-            if KNOWN_PROTOCOLS[self.args.port]['set_host']:
+            if KNOWN_PROTOCOLS[self.args.port]["set_host"]:
                 rpc_transport.setRemoteHost(full_hostname)
 
-            if hasattr(rpc_transport, 'set_credentials'):
+            if hasattr(rpc_transport, "set_credentials"):
                 # This method exists only for selected protocol sequences.
                 rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
 
@@ -1369,14 +1327,14 @@ class smb(connection):
             self.logger.fail(f"Error connecting: {e}")
             return entries
 
-        policy_handle = resp['PolicyHandle']
+        policy_handle = resp["PolicyHandle"]
 
         resp = lsad.hLsarQueryInformationPolicy2(
             dce,
             policy_handle,
             lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation
         )
-        domain_sid = resp['PolicyInformation']['PolicyAccountDomainInfo']['DomainSid'].formatCanonical()
+        domain_sid = resp["PolicyInformation"]["PolicyAccountDomainInfo"]["DomainSid"].formatCanonical()
 
         so_far = 0
         simultaneous = 1000
@@ -1391,23 +1349,23 @@ class smb(connection):
 
             sids = list()
             for i in range(so_far, so_far + sids_to_check):
-                sids.append(domain_sid + '-%d' % i)
+                sids.append(domain_sid + "-%d" % i)
             try:
                 lsat.hLsarLookupSids(dce, policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
             except DCERPCException as e:
-                if str(e).find('STATUS_NONE_MAPPED') >= 0:
+                if str(e).find("STATUS_NONE_MAPPED") >= 0:
                     so_far += simultaneous
                     continue
-                elif str(e).find('STATUS_SOME_NOT_MAPPED') >= 0:
+                elif str(e).find("STATUS_SOME_NOT_MAPPED") >= 0:
                     resp = e.get_packet()
                 else:
                     raise
 
-            for n, item in enumerate(resp['TranslatedNames']['Names']):
-                if item['Use'] != SID_NAME_USE.SidTypeUnknown:
+            for n, item in enumerate(resp["TranslatedNames"]["Names"]):
+                if item["Use"] != SID_NAME_USE.SidTypeUnknown:
                     rid = so_far + n
-                    domain = resp['ReferencedDomains']['Domains'][item['DomainIndex']]['Name']
-                    user = item['Name']
+                    domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]]["Name"]
+                    user = item["Name"]
                     sid_type = SID_NAME_USE.enumItems(item['Use']).name
                     self.logger.highlight("f{rid}: {domain}\\{user} ({sid_type})")
                     entries.append({
@@ -1422,7 +1380,7 @@ class smb(connection):
 
     def put_file(self):
         self.logger.display(f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}")
-        with open(self.args.put_file[0], 'rb') as file:
+        with open(self.args.put_file[0], "rb") as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
                 self.logger.success(
@@ -1436,7 +1394,7 @@ class smb(connection):
         file_handle = self.args.get_file[1]
         if self.args.append_host:
             file_handle = f"{self.hostname}-{self.args.get_file[1]}"
-        with open(file_handle, 'wb+') as file:
+        with open(file_handle, "wb+") as file:
             try:
                 self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
                 self.logger.success(f"File {self.args.get_file[0]} was transferred to {file_handle}")
@@ -1462,7 +1420,7 @@ class smb(connection):
             add_sam_hash.sam_hashes += 1
             self.logger.highlight(sam_hash)
             username, _, lmhash, nthash, _, _, _ = sam_hash.split(':')
-            self.db.add_credential('hash', self.hostname, username, ':'.join((lmhash, nthash)), pillaged_from=host_id)
+            self.db.add_credential("hash", self.hostname, username, ':'.join((lmhash, nthash)), pillaged_from=host_id)
 
         add_sam_hash.sam_hashes = 0
 
@@ -1647,7 +1605,7 @@ class smb(connection):
         except Exception as e:
             self.logger.debug(f"Error while looting browsers: {e}")
         for credential in browser_credentials:
-            cred_url = credential.url + ' -' if credential.url != '' else '-'
+            cred_url = credential.url + " -" if credential.url != "" else "-"
             self.logger.highlight(
                 f"[{credential.winuser}][{credential.browser.upper()}] {cred_url} {credential.username}:{credential.password}"
             )
@@ -1723,7 +1681,7 @@ class smb(connection):
                 ntlm_hash = MD4.new()
                 ntlm_hash.update(currentPassword)
                 passwd = binascii.hexlify(ntlm_hash.digest()).decode("utf-8")
-                self.logger.highlight("GMSA ID: {:<20} NTLM: {}".format(gmsa_id, passwd))
+                self.logger.highlight(f"GMSA ID: {gmsa_id:<20} NTLM: {passwd}")
 
         add_lsa_secret.secrets = 0
 
@@ -1749,7 +1707,7 @@ class smb(connection):
             try:
                 self.remote_ops.finish()
             except Exception as e:
-                self.logger.debug("Error calling remote_ops.finish(): {}".format(e))
+                self.logger.debug(f"Error calling remote_ops.finish(): {e}")
             LSA.finish()
 
     def ntds(self):
@@ -1792,7 +1750,7 @@ class smb(connection):
 
         if self.remote_ops:
             try:
-                if self.args.ntds == 'vss':
+                if self.args.ntds == "vss":
                     NTDSFileName = self.remote_ops.saveNTDS()
                     use_vss_method = True
 
