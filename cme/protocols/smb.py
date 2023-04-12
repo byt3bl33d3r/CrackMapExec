@@ -22,7 +22,7 @@ from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
 
-from cme.config import pwned_label
+from cme.config import pwned_label, process_secret
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.protocols.smb.firefox import FirefoxTriage
@@ -407,7 +407,7 @@ class smb(connection):
 
     def print_host_info(self):
         self.logger.display(
-            f"{self.server_os}{' x{}'.format(self.os_arch) if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
+            f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
         )
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
@@ -416,7 +416,7 @@ class smb(connection):
     def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
         logging.getLogger("impacket").disabled = True
         # Re-connect since we logged off
-        fqdn_host = self.hostname + "." + self.domain
+        fqdn_host = f"{self.hostname}.{self.domain}"
         self.create_conn_obj(fqdn_host)
         lmhash = ""
         nthash = ""
@@ -426,8 +426,8 @@ class smb(connection):
                 self.password = password
                 self.username = username
             # This checks to see if we didn't provide the LM Hash
-            if ntlm_hash.find(':') != -1:
-                lmhash, nthash = ntlm_hash.split(':')
+            if ntlm_hash.find(":") != -1:
+                lmhash, nthash = ntlm_hash.split(":")
                 self.hash = nthash
             else:
                 nthash = ntlm_hash
@@ -437,10 +437,10 @@ class smb(connection):
             if nthash:
                 self.nthash = nthash
 
-            if not all('' == s for s in [self.nthash, password, aesKey]):
+            if not all("" == s for s in [self.nthash, password, aesKey]):
                 kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
             else:
-                kerb_pass = ''
+                kerb_pass = ""
 
             self.logger.debug(f"Attempting to do Kerberos Login with useCache: {useCache}")
             self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
@@ -451,14 +451,8 @@ class smb(connection):
             else:
                 self.username = username
 
-            out = u"{}\\{}{} {}".format(
-                self.domain,
-                self.username,
-                # Show what was used between cleartext, nthash, aesKey and ccache
-                " from ccache" if useCache
-                else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                highlight(f"({pwned_label if self.admin_privs else ''})")
-            )
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
+            out = f"{self.domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, domain, self.logger, self.config)
@@ -482,31 +476,15 @@ class smb(connection):
             self.logger.fail(f"CCache Error: {e}")
             return False
         except OSError as e:
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             self.logger.fail(
-                u"{}\\{}{} {} {}".format(
-                    domain,
-                    self.username,
-                    # Show what was used between cleartext, nthash, aesKey and ccache
-                    " from ccache" if useCache
-                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                    str(e),
-                    '',
-                    color='red'
-                )
+                f"{domain}\\{self.username}{used_ccache} {e}"
             )
         except (SessionError, Exception) as e:
             error, desc = e.getErrorString()
             self.logger.fail(
-                u"{}\\{}{} {} {}".format(
-                    domain,
-                    self.username,
-                    # Show what was used between cleartext, nthash, aesKey and ccache
-                    " from ccache" if useCache
-                    else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                    error,
-                    '({})'.format(desc) if self.args.verbose else ''
-                ),
-                color='magenta' if error in smb_error_status else 'red'
+                f"{domain}\\{self.username}{used_ccache} {error} {f'({desc})' if self.args.verbose else ''}",
+                color="magenta" if error in smb_error_status else "red"
             )
             if error not in smb_error_status:
                 self.inc_failed_login(username)
@@ -538,12 +516,7 @@ class smb(connection):
                 self.logger.debug(f"Adding admin user: {self.domain}/{self.username}:{self.password}@{self.host}")
                 self.db.add_admin_user("plaintext", domain, self.username, self.password, self.host, user_id=user_id)
 
-            out = u'{}\\{}:{} {}'.format(
-                domain,
-                self.username,
-                self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8,
-                highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')
-            )
+            out = f"{domain}\\{self.username}:{process_secret(self.password)} {self.mark_pwned()}"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -560,8 +533,8 @@ class smb(connection):
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.fail(
-                f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {error} {'({})'.format(desc) if self.args.verbose else ''}",
-                color='magenta' if error in smb_error_status else 'red'
+                f'{domain}\\{self.username}:{process_secret(self.password )} {error} {f"({desc})" if self.args.verbose else ""}',
+                color="magenta" if error in smb_error_status else "red"
             )
             if error not in smb_error_status:
                 self.inc_failed_login(username)
@@ -594,7 +567,7 @@ class smb(connection):
 
             self.domain = domain
             try:
-                self.conn.login(self.username, '', domain, lmhash, nthash)
+                self.conn.login(self.username, "", domain, lmhash, nthash)
             except BrokenPipeError:
                 self.logger.fail(f"Broken Pipe Error while attempting to login")
 
@@ -607,7 +580,7 @@ class smb(connection):
             if self.admin_privs:
                 self.db.add_admin_user("hash", domain, self.username, nthash, self.host, user_id=user_id)
 
-            out = f"{domain}\\{self.username}:{self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+            out = f"{domain}\\{self.username}:{process_secret(self.hash)} {self.mark_pwned()}"
             self.logger.success(out)
 
             if not self.args.local_auth:
@@ -624,8 +597,8 @@ class smb(connection):
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.fail(
-                f"{domain}\\{self.username}:{self.hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {error} {'({})'.format(desc) if self.args.verbose else ''}",
-                color='magenta' if error in smb_error_status else 'red'
+                f"{domain}\\{self.username}:{process_secret(self.hash)} {error} {f'({desc})' if self.args.verbose else ''}",
+                color="magenta" if error in smb_error_status else "red"
             )
 
             if error not in smb_error_status:
@@ -635,7 +608,7 @@ class smb(connection):
             self.logger.fail(f"Connection Error: {e}")
             return False
 
-    def create_smbv1_conn(self, kdc=''):
+    def create_smbv1_conn(self, kdc=""):
         try:
             self.conn = SMBConnection(
                 self.host if not kdc else kdc,
@@ -864,7 +837,7 @@ class smb(connection):
         try:
             self.logger.debug(f"domain: {self.domain}")
             user_id = self.db.get_user(
-                self.domain.split('.')[0].upper(),
+                self.domain.split(".")[0].upper(),
                 self.username
             )[0][0]
         except Exception as e:
@@ -877,11 +850,17 @@ class smb(connection):
             self.logger.info(f"Shares returned: {shares}")
         except SessionError as e:
             error = get_error_string(e)
-            self.logger.fail(f"Error enumerating shares: {error}", color='magenta' if error in smb_error_status else 'red')
+            self.logger.fail(
+                f"Error enumerating shares: {error}",
+                color="magenta" if error in smb_error_status else "red"
+            )
             return permissions
         except Exception as e:
             error = get_error_string(e)
-            self.logger.fail(f"Error enumerating shares: {error}", color='magenta' if error in smb_error_status else 'red')
+            self.logger.fail(
+                f"Error enumerating shares: {error}",
+                color="magenta" if error in smb_error_status else "red"
+            )
             return permissions
 
         for share in shares:
@@ -967,7 +946,7 @@ class smb(connection):
             error, desc = e.getErrorString()
             self.logger.fail(
                 f"Error enumerating disks: {error}",
-                color='magenta' if error in smb_error_status else 'red'
+                color="magenta" if error in smb_error_status else "red"
             )
 
         return disks
@@ -999,9 +978,7 @@ class smb(connection):
                 for group in groups:
                     if group.name:
                         if not self.args.local_groups:
-                            self.logger.highlight(
-                                f"{group.name:<40} membercount: {group.membercount}"
-                            )
+                            self.logger.highlight(f"{group.name:<40} membercount: {group.membercount}")
                             group_id = self.db.add_group(
                                 self.hostname,
                                 group.name,
@@ -1138,9 +1115,7 @@ class smb(connection):
                     self.logger.success("Enumerated domain group(s)")
                     for group in groups:
                         member_count = len(group.member) if hasattr(group, "member") else 0
-                        self.logger.highlight(
-                            f"{group.samaccountname:<40} membercount: {member_count}"
-                        )
+                        self.logger.highlight(f"{group.samaccountname:<40} membercount: {member_count}")
 
                         if bool(group.isgroup) is True:
                             # Since there isn't a groupmember attribute on the returned object from get_netgroup
@@ -1180,7 +1155,7 @@ class smb(connection):
                 self.logger.success("Enumerated domain computer(s)")
                 for hosts in hosts:
                     domain, host_clean = self.domainfromdnshostname(hosts.dnshostname)
-                    self.logger.highlight('{}\\{:<30}'.format(domain, host_clean))
+                    self.logger.highlight(f"{domain}\\{host_clean:<30}")
                 break
             except Exception as e:
                 self.logger.fail(f"Error enumerating domain hosts using dc ip {dc_ip}: {e}")
@@ -1286,7 +1261,7 @@ class smb(connection):
 
         try:
             full_hostname = self.host if not self.kerberos else self.hostname + "." + self.domain
-            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr'].format()
+            string_binding = KNOWN_PROTOCOLS[self.args.port]['bindstr']
             logging.debug(f"StringBinding {string_binding}")
             rpc_transport = transport.DCERPCTransportFactory(string_binding)
             rpc_transport.set_dport(self.args.port)
