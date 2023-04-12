@@ -7,9 +7,10 @@ import configparser
 from configparser import NoSectionError, NoOptionError
 from cme.paths import CME_PATH, CONFIG_PATH, TMP_PATH, DATA_PATH
 from cme.cmedb import initialize_db
+from cme.logger import cme_logger
 
 
-def first_run_setup(logger):
+def first_run_setup(logger=cme_logger):
     if not os.path.exists(TMP_PATH):
         os.mkdir(TMP_PATH)
 
