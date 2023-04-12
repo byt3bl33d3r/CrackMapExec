@@ -98,6 +98,10 @@ def main():
             cme_logger.error(f"Error opening le dank meme: {e}")
             sys.exit(1)
 
+    if args.use_kcache and not os.environ.get("KRB5CCNAME"):
+        cme_logger.error("KRB5CCNAME environment variable is not set")
+        sys.exit(1)
+
     module_server = None
     targets = []
     server_port_dict = {"http": 80, "https": 443, "smb": 445}
