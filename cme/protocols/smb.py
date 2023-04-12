@@ -22,7 +22,7 @@ from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
 
-from cme.config import pwned_label, process_secret
+from cme.config import process_secret
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.protocols.smb.firefox import FirefoxTriage

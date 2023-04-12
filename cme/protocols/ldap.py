@@ -28,6 +28,7 @@ from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.smb import SMB_DIALECT
 from impacket.smbconnection import SMBConnection, SessionError
 
+from cme.config import process_secret
 from cme.connection import *
 from cme.console import cme_console
 from cme.helpers.bloodhound import add_user_bh
@@ -207,8 +208,8 @@ class ldap(connection):
                 return [None, None, None]
 
             resp = ldap_connection.search(
-                scope=ldapasn1_impacket.Scope('baseObject'),
-                attributes=['defaultNamingContext', 'dnsHostName'],
+                scope=ldapasn1_impacket.Scope("baseObject"),
+                attributes=["defaultNamingContext", "dnsHostName"],
                 sizeLimit=0
             )
             for item in resp:
@@ -218,15 +219,15 @@ class ldap(connection):
                 target_domain = None
                 base_dn = None
                 try:
-                    for attribute in item['attributes']:
-                        if str(attribute['type']) == 'defaultNamingContext':
-                            base_dn = str(attribute['vals'][0])
-                            target_domain = sub(',DC=', '.', base_dn[base_dn.lower().find('dc='):], flags=I)[3:]
-                        if str(attribute['type']) == 'dnsHostName':
-                            target = str(attribute['vals'][0])
+                    for attribute in item["attributes"]:
+                        if str(attribute['type']) == "defaultNamingContext":
+                            base_dn = str(attribute["vals"][0])
+                            target_domain = sub(",DC=", ".", base_dn[base_dn.lower().find("dc="):], flags=I)[3:]
+                        if str(attribute["type"]) == "dnsHostName":
+                            target = str(attribute["vals"][0])
                 except Exception as e:
                     self.logger.debug("Exception:", exc_info=True)
-                    self.logger.info('Skipping item, cannot process due to error %s' % str(e))
+                    self.logger.info(f"Skipping item, cannot process due to error {e}")
         except OSError as e:
             return [None, None, None]
         self.logger.debug(f"Target: {target}; target_domain: {target_domain}; base_dn: {base_dn}")
@@ -242,9 +243,9 @@ class ldap(connection):
                 dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             try:
-                dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=('71710533-BEBA-4937-8319-B5DBEF9CCC36', '1.0'))
+                dce.bind(MSRPC_UUID_PORTMAP, transfer_syntax=("71710533-BEBA-4937-8319-B5DBEF9CCC36", "1.0"))
             except DCERPCException as e:
-                if str(e).find('syntaxes_not_supported') >= 0:
+                if str(e).find("syntaxes_not_supported") >= 0:
                     dce.disconnect()
                     return 32
             else:
@@ -257,17 +258,17 @@ class ldap(connection):
 
     def get_ldap_username(self):
         extended_request = ldapasn1_impacket.ExtendedRequest()
-        extended_request['requestName'] = '1.3.6.1.4.1.4203.1.11.3'  # whoami
+        extended_request["requestName"] = "1.3.6.1.4.1.4203.1.11.3"  # whoami
 
         response = self.ldapConnection.sendReceive(extended_request)
         for message in response:
-            search_result = message['protocolOp'].getComponent()
-            if search_result['resultCode'] == ldapasn1_impacket.ResultCode('success'):
-                response_value = search_result['responseValue']
+            search_result = message["protocolOp"].getComponent()
+            if search_result["resultCode"] == ldapasn1_impacket.ResultCode("success"):
+                response_value = search_result["responseValue"]
                 if response_value.hasValue():
                     value = response_value.asOctets().decode(response_value.encoding)[2:]
-                    return value.split('\\')[1]
-        return ''
+                    return value.split("\\")[1]
+        return ""
 
     def enum_host_info(self):
         self.target, self.targetDomain, self.baseDN = self.get_ldap_info(self.host)
@@ -280,7 +281,7 @@ class ldap(connection):
             self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
 
             try:
-                self.conn.login('', '')
+                self.conn.login("", "")
             except BrokenPipeError as e:
                 self.logger.fail(f"Broken Pipe Error while attempting to login: {e}")
             except Exception as e:
@@ -291,7 +292,8 @@ class ldap(connection):
                 self.domain = self.conn.getServerDNSDomainName()
                 self.hostname = self.conn.getServerName()
             self.server_os = self.conn.getServerOS()
-            self.signing = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection['RequireSigning']
+            self.signing = self.conn.isSigningRequired() if self.smbv1 \
+                else self.conn._SMBConnection._Connection["RequireSigning"]
             self.os_arch = self.get_os_arch()
 
             if not self.domain:
@@ -333,15 +335,15 @@ class ldap(connection):
         return True
 
     def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
-        cme_logger.getLogger("impacket").disabled = True
+        # cme_logger.getLogger("impacket").disabled = True
         self.username = username
         self.password = password
         self.domain = domain
         self.kdcHost = kdcHost
         self.aesKey = aesKey
 
-        lmhash = ''
-        nthash = ''
+        lmhash = ""
+        nthash = ""
         self.username = username
         # This checks to see if we didn't provide the LM Hash
         if ntlm_hash.find(":") != -1:
@@ -366,7 +368,7 @@ class ldap(connection):
         if not all('' == s for s in [self.nthash, password, aesKey]):
             kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
         else:
-            kerb_pass = ''
+            kerb_pass = ""
 
         try:
             # Connect to LDAP
@@ -390,7 +392,10 @@ class ldap(connection):
 
             self.check_if_admin()
 
-            out = f"{domain}\\{self.username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
+            out = f"{domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
+
+            # out = f"{domain}\\{self.username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
 
             self.logger.extra["protocol"] = "LDAP"
             self.logger.extra["port"] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
@@ -409,8 +414,9 @@ class ldap(connection):
             return False
         except SessionError as e:
             error, desc = e.getErrorString()
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             self.logger.fail(
-                f"{self.domain}\\{self.username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {str(error)}",
+                f"{self.domain}\\{self.username}{used_ccache} {str(error)}",
                 color='magenta' if error in ldap_error_status else 'red'
             )
             return False

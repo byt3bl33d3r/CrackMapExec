@@ -29,23 +29,23 @@ class LDAPConnect:
     def proto_logger(self, host, port, hostname):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'LDAP',
-                'host': host,
-                'port': port,
-                'hostname': hostname
+                "protocol": "LDAP",
+                "host": host,
+                "port": port,
+                "hostname": hostname
             }
         )
 
-    def kerberos_login(self, domain, username, password, ntlm_hash, kdc='', aesKey=''):
-        lmhash = ''
-        nthash = ''
+    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
+        lmhash = ""
+        nthash = ""
 
-        if kdc is None:
-            kdc = domain        
+        if kdcHost is None:
+            kdcHost = domain
 
         # This checks to see if we didn't provide the LM Hash
-        if ntlm_hash and ntlm_hash.find(':') != -1:
-            lmhash, nthash = ntlm_hash.split(':')
+        if ntlm_hash and ntlm_hash.find(":") != -1:
+            lmhash, nthash = ntlm_hash.split(":")
         elif ntlm_hash:
             nthash = ntlm_hash
 
@@ -53,13 +53,13 @@ class LDAPConnect:
         baseDN = ''
         domainParts = domain.split('.')
         for i in domainParts:
-            baseDN += 'dc=%s,' % i
+            baseDN += f"dc={i},"
         # Remove last ','
         baseDN = baseDN[:-1]
 
         try:
-            ldapConnection = ldap_impacket.LDAPConnection('ldap://%s' % kdc, baseDN)
-            ldapConnection.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdc, useCache=False)
+            ldapConnection = ldap_impacket.LDAPConnection(f"ldap://{kdcHost}", baseDN)
+            ldapConnection.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdcHost, useCache=False)
             # Connect to LDAP
             out = f"{domain}{username}:{password if password else ntlm_hash}"
             self.logger.extra["protocol"] = "LDAP"
@@ -69,8 +69,8 @@ class LDAPConnect:
             if str(e).find("strongerAuthRequired") >= 0:
                 # We need to try SSL
                 try:
-                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{kdc}", baseDN)
-                    ldapConnection.login(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdc, useCache=False)
+                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{kdcHost}", baseDN)
+                    ldapConnection.login(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdcHost, useCache=False)
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
                     # self.logger.success(out)
@@ -79,12 +79,14 @@ class LDAPConnect:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.error(
                         f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                        color='magenta' if errorCode in ldap_error_status else 'red')
+                        color="magenta" if errorCode in ldap_error_status else "red"
+                    )
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.error(
                     f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                    color='magenta' if errorCode in ldap_error_status else 'red')
+                    color="magenta" if errorCode in ldap_error_status else "red"
+                )
             return False
 
         except OSError as e:
@@ -95,7 +97,8 @@ class LDAPConnect:
         except KerberosError as e:
             self.logger.error(
                 f"{domain}\\{username}:{password if password else ntlm_hash} {str(e)}",
-                color='red')
+                color="red"
+            )
             return False
 
     def plaintext_login(self, domain, username, password, ntlm_hash):
@@ -121,10 +124,7 @@ class LDAPConnect:
             ldapConnection.login(username, password, domain, lmhash, nthash)
 
             # Connect to LDAP
-            out = u"{}{}:{}".format(
-                f'{domain}\\',
-                username,
-                password if password else ntlm_hash)
+            out = u"{domain}\\{username}:{password if password else ntlm_hash}"
             self.logger.extra["protocol"] = "LDAP"
             self.logger.extra["port"] = "389"
             # self.logger.success(out)
