@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import importlib
 import os
+import sys
+
 import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
@@ -69,20 +71,26 @@ class ModuleLoader:
         module = None
         module = self.load_module(module_path)
 
-        if module and (self.args.protocol in module.supported_protocols):
-            try:
-                module_logger = CMEAdapter(extra={'module_name': module.name.upper()})
-            except Exception as e:
-                self.logger.error(f"Error loading CMEAdaptor for module {module.name.upper()}: {e}")
-            context = Context(self.db, module_logger, self.args)
-            module_options = {}
+        if module:
+            self.logger.debug(f"Supported protocols: {module.supported_protocols}")
+            self.logger.debug(f"Protocol: {self.args.protocol}")
+            if self.args.protocol in module.supported_protocols:
+                try:
+                    module_logger = CMEAdapter(extra={'module_name': module.name.upper()})
+                except Exception as e:
+                    self.logger.error(f"Error loading CMEAdaptor for module {module.name.upper()}: {e}")
+                context = Context(self.db, module_logger, self.args)
+                module_options = {}
 
-            for option in self.args.module_options:
-                key, value = option.split('=', 1)
-                module_options[str(key).upper()] = value
+                for option in self.args.module_options:
+                    key, value = option.split('=', 1)
+                    module_options[str(key).upper()] = value
 
-            module.options(context, module_options)
-        return module
+                module.options(context, module_options)
+                return module
+            else:
+                self.logger.error(f"Module {module.name.upper()} is not supported for protocol {self.args.protocol}")
+                sys.exit(1)
 
     def get_module_info(self, module_path):
         """
