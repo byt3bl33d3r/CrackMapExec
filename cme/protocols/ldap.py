@@ -30,7 +30,6 @@ from impacket.smbconnection import SMBConnection, SessionError
 
 from cme.config import process_secret
 from cme.connection import *
-from cme.console import cme_console
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter, cme_logger
@@ -133,7 +132,6 @@ class ldap(connection):
         self.output_filename = None
         self.smbv1 = None
         self.signing = False
-        self.smb_share_name = None
         self.admin_privs = False
         self.no_ntlm = False
         self.sid_domain = ""
