@@ -3,7 +3,7 @@
 import logging
 from sqlalchemy import MetaData, func, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SAWarning
 import warnings
@@ -65,7 +65,7 @@ class database:
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
                 self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
                 self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
+            except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"

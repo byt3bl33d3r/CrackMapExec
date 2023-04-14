@@ -3,7 +3,7 @@
 import logging
 from sqlalchemy import MetaData, func, Table, select, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
@@ -143,7 +143,7 @@ class database:
                 self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
                 self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
                 self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
+            except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"

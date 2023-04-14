@@ -6,7 +6,7 @@ from sqlalchemy.dialects.sqlite import Insert
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import MetaData, Table, select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 import asyncio
 
 
@@ -70,7 +70,7 @@ class database:
                 self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
                 self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
                 self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
+            except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
