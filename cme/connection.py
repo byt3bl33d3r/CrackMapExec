@@ -9,7 +9,6 @@ from functools import wraps
 from time import sleep
 
 from cme.config import pwned_label
-from cme.console import cme_console
 from cme.helpers.logger import highlight
 from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
