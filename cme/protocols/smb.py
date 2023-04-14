@@ -1342,7 +1342,7 @@ class smb(connection):
                     domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]]["Name"]
                     user = item["Name"]
                     sid_type = SID_NAME_USE.enumItems(item['Use']).name
-                    self.logger.highlight("f{rid}: {domain}\\{user} ({sid_type})")
+                    self.logger.highlight(f"{rid}: {domain}\\{user} ({sid_type})")
                     entries.append({
                         "rid": rid,
                         "domain": domain,
