@@ -9,10 +9,12 @@ from impacket.dcerpc.v5 import transport, lsat, lsad, samr
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
+from cme.logger import cme_logger
+
 
 class SamrFunc:
     def __init__(self, connection):
-        self.logger = connection.cme_logger
+        self.logger = cme_logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
