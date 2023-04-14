@@ -24,6 +24,7 @@ ldap_error_status = {
 class LDAPConnect:
 
     def __init__(self, host, port, hostname):
+        self.logger = None
         self.proto_logger(host, port, hostname)
 
     def proto_logger(self, host, port, hostname):
