@@ -3,7 +3,7 @@
 
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import MetaData, Table
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from cme.logger import cme_logger
 
 class database:
@@ -43,7 +43,7 @@ class database:
             try:
                 self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
+            except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
