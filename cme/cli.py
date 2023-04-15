@@ -42,7 +42,7 @@ def gen_cli_args():
     parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
     parser.add_argument("--debug", action='store_true', help="enable debug level information")
-    parser.add_argument("--version", action='store_true', help="Display CME version")
+    parser.add_argument("-v", "--version", action='store_true', help="Display CME version")
 
     subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
 
