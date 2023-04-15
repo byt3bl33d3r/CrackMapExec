@@ -39,7 +39,6 @@ def gen_cli_args():
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
     parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='sets a random delay between each connection (default: None)')
     parser.add_argument("--no-progress", action='store_true', help='Not displaying progress bar during scan')
-    parser.add_argument("--log", help="Export result into a custom file")
     parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
     parser.add_argument("--debug", action='store_true', help="enable debug level information")
@@ -54,6 +53,7 @@ def gen_cli_args():
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication")
     std_parser.add_argument("--use-kcache", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
+    std_parser.add_argument("--log", metavar="LOG", help="Export result into a custom file")
     std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
     std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="FQDN of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
 

@@ -84,7 +84,7 @@ def main():
     # if these are the same, it might double log to file (two FileHandlers will be added), but this should never happen by accident
     if config_log:
         cme_logger.add_file_log()
-    if args.log:
+    if hasattr(args, "log") and args.log:
         cme_logger.add_file_log(args.log)
 
     cme_logger.debug(f"Passed args: {args}")
