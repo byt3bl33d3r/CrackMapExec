@@ -367,12 +367,12 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.info(f"LAPS connection failed with account {username}")
+            self.logger.error('LDAP connection failed with account {}'.format(username))
             return False
 
-        search_filter = f"(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name={self.hostname}))"
-        attributes = ["ms-MCS-AdmPwd", "samAccountname"]
-        result = connection.search(
+        search_filter = '(&(objectCategory=computer)(|(msLAPS-EncryptedPassword=*)(ms-MCS-AdmPwd=*)(msLAPS-Password=*))(name=' + self.hostname + '))'
+        attributes = ['msLAPS-EncryptedPassword', 'msLAPS-Password', 'ms-MCS-AdmPwd', 'sAMAccountName']
+        results = connection.search(
             searchFilter=search_filter,
             attributes=attributes,
             sizeLimit=0
@@ -380,21 +380,35 @@ class smb(connection):
 
         msMCSAdmPwd = ''
         sAMAccountName = ''
-        for item in result:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            for host in item["attributes"]:
-                if str(host["type"]) == "sAMAccountName":
-                    sAMAccountName = str(host["vals"][0])
-                else:
-                    msMCSAdmPwd = str(host["vals"][0])
-            self.logger.info(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
+        username = ''
 
-        self.username = self.args.laps
+        from impacket.ldap import ldapasn1 as ldapasn1_impacket
+        results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
+        if len(results) != 0:
+            for host in results:
+                values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in host['attributes']}
+                if "mslaps-encryptedpassword" in values:
+                    self.logger.error("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
+                    return False
+                elif "mslaps-password" in values:
+                    from json import loads
+                    r = loads(values['mslaps-password'])
+                    msMCSAdmPwd = r['p']
+                    username = r['n']
+                elif "ms-mcs-admpwd" in values:
+                    msMCSAdmPwd = values['ms-mcs-admpwd']
+                else:
+                    self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
+            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))  
+        else:
+            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+            return False
+
+        self.username = self.args.laps if not username else username
         self.password = msMCSAdmPwd
 
         if msMCSAdmPwd == '':
-            self.logger.fail(f"msMCSAdmPwd is empty or account cannot read LAPS property for {self.hostname}")
+            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new("md4", msMCSAdmPwd.encode("utf-16le")).digest()
