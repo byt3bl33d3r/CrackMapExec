@@ -81,7 +81,7 @@ def main():
         cme_logger.logger.setLevel(logging.ERROR)
         root_logger.setLevel(logging.ERROR)
 
-    # if these are the same, it might double log to file (two FileHandlers will be added)
+    # if these are the same, it might double log to file (two FileHandlers will be added), but this should never happen by accident
     if config_log:
         cme_logger.add_file_log()
     if args.log:
