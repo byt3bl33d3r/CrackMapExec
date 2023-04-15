@@ -65,7 +65,6 @@ def gen_cli_args():
     module_parser = argparse.ArgumentParser(add_help=False)
     mgroup = module_parser.add_mutually_exclusive_group()
     mgroup.add_argument("-M", "--module", action='append', metavar='MODULE', help='module to use')
-    #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='module options')
     module_parser.add_argument('-L', '--list-modules', action='store_true', help='list available modules')
     module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='display module options')
