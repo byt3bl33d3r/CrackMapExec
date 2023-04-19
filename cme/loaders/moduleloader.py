@@ -105,7 +105,10 @@ class ModuleLoader:
                     {
                         "path": module_path,
                         "description": module_spec.description,
-                        "options": module_spec.options.__doc__
+                        "options": module_spec.options.__doc__,
+                        "supported_protocols": module_spec.supported_protocols,
+                        "opsec_safe": module_spec.opsec_safe,
+                        "multiple_hosts": module_spec.multiple_hosts,
                     }
             }
             if self.module_is_sane(module_spec, module_path):
