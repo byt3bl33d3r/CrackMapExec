@@ -81,10 +81,10 @@ def main():
         cme_logger.logger.setLevel(logging.ERROR)
         root_logger.setLevel(logging.ERROR)
 
-    # if these are the same, it might double log to file (two FileHandlers will be added)
+    # if these are the same, it might double log to file (two FileHandlers will be added), but this should never happen by accident
     if config_log:
         cme_logger.add_file_log()
-    if args.log:
+    if hasattr(args, "log") and args.log:
         cme_logger.add_file_log(args.log)
 
     cme_logger.debug(f"Passed args: {args}")
@@ -164,74 +164,73 @@ def main():
     # with the new cme/config.py this can be eventually removed, as it can be imported anywhere
     setattr(protocol_object, "config", cme_config)
 
-    if hasattr(args, "module"):
-        loader = ModuleLoader(args, db, cme_logger)
-        modules = loader.list_modules()
+    loader = ModuleLoader(args, db, cme_logger)
+    modules = loader.list_modules()
 
-        if args.list_modules:
-            for name, props in sorted(modules.items()):
-                if args.protocol in props["supported_protocols"]:
-                    cme_logger.display(f"{name:<25} {props['description']}")
-            sys.exit(0)
-        elif args.module and args.show_module_options:
-            for module in args.module:
-                cme_logger.display(f"{module} module options:\n{modules[module]['options']}")
-            sys.exit(0)
-        elif args.module:
-            cme_logger.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
-            for m in map(str.lower, args.module):
-                if m not in modules:
-                    cme_logger.error(f"Module not found: {m}")
-                    exit(1)
+    if args.list_modules:
+        for name, props in sorted(modules.items()):
+            if args.protocol in props["supported_protocols"]:
+                cme_logger.display(f"{name:<25} {props['description']}")
+        sys.exit(0)
+    elif args.module and args.show_module_options:
+        for module in args.module:
+            cme_logger.display(f"{module} module options:\n{modules[module]['options']}")
+        sys.exit(0)
+    elif args.module:
+        cme_logger.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
+        for m in map(str.lower, args.module):
+            if m not in modules:
+                cme_logger.error(f"Module not found: {m}")
+                exit(1)
 
-                cme_logger.debug(f"Loading module {m} at path {modules[m]['path']}")
-                module = loader.init_module(modules[m]["path"])
+            cme_logger.debug(f"Loading module {m} at path {modules[m]['path']}")
+            module = loader.init_module(modules[m]["path"])
 
-                if not module.opsec_safe:
-                    if ignore_opsec:
-                        cme_logger.debug(f"ignore_opsec is set in the configuration, skipping prompt")
-                        cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
-                    else:
-                        ans = input(
-                            highlight("[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ", 'red'))
-                        if ans.lower() not in ["y", "yes", ""]:
-                            sys.exit(1)
-
-                if not module.multiple_hosts and len(targets) > 1:
-                    ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
+            if not module.opsec_safe:
+                if ignore_opsec:
+                    cme_logger.debug(f"ignore_opsec is set in the configuration, skipping prompt")
+                    cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
+                else:
+                    ans = input(
+                        highlight("[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ", 'red'))
                     if ans.lower() not in ["y", "yes", ""]:
                         sys.exit(1)
 
-                if hasattr(module, "on_request") or hasattr(module, "has_response"):
-                    if hasattr(module, "required_server"):
-                        args.server = module.required_server
+            if not module.multiple_hosts and len(targets) > 1:
+                ans = input(highlight("[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ", 'red'))
+                if ans.lower() not in ["y", "yes", ""]:
+                    sys.exit(1)
 
-                    if not args.server_port:
-                        args.server_port = server_port_dict[args.server]
+            if hasattr(module, "on_request") or hasattr(module, "has_response"):
+                if hasattr(module, "required_server"):
+                    args.server = module.required_server
 
-                    # loading a module server multiple times will obviously fail
-                    try:
-                        context = Context(db, cme_logger, args)
-                        module_server = CMEServer(
-                            module,
-                            context,
-                            cme_logger,
-                            args.server_host,
-                            args.server_port,
-                            args.server
-                        )
-                        module_server.start()
-                        protocol_object.server = module_server.server
-                    except Exception as e:
-                        cme_logger.error(f"Error loading module server for {module}: {e}")
+                if not args.server_port:
+                    args.server_port = server_port_dict[args.server]
 
-                cme_logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
-                cme_logger.debug(f"proto object dir: {dir(protocol_object)}")
-                # get currently set modules, otherwise default to empty list
-                current_modules = getattr(protocol_object, "module", [])
-                current_modules.append(module)
-                setattr(protocol_object, "module", current_modules)
-                cme_logger.debug(f"proto object module after adding: {protocol_object.module}")
+                # loading a module server multiple times will obviously fail
+                try:
+                    context = Context(db, cme_logger, args)
+                    module_server = CMEServer(
+                        module,
+                        context,
+                        cme_logger,
+                        args.server_host,
+                        args.server_port,
+                        args.server
+                    )
+                    module_server.start()
+                    protocol_object.server = module_server.server
+                except Exception as e:
+                    cme_logger.error(f"Error loading module server for {module}: {e}")
+
+            cme_logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
+            cme_logger.debug(f"proto object dir: {dir(protocol_object)}")
+            # get currently set modules, otherwise default to empty list
+            current_modules = getattr(protocol_object, "module", [])
+            current_modules.append(module)
+            setattr(protocol_object, "module", current_modules)
+            cme_logger.debug(f"proto object module after adding: {protocol_object.module}")
 
     if hasattr(args, "ntds") and args.ntds and not args.userntds:
         ans = input(highlight('[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ', 'red'))
