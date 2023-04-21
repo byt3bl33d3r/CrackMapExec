@@ -119,7 +119,7 @@ class rdp(connection):
         return True
 
     def create_conn_obj(self):
-        self.target = RDPTarget(ip=self.host, domain="FAKE")
+        self.target = RDPTarget(ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout)
         self.auth = NTLMCredential(secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS)
 
         self.check_nla()
@@ -153,7 +153,7 @@ class rdp(connection):
         if self.args.local_auth:
             self.domain = self.hostname
 
-        self.target = RDPTarget(ip=self.host, hostname=self.hostname, domain=self.domain, dc_ip=self.domain)
+        self.target = RDPTarget(ip=self.host, hostname=self.hostname, domain=self.domain, dc_ip=self.domain, timeout=self.args.rdp_timeout)
 
         return True
 
