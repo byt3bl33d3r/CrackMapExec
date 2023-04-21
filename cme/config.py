@@ -9,6 +9,7 @@ cme_config.read(os.path.join(CME_PATH, "cme.conf"))
 
 if "cme" not in cme_config.sections():
     first_run_setup()
+    cme_config.read(os.path.join(CME_PATH, "cme.conf"))
 
 cme_workspace = cme_config.get("CME", "workspace", fallback="default")
 config_log = cme_config.getboolean("CME", "log_mode", fallback=False)
