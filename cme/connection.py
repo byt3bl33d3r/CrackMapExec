@@ -22,11 +22,11 @@ user_failed_logins = {}
 def gethost_addrinfo(hostname):
     try:
         for res in socket.getaddrinfo(hostname, None, socket.AF_INET6,
-                socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+                                      socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
     except socket.gaierror:
         for res in socket.getaddrinfo(hostname, None, socket.AF_INET,
-                socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+                                      socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
     if canonname == '':
         return sa[0]
@@ -149,7 +149,7 @@ class connection(object):
                 if self.admin_privs and hasattr(module, 'on_admin_login'):
                     module.on_admin_login(context, self)
 
-                if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module,'on_shutdown'):
+                if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module, 'on_shutdown'):
                     module.on_shutdown(context, self)
             except Exception as e:
                 self.logger.error(f"Error while loading module {module}: {e}")
@@ -245,14 +245,15 @@ class connection(object):
                                                         elif self.hash_login(self.domain, usr.strip(), f_hash.strip()):
                                                             return True
                                             elif self.args.no_bruteforce:
-                                                user_file.seek(0) # HACK: this should really not be in the usr for loop
+                                                user_file.seek(0)  # HACK: this should really not be in the usr for loop
                                                 for usr, f_hash in zip(user_file, ntlm_hash_file):
                                                     if not self.over_fail_limit(usr.strip()):
                                                         if self.args.kerberos:
-                                                            if self.kerberos_login(self.domain, usr.strip(), '', f_hash.strip(), '', self.kdcHost, False): return True
+                                                            if self.kerberos_login(self.domain, usr.strip(), '', f_hash.strip(), '', self.kdcHost, False):
+                                                                return True
                                                         elif self.hash_login(self.domain, usr.strip(), f_hash.strip()):
                                                             return True
-                                    else: # ntlm_hash is a string
+                                    else:  # ntlm_hash is a string
                                         if not self.over_fail_limit(usr.strip()):
                                             if self.args.kerberos:
                                                 if self.kerberos_login(self.domain, usr.strip(), '', ntlm_hash.strip(), '', self.kdcHost, False):
@@ -313,10 +314,11 @@ class connection(object):
                                                     return True
                                             elif self.hash_login(self.domain, user, f_hash.strip()):
                                                 return True
-                            else: # ntlm_hash is a string
+                            else:  # ntlm_hash is a string
                                 if not self.over_fail_limit(user):
                                     if self.args.kerberos:
-                                        if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False): return True
+                                        if self.kerberos_login(self.domain, user, '', ntlm_hash.strip(), '', self.kdcHost, False):
+                                            return True
                                     elif self.hash_login(self.domain, user, ntlm_hash.strip()):
                                         return True
                 elif self.args.password:
