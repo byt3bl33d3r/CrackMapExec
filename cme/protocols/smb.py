@@ -345,19 +345,21 @@ class smb(connection):
     def laps_search(self, username, password, ntlm_hash, domain):
         self.logger.extra["protocol"] = "LDAP"
         self.logger.extra["port"] = "389"
+        
         ldapco = LDAPConnect(self.domain, "389", self.domain)
 
         if self.kerberos:
             if self.kdcHost is None:
-                self.logger.fail("Provide --kdcHost parameter")
+                self.logger.fail("Add --kdcHost parameter to use laps with kerberos")
                 return False
+
             connection = ldapco.kerberos_login(
                 domain,
                 username[0] if username else '',
                 password[0] if password else '',
                 ntlm_hash[0] if ntlm_hash else '',
-                self.kdcHost,
-                self.aesKey
+                kdcHost=self.kdcHost,
+                aesKey=self.aesKey
             )
         else:
             connection = ldapco.plaintext_login(
@@ -367,7 +369,7 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.fail('LDAP connection failed with account {}'.format(username))
+            self.logger.fail('LDAP connection failed with account {}'.format(username[0]))
             return False
 
         search_filter = '(&(objectCategory=computer)(|(msLAPS-EncryptedPassword=*)(ms-MCS-AdmPwd=*)(msLAPS-Password=*))(name=' + self.hostname + '))'
@@ -439,33 +441,37 @@ class smb(connection):
             if not self.args.laps:
                 self.password = password
                 self.username = username
-            # This checks to see if we didn't provide the LM Hash
-            if ntlm_hash.find(":") != -1:
-                lmhash, nthash = ntlm_hash.split(":")
-                self.hash = nthash
+                # This checks to see if we didn't provide the LM Hash
+                if ntlm_hash.find(":") != -1:
+                    lmhash, nthash = ntlm_hash.split(":")
+                    self.hash = nthash
+                else:
+                    nthash = ntlm_hash
+                    self.hash = ntlm_hash
+                if lmhash:
+                    self.lmhash = lmhash
+                if nthash:
+                    self.nthash = nthash
+
+                if not all("" == s for s in [self.nthash, password, aesKey]):
+                    kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
+                else:
+                    kerb_pass = ""
+                    self.logger.debug(f"Attempting to do Kerberos Login with useCache: {useCache}")
+
+                self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
+                self.check_if_admin()
+
+                if username == '':
+                    self.username = self.conn.getCredentials()[0]
+                else:
+                    self.username = username
+
+                used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             else:
-                nthash = ntlm_hash
-                self.hash = ntlm_hash
-            if lmhash:
-                self.lmhash = lmhash
-            if nthash:
-                self.nthash = nthash
+                self.plaintext_login(username, password, self.host)
+                return
 
-            if not all("" == s for s in [self.nthash, password, aesKey]):
-                kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
-            else:
-                kerb_pass = ""
-
-            self.logger.debug(f"Attempting to do Kerberos Login with useCache: {useCache}")
-            self.conn.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
-            self.check_if_admin()
-
-            if username == '':
-                self.username = self.conn.getCredentials()[0]
-            else:
-                self.username = username
-
-            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             out = f"{self.domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
             self.logger.success(out)
             if not self.args.local_auth:
@@ -496,6 +502,7 @@ class smb(connection):
             )
         except (SessionError, Exception) as e:
             error, desc = e.getErrorString()
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             self.logger.fail(
                 f"{domain}\\{self.username}{used_ccache} {error} {f'({desc})' if self.args.verbose else ''}",
                 color="magenta" if error in smb_error_status else "red"
