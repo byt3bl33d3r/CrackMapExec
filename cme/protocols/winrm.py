@@ -124,19 +124,35 @@ class winrm(connection):
         self.output_filename = self.output_filename.replace(":", "-")
 
     def laps_search(self, username, password, ntlm_hash, domain):
-        ldap_conn = LDAPConnect(self.domain, "389", self.domain)
-        login = ldap_conn.plaintext_login(
-            domain,
-            username[0] if username else "",
-            password[0] if password else "",
-            ntlm_hash[0] if ntlm_hash else ""
-        )
-        if not login:
-            self.logger.debug(f"LAPS login failed with account {username}")
+        ldapco = LDAPConnect(self.domain, "389", self.domain)
+
+        if self.kerberos:
+            if self.kdcHost is None:
+                self.logger.fail("Add --kdcHost parameter to use laps with kerberos")
+                return False
+
+            connection = ldapco.kerberos_login(
+                domain,
+                username[0] if username else '',
+                password[0] if password else '',
+                ntlm_hash[0] if ntlm_hash else '',
+                kdcHost=self.kdcHost,
+                aesKey=self.aesKey
+            )
+        else:
+            connection = ldapco.plaintext_login(
+                domain,
+                username[0] if username else '',
+                password[0] if password else '',
+                ntlm_hash[0] if ntlm_hash else ''
+            )
+        if not connection:
+            self.logger.fail('LDAP connection failed with account {}'.format(username[0]))
             return False
-        search_filter = f"(&(objectCategory=computer)(ms-MCS-AdmPwd=*)(name='{self.hostname}))"
-        attributes = ["ms-MCS-AdmPwd", "samAccountname"]
-        result = login.search(
+
+        search_filter = '(&(objectCategory=computer)(|(msLAPS-EncryptedPassword=*)(ms-MCS-AdmPwd=*)(msLAPS-Password=*))(name=' + self.hostname + '))'
+        attributes = ['msLAPS-EncryptedPassword', 'msLAPS-Password', 'ms-MCS-AdmPwd', 'sAMAccountName']
+        results = connection.search(
             searchFilter=search_filter,
             attributes=attributes,
             sizeLimit=0
@@ -144,23 +160,40 @@ class winrm(connection):
 
         msMCSAdmPwd = ''
         sAMAccountName = ''
-        for item in result:
-            if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
-                continue
-            for host in item["attributes"]:
-                if str(host["type"]) == "sAMAccountName":
-                    sAMAccountName = str(host["vals"][0])
+        username = ''
+
+        from impacket.ldap import ldapasn1 as ldapasn1_impacket
+        results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
+        if len(results) != 0:
+            for host in results:
+                values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in host['attributes']}
+                if "mslaps-encryptedpassword" in values:
+                    self.logger.fail("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
+                    return False
+                elif "mslaps-password" in values:
+                    from json import loads
+                    r = loads(values['mslaps-password'])
+                    msMCSAdmPwd = r['p']
+                    username = r['n']
+                elif "ms-mcs-admpwd" in values:
+                    msMCSAdmPwd = values['ms-mcs-admpwd']
                 else:
-                    msMCSAdmPwd = str(host["vals"][0])
-            self.logger.debug(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
-        self.username = self.args.laps
+                    self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
+            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))  
+        else:
+            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+            return False
+
+        self.username = self.args.laps if not username else username
         self.password = msMCSAdmPwd
+
         if msMCSAdmPwd == '':
-            self.logger.debug(f"msMCSAdmPwd is empty, account cannot read LAPS property for {self.hostname}")
+            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new("md4", msMCSAdmPwd.encode("utf-16le")).digest()
             self.hash = binascii.hexlify(hash_ntlm).decode()
+
         self.domain = self.hostname
         return True
 
