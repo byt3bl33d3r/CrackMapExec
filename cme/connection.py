@@ -205,6 +205,65 @@ class connection(object):
             cred_type.append(cred_type_single)
         
         return domain, username, secret, cred_type
+    
+    def parse_credentials(self):
+        """
+        Parse credentials from the command line or from a file specified.
+        Usernames can be specified with a domain (domain\username) or without (username)
+        If the file contains domain\username the domain specified will be overwritten by the one in the file
+        """
+        domain = []
+        username = []
+        secret = []
+        cred_type = []
+
+        # Parse usernames
+        for user in self.args.username:
+            if isfile(user):
+                with open(user, 'r') as user_file:
+                    for line in user_file:
+                        if "\\" in line:
+                            domain_single, username_single = line.split("\\")
+                        else:
+                            domain_single = self.args.domain if self.args.domain else ''
+                            username_single = line
+                        domain.append(domain_single)
+                        username.append(username_single)
+            else:
+                if "\\" in user:
+                    domain_single, username_single = user.split("\\")
+                else:
+                    domain_single = self.args.domain if self.args.domain else ''
+                    username_single = user
+                domain.append(domain_single)
+                username.append(username_single)
+        
+        # Parse passwords
+        for password in self.args.password:
+            if isfile(password):
+                with open(password, 'r') as password_file:
+                    for line in password_file:
+                        secret.append(line)
+                        cred_type.append('plaintext')
+            else:
+                secret.append(password)
+                cred_type.append('plaintext')
+
+        # Parse NTLM-hashes
+        if hasattr(self.args, 'hash') and self.args.hash:
+            for ntlm_hash in self.args.hash:
+                if isfile(ntlm_hash):
+                    with open(ntlm_hash, 'r') as ntlm_hash_file:
+                        for line in ntlm_hash_file:
+                            secret.append(line)
+                            cred_type.append('ntlm')
+                else:
+                    secret.append(ntlm_hash)
+                    cred_type.append('ntlm')
+            
+        return domain, username, secret, cred_type
+
+
 
     def login(self):
         domain = []
@@ -213,16 +272,28 @@ class connection(object):
         cred_type = []
 
         if self.args.cred_id:
-            username, secret, cred_type = self.query_db_creds()
+            db_domain, db_username, db_secret, db_cred_type = self.query_db_creds()
+            domain.extend(db_domain)
+            username.extend(db_username)
+            secret.extend(db_secret)
+            cred_type.extend(db_cred_type)
 
-
+        if self.args.username:
+            parsed_domain, parsed_username, parsed_secret, parsed_cred_type = self.parse_credentials()
+            domain.extend(parsed_domain)
+            username.extend(parsed_username)
+            secret.extend(parsed_secret)
+            cred_type.extend(parsed_cred_type)
 
         if self.args.use_kcache:
             with sem:
                 username = self.args.username[0] if len(self.args.username) else ''
                 password = self.args.password[0] if len(self.args.password) else ''
                 self.kerberos_login(self.domain, username, password, '', '', self.kdcHost, True)
+                self.logger.info("Successfully authenticated using Kerberos cache")
                 return True
+            
+
         for user in self.args.username:
             if isfile(user):
                 with open(user, 'r') as user_file:
