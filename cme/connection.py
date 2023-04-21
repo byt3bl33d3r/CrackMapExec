@@ -182,40 +182,41 @@ class connection(object):
 
         return False
 
-    def login(self):
-        for cred_id in self.args.cred_id:
-            with sem:
-                if cred_id.lower() == 'all':
-                    creds = self.db.get_credentials()
-                else:
+    def query_db_creds(self):
+        domain = []
+        username = []
+        secret = []
+        cred_type = []
+
+        if self.args.cred_id.lower() == 'all':
+            creds = self.db.get_credentials()
+        else:
+            for cred_id in self.args.cred_id:
+                try:
                     creds = self.db.get_credentials(filter_term=int(cred_id))
-                for cred in creds:
-                    logging.debug(cred)
-                    try:
-                        c_id, domain, username, password, cred_type, pillaged_from = cred
+                except IndexError:
+                    self.logger.error("Invalid database credential ID!")
 
-                        if cred_type and password:
-                            if not domain:
-                                domain = self.domain
+        for cred in creds:
+            c_id, domain_single, username_single, secret_single, cred_type_single, pillaged_from = cred
+            domain.append(domain_single)
+            username.append(username_single)
+            secret.append(secret_single)
+            cred_type.append(cred_type_single)
+        
+        return domain, username, secret, cred_type
 
-                            if self.args.local_auth:
-                                domain = self.domain
-                            elif self.args.domain:
-                                domain = self.args.domain
+    def login(self):
+        domain = []
+        username = []
+        secret = []
+        cred_type = []
 
-                            if cred_type == 'hash' and not self.over_fail_limit(username):
-                                if self.args.kerberos:
-                                    if self.kerberos_login(domain, username, '', password, '', self.kdcHost, False):
-                                        return True
-                                elif self.hash_login(domain, username, password): return True
+        if self.args.cred_id:
+            username, secret, cred_type = self.query_db_creds()
 
-                            elif cred_type == 'plaintext' and not self.over_fail_limit(username):
-                                if self.args.kerberos:
-                                    if self.kerberos_login(domain, username, password, '' , '', self.kdcHost, False):
-                                        return True
-                                elif self.plaintext_login(domain, username, password): return True
-                    except IndexError:
-                        self.logger.error("Invalid database credential ID!")
+
+
         if self.args.use_kcache:
             with sem:
                 username = self.args.username[0] if len(self.args.username) else ''
