@@ -86,7 +86,7 @@ class CMEModule:
                 perRecordCallback=self.process_record
             )
         except LDAPSearchError as e:
-            context.log.error(f"Obtained unexpected exception: {str(e)}")
+            context.log.fail(f"Obtained unexpected exception: {str(e)}")
         finally:
             self.delete_log_file()
 

@@ -107,7 +107,7 @@ class CMEModule:
                 context.log.debug("Could not get masterkeys: {}".format(e))
 
         if len(self.masterkeys) == 0:
-            context.log.error("No masterkeys looted")
+            context.log.fail("No masterkeys looted")
             return
 
         context.log.success("Got {} decrypted masterkeys. Looting RDCMan secrets".format(highlight(len(self.masterkeys))))

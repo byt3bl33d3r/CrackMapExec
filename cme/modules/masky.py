@@ -40,7 +40,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         if not self.ca:
-            context.log.error(
+            context.log.fail(
                 "Please provide a valid CA server and CA name (CA_SERVER\CA_NAME)"
             )
             return False
@@ -96,7 +96,7 @@ class CMEModule:
         if pwned_users:
             context.log.success(f"{pwned_users} NT hash(es) successfully collected")
         else:
-            context.log.error(
+            context.log.fail(
                 "Unable to collect NT hash(es) from the hijacked session(s)"
             )
         return True
@@ -116,12 +116,12 @@ class CMEModule:
         ret = True
 
         if tracker.last_error_msg:
-            context.log.error(tracker.last_error_msg)
+            context.log.fail(tracker.last_error_msg)
             ret = False
 
         if not tracker.files_cleaning_success:
-            context.log.error("Fail to clean files related to Masky")
-            context.log.error(
+            context.log.fail("Fail to clean files related to Masky")
+            context.log.fail(
                 (
                     f"Please remove the files named '{tracker.agent_filename}', '{tracker.error_filename}', "
                     f"'{tracker.output_filename}' & '{tracker.args_filename}' within the folder '\\Windows\\Temp\\'"
@@ -130,7 +130,7 @@ class CMEModule:
             ret = False
 
         if not tracker.svc_cleaning_success:
-            context.log.error(
+            context.log.fail(
                 f"Fail to remove the service named '{tracker.svc_name}', please remove it manually"
             )
             ret = False

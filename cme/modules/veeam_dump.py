@@ -53,9 +53,9 @@ class CMEModule:
 
         except DCERPCException as e:
             if str(e).find('ERROR_FILE_NOT_FOUND'):
-                context.log.error("No Veeam installation found")
+                context.log.fail("No Veeam installation found")
         except:
-            context.log.error("UNEXPECTED ERROR:")
+            context.log.fail("UNEXPECTED ERROR:")
             traceback.print_exc()
         finally:
             remoteOps.finish()
@@ -80,7 +80,7 @@ class CMEModule:
 
         # Error handling
         if "Can't connect to DB! Exiting..." in output_stripped or "No passwords found!" in output_stripped:
-            context.log.error(output_stripped[0])
+            context.log.fail(output_stripped[0])
             return
 
         for account in output_stripped:

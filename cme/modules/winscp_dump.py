@@ -50,7 +50,7 @@ class CMEModule:
     # ==================== Helper ====================
     def printCreds(self, context, session):
         if type(session) is str:
-            context.log.error(session)
+            context.log.fail(session)
         else:
             context.log.highlight("======={s}=======".format(s=session[0]))
             context.log.highlight("HostName: {s}".format(s=session[1]))
@@ -189,7 +189,7 @@ class CMEModule:
             regex = re.compile(r'^.*_Classes$')
             userObjects = [i for i in userNames if not regex.match(i)]
         except:
-            context.log.error("Error handling Users in registry")
+            context.log.fail("Error handling Users in registry")
             traceback.print_exc()
         finally:
             remoteOps.finish()
@@ -220,7 +220,7 @@ class CMEModule:
                 userObjects.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)['lpNameOut'].split('\x00')[:-1][0])
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
         except:
-            context.log.error("Error handling Users in registry")
+            context.log.fail("Error handling Users in registry")
             traceback.print_exc()
         finally:
             remoteOps.finish()
@@ -335,7 +335,7 @@ class CMEModule:
                     sessionNames.remove('Default%20Settings')
 
                     if self.checkMasterpasswordSet(connection, userObject):
-                        context.log.error("MasterPassword set! Aborting extraction...")
+                        context.log.fail("MasterPassword set! Aborting extraction...")
                         continue
                     # Extract stored Session infos
                     for sessionName in sessionNames:
@@ -344,15 +344,15 @@ class CMEModule:
                     if str(e).find('ERROR_FILE_NOT_FOUND'):
                         context.log.debug("No WinSCP config found in registry for user {}".format(userObject))
                 except Exception:
-                    context.log.error("Unexpected error:")
+                    context.log.fail("Unexpected error:")
                     traceback.print_exc()
             self.unloadMissingUsers(context, connection, unloadedUserObjects)
         except DCERPCException as e:
             # Error during registry query
             if str(e).find('rpc_s_access_denied'):
-                context.log.error("Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry.")
+                context.log.fail("Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry.")
         except:
-            context.log.error("UNEXPECTED ERROR:")
+            context.log.fail("UNEXPECTED ERROR:")
             traceback.print_exc()
         finally:
             remoteOps.finish()
@@ -364,7 +364,7 @@ class CMEModule:
 
         # Stop extracting creds if Master Password is set
         if (int(config.get('Configuration\\Security', 'UseMasterPassword')) == 1):
-            context.log.error("Master Password Set, unable to recover saved passwords!")
+            context.log.fail("Master Password Set, unable to recover saved passwords!")
             return
 
         for section in config.sections():
@@ -391,7 +391,7 @@ class CMEModule:
                 context.log.success("Found config file! Extracting credentials...")
                 self.decodeConfigFile(context, confFile)
             except:
-                context.log.error("Error! No config file found at {}".format(self.filepath))
+                context.log.fail("Error! No config file found at {}".format(self.filepath))
                 traceback.print_exc()
         else:
             context.log.display("Looking for WinSCP creds in User documents and AppData...")

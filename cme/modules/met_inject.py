@@ -44,7 +44,7 @@ class CMEModule:
         self.met_ssl = 'https'
 
         if 'SRVHOST' not in module_options or 'SRVPORT' not in module_options:
-            context.log.error('SRVHOST and SRVPORT options are required!')
+            context.log.fail('SRVHOST and SRVPORT options are required!')
             exit(1)
 
         if 'SSL' in module_options:

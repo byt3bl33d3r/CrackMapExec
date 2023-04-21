@@ -69,4 +69,4 @@ class CMEModule:
             if not found:
                 context.log.display('No KeePass-related file were found')
             elif not found_xml:
-                context.log.error('No config settings file found !!!')
+                context.log.fail('No config settings file found !!!')

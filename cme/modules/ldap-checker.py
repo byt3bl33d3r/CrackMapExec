@@ -60,14 +60,14 @@ class CMEModule:
                     elif "data 52e" in str(ldapConn.result):
                         return False #channel binding not enforced
                     else:
-                        context.log.error("UNEXPECTED ERROR: " + str(ldapConn.result))
+                        context.log.fail("UNEXPECTED ERROR: " + str(ldapConn.result))
                 else:
                     #LDAPS bind successful
                     return False #because channel binding is not enforced
                     exit()
             except Exception as e:
-                context.log.error("\n   [!] "+ dcTarget+" -", str(e))
-                context.log.error("        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host")
+                context.log.fail("\n   [!] "+ dcTarget+" -", str(e))
+                context.log.fail("        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host")
 
         #Conduct a bind to LDAPS with channel binding supported
         #but intentionally miscalculated. In the case that and
@@ -83,7 +83,7 @@ class CMEModule:
             ldapsClientConn = MSLDAPClientConnection(target, credential)
             _, err = await ldapsClientConn.connect()
             if err is not None:
-                context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
+                context.log.fail("ERROR while connecting to " + dcTarget + ": " + err)
             #forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
             ldapsClientConn.cb_data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
             _, err = await ldapsClientConn.bind()
@@ -92,7 +92,7 @@ class CMEModule:
             elif "data 52e" in str(err):
                 return False
             elif err is not None:
-                context.log.error("ERROR while connecting to " + dcTarget + ": " + err)
+                context.log.fail("ERROR while connecting to " + dcTarget + ": " + err)
             elif err is None:
                 return False
 
@@ -122,7 +122,7 @@ class CMEModule:
                     ssl_sock.close()
                     return False
                 else:
-                    context.log.error("Unexpected error during LDAPS handshake: " + str(e))
+                    context.log.fail("Unexpected error during LDAPS handshake: " + str(e))
                     ssl_sock.close()
                     return False
 
@@ -155,7 +155,7 @@ class CMEModule:
         if ldapIsProtected == False:
             context.log.highlight("LDAP Signing NOT Enforced!")
         elif ldapIsProtected == True:
-            context.log.error("LDAP Signing IS Enforced")
+            context.log.fail("LDAP Signing IS Enforced")
         if DoesLdapsCompleteHandshake(dcTarget) == True:
             ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
             ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
@@ -164,9 +164,9 @@ class CMEModule:
             elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
                 context.log.highlight('LDAPS Channel Binding is set to \"NEVER\"')
             elif ldapsChannelBindingAlwaysCheck == True:
-                context.log.error('LDAPS Channel Binding is set to \"Required\"')
+                context.log.fail('LDAPS Channel Binding is set to \"Required\"')
             else:
-                context.log.error("\nSomething went wrong...")
+                context.log.fail("\nSomething went wrong...")
                 exit()          
         else:
-            context.log.error(dcTarget + " - cannot complete TLS handshake, cert likely not configured")
+            context.log.fail(dcTarget + " - cannot complete TLS handshake, cert likely not configured")

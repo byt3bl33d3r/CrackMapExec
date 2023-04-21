@@ -53,7 +53,7 @@ class CMEModule:
                         pass
             success += 1
         except Exception as e:
-            context.log.error(str(e))
+            context.log.fail(str(e))
 
         context.log.display(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:

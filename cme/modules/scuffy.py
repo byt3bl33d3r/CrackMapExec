@@ -38,11 +38,11 @@ class CMEModule:
             self.cleanup = bool(module_options['CLEANUP'])
 
         if 'NAME' not in module_options:
-            context.log.error('NAME option is required!')
+            context.log.fail('NAME option is required!')
             exit(1)
 
         if not self.cleanup and 'SERVER' not in module_options:
-            context.log.error('SERVER option is required!')
+            context.log.fail('SERVER option is required!')
             exit(1)
 
         self.scf_name = module_options['NAME']
@@ -68,10 +68,10 @@ class CMEModule:
                             connection.conn.putFile(share['name'], self.file_path, scf.read)
                             context.log.success(f"Created SCF file on the {share['name']} share")
                         except Exception as e:
-                            context.log.error(f"Error writing SCF file to share {share['name']}: {e}")
+                            context.log.fail(f"Error writing SCF file to share {share['name']}: {e}")
                 else:
                     try:
                         connection.conn.deleteFile(share['name'], self.file_path)
                         context.log.success(f"Deleted SCF file on the {share['name']} share")
                     except Exception as e:
-                        context.log.error(f"Error deleting SCF file on share {share['name']}: {e}")
+                        context.log.fail(f"Error deleting SCF file on share {share['name']}: {e}")

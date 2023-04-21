@@ -64,12 +64,12 @@ class CMEModule:
                     try :
                         self.value = int(self.value)
                     except:
-                        context.log.error(f"Invalid registry value type specified: {self.value}")
+                        context.log.fail(f"Invalid registry value type specified: {self.value}")
                         return
                 if self.type in type_dict:
                     self.type = type_dict[self.type]
                 else:
-                    context.log.error(f"Invalid registry value type specified: {self.type}")
+                    context.log.fail(f"Invalid registry value type specified: {self.type}")
                     return
             else:
                 self.type = 1
@@ -80,10 +80,10 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         self.context = context
         if not self.path:
-            self.context.log.error("Please provide the path of the registry to query")
+            self.context.log.fail("Please provide the path of the registry to query")
             return
         if not self.key:
-            self.context.log.error("Please provide the registry key to query")
+            self.context.log.fail("Please provide the registry key to query")
             return
 
         remote_ops = RemoteOperations(connection.conn, False)
@@ -100,7 +100,7 @@ class CMEModule:
                 self.path = self.path.replace('HKCR\\', '')
                 ans = rrp.hOpenClassesRoot(remote_ops._RemoteOperations__rrp)
             else:
-                self.context.log.error(f"Unsupported registry hive specified in path: {self.path}")
+                self.context.log.fail(f"Unsupported registry hive specified in path: {self.path}")
                 return
             
             reg_handle = ans['phKey']
@@ -121,7 +121,7 @@ class CMEModule:
                         self.key
                     )
                 except:
-                    self.context.log.error(f"Registry key {self.key} does not exist")
+                    self.context.log.fail(f"Registry key {self.key} does not exist")
                     return
                 # Delete value
                 rrp.hBaseRegDeleteValue(
@@ -180,12 +180,12 @@ class CMEModule:
                     if self.delete:
                         pass
                     else:
-                        self.context.log.error(f"Registry key {self.key} does not exist")
+                        self.context.log.fail(f"Registry key {self.key} does not exist")
                         return
             rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
         except DCERPCException as e:
-            self.context.log.error(f"DCERPC Error while querying or modifying registry: {e}")
+            self.context.log.fail(f"DCERPC Error while querying or modifying registry: {e}")
         except Exception as e:
-            self.context.log.error(f"Error while querying or modifying registry: {e}")
+            self.context.log.fail(f"Error while querying or modifying registry: {e}")
         finally:
             remote_ops.finish()

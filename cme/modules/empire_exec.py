@@ -27,7 +27,7 @@ class CMEModule:
         """
 
         if not 'LISTENER' in module_options:
-            context.log.error('LISTENER option is required!')
+            context.log.fail('LISTENER option is required!')
             sys.exit(1)
 
         self.empire_launcher = None
@@ -45,7 +45,7 @@ class CMEModule:
             if r.status_code == 200:
                 token = r.json()['token']
             else:
-                context.log.error("Error authenticating to Empire's RESTful API server!")
+                context.log.fail("Error authenticating to Empire's RESTful API server!")
                 sys.exit(1)
 
             payload = {'StagerName': 'multi/launcher', 'Listener': module_options['LISTENER']}
@@ -53,7 +53,7 @@ class CMEModule:
             
             response = r.json()
             if "error" in response:
-                context.log.error("Error from empire : {}".format(response["error"]))
+                context.log.fail("Error from empire : {}".format(response["error"]))
                 sys.exit(1)
 
             self.empire_launcher = response['multi/launcher']['Output']
@@ -61,7 +61,7 @@ class CMEModule:
             context.log.success("Successfully generated launcher for listener '{}'".format(module_options['LISTENER']))
 
         except ConnectionError as e:
-            context.log.error("Unable to connect to Empire's RESTful API: {}".format(e))
+            context.log.fail("Unable to connect to Empire's RESTful API: {}".format(e))
             sys.exit(1)
 
     def on_admin_login(self, context, connection):

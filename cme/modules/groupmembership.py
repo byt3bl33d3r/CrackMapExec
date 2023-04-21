@@ -28,11 +28,11 @@ class CMEModule:
         self.user = ""
         if 'USER' in module_options:
             if module_options['USER'] == "":
-                context.log.error('Invalid value for USER option!')
+                context.log.fail('Invalid value for USER option!')
                 exit(1)
             self.user = module_options['USER']
         else:
-            context.log.error('Missing USER option, use --options to list available parameters')
+            context.log.fail('Missing USER option, use --options to list available parameters')
             exit(1)
 
     def on_login(self, context, connection):

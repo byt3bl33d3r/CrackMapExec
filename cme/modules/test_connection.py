@@ -22,7 +22,7 @@ class CMEModule:
         self.host = None
 
         if 'HOST' not in module_options:
-            context.log.error('HOST option is required!')
+            context.log.fail('HOST option is required!')
             exit(1)
 
         self.host = module_options['HOST']
@@ -37,4 +37,4 @@ class CMEModule:
             if bool(output) is True:
                 context.log.success('Pinged successfully')
             elif bool(output) is False:
-                context.log.error('Host unreachable')
+                context.log.fail('Host unreachable')

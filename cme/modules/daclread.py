@@ -222,7 +222,7 @@ class CMEModule:
                     self.target_file = open(module_options['TARGET'], "r")
                     self.target_sAMAccountName = None
                 except Exception as e:
-                    context.log.error("The file doesn't exist or cannot be openned.")
+                    context.log.fail("The file doesn't exist or cannot be openned.")
             else:
                 self.target_sAMAccountName = module_options['TARGET']
                 self.target_file = None
@@ -279,7 +279,7 @@ class CMEModule:
                 )
                 context.log.highlight("Found principal SID to filter on: %s" % self.principal_sid)
             except Exception as e:
-                context.log.error('Principal SID not found in LDAP (%s)' % _lookedup_principal)
+                context.log.fail('Principal SID not found in LDAP (%s)' % _lookedup_principal)
                 exit(1)
 
         # Searching for the targets SID and their Security Decriptors
@@ -295,7 +295,7 @@ class CMEModule:
                     data=self.principal_raw_security_descriptor)
                 context.log.highlight('Target principal found in LDAP (%s)' % self.target_principal[0])
             except Exception as e:
-                context.log.error('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
+                context.log.fail('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
                 exit(1)
 
             if self.action == 'read':
@@ -318,7 +318,7 @@ class CMEModule:
                         data=self.principal_raw_security_descriptor)
                     context.log.highlight('Target principal found in LDAP (%s)' % self.target_sAMAccountName)
                 except Exception as e:
-                    context.log.error('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
+                    context.log.fail('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
                     continue
 
                 if self.action == 'read':
@@ -371,7 +371,7 @@ class CMEModule:
         try:
             self.target_principal = target[0]
         except Exception as e:
-            context.log.error('Principal not found in LDAP (%s), probably an LDAP session issue.' % _lookedup_principal)
+            context.log.fail('Principal not found in LDAP (%s), probably an LDAP session issue.' % _lookedup_principal)
             exit(0)
 
     # Attempts to retieve the SID and Distinguisehd Name from the sAMAccountName
@@ -388,7 +388,7 @@ class CMEModule:
             sid = format_sid(self.ldap_session.entries[0]['objectSid'].raw_values[0])
             return dn, sid
         except Exception as e:
-            context.log.error('User not found in LDAP: %s' % samname)
+            context.log.fail('User not found in LDAP: %s' % samname)
             return False
 
     # Attempts to resolve a SID and return the corresponding samaccountname
@@ -537,7 +537,7 @@ class CMEModule:
                             RIGHTS_GUID.ResetPassword.value not in parsed_ace['Object type (GUID)'])):
                         print_ace = False
                 except Exception as e:
-                    context.log.error(
+                    context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on specific right GUID
@@ -547,7 +547,7 @@ class CMEModule:
                             self.rights_guid not in parsed_ace['Object type (GUID)']):
                         print_ace = False
                 except Exception as e:
-                    context.log.error(
+                    context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on ACE type
@@ -557,7 +557,7 @@ class CMEModule:
                             'ACCESS_ALLOWED_ACE' not in parsed_ace['ACE Type']):
                         print_ace = False
                 except Exception as e:
-                    context.log.error(
+                    context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             else:
                 try:
@@ -565,7 +565,7 @@ class CMEModule:
                             'ACCESS_DENIED_ACE' not in parsed_ace['ACE Type']):
                         print_ace = False
                 except Exception as e:
-                    context.log.error(
+                    context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on trusted principal
@@ -574,7 +574,7 @@ class CMEModule:
                     if self.principal_sid not in parsed_ace['Trustee (SID)']:
                         print_ace = False
                 except Exception as e:
-                    context.log.error(
+                    context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             if print_ace:
                 print("[*]  %-28s" % "ACE[%d] info" % i)

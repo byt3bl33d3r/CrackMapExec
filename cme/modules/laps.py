@@ -45,7 +45,7 @@ class CMEModule:
                 sAMAccountName = ''
                 values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in computer['attributes']}
                 if "mslaps-encryptedpassword" in values:
-                    context.log.error("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
+                    context.log.fail("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
                     return
                 elif "mslaps-password" in values:
                     r = json.loads(values['mslaps-password'])
@@ -53,9 +53,9 @@ class CMEModule:
                 elif "ms-mcs-admpwd" in values:
                     laps_computers.append((values['samaccountname'], '', values['ms-mcs-admpwd']))
                 else:
-                    context.log.error("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
+                    context.log.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
             laps_computers = sorted(laps_computers, key=lambda x: x[0])
             for sAMAccountName, user, msMCSAdmPwd in laps_computers:
                 context.log.highlight("Computer: {:<20} User: {:<15} Password: {}".format(sAMAccountName, user, msMCSAdmPwd))
         else:
-            context.log.error("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password !")
+            context.log.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password !")

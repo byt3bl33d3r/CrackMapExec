@@ -32,7 +32,7 @@ def neo4j_conn(context, connection, driver):
             context.log.fail("Error querying domain admins")
             context.log.debug(e)
     else:
-        context.log.error("BloodHound not marked enabled. Check cme.conf")
+        context.log.fail("BloodHound not marked enabled. Check cme.conf")
         exit(1)
 
 

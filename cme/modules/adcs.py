@@ -68,7 +68,7 @@ class CMEModule:
                     searchBase='CN=Configuration,' + base_dn_root
                 )
         except LDAPSearchError as e:
-            context.log.error('Obtained unexpected exception: {}'.format(str(e)))
+            context.log.fail('Obtained unexpected exception: {}'.format(str(e)))
 
     def process_servers(self, item):
         """
@@ -98,7 +98,7 @@ class CMEModule:
                             urls.append(match.group(1))
         except Exception as e:
             entry = host_name or 'item'
-            self.context.log.error("Skipping {}, cannot process LDAP entry due to error: '{}'".format(entry, str(e)))
+            self.context.log.fail("Skipping {}, cannot process LDAP entry due to error: '{}'".format(entry, str(e)))
 
         if host_name:
             self.context.log.highlight('Found PKI Enrollment Server: {}'.format(host_name))
@@ -125,7 +125,7 @@ class CMEModule:
                         templates.append(template_name)
         except Exception as e:
             entry = template_name or 'item'
-            self.context.log.error(f"Skipping {entry}, cannot process LDAP entry due to error: '{e}'")
+            self.context.log.fail(f"Skipping {entry}, cannot process LDAP entry due to error: '{e}'")
 
         if templates:
             for t in templates:

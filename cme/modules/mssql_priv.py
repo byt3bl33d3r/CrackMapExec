@@ -54,7 +54,7 @@ class CMEModule:
 
         if self.action == "rollback":
             if not self.current_user.is_sysadmin:
-                context.log.error(
+                context.log.fail(
                     f"{self.current_username} is not sysadmin"
                 )
                 return
@@ -81,7 +81,7 @@ class CMEModule:
         )
         if self.action == "privesc":
             if not target_user:
-                context.log.error("can't find any path to privesc")
+                context.log.fail("can't find any path to privesc")
             else:
                 exec_as = self.build_exec_as_from_path(target_user)
                 # privesc via impersonation privilege

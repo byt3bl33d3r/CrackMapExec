@@ -24,7 +24,7 @@ class CMEModule:
         """
 
         if not 'URL' in module_options:
-            context.log.error('URL option is required!')
+            context.log.fail('URL option is required!')
             exit(1)
 
         self.url = module_options['URL']
@@ -32,7 +32,7 @@ class CMEModule:
         self.payload = "64"
         if 'PAYLOAD' in module_options:
             if module_options['PAYLOAD'] not in ['64', '32']:
-                context.log.error('Invalid value for PAYLOAD option!')
+                context.log.fail('Invalid value for PAYLOAD option!')
                 exit(1)
             self.payload = module_options['PAYLOAD']
 
