@@ -27,7 +27,7 @@ class SMBSpider:
             try:
                 self.regex = [re.compile(bytes(rx, "utf8")) for rx in regex]
             except Exception as e:
-                self.logger.error(f"Regex compilation error: {e}")
+                self.logger.fail(f"Regex compilation error: {e}")
 
         self.folder = folder
         self.pattern = pattern
@@ -50,7 +50,7 @@ class SMBSpider:
                     except SessionError:
                         pass
             except Exception as e:
-                self.logger.error(f"Error enumerating shares: {e}")
+                self.logger.fail(f"Error enumerating shares: {e}")
         else:
             self.share = share
             self.logger.display(f"Spidering {folder}")

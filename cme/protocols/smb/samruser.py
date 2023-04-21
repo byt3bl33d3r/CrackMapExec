@@ -108,7 +108,7 @@ class UserSamrDump:
                 resp = samr.hSamrEnumerateUsersInDomain(dce, domainHandle, enumerationContext = enumerationContext)
             except DCERPCException as e:
                 if str(e).find("STATUS_MORE_ENTRIES") < 0:
-                    self.logger.error("Error enumerating domain user(s)")
+                    self.logger.fail("Error enumerating domain user(s)")
                     break 
                 resp = e.get_packet()
             self.logger.success("Enumerated domain user(s)")

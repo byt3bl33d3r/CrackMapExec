@@ -162,12 +162,12 @@ class SMBSpiderPlus:
                     self._spider(name, '')
                 except SessionError:
                     traceback.print_exc()
-                    self.logger.error(f"Got a session error while spidering")
+                    self.logger.fail(f"Got a session error while spidering")
                     self.reconnect()
 
         except Exception as e:
             traceback.print_exc()
-            self.logger.error(f"Error enumerating shares: {str(e)}")
+            self.logger.fail(f"Error enumerating shares: {str(e)}")
 
         # Save the server shares metadatas if we want to grep on filenames
         self.dump_folder_metadata(self.results)
@@ -236,7 +236,7 @@ class SMBSpiderPlus:
                 remote_file = self.get_remote_file(share, next_path)
 
                 if not remote_file:
-                    self.logger.error(f'Cannot open remote file "{next_path}".')
+                    self.logger.fail(f'Cannot open remote file "{next_path}".')
                     continue
 
                 try:
@@ -252,7 +252,7 @@ class SMBSpiderPlus:
                         pass
                 except Exception as e:
                     traceback.print_exc()
-                    self.logger.error(f'Error reading file {next_path}: {str(e)}')
+                    self.logger.fail(f'Error reading file {next_path}: {str(e)}')
 
     def save_file(self, remote_file):
         # Reset the remote_file to point to the begining of the file

@@ -229,7 +229,7 @@ class LSAQuery:
             dce.connect()
             dce.bind(lsat.MSRPC_UUID_LSAT)
         except impacket.nmb.NetBIOSError as e:
-            self.logger.error(f"NetBIOSError on Connection: {e}")
+            self.logger.fail(f"NetBIOSError on Connection: {e}")
             return None
         return dce
 

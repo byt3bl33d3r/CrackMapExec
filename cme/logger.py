@@ -141,7 +141,7 @@ class CMEAdapter(logging.LoggerAdapter):
                             )
                         )
                     except Exception as e:
-                        self.logger.error(f"Issue while trying to custom print handler: {e}")
+                        self.logger.fail(f"Issue while trying to custom print handler: {e}")
         else:
             self.logger.info(text)
 

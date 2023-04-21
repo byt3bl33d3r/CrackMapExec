@@ -112,7 +112,7 @@ class vnc(connection):
                         "No password seems to be accepted by the server",
                         highlight(f"({self.config.get('CME', 'pwn3d_label')})" if self.admin_privs else '')))
             else:
-                self.logger.error(f"{password} {'Authentication failed'}")
+                self.logger.fail(f"{password} {'Authentication failed'}")
             return False
 
     async def screen(self):

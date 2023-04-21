@@ -78,13 +78,13 @@ class LDAPConnect:
                     return ldapConnection
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
-                    self.logger.error(
+                    self.logger.fail(
                         f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
                         color="magenta" if errorCode in ldap_error_status else "red"
                     )
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(
+                self.logger.fail(
                     f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
                     color="magenta" if errorCode in ldap_error_status else "red"
                 )
@@ -96,7 +96,7 @@ class LDAPConnect:
             )
             return False
         except KerberosError as e:
-            self.logger.error(
+            self.logger.fail(
                 f"{domain}\\{username}:{password if password else ntlm_hash} {str(e)}",
                 color="red"
             )
@@ -144,13 +144,13 @@ class LDAPConnect:
                     return ldapConnection
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
-                    self.logger.error(
+                    self.logger.fail(
                         f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
                         color="magenta" if errorCode in ldap_error_status else "red"
                     )
             else:
                 errorCode = str(e).split()[-2][:-1]
-                self.logger.error(
+                self.logger.fail(
                     f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
                     color="magenta" if errorCode in ldap_error_status else "red"
                 )

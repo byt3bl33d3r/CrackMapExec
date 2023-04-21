@@ -103,7 +103,7 @@ class winrm(connection):
                 except:
                     pass
             except Exception as e:
-                self.logger.error(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
+                self.logger.fail(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
 
             if self.args.domain:
                 self.domain = self.args.domain
@@ -263,11 +263,11 @@ class winrm(connection):
                 return True
         except Exception as e:
             if "with ntlm" in str(e): 
-                self.logger.error(
+                self.logger.fail(
                     f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
                 )
             else:
-                self.logger.error(
+                self.logger.fail(
                     f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} \"{e}\""
                 )
 
@@ -341,11 +341,11 @@ class winrm(connection):
 
         except Exception as e:
             if "with ntlm" in str(e): 
-                self.logger.error(
+                self.logger.fail(
                     f"{self.domain}\\{self.username}:{nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
                 )
             else:
-                self.logger.error(
+                self.logger.fail(
                     f"{self.domain}\\{self.username}:{nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} \"{e}\""
                 )
             return False

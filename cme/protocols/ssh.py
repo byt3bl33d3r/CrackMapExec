@@ -99,7 +99,7 @@ class ssh(connection):
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
-            self.logger.error(
+            self.logger.fail(
                 f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
             )
             self.client_close()

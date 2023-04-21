@@ -349,7 +349,7 @@ class smb(connection):
 
         if self.kerberos:
             if self.kdcHost is None:
-                self.logger.error("Provide --kdcHost parameter")
+                self.logger.fail("Provide --kdcHost parameter")
                 return False
             connection = ldapco.kerberos_login(
                 domain,
@@ -367,7 +367,7 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.error('LDAP connection failed with account {}'.format(username))
+            self.logger.fail('LDAP connection failed with account {}'.format(username))
             return False
 
         search_filter = '(&(objectCategory=computer)(|(msLAPS-EncryptedPassword=*)(ms-MCS-AdmPwd=*)(msLAPS-Password=*))(name=' + self.hostname + '))'
@@ -388,7 +388,7 @@ class smb(connection):
             for host in results:
                 values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in host['attributes']}
                 if "mslaps-encryptedpassword" in values:
-                    self.logger.error("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
+                    self.logger.fail("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
                     return False
                 elif "mslaps-password" in values:
                     from json import loads
@@ -1454,7 +1454,7 @@ class smb(connection):
             try:
                 results = self.db.get_domain_backupkey(self.domain)
             except:
-                self.logger.error("Your version of CMEDB is not up to date, run cmedb and create a new workspace: \
+                self.logger.fail("Your version of CMEDB is not up to date, run cmedb and create a new workspace: \
                 'workspace create dpapi' then re-run the dpapi option")
                 return False
             if len(results) > 0:
