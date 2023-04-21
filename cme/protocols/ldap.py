@@ -325,7 +325,7 @@ class ldap(connection):
         else:
             self.logger.extra["protocol"] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra["port"] = "445" if not self.no_ntlm else "389"
-            self.logger.success(
+            self.logger.display(
                 f"{self.server_os}{' x{}'.format(self.os_arch) if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
                 )
             self.logger.extra["protocol"] = "LDAP"
