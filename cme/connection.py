@@ -187,15 +187,16 @@ class connection(object):
         username = []
         secret = []
         cred_type = []
+        creds = []  # list of tuples (cred_id, domain, username, secret, cred_type, pillaged_from) coming from the database
 
-        if self.args.cred_id.lower() == 'all':
-            creds = self.db.get_credentials()
-        else:
-            for cred_id in self.args.cred_id:
-                try:
-                    creds = self.db.get_credentials(filter_term=int(cred_id))
-                except IndexError:
-                    self.logger.error("Invalid database credential ID!")
+        for cred_id in self.args.cred_id:
+            if isinstance(cred_id, str) and cred_id.lower() == 'all':
+                creds = self.db.get_credentials()
+            else:
+                if not self.db.get_credentials(filter_term=int(cred_id)):
+                    self.logger.error('Invalid database credential ID {}!'.format(cred_id))
+                    continue
+                creds.extend(self.db.get_credentials(filter_term=int(cred_id)))
 
         for cred in creds:
             c_id, domain_single, username_single, secret_single, cred_type_single, pillaged_from = cred
@@ -299,7 +300,6 @@ class connection(object):
         secret = []
         cred_type = []
 
-
         if self.args.cred_id:
             db_domain, db_username, db_secret, db_cred_type = self.query_db_creds()
             domain.extend(db_domain)
@@ -332,6 +332,5 @@ class connection(object):
                 self.logger.error("Number provided of usernames and passwords/hashes do not match!")
                 return False
             for user_index, user in enumerate(username):
-                print(user)
                 if self.try_credentials(domain[user_index], user, secret[user_index], cred_type[user_index]):
                     return True
