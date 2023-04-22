@@ -326,7 +326,7 @@ class ldap(connection):
             self.logger.extra["protocol"] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra["port"] = "445" if not self.no_ntlm else "389"
             self.logger.display(
-                f"{self.server_os}{' x{}'.format(self.os_arch) if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
+                f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})"
                 )
             self.logger.extra["protocol"] = "LDAP"
             # self.logger.display(self.endpoint)
@@ -449,7 +449,7 @@ class ldap(connection):
                     self.check_if_admin()
 
                     # Prepare success credential text
-                    out = f"{domain}\\{self.username} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+                    out = f"{domain}\\{self.username} {highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')}"
                     
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
@@ -504,7 +504,7 @@ class ldap(connection):
             self.check_if_admin()
 
             # Prepare success credential text
-            out = f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+            out = f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')}"
 
             self.logger.extra["protocol"] = "LDAP"
             self.logger.extra["port"] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
@@ -526,7 +526,7 @@ class ldap(connection):
                     self.check_if_admin()
 
                     # Prepare success credential text
-                    out = f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+                    out = f"{domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')}"
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
                     self.logger.success(out)
@@ -593,7 +593,7 @@ class ldap(connection):
             self.check_if_admin()
             
             # Prepare success credential text
-            out = f"{domain}\\{self.username}:{self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+            out = f"{domain}\\{self.username}:{self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')}"
             self.logger.extra["protocol"] = "LDAP"
             self.logger.extra["port"] = "636" if (self.args.gmsa or self.args.port == 636) else "389"
             self.logger.success(out)
@@ -613,7 +613,7 @@ class ldap(connection):
                     self.check_if_admin()
                     
                     # Prepare success credential text
-                    out = f"{domain}\\{self.username}:{self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')}"
+                    out = f"{domain}\\{self.username}:{self.nthash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')}"
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
                     self.logger.success(out)

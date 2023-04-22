@@ -403,9 +403,11 @@ class smb(connection):
                     msMCSAdmPwd = values['ms-mcs-admpwd']
                 else:
                     self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
-            logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))  
+            logging.debug(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
         else:
-            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.fail(
+                f'msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {self.hostname}'
+                )
 
             return False
 
@@ -413,7 +415,9 @@ class smb(connection):
         self.password = msMCSAdmPwd
 
         if msMCSAdmPwd == '':
-            self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+            self.logger.fail(
+                f'msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {self.hostname}'
+                )
 
             return False
         if ntlm_hash:
