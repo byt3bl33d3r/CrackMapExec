@@ -6,6 +6,7 @@ from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from cme.logger import cme_logger
 
+
 class database:
     def __init__(self, db_engine):
         self.CredentialsTable = None

@@ -369,7 +369,8 @@ class smb(connection):
                 ntlm_hash[0] if ntlm_hash else ''
             )
         if not connection:
-            self.logger.fail('LDAP connection failed with account {}'.format(username[0]))
+            self.logger.fail(f"LDAP connection failed with account {username[0]}")
+
             return False
 
         search_filter = '(&(objectCategory=computer)(|(msLAPS-EncryptedPassword=*)(ms-MCS-AdmPwd=*)(msLAPS-Password=*))(name=' + self.hostname + '))'
@@ -391,6 +392,7 @@ class smb(connection):
                 values = {str(attr['type']).lower(): str(attr['vals'][0]) for attr in host['attributes']}
                 if "mslaps-encryptedpassword" in values:
                     self.logger.fail("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
+
                     return False
                 elif "mslaps-password" in values:
                     from json import loads
@@ -404,6 +406,7 @@ class smb(connection):
             logging.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))  
         else:
             self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+
             return False
 
         self.username = self.args.laps if not username else username
@@ -411,6 +414,7 @@ class smb(connection):
 
         if msMCSAdmPwd == '':
             self.logger.fail('msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}'.format(self.hostname))
+
             return False
         if ntlm_hash:
             hash_ntlm = hashlib.new("md4", msMCSAdmPwd.encode("utf-16le")).digest()

@@ -8,6 +8,7 @@ from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuc
 from cme.logger import cme_logger
 
 
+
 class database:
     def __init__(self, db_engine):
         self.HostsTable = None
