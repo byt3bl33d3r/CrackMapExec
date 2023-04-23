@@ -19,8 +19,8 @@ class ftp(connection):
         ftp_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
         # TODO: Create more options for the protocol
-        #cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
-        #cgroup.add_argument('--ls', metavar="COMMAND", dest='list_directory', help='List files in the directory')
+        # cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
+        # cgroup.add_argument('--ls', metavar="COMMAND", dest='list_directory', help='List files in the directory')
         return parser
 
     def proto_logger(self):

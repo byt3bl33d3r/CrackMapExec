@@ -112,7 +112,8 @@ def requires_smb_server(func):
         if 'methods' in kwargs:
             methods = kwargs['methods']
         if not payload and self.args.execute:
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
         if get_output or (methods and ('smbexec' in methods)):
             if not smb_server:
                 logging.debug('Starting SMB server')
@@ -443,8 +444,10 @@ class smb(connection):
             else:
                 nthash = ntlm_hash
                 self.hash = ntlm_hash
-            if lmhash: self.lmhash = lmhash
-            if nthash: self.nthash = nthash
+            if lmhash:
+                self.lmhash = lmhash
+            if nthash:
+                self.nthash = nthash
 
             if not all('' == s for s in [self.nthash, password, aesKey]):
                 kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
@@ -596,8 +599,10 @@ class smb(connection):
                 else:
                     nthash = ntlm_hash
                     self.hash = ntlm_hash
-                if lmhash: self.lmhash = lmhash
-                if nthash: self.nthash = nthash
+                if lmhash:
+                    self.lmhash = lmhash
+                if nthash:
+                    self.nthash = nthash
             else:
                 nthash = self.hash
 
@@ -725,7 +730,8 @@ class smb(connection):
 
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
 
         for method in methods:
             if method == 'wmiexec':
@@ -834,7 +840,8 @@ class smb(connection):
     def ps_execute(self, payload=None, get_output=False, methods=None, force_ps32=False, dont_obfs=False):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
 
         amsi_bypass = self.args.amsi_bypass[0] if self.args.amsi_bypass else None
         if os.path.isfile(payload):
@@ -1442,7 +1449,6 @@ class smb(connection):
                 self.bootkey,
                 isRemote=True,
                 perSecretCallback=lambda secret: add_sam_hash(secret, host_id))
-
 
             self.logger.success('Dumping SAM hashes')
             SAM.dump()
