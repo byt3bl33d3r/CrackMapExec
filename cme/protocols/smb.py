@@ -475,12 +475,14 @@ class smb(connection):
                 add_user_bh(self.username, domain, self.logger, self.config)
 
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-            if self.args.continue_on_success and self.signing:
+            if self.args.continue_on_succes and self.signing:
                 try:
                     self.conn.logoff()
                 except:
                     pass
                 self.create_conn_obj()
+
+            return True
         except SessionKeyDecryptionError:
             # for PRE-AUTH account
             self.logger.error(u'{}\\{}{} {}'.format(
@@ -566,6 +568,7 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
+            return True
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(
@@ -639,6 +642,7 @@ class smb(connection):
                 except:
                     pass
                 self.create_conn_obj()
+            return True
         except SessionError as e:
             error, desc = e.getErrorString()
             self.logger.error(u'{}\\{}:{} {} {}'.format(

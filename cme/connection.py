@@ -332,16 +332,18 @@ class connection(object):
         cred_type = []
 
         if self.args.cred_id:
-            db_domain, db_username, db_secret, db_cred_type = self.query_db_creds()
+            db_domain, db_username, db_owned, db_secret, db_cred_type = self.query_db_creds()
             domain.extend(db_domain)
             username.extend(db_username)
+            owned.extend(db_owned)
             secret.extend(db_secret)
             cred_type.extend(db_cred_type)
 
         if self.args.username:
-            parsed_domain, parsed_username, parsed_secret, parsed_cred_type = self.parse_credentials()
+            parsed_domain, parsed_username, parsed_owned, parsed_secret, parsed_cred_type = self.parse_credentials()
             domain.extend(parsed_domain)
             username.extend(parsed_username)
+            owned.extend(parsed_owned)
             secret.extend(parsed_secret)
             cred_type.extend(parsed_cred_type)
 
@@ -356,12 +358,16 @@ class connection(object):
         if not self.args.no_bruteforce:
             for secr_index, secr in enumerate(secret):
                 for user_index, user in enumerate(username):
-                    if not self.args.continue_on_success and self.try_credentials(domain[user_index], user, owned[user_index], secr, cred_type[secr_index]):
-                        return True
+                    if self.try_credentials(domain[user_index], user, owned[user_index], secr, cred_type[secr_index]):
+                        owned[user_index] = True
+                        if not self.args.continue_on_success:
+                            return True
         else:
             if len(username) != len(secret):
                 self.logger.error("Number provided of usernames and passwords/hashes do not match!")
                 return False
             for user_index, user in enumerate(username):
-                if not self.args.continue_on_success and self.try_credentials(domain[user_index], user, owned[user_index], secret[user_index], cred_type[user_index]):
-                    return True
+                if self.try_credentials(domain[user_index], user, owned[user_index], secret[user_index], cred_type[user_index]) and not self.args.continue_on_success:
+                    owned[user_index] = True
+                    if not self.args.continue_on_success:
+                        return True
