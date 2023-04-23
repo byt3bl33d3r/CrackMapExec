@@ -183,8 +183,18 @@ class connection(object):
         return False
 
     def query_db_creds(self):
+        """
+        Queries the database for credentials to be used for authentication.
+        Valid cred_id values are:
+            - a single cred_id
+            - a range specified with a dash (ex. 1-5)
+            - 'all' to select all credentials
+
+        :return: domain[], username[], owned[], secret[], cred_type[]
+        """
         domain = []
         username = []
+        owned = []
         secret = []
         cred_type = []
         creds = []  # list of tuples (cred_id, domain, username, secret, cred_type, pillaged_from) coming from the database
@@ -202,19 +212,23 @@ class connection(object):
             c_id, domain_single, username_single, secret_single, cred_type_single, pillaged_from = cred
             domain.append(domain_single)
             username.append(username_single)
+            owned.append(True)  # We assume that credentials stored in the db are valid
             secret.append(secret_single)
             cred_type.append(cred_type_single)
 
-        return domain, username, secret, cred_type
+        return domain, username, owned, secret, cred_type
 
     def parse_credentials(self):
         """
         Parse credentials from the command line or from a file specified.
         Usernames can be specified with a domain (domain\\username) or without (username).
         If the file contains domain\\username the domain specified will be overwritten by the one in the file.
+
+        :return: domain[], username[], owned[], secret[], cred_type[]
         """
         domain = []
         username = []
+        owned = []
         secret = []
         cred_type = []
 
@@ -230,6 +244,7 @@ class connection(object):
                             username_single = line
                         domain.append(domain_single)
                         username.append(username_single.strip())
+                        owned.append(False)
             else:
                 if "\\" in user:
                     domain_single, username_single = user.split("\\")
@@ -238,6 +253,7 @@ class connection(object):
                     username_single = user
                 domain.append(domain_single)
                 username.append(username_single)
+                owned.append(False)
 
         # Parse passwords
         for password in self.args.password:
@@ -274,10 +290,19 @@ class connection(object):
                     secret.append(aesKey)
                     cred_type.append('aesKey')
 
-        return domain, username, secret, cred_type
+        return domain, username, owned, secret, cred_type
 
-    def try_credentials(self, domain, username, secret, cred_type):
+    def try_credentials(self, domain, username, owned, secret, cred_type):
+        """
+        Try to login using the specified credentials and protocol.
+        Possible login methods are:
+            - plaintext (/kerberos)
+            - NTLM-hash (/kerberos)
+            - AES-key
+        """
         if self.over_fail_limit(username):
+            return False
+        if self.args.continue_on_success and owned:
             return False
 
         with sem:
@@ -293,9 +318,15 @@ class connection(object):
                 return self.kerberos_login(domain, username, '', '', secret, self.kdcHost, False)
 
     def login(self):
+        """
+        Try to login using the credentials specified in the command line or in the database.
+
+        :return: True if the login was successful and "--continue-on-success" was not specified, False otherwise.
+        """
         # domain[n] always corresponds to username[n]
         domain = []
         username = []
+        owned = []  # Determines whether we have found a valid credential for this user. Default: False
         # secret[n] always corresponds to cred_type[n]
         secret = []
         cred_type = []
@@ -325,12 +356,12 @@ class connection(object):
         if not self.args.no_bruteforce:
             for secr_index, secr in enumerate(secret):
                 for user_index, user in enumerate(username):
-                    if self.try_credentials(domain[user_index], user, secr, cred_type[secr_index]):
+                    if not self.args.continue_on_success and self.try_credentials(domain[user_index], user, owned[user_index], secr, cred_type[secr_index]):
                         return True
         else:
             if len(username) != len(secret):
                 self.logger.error("Number provided of usernames and passwords/hashes do not match!")
                 return False
             for user_index, user in enumerate(username):
-                if self.try_credentials(domain[user_index], user, secret[user_index], cred_type[user_index]):
+                if not self.args.continue_on_success and self.try_credentials(domain[user_index], user, owned[user_index], secret[user_index], cred_type[user_index]):
                     return True
