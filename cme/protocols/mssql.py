@@ -209,8 +209,7 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
         except Exception as e:
             self.logger.error(u'{}\\{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
                                                     username,
@@ -249,8 +248,7 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
         except BrokenPipeError as e:
             self.logger.error(f"Broken Pipe Error while attempting to login")
         except Exception as e:
@@ -298,8 +296,7 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
         except BrokenPipeError as e:
             self.logger.error(f"Broken Pipe Error while attempting to login")
         except Exception as e:

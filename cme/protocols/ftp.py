@@ -70,14 +70,12 @@ class ftp(connection):
             self.logger.success(u'{}:{}'.format(username,
                                                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
 
-            if not self.args.continue_on_success:
-                self.conn.close()
-                return True
             self.conn.close()
+            return True
 
         except Exception as e:
             self.logger.error(u'{}:{} (Response:{})'.format(username,
-                                                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 e))
+                                                            password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                                                            e))
             self.conn.close()
             return False

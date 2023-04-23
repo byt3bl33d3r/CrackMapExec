@@ -470,10 +470,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-            elif self.signing:
+            if self.args.continue_on_success and self.signing:
                 try:
                     self.conn.logoff()
                 except:
@@ -556,10 +555,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-            elif self.signing:
+            if self.args.continue_on_success and self.signing:
                 try:
                     self.conn.logoff()
                 except:
@@ -628,10 +626,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-            if self.signing:
+            if self.args.continue_on_success and self.signing:
                 try:
                     self.conn.logoff()
                 except:

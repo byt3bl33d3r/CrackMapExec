@@ -213,15 +213,14 @@ class rdp(connection):
 
             self.admin_privs = True
             self.logger.success(u'{}\\{}{} {}'.format(domain,
-                                                        username,
-                                                        # Show what was used between cleartext, nthash, aesKey and ccache
-                                                        " from ccache" if useCache
-                                                        else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+                                                      username,
+                                                      # Show what was used between cleartext, nthash, aesKey and ccache
+                                                      " from ccache" if useCache
+                                                      else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
+                                                      highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
 
         except Exception as e:
             if "KDC_ERR" in str(e):
@@ -256,31 +255,30 @@ class rdp(connection):
                                                         " from ccache" if useCache
                                                         else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
                                                         '({})'.format(reason) if reason else ''),
-                                                        color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
+                                  color='magenta' if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else 'red')
             return False
 
     def plaintext_login(self, domain, username, password):
         try:
-            self.auth   = NTLMCredential(secret=password, username=username, domain=domain, stype=asyauthSecret.PASS)
-            self.conn   = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
+            self.auth = NTLMCredential(secret=password, username=username, domain=domain, stype=asyauthSecret.PASS)
+            self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
             self.logger.success(u'{}\\{}:{} {}'.format(domain,
-                                                        username,
-                                                        password,
-                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+                                                       username,
+                                                       password,
+                                                       highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
 
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(u'{}\\{}:{} {}'.format(domain,
-                                                            username,
-                                                            password,
-                                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+                                                           username,
+                                                           password,
+                                                           highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             else:
                 reason = None
                 for word in rdp_error_status.keys():
@@ -307,16 +305,15 @@ class rdp(connection):
                                                        ntlm_hash,
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
-                add_user_bh(username, domain, self.logger, self.config)            
-            if not self.args.continue_on_success:
-                return True
+                add_user_bh(username, domain, self.logger, self.config)
+            return True
 
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(u'{}\\{}:{} {}'.format(domain,
-                                                            username,
-                                                            ntlm_hash,
-                                                            highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+                                                           username,
+                                                           ntlm_hash,
+                                                           highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             else:
                 reason = None
                 for word in rdp_error_status.keys():

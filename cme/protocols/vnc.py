@@ -93,8 +93,7 @@ class vnc(connection):
             self.admin_privs = True
             self.logger.success(u'{} {}'.format(password,
                                                     highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-            if not self.args.continue_on_success:
-                return True
+            return True
 
         except Exception as e:
             logging.debug(str(e))

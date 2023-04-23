@@ -277,8 +277,7 @@ class winrm(connection):
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
-            if not self.args.continue_on_success:
-                return True
+            return True
         except Exception as e:
             if "with ntlm" in str(e): 
                 self.logger.error(
@@ -368,8 +367,7 @@ class winrm(connection):
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
 
         except Exception as e:
             if "with ntlm" in str(e): 
