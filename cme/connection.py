@@ -212,7 +212,7 @@ class connection(object):
             c_id, domain_single, username_single, secret_single, cred_type_single, pillaged_from = cred
             domain.append(domain_single)
             username.append(username_single)
-            owned.append(True)  # We assume that credentials stored in the db are valid
+            owned.append(False)  # As these are likely valid we still want to test them if they are specified in the command line
             secret.append(secret_single)
             cred_type.append(cred_type_single)
 
