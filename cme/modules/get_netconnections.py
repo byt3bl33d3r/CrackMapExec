@@ -6,11 +6,11 @@ from cme.helpers.logger import write_log
 import json
 
 class CMEModule:
-    '''
+    """
         Uses WMI to extract network connections, used to find multi-homed hosts.
         Module by @fang0654
 
-    '''
+    """
 
     name = 'get_netconnections'
     description = 'Uses WMI to query network connections.'
@@ -19,9 +19,9 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
         No options
-        '''
+        """
         pass
 
     def on_admin_login(self, context, connection):
@@ -36,5 +36,5 @@ class CMEModule:
 
         log_name = 'network-connections-{}-{}.log'.format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(json.dumps(data), log_name)
-        context.log.info("Saved raw output to {}".format(log_name))
+        context.log.display("Saved raw output to {}".format(log_name))
 

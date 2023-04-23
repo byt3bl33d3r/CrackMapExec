@@ -19,8 +19,8 @@ class CMEModule:
     multiple_hosts = False
 
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
 
     def on_login(self, context, connection):

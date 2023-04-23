@@ -1,8 +1,7 @@
 import sys, time
 
 from cme.logger import CMEAdapter
-from bloodhound.ad.domain import AD, ADDC
-from bloodhound.ad.authentication import ADAuthentication
+from bloodhound.ad.domain import ADDC
 from bloodhound.enumeration.computers import ComputerEnumerator
 from bloodhound.enumeration.memberships import MembershipEnumerator
 from bloodhound.enumeration.domains import DomainEnumerator
@@ -26,11 +25,11 @@ class BloodHound(object):
                                         })
     def connect(self):
         if len(self.ad.dcs()) == 0:
-            self.logger.error('Could not find a domain controller. Consider specifying a domain and/or DNS server.')
+            self.logger.fail('Could not find a domain controller. Consider specifying a domain and/or DNS server.')
             sys.exit(1)
 
         if not self.ad.baseDN:
-            self.logger.error('Could not figure out the domain to query. Please specify this manually with -d')
+            self.logger.fail('Could not figure out the domain to query. Please specify this manually with -d')
             sys.exit(1)
 
         pdc = self.ad.dcs()[0]

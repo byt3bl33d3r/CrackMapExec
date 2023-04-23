@@ -3,17 +3,16 @@
 
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap import ldap as ldap_impacket
-import re
 
 
 class CMEModule:
-    '''
+    """
         Created as a contributtion from HackTheBox Academy team for CrackMapExec
         Reference: https://academy.hackthebox.com/module/details/84
 
-        Module by @juliourena 
+        Module by @juliourena
         Based on: https://github.com/juliourena/CrackMapExec/blob/master/cme/modules/get_description.py
-    '''
+    """
 
     name = 'groupmembership'
     description = "Query the groups to which a user belongs."
@@ -22,22 +21,22 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
         USER	Choose a username to query group membership
-        '''
+        """
 
         self.user = ""
         if 'USER' in module_options:
             if module_options['USER'] == "":
-                context.log.error('Invalid value for USER option!')
+                context.log.fail('Invalid value for USER option!')
                 exit(1)
             self.user = module_options['USER']
         else:
-            context.log.error('Missing USER option, use --options to list available parameters')
+            context.log.fail('Missing USER option, use --options to list available parameters')
             exit(1)
 
     def on_login(self, context, connection):
-        '''Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection'''
+        """Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection"""
         # Building the search filter
         searchFilter = "(&(objectClass=user)(sAMAccountName={}))".format(self.user)
 
@@ -54,7 +53,7 @@ class CMEModule:
                 resp = e.getAnswers()
                 pass
             else:
-                logging.debug(e)
+                context.log.debug(e)
                 return False
 
         memberOf = []

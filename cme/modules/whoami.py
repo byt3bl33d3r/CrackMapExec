@@ -1,10 +1,8 @@
-from ldap3 import Server, Connection, NTLM, ALL
-
 class CMEModule:
-    '''
-        Basic enumeration of provided user information and privileges 
+    """
+        Basic enumeration of provided user information and privileges
         Module by spyr0 (@spyr0-sec)
-    '''
+    """
     name = 'whoami'
     description = 'Get details of provided user'
     supported_protocols = ['ldap']
@@ -12,9 +10,9 @@ class CMEModule:
     multiple_hosts = True # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
-        '''
+        """
             USER  Enumerate information about a different SamAccountName
-        '''
+        """
         self.username = None
         if 'USER' in module_options:
                 self.username = module_options['USER']

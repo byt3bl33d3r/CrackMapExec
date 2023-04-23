@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import binascii
+from cme.logger import cme_logger
+
 
 class MSSQLEXEC:
-
     def __init__(self, connection):
         self.mssql_conn = connection
         self.outputBuffer = ''
@@ -13,11 +13,11 @@ class MSSQLEXEC:
     def execute(self, command, output=False):
         try:
             self.enable_xp_cmdshell()
-            self.mssql_conn.sql_query("exec master..xp_cmdshell '{}'".format(command))
+            self.mssql_conn.sql_query(f"exec master..xp_cmdshell '{command}'")
 
             if output:
                 self.mssql_conn.printReplies()
-                self.mssql_conn.colMeta[0]['TypeData'] = 80*2
+                self.mssql_conn.colMeta[0]["TypeData"] = 80 * 2
                 self.mssql_conn.printRows()
                 self.outputBuffer = self.mssql_conn._MSSQL__rowsPrinter.getMessage()
                 if len(self.outputBuffer):
@@ -27,7 +27,7 @@ class MSSQLEXEC:
             return self.outputBuffer
 
         except Exception as e:
-            logging.debug('Error executing command via mssqlexec: {}'.format(e))
+            cme_logger.debug(f"Error executing command via mssqlexec: {e}")
 
     def enable_xp_cmdshell(self):
         self.mssql_conn.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")
@@ -55,22 +55,24 @@ class MSSQLEXEC:
                                         "EXEC sp_OADestroy @ob;".format(hexdata, remote))
             self.disable_ole()
         except Exception as e:
-            logging.debug('Error uploading via mssqlexec: {}'.format(e))
+            cme_logger.debug(f"Error uploading via mssqlexec: {e}")
 
     def file_exists(self, remote):
         try:
-            res = self.mssql_conn.batch("DECLARE @r INT; EXEC master.dbo.xp_fileexist '{}', @r OUTPUT; SELECT @r as n".format(remote))[0]['n']
+            res = self.mssql_conn.batch(
+                f"DECLARE @r INT; EXEC master.dbo.xp_fileexist '{remote}', @r OUTPUT; SELECT @r as n"
+                )[0]['n']
             return res == 1
         except:
             return False
 
     def get_file(self, remote, local):
         try:
-            self.mssql_conn.sql_query("SELECT * FROM OPENROWSET(BULK N'{}', SINGLE_BLOB) rs".format(remote))
-            data = self.mssql_conn.rows[0]['BulkColumn']
+            self.mssql_conn.sql_query(f"SELECT * FROM OPENROWSET(BULK N'{remote}', SINGLE_BLOB) rs")
+            data = self.mssql_conn.rows[0]["BulkColumn"]
 
-            with open(local, 'wb+') as f:
+            with open(local, "wb+") as f:
                 f.write(binascii.unhexlify(data))
 
         except Exception as e:
-            logging.debug('Error downloading via mssqlexec: {}'.format(e))
+            cme_logger.debug(f"Error downloading via mssqlexec: {e}")

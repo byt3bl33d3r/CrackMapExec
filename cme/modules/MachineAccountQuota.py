@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 class CMEModule:
-    '''
+    """
       Module by Shutdown and Podalirius
 
       Initial module:
@@ -11,7 +11,7 @@ class CMEModule:
       Authors:
         Shutdown: @_nwodtuhs
         Podalirius: @podalirius_
-    '''
+    """
 
     def options(self, context, module_options):
         pass
@@ -24,7 +24,7 @@ class CMEModule:
 
     def on_login(self, context, connection):     
         result = []
-        context.log.info('Getting the MachineAccountQuota')
+        context.log.display('Getting the MachineAccountQuota')
         searchFilter = '(objectClass=*)'
         attributes = ['ms-DS-MachineAccountQuota']
         result = connection.search(searchFilter, attributes)

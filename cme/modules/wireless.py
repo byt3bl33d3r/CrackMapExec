@@ -18,8 +18,8 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-        '''     
+        """
+        """
 
     def on_admin_login(self, context, connection):
         host = connection.hostname + "." + connection.domain
@@ -62,7 +62,7 @@ class CMEModule:
             context.log.debug("Could not get masterkeys: {}".format(e))
         
         if len(masterkeys) == 0:
-            context.log.error("No masterkeys looted")
+            context.log.fail("No masterkeys looted")
             return
 
         context.log.success("Got {} decrypted masterkeys. Looting Wifi interfaces".format(highlight(len(masterkeys))))

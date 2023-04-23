@@ -33,16 +33,15 @@ def gen_cli_args():
 
                                                    {highlight('Version', 'red')} : {highlight(VERSION)}
                                                    {highlight('Codename', 'red')}: {highlight(CODENAME)}
-""",
-
-    formatter_class=RawTextHelpFormatter)
+""", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument("-t", type=int, dest="threads", default=100, help="set how many concurrent threads to use (default: 100)")
     parser.add_argument("--timeout", default=None, type=int, help='max timeout in seconds of each thread (default: None)')
     parser.add_argument("--jitter", metavar='INTERVAL', type=str, help='sets a random delay between each connection (default: None)')
-    parser.add_argument("--progress", default=True, action='store_false', help='display progress bar during scan')
+    parser.add_argument("--no-progress", action='store_true', help='Not displaying progress bar during scan')
     parser.add_argument("--darrell", action='store_true', help='give Darrell a hand')
     parser.add_argument("--verbose", action='store_true', help="enable verbose output")
+    parser.add_argument("--debug", action='store_true', help="enable debug level information")
     parser.add_argument("--version", action='store_true', help="Display CME version")
 
     subparsers = parser.add_subparsers(title='protocols', dest='protocol', description='available protocols')
@@ -54,7 +53,7 @@ def gen_cli_args():
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication")
     std_parser.add_argument("--use-kcache", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
-    std_parser.add_argument("--log", metavar="LOG", nargs='+', help="Export result into a custome file")
+    std_parser.add_argument("--log", metavar="LOG", help="Export result into a custom file")
     std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")
     std_parser.add_argument("--kdcHost", metavar="KDCHOST", help="FQDN of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter")
 
@@ -66,7 +65,6 @@ def gen_cli_args():
     module_parser = argparse.ArgumentParser(add_help=False)
     mgroup = module_parser.add_mutually_exclusive_group()
     mgroup.add_argument("-M", "--module", action='append', metavar='MODULE', help='module to use')
-    #mgroup.add_argument('-MC','--module-chain', metavar='CHAIN_COMMAND', help='Payload module chain command string to run')
     module_parser.add_argument('-o', metavar='MODULE_OPTION', nargs='+', default=[], dest='module_options', help='module options')
     module_parser.add_argument('-L', '--list-modules', action='store_true', help='list available modules')
     module_parser.add_argument('--options', dest='show_module_options', action='store_true', help='display module options')

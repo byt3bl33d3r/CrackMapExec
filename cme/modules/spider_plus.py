@@ -5,17 +5,16 @@ import json
 import errno
 import os
 import time
-import logging
 import traceback
 from cme.protocols.smb.remotefile import RemoteFile
-from impacket import smb
 from impacket.smb3structs import FILE_READ_DATA
 from impacket.smbconnection import SessionError
 
 
 CHUNK_SIZE = 4096
-
 suffixes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB']
+
+
 def humansize(nbytes):
     i = 0
     while nbytes >= 1024 and i < len(suffixes)-1:
@@ -24,8 +23,10 @@ def humansize(nbytes):
     f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
     return '%s %s' % (f, suffixes[i])
 
+
 def humaclock(time):
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time))
+
 
 def make_dirs(path):
     """
@@ -40,6 +41,7 @@ def make_dirs(path):
             raise
 
         pass
+
 
 get_list_from_option = lambda opt: list(map(lambda o: o.lower(), filter(bool, opt.split(','))))
 
@@ -65,7 +67,7 @@ class SMBSpiderPlus:
     def reconnect(self):
         if self.conn_retry > 0:
             self.conn_retry -= 1
-            self.logger.info(f"Reconnect to server {self.conn_retry}")
+            self.logger.display(f"Reconnect to server {self.conn_retry}")
 
             # Renogociate the session
             time.sleep(3)
@@ -160,12 +162,12 @@ class SMBSpiderPlus:
                     self._spider(name, '')
                 except SessionError:
                     traceback.print_exc()
-                    self.logger.error(f"Got a session error while spidering")
+                    self.logger.fail(f"Got a session error while spidering")
                     self.reconnect()
 
         except Exception as e:
             traceback.print_exc()
-            self.logger.error(f"Error enumerating shares: {str(e)}")
+            self.logger.fail(f"Error enumerating shares: {str(e)}")
 
         # Save the server shares metadatas if we want to grep on filenames
         self.dump_folder_metadata(self.results)
@@ -234,7 +236,7 @@ class SMBSpiderPlus:
                 remote_file = self.get_remote_file(share, next_path)
 
                 if not remote_file:
-                    self.logger.error(f'Cannot open remote file "{next_path}".')
+                    self.logger.fail(f'Cannot open remote file "{next_path}".')
                     continue
 
                 try:
@@ -250,7 +252,7 @@ class SMBSpiderPlus:
                         pass
                 except Exception as e:
                     traceback.print_exc()
-                    self.logger.error(f'Error reading file {next_path}: {str(e)}')
+                    self.logger.fail(f'Error reading file {next_path}: {str(e)}')
 
     def save_file(self, remote_file):
         # Reset the remote_file to point to the begining of the file
@@ -285,10 +287,10 @@ class SMBSpiderPlus:
 
 
 class CMEModule:
-    '''
+    """
         Spider plus module
         Module by @vincd
-    '''
+    """
 
     name = 'spider_plus'
     description = 'List files on the target server (excluding `DIR` directories and `EXT` extensions) and save them to the `OUTPUT` directory if they are smaller then `SIZE`'
@@ -314,11 +316,11 @@ class CMEModule:
 
     def on_login(self, context, connection):
 
-        context.log.info('Started spidering plus with option:')
-        context.log.info('       DIR: {dir}'.format(dir=self.exlude_dirs))
-        context.log.info('       EXT: {ext}'.format(ext=self.exclude_exts))
-        context.log.info('      SIZE: {size}'.format(size=self.max_file_size))
-        context.log.info('    OUTPUT: {output}'.format(output=self.output_folder))
+        context.log.display('Started spidering plus with option:')
+        context.log.display('       DIR: {dir}'.format(dir=self.exlude_dirs))
+        context.log.display('       EXT: {ext}'.format(ext=self.exclude_exts))
+        context.log.display('      SIZE: {size}'.format(size=self.max_file_size))
+        context.log.display('    OUTPUT: {output}'.format(output=self.output_folder))
 
         spider = SMBSpiderPlus(
             connection,

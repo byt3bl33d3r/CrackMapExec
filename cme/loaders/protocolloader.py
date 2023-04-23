@@ -18,7 +18,6 @@ class ProtocolLoader:
 
     def get_protocols(self):
         protocols = {}
-
         protocol_paths = [os.path.join(os.path.dirname(cme.__file__), 'protocols'), os.path.join(self.cme_path, 'protocols')]
 
         for path in protocol_paths:

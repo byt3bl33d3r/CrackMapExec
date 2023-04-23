@@ -2,15 +2,17 @@
 # Credit to https://github.com/dirkjanm/adidnsdump @_dirkjan
 # module by @mpgn_x64
 
-from struct import unpack, pack
-from impacket.structure import Structure
-from ldap3 import NTLM, Server, Connection, ALL, LEVEL, BASE, MODIFY_DELETE, MODIFY_ADD, MODIFY_REPLACE, Tls
-from datetime import datetime
-from builtins import str
-import socket
 import codecs
-import dns.resolver
+import socket
+from builtins import str
+from datetime import datetime
+from struct import unpack
+
 import dns.name
+import dns.resolver
+from impacket.structure import Structure
+from ldap3 import LEVEL
+
 
 def get_dns_zones(connection, root, debug=False):
     connection.search(root, '(objectClass=dnsZone)', search_scope=LEVEL, attributes=['dc'])
@@ -112,7 +114,7 @@ class CMEModule:
         zone = ldap2domain(connection.baseDN)
         dnsroot = 'CN=MicrosoftDNS,DC=DomainDnsZones,%s' % connection.baseDN
         searchtarget = 'DC=%s,%s' % (zone, dnsroot)
-        context.log.info('Querying zone for records')
+        context.log.display('Querying zone for records')
         sfilter = '(DC=*)'
 
         try:
@@ -124,7 +126,7 @@ class CMEModule:
             )
         except ldap.LDAPSearchError as e:
             if e.getErrorString().find('sizeLimitExceeded') >= 0:
-                logging.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
+                context.log.debug('sizeLimitExceeded exception caught, giving up and processing the data received')
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 list_sites = e.getAnswers()
@@ -171,7 +173,7 @@ class CMEModule:
                     outfile.write('{}\n'.format(row['value']))
         context.log.success('Dumped {} records to {}'.format(len(outdata), path))
         if not self.showall and not self.showhosts:
-            context.log.info("To extract CIDR from the {} ip, run  the following command: cat your_file | mapcidr -aa -silent | mapcidr -a -silent".format(len(outdata)))
+            context.log.display("To extract CIDR from the {} ip, run  the following command: cat your_file | mapcidr -aa -silent | mapcidr -a -silent".format(len(outdata)))
 
 
 

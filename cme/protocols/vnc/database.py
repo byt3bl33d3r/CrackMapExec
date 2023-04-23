@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
+
 from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SAWarning
-import asyncio
 import warnings
+from cme.logger import cme_logger
 
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
@@ -70,7 +69,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
+            cme_logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:

@@ -187,22 +187,6 @@ class navigator(DatabaseNavigator):
                     data.append([cred_id, credtype, pillaged_from, domain, username, password])
                 print_table(data, title='Credential(s)')
 
-                data = [['GroupID', 'Domain', 'Name']]
-                for cred_id in cred_id_list:
-                    links = self.db.get_group_relations(user_id=cred_id)
-
-                    for link in links:
-                        link_id, user_id, group_id = link
-                        groups = self.db.get_groups(group_id)
-
-                        for group in groups:
-                            group_id = group[0]
-                            domain = group[1]
-                            name = group[2]
-                            data.append([group_id, domain, name])
-
-                print_table(data, title='Member of Group(s)')
-
                 data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
                 for cred_id in cred_id_list:
                     links = self.db.get_admin_relations(user_id=cred_id)

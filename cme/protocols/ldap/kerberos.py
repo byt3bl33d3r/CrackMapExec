@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import random
+from binascii import hexlify, unhexlify
+from datetime import datetime, timedelta
 from os import getenv
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type.univ import noValue
+
+from impacket.krb5 import constants
 from impacket.krb5.asn1 import TGS_REP, AS_REQ, KERB_PA_PAC_REQUEST, KRB_ERROR, AS_REP, seq_set, seq_set_iter
 from impacket.krb5.ccache import CCache
-from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT, getKerberosTGS
+from impacket.krb5.kerberosv5 import sendReceive, KerberosError, getKerberosTGT
 from impacket.krb5.types import KerberosTime, Principal
-from impacket.krb5 import constants
 from impacket.ntlm import compute_lmhash, compute_nthash
-from impacket.ldap import ldap as ldap_impacket
-from impacket.examples import logger
-from binascii import hexlify, unhexlify
-from datetime import datetime,timedelta
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type.univ import noValue
+
+from cme.logger import cme_logger
+
 
 class KerberosAttacks:
 
@@ -92,15 +93,15 @@ class KerberosAttacks:
                 domain = ccache.principal.realm['data']
             else:
                 domain = self.domain
-            logging.debug("Using Kerberos Cache: %s" % getenv('KRB5CCNAME'))
+            cme_logger.debug("Using Kerberos Cache: %s" % getenv('KRB5CCNAME'))
             principal = 'krbtgt/%s@%s' % (domain.upper(), domain.upper())
             creds = ccache.getCredential(principal)
             if creds is not None:
                 TGT = creds.toTGT()
-                logging.debug('Using TGT from cache')
+                cme_logger.debug('Using TGT from cache')
                 return TGT
             else:
-                logging.debug("No valid credentials found in cache. ")
+                cme_logger.debug("No valid credentials found in cache. ")
         except:
             # No cache present
             pass
@@ -119,7 +120,7 @@ class KerberosAttacks:
                                                                 compute_nthash(self.password), self.aesKey,
                                                                 kdcHost=self.kdcHost)
             except Exception as e:
-                logging.debug('TGT: %s' % str(e))
+                cme_logger.debug('TGT: %s' % str(e))
                 tgt, cipher, oldSessionKey, sessionKey = getKerberosTGT(userName, self.password, self.domain,
                                                                     unhexlify(self.lmhash),
                                                                     unhexlify(self.nthash), self.aesKey,
@@ -170,7 +171,7 @@ class KerberosAttacks:
         seq_set(reqBody, 'cname', clientName.components_to_asn1)
 
         if domain == '':
-            logger.error('Empty Domain not allowed in Kerberos')
+            cme_logger.error('Empty Domain not allowed in Kerberos')
             return
 
         reqBody['realm'] = domain
@@ -198,7 +199,7 @@ class KerberosAttacks:
             elif e.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
                 return "Password of user " + userName + " expired but user doesn't require pre-auth"
             else:
-                logging.debug(e)
+                cme_logger.debug(e)
                 return False
 
         # This should be the PREAUTH_FAILED packet or the actual TGT if the target principal has the
@@ -210,7 +211,7 @@ class KerberosAttacks:
             asRep = decoder.decode(r, asn1Spec=AS_REP())[0]
         else:
             # The user doesn't have UF_DONT_REQUIRE_PREAUTH set
-            logging.debug('User %s doesn\'t have UF_DONT_REQUIRE_PREAUTH set' % userName)
+            cme_logger.debug('User %s doesn\'t have UF_DONT_REQUIRE_PREAUTH set' % userName)
             return
 
         # Let's output the TGT enc-part/cipher in Hashcat format, in case somebody wants to use it.

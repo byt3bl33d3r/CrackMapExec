@@ -15,16 +15,16 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             ACTION  Create/Delete the registry key (choices: enable, disable)
-        '''
+        """
 
         if not 'ACTION' in module_options:
-            context.log.error('ACTION option not specified!')
+            context.log.fail('ACTION option not specified!')
             exit(1)
 
         if module_options['ACTION'].lower() not in ['enable', 'disable']:
-            context.log.error('Invalid value for ACTION option!')
+            context.log.fail('Invalid value for ACTION option!')
             exit(1)
 
         self.action = module_options['ACTION'].lower()

