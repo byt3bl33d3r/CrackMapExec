@@ -5,6 +5,7 @@ import ntpath
 import hashlib
 import binascii
 from io import StringIO
+from Cryptodome.Hash import MD4
 
 from impacket.examples.ntlmrelayx.attacks.ldapattack import MSDS_MANAGEDPASSWORD_BLOB
 from impacket.smbconnection import SMBConnection, SessionError
@@ -1704,9 +1705,7 @@ class smb(connection):
             LSA.dumpSecrets()
             LSA.exportSecrets(self.output_filename)
             self.logger.success(
-                f"Dumped {highlight(add_lsa_secret.secrets)} \
-                LSA secrets to {self.output_filename + '.secrets'} \
-                and {self.output_filename + '.cached'}"
+                f"Dumped {highlight(add_lsa_secret.secrets)} LSA secrets to {self.output_filename + '.secrets'} and {self.output_filename + '.cached'}"
             )
             try:
                 self.remote_ops.finish()
