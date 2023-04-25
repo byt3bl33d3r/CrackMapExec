@@ -791,7 +791,7 @@ class ldap(connection):
                             description = str(attribute['vals'][0])
                     self.logger.highlight(f"{sAMAccountName:<30} {description}")
                 except Exception as e:
-                    self.cme_logger.debug(f"Skipping item, cannot process due to error {e}")
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
                     pass
             return
 
@@ -1182,7 +1182,7 @@ class ldap(connection):
     def decipher_gmsa_name(self, domain_name=None, account_name=None):
         # https://aadinternals.com/post/gmsa/
         gmsa_account_name = (domain_name + account_name).upper()
-        self.cme_logger.debug(f"GMSA name for {gmsa_account_name}")
+        self.logger.debug(f"GMSA name for {gmsa_account_name}")
         bin_account_name = gmsa_account_name.encode("utf-16le")
         bin_hash = hmac.new(bytes("", "latin-1"), msg=bin_account_name, digestmod=hashlib.sha256).digest()
         hex_letters = "0123456789abcdef"
@@ -1190,7 +1190,7 @@ class ldap(connection):
         for b in bin_hash:
             str_hash += hex_letters[b & 0x0f]
             str_hash += hex_letters[b >> 0x04]
-        self.cme_logger.debug(f"Hash2: {str_hash}")
+        self.logger.debug(f"Hash2: {str_hash}")
         return str_hash
 
     def gmsa_convert_id(self):

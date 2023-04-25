@@ -122,7 +122,7 @@ def requires_smb_server(func):
                 get_output = True
         if get_output or (methods and ("smbexec" in methods)):
             if not smb_server:
-                self.cme_logger.debug("Starting SMB server")
+                self.logger.debug("Starting SMB server")
                 smb_server = CMESMBServer(
                     self.cme_logger,
                     smb_share_name,
