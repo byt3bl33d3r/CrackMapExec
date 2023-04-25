@@ -3,6 +3,8 @@
 import logging
 import os
 from io import StringIO
+
+from cme.config import process_secret
 from cme.protocols.mssql.mssqlexec import MSSQLEXEC
 from cme.connection import *
 from cme.helpers.logger import highlight
@@ -110,9 +112,8 @@ class mssql(connection):
 
                 if self.args.local_auth:
                     self.domain = self.hostname
-
             except Exception as e:
-                self.logger.info(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
+                self.logger.fail(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
 
         self.mssql_instances = self.conn.getInstances(0)
         self.db.add_host(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
@@ -144,13 +145,12 @@ class mssql(connection):
 
     def check_if_admin(self):
         try:
-            self.conn.sql_query("SELECT IS_SRVROLEMEMBER('sysadmin')")
-            self.conn.printRows()
-            query_output = self.conn._MSSQL__rowsPrinter.getMessage()
-            query_output = query_output.strip("\n-")
+            results = self.conn.sql_query("SELECT IS_SRVROLEMEMBER('sysadmin')")
+            is_admin = int(results[0][""])
 
-            if int(query_output):
+            if is_admin:
                 self.admin_privs = True
+                self.logger.debug(f"User is admin")
             else:
                 return False
         except Exception as e:
@@ -228,6 +228,9 @@ class mssql(connection):
         self.create_conn_obj()
 
         try:
+            # this is to prevent a decoding issue in impacket/ntlm.py:617 where it attempts to decode the domain
+            if not domain:
+                domain = ""
             res = self.conn.login(None, username, password, domain, None, not self.args.local_auth)
             if res is not True:
                 self.conn.printReplies()
@@ -245,7 +248,7 @@ class mssql(connection):
             out = u"{}{}:{} {}".format(
                 f'{domain}\\' if not self.args.local_auth else '',
                 username,
-                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                process_secret(password),
                 highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
             )
             self.logger.success(out)
@@ -257,8 +260,9 @@ class mssql(connection):
             self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
             self.logger.fail(
-                f"{domain}\\{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
+                f"{domain}\\{username}:{process_secret(password)}"
             )
+            self.logger.exception(e)
             return False
 
     def hash_login(self, domain, username, ntlm_hash):
@@ -302,7 +306,7 @@ class mssql(connection):
             out = u"{}\\{} {} {}".format(
                 domain,
                 username,
-                ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                process_secret(ntlm_hash),
                 highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
             )
             self.logger.success(out)
@@ -314,7 +318,7 @@ class mssql(connection):
             self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
             self.logger.fail(
-                f"{domain}\\{username}:{ntlm_hash if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
+                f"{domain}\\{username}:{process_secret(ntlm_hash)} {e}"
             )
             return False
 

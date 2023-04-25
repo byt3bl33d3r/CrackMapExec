@@ -93,7 +93,11 @@ class database:
         Check if this host has already been added to the database, if not, add it in.
         TODO: return inserted or updated row ids as a list
         """
-        domain = domain.split('.')[0].upper()
+        cme_logger.debug(f"{domain} {ip} {os} {instances}")
+        if domain:
+            domain = domain.split(".")[0].upper()
+        else:
+            domain = ""
         hosts = []
 
         q = select(self.HostsTable).filter(
