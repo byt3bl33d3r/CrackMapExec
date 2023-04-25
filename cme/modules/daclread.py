@@ -216,6 +216,11 @@ class CMEModule:
         RIGHTS_GUID     A right GUID that specify a particular rights to filter on
         """
         self.context = context
+
+        if not module_options:
+            context.log.fail("Select an option, example: -M daclread -o TARGET=Administrator ACTION=read")
+            exit(1)
+
         if module_options and 'TARGET' in module_options:
             if re.search(r'^(.+)\/([^\/]+)$', module_options['TARGET']) is not None:
                 try:
@@ -577,7 +582,7 @@ class CMEModule:
                     context.log.fail(
                         "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             if print_ace:
-                print("[*]  %-28s" % "ACE[%d] info" % i)
+                self.context.log.highlight("%-28s" % "ACE[%d] info" % i)
                 self.print_parsed_ace(parsed_ace)
             i += 1
 
@@ -586,7 +591,7 @@ class CMEModule:
     def print_parsed_ace(self, parsed_ace):
         elements_name = list(parsed_ace.keys())
         for attribute in elements_name:
-            print("[*]    %-26s: %s" % (attribute, parsed_ace[attribute]))
+            self.context.log.highlight("    %-26s: %s" % (attribute, parsed_ace[attribute]))
 
     # Retrieves the GUIDs for the specified rights
     def build_guids_for_rights(self):
