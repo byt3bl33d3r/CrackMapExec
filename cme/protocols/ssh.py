@@ -2,35 +2,68 @@
 # -*- coding: utf-8 -*-
 
 import paramiko
+
+from cme.config import process_secret
 from cme.connection import *
-from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
 
 
 class ssh(connection):
-
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        ssh_parser = parser.add_parser('ssh', help="own stuff using SSH", parents=[std_parser, module_parser])
-        ssh_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        ssh_parser.add_argument("--key-file", type=str, help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.")
-        ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
-        ssh_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        ssh_parser = parser.add_parser(
+            "ssh",
+            help="own stuff using SSH",
+            parents=[std_parser, module_parser]
+        )
+        ssh_parser.add_argument(
+            "--no-bruteforce",
+            action='store_true',
+            help="No spray when using file for username and password (user1 => password1, user2 => password2"
+        )
+        ssh_parser.add_argument(
+            "--key-file",
+            type=str,
+            help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase."
+        )
+        ssh_parser.add_argument(
+            "--port",
+            type=int,
+            default=22,
+            help="SSH port (default: 22)"
+        )
+        ssh_parser.add_argument(
+            "--continue-on-success",
+            action="store_true",
+            help="continues authentication attempts even after successes"
+        )
 
-        cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
-        cgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
+        cgroup = ssh_parser.add_argument_group(
+            "Command Execution",
+            "Options for executing commands"
+        )
+        cgroup.add_argument(
+            "--no-output",
+            action="store_true",
+            help="do not retrieve command output"
+        )
+        cgroup.add_argument(
+            "-x",
+            metavar="COMMAND",
+            dest="execute",
+            help="execute the specified command"
+        )
 
         return parser
 
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
-                'protocol': 'SSH',
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
+                "protocol": "SSH",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
             }
         )
 
@@ -60,13 +93,23 @@ class ssh(connection):
         self.conn.close()
 
     def check_if_admin(self):
+        # we could add in another method to check by piping in the password to sudo
+        # but that might be too much of an opsec concern - maybe add in a flag to do more checks?
         stdin, stdout, stderr = self.conn.exec_command("id")
         if stdout.read().decode("utf-8").find("uid=0(root)") != -1:
+            self.logger.info(f"Determined user is root via `id` command")
             self.admin_privs = True
+            return True
+        stdin, stdout, stderr = self.conn.exec_command("sudo -ln | grep 'NOPASSWD: ALL'")
+        if stdout.read().decode("utf-8").find("NOPASSWD: ALL")!= -1:
+            self.logger.info(f"Determined user is root via `sudo -ln` command")
+            self.admin_privs = True
+            return True
 
     def plaintext_login(self, username, password):
         try:
             if self.args.key_file:
+                self.logger.debug(f"Logging in with keyfile: {self.args.key_file}")
                 passwd = password
                 password = f"{passwd} (keyfile: {self.args.key_file})"
                 self.conn.connect(
@@ -79,6 +122,7 @@ class ssh(connection):
                     allow_agent=False
                 )
             else:
+                self.logger.debug(f"Logging in with password")
                 self.conn.connect(
                     self.host,
                     port=self.args.port,
@@ -88,20 +132,21 @@ class ssh(connection):
                     allow_agent=False
                 )
 
-            self.check_if_admin()
+            if self.check_if_admin():
+                self.logger.debug(f"User {username} logged in successfully and is root!")
             self.logger.success(
-                u"{}:{} {}".format(
-                    username,
-                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                    highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
-                )
+                f"{username}:{process_secret(password)} {self.mark_pwned()}"
             )
             if not self.args.continue_on_success:
                 return True
-        except Exception as e:
+        except AuthenticationException as e:
             self.logger.fail(
-                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
+                f"{username}:{process_secret(password)} {e}"
             )
+            self.client_close()
+            return False
+        except Exception as e:
+            self.logger.exception(e)
             self.client_close()
             return False
 
