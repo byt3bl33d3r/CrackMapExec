@@ -7,7 +7,7 @@ from cme.cmedb import DatabaseNavigator, print_table, print_help
 
 class navigator(DatabaseNavigator):
     def display_creds(self, creds):
-        data = [['CredID', 'Admin On', 'Username', 'Password', 'CredType']]
+        data = [['CredID', 'Admin On', 'Total Login', 'Username', 'Password', 'CredType']]
 
         for cred in creds:
             cred_id = cred[0]
@@ -15,8 +15,17 @@ class navigator(DatabaseNavigator):
             password = cred[2]
             credtype = cred[3]
 
-            links = self.db.get_admin_relations(cred_id=cred_id)
-            data.append([cred_id, str(len(links)) + ' Host(s)', username, password, credtype])
+            admin_links = self.db.get_admin_relations(cred_id=cred_id)
+            total_users = self.db.get_loggedin_relations(cred_id=cred_id)
+
+            data.append([
+                cred_id,
+                str(len(admin_links)) + ' Host(s)',
+                str(len(total_users)) + ' Host(s)',
+                username,
+                password,
+                credtype
+            ])
         print_table(data, title='Credentials')
 
     # pull/545
