@@ -174,7 +174,7 @@ class ssh(connection):
 
             if not self.args.continue_on_success:
                 return True
-        except AuthenticationException as e:
+        except (AuthenticationException, NoValidConnectionsError) as e:
             self.logger.fail(
                 f"{username}:{process_secret(password)} {e}"
             )
