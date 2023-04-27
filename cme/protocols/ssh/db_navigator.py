@@ -134,6 +134,7 @@ class navigator(DatabaseNavigator):
         if filter_term == "":
             creds = self.db.get_credentials()
             self.display_creds(creds)
+        # TODO
         # elif filter_term.split()[0].lower() == "add":
         #     # add format: "domain username password <notes> <credType> <sid>
         #     args = filter_term.split()[1:]
