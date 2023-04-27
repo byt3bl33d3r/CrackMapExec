@@ -155,21 +155,33 @@ class ssh(connection):
                 )
                 cred_id = self.db.add_credential("plaintext", username, password)
 
+            shell_access = False
             host_id = self.db.get_hosts(self.host)[0].id
             self.db.add_loggedin_relation(cred_id, host_id)
 
             if self.check_if_admin():
+                shell_access = True
                 self.logger.debug(f"User {username} logged in successfully and is root!")
                 if self.args.key_file:
                     self.db.add_admin_user("key", username, password, host_id=host_id, cred_id=cred_id)
                 else:
                     self.db.add_admin_user("plaintext", username, password, host_id=host_id, cred_id=cred_id)
+            else:
+                stdin, stdout, stderr = self.conn.exec_command("id")
+                output = stdout.read().decode("utf-8")
+                if not output:
+                    self.logger.debug(f"User cannot get a shell")
+                    shell_access = False
+                else:
+                    shell_access = True
 
             if self.args.key_file:
                 password = f"{password} (keyfile: {self.args.key_file})"
 
+            display_shell_access = f" - shell access!" if shell_access else ""
+
             self.logger.success(
-                f"{username}:{process_secret(password)} {self.mark_pwned()}"
+                f"{username}:{process_secret(password)} {self.mark_pwned()}{highlight(display_shell_access)}"
             )
 
             if not self.args.continue_on_success:
