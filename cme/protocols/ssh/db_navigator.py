@@ -173,8 +173,8 @@ class navigator(DatabaseNavigator):
                 for cred in creds:
                     cred_id = cred[0]
                     cred_id_list.append(cred_id)
-                    password = cred[1]
-                    username = cred[2]
+                    username = cred[1]
+                    password = cred[2]
                     credtype = cred[3]
 
                     cred_data.append([cred_id, username, password, credtype])
