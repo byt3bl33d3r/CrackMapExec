@@ -235,6 +235,38 @@ class navigator(DatabaseNavigator):
         """
         print_help(help_string)
 
+    def display_keys(self, keys):
+        data = [[
+            "Key ID",
+            "Cred ID",
+            "Key Data"
+        ]]
+        for key in keys:
+            data.append([key[0], key[1], key[2]])
+        print_table(data, "Keys")
+
+    def do_keys(self, line):
+        filter_term = line.strip()
+
+        if filter_term == "":
+            keys = self.db.get_keys()
+            self.display_keys(keys)
+        elif filter_term == "cred_id":
+            cred_id = filter_term.split()[1]
+            keys = self.db.get_keys(cred_id=cred_id)
+            self.display_keys(keys)
+        else:
+            key_id = filter_term
+            keys = self.db.get_keys(key_id=key_id)
+            self.display_keys(keys)
+
+    def help_keys(self):
+        help_string = """
+        list SSH keys
+        keys [id]
+        """
+        print_help(help_string)
+
     def do_clear_database(self, line):
         if input(
                 "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "

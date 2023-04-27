@@ -176,10 +176,10 @@ class database:
 
         # a user can have multiple keys, all with passphrases, and a separate login password
         if key is not None:
-            q = select(self.CredentialsTable).filter(
+            q = select(self.CredentialsTable).join(self.KeysTable).filter(
                 func.lower(self.CredentialsTable.c.username) == func.lower(username),
                 func.lower(self.CredentialsTable.c.credtype) == func.lower(credtype),
-                self.CredentialsTable.c.key == key
+                self.KeysTable.c.data == key
             )
             results = self.sess.execute(q).all()
         else:
@@ -196,8 +196,6 @@ class database:
                 "username": username,
                 "password": password,
             }
-            if key is not None:
-                new_cred["key"] = key
             credentials = [new_cred]
         # update existing cred data
         else:
@@ -211,8 +209,6 @@ class database:
                     cred_data["username"] = username
                 if password is not None:
                     cred_data["password"] = password
-                if key is not None:
-                    cred_data["key"] = key
                 # only add cred to be updated if it has changed
                 if cred_data not in credentials:
                     credentials.append(cred_data)
@@ -235,6 +231,8 @@ class database:
         # hacky way to get cred_id since we can't use returning() yet
         if len(credentials) == 1:
             cred_id = self.get_credential(credtype, username, password)
+            if key is not None:
+                self.add_key(cred_id, key)
             return cred_id
         else:
             return credentials
@@ -250,6 +248,47 @@ class database:
             )
             del_hosts.append(q)
         self.sess.execute(q)
+
+    def add_key(self, cred_id, key):
+        # check if key relation already exists
+        check_q = self.sess.execute(
+            select(self.KeysTable).filter(
+                self.KeysTable.c.credid == cred_id
+            )
+        ).all()
+        cme_logger.debug(f"check_q: {check_q}")
+        if check_q:
+            cme_logger.debug(f"Key already exists for cred_id {cred_id}")
+            return
+
+        key_data = {
+            "credid": cred_id,
+            "data": key
+        }
+        self.sess.execute(
+            Insert(self.KeysTable),
+            key_data
+        )
+        key_id = self.sess.execute(
+            select(self.KeysTable).filter(
+                self.KeysTable.c.credid == cred_id
+            )
+        ).all()[0].id
+        cme_logger.debug(f"Key added: {key_id}")
+        return key_id
+
+    def get_keys(self, key_id=None, cred_id=None):
+        q = select(self.KeysTable)
+        if key_id is not None:
+            q = q.filter(
+                self.KeysTable.c.id == key_id
+            )
+        elif cred_id is not None:
+            q = q.filter(
+                self.KeysTable.c.credid == cred_id
+            )
+        results = self.sess.execute(q)
+        return results
 
     def add_admin_user(self, credtype, username, secret, host_id=None, cred_id=None):
         add_links = []
