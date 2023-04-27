@@ -4,24 +4,26 @@
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.ldap import ldap as ldap_impacket
 import re
+from cme.logger import cme_logger
+
 
 class CMEModule:
-    '''
+    """
         Get description of users
         Module by @nodauf
-    '''
+    """
     name = 'get-desc-users'
     description = 'Get description of the users. May contained password'
     supported_protocols = ['ldap']
-    opsec_safe= True #Does the module touch disk?
-    multiple_hosts = True #Does it make sense to run this module on multiple hosts at a time?
+    opsec_safe = True  # Does the module touch disk?
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
-        '''
+        """
             FILTER    Apply the FILTER (grep-like) (default: '')
             PASSWORDPOLICY    Is the windows password policy enabled ? (default: False)
             MINLENGTH    Minimum password length to match, only used if PASSWORDPOLICY is True (default: 6)
-        '''
+        """
         self.FILTER = ''
         self.MINLENGTH = '6'
         self.PASSWORDPOLICY = False
@@ -34,7 +36,7 @@ class CMEModule:
             self.regex = re.compile("((?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*\d)|(?=[^ ]*[a-z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*[^\w \n]))[^ \n]{"+self.MINLENGTH+",}") # Credit : https://stackoverflow.com/questions/31191248/regex-password-must-have-at-least-3-of-the-4-of-the-following
 
     def on_login(self, context, connection):
-        '''Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection'''
+        """Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection"""
         # Building the search filter
         searchFilter = "(objectclass=user)"
 
@@ -51,7 +53,7 @@ class CMEModule:
                 resp = e.getAnswers()
                 pass
             else:
-                logging.debug(e)
+                cme_logger.debug(e)
                 return False
 
         answers = []

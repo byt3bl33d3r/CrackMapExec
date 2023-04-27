@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import paramiko
-import socket
 from cme.connection import *
 from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
-import configparser
 
 
 class ssh(connection):
@@ -27,13 +25,17 @@ class ssh(connection):
         return parser
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={'protocol': 'SSH',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': self.hostname})
+        self.logger = CMEAdapter(
+            extra={
+                'protocol': 'SSH',
+                'host': self.host,
+                'port': self.args.port,
+                'hostname': self.hostname
+            }
+        )
 
     def print_host_info(self):
-        self.logger.info(self.remote_version)
+        self.logger.display(self.remote_version)
         return True
 
     def enum_host_info(self):
@@ -58,28 +60,47 @@ class ssh(connection):
         self.conn.close()
 
     def check_if_admin(self):
-        stdin, stdout, stderr = self.conn.exec_command('id')
-        if stdout.read().decode('utf-8').find('uid=0(root)') != -1:
+        stdin, stdout, stderr = self.conn.exec_command("id")
+        if stdout.read().decode("utf-8").find("uid=0(root)") != -1:
             self.admin_privs = True
 
     def plaintext_login(self, username, password):
         try:
             if self.args.key_file:
                 passwd = password
-                password = u'{} (keyfile: {})'.format(passwd, self.args.key_file)
-                self.conn.connect(self.host, port=self.args.port, username=username, passphrase=passwd, key_filename=self.args.key_file, look_for_keys=False, allow_agent=False)
+                password = f"{passwd} (keyfile: {self.args.key_file})"
+                self.conn.connect(
+                    self.host,
+                    port=self.args.port,
+                    username=username,
+                    passphrase=passwd,
+                    key_filename=self.args.key_file,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
             else:
-                self.conn.connect(self.host, port=self.args.port, username=username, password=password, look_for_keys=False, allow_agent=False)
+                self.conn.connect(
+                    self.host,
+                    port=self.args.port,
+                    username=username,
+                    password=password,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
 
             self.check_if_admin()
-            self.logger.success(u'{}:{} {}'.format(username,
-                                                   password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                   highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
+            self.logger.success(
+                u"{}:{} {}".format(
+                    username,
+                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
+                    highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
+                )
+            )
             return True
         except Exception as e:
-            self.logger.error(u'{}:{} {}'.format(username,
-                                                 password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                 e))
+            self.logger.fail(
+                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {e}"
+            )
             self.client_close()
             return False
 
@@ -87,8 +108,8 @@ class ssh(connection):
         try:
             stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
         except AttributeError:
-            return ''
-        self.logger.success('Executed command')
+            return ""
+        self.logger.success("Executed command")
         for line in stdout:
             self.logger.highlight(line.strip())
 

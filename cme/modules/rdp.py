@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from impacket.dcerpc.v5.rpcrt import DCERPCException
-from impacket.dcerpc.v5 import rrp
-from impacket.examples.secretsdump import RemoteOperations
 from sys import exit
 
-class CMEModule:
+from impacket.dcerpc.v5 import rrp
+from impacket.examples.secretsdump import RemoteOperations
 
-    name = 'rdp'
-    description = 'Enables/Disables RDP'
-    supported_protocols = ['smb']
+
+class CMEModule:
+    name = "rdp"
+    description = "Enables/Disables RDP"
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
-    def options(self, context, module_options):
-        '''
-            ACTION  Enable/Disable RDP (choices: enable, disable)
-        '''
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        self.action = None
 
+    def options(self, context, module_options):
+        """
+        ACTION       Enable/Disable RDP (choices: enable, disable)
+        """
         if not 'ACTION' in module_options:
-            context.log.error('ACTION option not specified!')
+            context.log.fail('ACTION option not specified!')
             exit(1)
 
         if module_options['ACTION'].lower() not in ['enable', 'disable']:
-            context.log.error('Invalid value for ACTION option!')
+            context.log.fail('Invalid value for ACTION option!')
             exit(1)
 
         self.action = module_options['ACTION'].lower()

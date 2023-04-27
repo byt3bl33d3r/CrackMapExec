@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from cme.helpers.powershell import create_ps_command
 from sys import exit
 
 class CMEModule:
-    '''
+    """
         Executes the Test-Connection PowerShell cmdlet
         Module by @byt3bl33d3r
-    '''
+    """
 
     name = 'test_connection'
     description = "Pings a host"
@@ -17,13 +16,13 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
+        """
             HOST      Host to ping
-        '''
+        """
         self.host = None
 
         if 'HOST' not in module_options:
-            context.log.error('HOST option is required!')
+            context.log.fail('HOST option is required!')
             exit(1)
 
         self.host = module_options['HOST']
@@ -38,4 +37,4 @@ class CMEModule:
             if bool(output) is True:
                 context.log.success('Pinged successfully')
             elif bool(output) is False:
-                context.log.error('Host unreachable')
+                context.log.fail('Host unreachable')

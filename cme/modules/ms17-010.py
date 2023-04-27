@@ -17,8 +17,8 @@ class CMEModule:
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-        '''     
+        """
+        """
 
     def on_login(self, context, connection):
         if check(connection.host):

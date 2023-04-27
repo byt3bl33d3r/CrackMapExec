@@ -2,30 +2,29 @@
 # -*- coding: utf-8 -*-
 
 import cmd
-import logging
+import configparser
+import csv
+import os
 import shutil
 import sqlite3
 import sys
-import os
-import requests
-from sqlalchemy import create_engine
-from terminaltables import AsciiTable
-import configparser
-from cme.loaders.protocolloader import ProtocolLoader
-from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
-from requests import ConnectionError
-from sqlalchemy.exc import SAWarning
-import asyncio
-import csv
-import warnings
 from textwrap import dedent
 
-# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import requests
+from requests import ConnectionError
+from sqlalchemy import create_engine
+from terminaltables import AsciiTable
 
-# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
-warnings.filterwarnings("ignore", category=SAWarning)
+from cme.loaders.protocolloader import ProtocolLoader
+from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
+
+
+# # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
+# from requests.packages.urllib3.exceptions import InsecureRequestWarning
+# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#
+# # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+# warnings.filterwarnings("ignore", category=SAWarning)
 
 
 class UserExitedProto(Exception):
@@ -102,7 +101,7 @@ class DatabaseNavigator(cmd.Cmd):
         self.config = main_menu.config
         self.proto = proto
         self.db = database
-        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
+        self.prompt = f"cmedb ({main_menu.workspace})({proto}) > "
 
     def do_exit(self, line):
         self.db.shutdown_db()
@@ -307,10 +306,7 @@ class DatabaseNavigator(cmd.Cmd):
                 'password': self.config.get('Empire', 'password')
             }
             # Pull the host and port from the config file
-            base_url = 'https://{}:{}'.format(
-                self.config.get('Empire', 'api_host'),
-                self.config.get('Empire', 'api_port')
-            )
+            base_url = f"https://{self.config.get('Empire', 'api_host')}:{self.config.get('Empire', 'api_port')}"
 
             try:
                 r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
@@ -328,7 +324,7 @@ class DatabaseNavigator(cmd.Cmd):
                 else:
                     print("[-] Error authenticating to Empire's RESTful API server!")
             except ConnectionError as e:
-                print("[-] Unable to connect to Empire's RESTful API server: {}".format(e))
+                print(f"[-] Unable to connect to Empire's RESTful API server: {e}")
 
 
 class CMEDBMenu(cmd.Cmd):
@@ -340,9 +336,8 @@ class CMEDBMenu(cmd.Cmd):
             self.config = configparser.ConfigParser()
             self.config.read(self.config_path)
         except Exception as e:
-            print("[-] Error reading cme.conf: {}".format(e))
+            print(f"[-] Error reading cme.conf: {e}")
             sys.exit(1)
-
 
         self.conn = None
         self.p_loader = ProtocolLoader()
@@ -375,6 +370,7 @@ class CMEDBMenu(cmd.Cmd):
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
+
     def help_proto(self):
         help_string = """
         proto [smb|mssql|winrm]
@@ -393,7 +389,7 @@ class CMEDBMenu(cmd.Cmd):
 
         if subcommand == 'create':
             new_workspace = line.split()[1].strip()
-            print("[*] Creating workspace '{}'".format(new_workspace))
+            print(f"[*] Creating workspace '{new_workspace}'")
             self.create_workspace(new_workspace, self.p_loader, self.protocols)
             self.do_workspace(new_workspace)
         elif subcommand == 'list':
@@ -407,7 +403,7 @@ class CMEDBMenu(cmd.Cmd):
             self.config.set('CME', 'workspace', line)
             self.write_configfile()
             self.workspace = line
-            self.prompt = 'cmedb ({}) > '.format(line)
+            self.prompt = f"cmedb ({line}) > "
 
     def help_workspace(self):
         help_string = """
@@ -430,21 +426,21 @@ def create_workspace(workspace_name, p_loader, protocols):
 
     for protocol in protocols.keys():
         try:
-            protocol_object = p_loader.load_protocol(protocols[protocol]['dbpath'])
+            protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
         except KeyError:
             continue
-        proto_db_path = os.path.join(WORKSPACE_DIR, workspace_name, protocol + '.db')
+        proto_db_path = os.path.join(WORKSPACE_DIR, workspace_name, protocol + ".db")
 
         if not os.path.exists(proto_db_path):
-            print('[*] Initializing {} protocol database'.format(protocol.upper()))
+            print(f"[*] Initializing {protocol.upper()} protocol database")
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
 
             # try to prevent some weird sqlite I/O errors
-            c.execute('PRAGMA journal_mode = OFF')
-            c.execute('PRAGMA foreign_keys = 1')
+            c.execute("PRAGMA journal_mode = OFF")
+            c.execute("PRAGMA foreign_keys = 1")
 
-            getattr(protocol_object, 'database').db_schema(c)
+            getattr(protocol_object, "database").db_schema(c)
 
             # commit the changes and close everything off
             conn.commit()
@@ -456,30 +452,30 @@ def delete_workspace(workspace_name):
 
 
 def initialize_db(logger):
-    if not os.path.exists(os.path.join(WS_PATH, 'default')):
-        logger.info('Creating default workspace')
-        os.mkdir(os.path.join(WS_PATH, 'default'))
+    if not os.path.exists(os.path.join(WS_PATH, "default")):
+        logger.debug("Creating default workspace")
+        os.mkdir(os.path.join(WS_PATH, "default"))
 
     p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
     for protocol in protocols.keys():
         try:
-            protocol_object = p_loader.load_protocol(protocols[protocol]['dbpath'])
+            protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
         except KeyError:
             continue
 
-        proto_db_path = os.path.join(WS_PATH, 'default', protocol + '.db')
+        proto_db_path = os.path.join(WS_PATH, "default", protocol + ".db")
 
         if not os.path.exists(proto_db_path):
-            logger.info('Initializing {} protocol database'.format(protocol.upper()))
+            logger.debug(f"Initializing {protocol.upper()} protocol database")
             conn = sqlite3.connect(proto_db_path)
             c = conn.cursor()
             # try to prevent some weird sqlite I/O errors
-            c.execute('PRAGMA journal_mode = OFF')  # could try setting to PERSIST if DB corruption starts occurring
-            c.execute('PRAGMA foreign_keys = 1')
+            c.execute("PRAGMA journal_mode = OFF")  # could try setting to PERSIST if DB corruption starts occurring
+            c.execute("PRAGMA foreign_keys = 1")
             # set a small timeout (5s) so if another thread is writing to the database, the entire program doesn't crash
-            c.execute('PRAGMA busy_timeout = 5000')
-            getattr(protocol_object, 'database').db_schema(c)
+            c.execute("PRAGMA busy_timeout = 5000")
+            getattr(protocol_object, "database").db_schema(c)
             # commit the changes and close everything off
             conn.commit()
             conn.close()

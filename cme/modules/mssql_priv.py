@@ -21,9 +21,9 @@ class User:
 
 
 class CMEModule:
-    '''
+    """
         Enumerate MSSQL privileges and exploit them
-    '''
+    """
 
     name = 'mssql_priv'
     description = "Enumerate and exploit MSSQL privileges"
@@ -54,7 +54,7 @@ class CMEModule:
 
         if self.action == "rollback":
             if not self.current_user.is_sysadmin:
-                context.log.error(
+                context.log.fail(
                     f"{self.current_username} is not sysadmin"
                 )
                 return
@@ -81,7 +81,7 @@ class CMEModule:
         )
         if self.action == "privesc":
             if not target_user:
-                context.log.error("can't find any path to privesc")
+                context.log.fail("can't find any path to privesc")
             else:
                 exec_as = self.build_exec_as_from_path(target_user)
                 # privesc via impersonation privilege
@@ -136,7 +136,7 @@ class CMEModule:
                 )
                 return grantor
             else:
-                context.log.info(
+                context.log.display(
                     f"{user.username} can impersonate {grantor.username}"
                 )
             return self.browse_path(context, initial_user, grantor)

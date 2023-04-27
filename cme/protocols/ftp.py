@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import socket
 from cme.connection import *
-from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto
-import configparser
 
 
 class ftp(connection):
@@ -24,10 +21,14 @@ class ftp(connection):
         return parser
 
     def proto_logger(self):
-        self.logger = CMEAdapter(extra={'protocol': 'FTP',
-                                        'host': self.host,
-                                        'port': self.args.port,
-                                        'hostname': self.hostname})
+        self.logger = CMEAdapter(
+            extra={
+                "protocol": "FTP",
+                "host": self.host,
+                "port": self.args.port,
+                "hostname": self.hostname
+            }
+        )
 
     def proto_flow(self):
         self.proto_logger()
@@ -43,8 +44,8 @@ class ftp(connection):
         return True
 
     def print_host_info(self):
-        self.logger.extra['protocol'] = "FTP"
-        self.logger.info(u"Banner:{}".format(self.remote_version))
+        self.logger.extra["protocol"] = "FTP"
+        self.logger.display(f"Banner:{self.remote_version}")
         return True
 
     def create_conn_obj(self):
@@ -67,15 +68,15 @@ class ftp(connection):
         try:
             self.conn.login(user=username, passwd=password)
 
-            self.logger.success(u'{}:{}'.format(username,
-                                                password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8))
+            self.logger.success(
+                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
+            )
 
             self.conn.close()
             return True
-
         except Exception as e:
-            self.logger.error(u'{}:{} (Response:{})'.format(username,
-                                                            password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
-                                                            e))
+            self.logger.fail(
+                f'{username}:{password if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8} (Response:{e})'
+            )
             self.conn.close()
             return False

@@ -6,7 +6,6 @@
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
 
-import json
 import sys
 
 
@@ -16,6 +15,14 @@ class CMEModule:
     supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = True
+
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+        self.neo4j_pass = None
+        self.neo4j_user = None
+        self.neo4j_Port = None
+        self.neo4j_URI = None
 
     def options(self, context, module_options):
         """
@@ -59,14 +66,14 @@ class CMEModule:
         try:
             driver = GraphDatabase.driver(uri, auth=(self.neo4j_user, self.neo4j_pass), encrypted=False)
         except AuthError as e:
-            context.log.error(
+            context.log.fail(
                 "Provided Neo4J credentials ({}:{}) are not valid. See --options".format(self.neo4j_user, self.neo4j_pass))
             sys.exit()
         except ServiceUnavailable as e:
-            context.log.error("Neo4J does not seem to be available on {}. See --options".format(uri))
+            context.log.fail("Neo4J does not seem to be available on {}. See --options".format(uri))
             sys.exit()
         except Exception as e:
-            context.log.error("Unexpected error with Neo4J")
+            context.log.fail("Unexpected error with Neo4J")
             context.log.debug("Error : ".format(str(e)))
             sys.exit()
 
@@ -82,6 +89,6 @@ class CMEModule:
         if len(value) > 0:
             context.log.success("Node {} successfully set as owned in BloodHound".format(host_fqdn))
         else:
-            context.log.error(
+            context.log.fail(
                 "Node {} does not appear to be in Neo4J database. Have you imported correct data?".format(host_fqdn))
         driver.close()

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
+
 from sqlalchemy import MetaData, func, Table, select, insert, update, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable
+from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SAWarning
 import warnings
+from cme.logger import cme_logger
 
 # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
 warnings.filterwarnings("ignore", category=SAWarning)
@@ -65,7 +66,7 @@ class database:
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
                 self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
                 self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-            except NoInspectionAvailable:
+            except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
                     "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
@@ -81,7 +82,7 @@ class database:
         # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
         # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
         except IllegalStateChangeError as e:
-            logging.debug(f"Error while closing session db object: {e}")
+            cme_logger.debug(f"Error while closing session db object: {e}")
 
     def clear_database(self):
         for table in self.metadata.sorted_tables:
@@ -92,14 +93,18 @@ class database:
         Check if this host has already been added to the database, if not, add it in.
         TODO: return inserted or updated row ids as a list
         """
-        domain = domain.split('.')[0].upper()
+        cme_logger.debug(f"{domain} {ip} {os} {instances}")
+        if domain:
+            domain = domain.split(".")[0].upper()
+        else:
+            domain = ""
         hosts = []
 
         q = select(self.HostsTable).filter(
             self.HostsTable.c.ip == ip
         )
         results = self.conn.execute(q).all()
-        logging.debug(f"mssql add_host() - hosts returned: {results}")
+        cme_logger.debug(f"mssql add_host() - hosts returned: {results}")
 
         host_data = {
             "ip": ip,
@@ -127,7 +132,7 @@ class database:
                 if host_data not in hosts:
                     hosts.append(host_data)
 
-        logging.debug(f"Update Hosts: {hosts}")
+        cme_logger.debug(f"Update Hosts: {hosts}")
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
@@ -185,13 +190,9 @@ class database:
                     results = self.conn.execute(q) # .first()
                     # user_rowid = results.id
 
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, pillaged_from={})'.format(
-            credtype,
-            domain,
-            username,
-            password,
-            pillaged_from
-        ))
+        cme_logger.debug(
+            f"add_credential(credtype={credtype}, domain={domain}, username={username}, password={password}, pillaged_from={pillaged_from})"
+        )
         return user_rowid
 
     def remove_credentials(self, creds_id):
@@ -222,14 +223,14 @@ class database:
                 self.UsersTable.c.password == password
             )
             users = self.conn.execute(q).all()
-        logging.debug(f"Users: {users}")
+        cme_logger.debug(f"Users: {users}")
 
         like_term = func.lower(f"%{host}%")
         q = q.filter(
             self.HostsTable.c.ip.like(like_term)
         )
         hosts = self.conn.execute(q).all()
-        logging.debug(f"Hosts: {hosts}")
+        cme_logger.debug(f"Hosts: {hosts}")
 
         if users is not None and hosts is not None:
             for user, host in zip(users, hosts):

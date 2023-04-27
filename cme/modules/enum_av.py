@@ -5,36 +5,39 @@
 # project : https://github.com/tothi/serviceDetector
 
 from impacket.dcerpc.v5 import lsat, lsad
-from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.dtypes import NULL, MAXIMUM_ALLOWED, RPC_UNICODE_STRING
-from impacket.dcerpc.v5 import transport, epm
-
-import json
+from impacket.dcerpc.v5 import transport
 import pathlib
 
+
 class CMEModule:
-    '''
-        Uses LsarLookupNames and NamedPipes to gather information on all endpoint protection solutions installed on the the remote host(s)
-        Module by @mpgn_x64
-
-    '''
-
-    name = 'enum_av'
-    description = 'Gathers information on all endpoint protection solutions installed on the the remote host(s) via LsarLookupNames (no privilege needed)'
-    supported_protocols = ['smb']
+    """
+    Uses LsarLookupNames and NamedPipes to gather information on all endpoint protection solutions installed on the the remote host(s)
+    Module by @mpgn_x64
+    """
+    name = "enum_av"
+    description = "Gathers information on all endpoint protection solutions installed on the the remote host(s) via LsarLookupNames (no privilege needed)"
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
+    def __init__(self, context=None, module_options=None):
+        self.context = context
+        self.module_options = module_options
+
     def options(self, context, module_options):
+        """
+        """
         pass
 
     def on_login(self, context, connection):
-
         success = 0
         results = {}
-        context.log.debug("Detecting installed services on {} using LsarLookupNames()...".format(connection.host))
+        target = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
+        context.log.debug("Detecting installed services on {} using LsarLookupNames()...".format(target))
+
         try:
-            lsa = LsaLookupNames(connection.domain, connection.username, connection.password, connection.hostname if connection.kerberos else connection.host, connection.kerberos, connection.domain, connection.lmhash, connection.nthash)
+            lsa = LsaLookupNames(connection.domain, connection.username, connection.password, target, connection.kerberos, connection.domain, connection.lmhash, connection.nthash)
             dce, rpctransport = lsa.connect()
             policyHandle = lsa.open_policy(dce)
 
@@ -42,7 +45,7 @@ class CMEModule:
                 for service in product['services']:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service['name'])
-                        context.log.debug("Detected installed service on {}: {} {}".format(connection.host, product['name'], service['description']))
+                        context.log.display(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product['name'] not in results:
                             results[product['name']] = {"services": []}
                         results[product['name']]['services'].append(service)
@@ -50,16 +53,16 @@ class CMEModule:
                         pass
             success += 1
         except Exception as e:
-            context.log.error(str(e))
+            context.log.fail(str(e))
 
-        context.log.debug("Detecting running processes on {} by enumerating pipes...".format(connection.host))
+        context.log.display(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:
             for f in connection.conn.listPath('IPC$', '\\*'):
                 fl = f.get_longname()
                 for i, product in enumerate(conf['products']):
                     for pipe in product['pipes']:
                         if pathlib.PurePath(fl).match(pipe['name']):
-                            context.log.debug("{} running claim found on {} by existing pipe {} (likely processes: {})".format(product['name'], connection.host, fl, pipe['processes']))
+                            context.log.debug(f"{product['name']} running claim found on {connection.host} by existing pipe {fl} (likely processes: {pipe['processes']})")
                             if product['name'] not in results:
                                 results[product['name']] = {}
                             if "pipes" not in results[product['name']]:
@@ -67,7 +70,7 @@ class CMEModule:
                             results[product['name']]['pipes'].append(pipe)
             success += 1
         except Exception as e:
-            context.log.error(str(e))
+            context.log.debug(str(e))
 
         self.dump_results(results, connection.hostname, success, context)
 
@@ -77,19 +80,20 @@ class CMEModule:
         for item in results:
             out = out1
             if 'services' in results[item]:
-                out += "{} INSTALLED".format(item)
+                out += f"{item} INSTALLED"
                 if 'pipes' in results[item]:
-                    out += " and it seems to be RUNNING".format()
+                    out += " and it seems to be RUNNING"
                 # else:
                 #     for product in conf['products']:
                 #         if (item == product['name']) and (len(product['pipes']) == 0):
                 #             out += " (NamedPipe for this service was not provided in config)"
             elif 'pipes' in results[item]:
-                out += " {} RUNNING".format(item)
+                out += f" {item} RUNNING"
             context.log.highlight(out)
         if (len(results) < 1) and (success > 1):
-            out = out1 + " NOTHING!".format()
+            out = out1 + " NOTHING!"
             context.log.highlight(out)
+
 
 class LsaLookupNames():
     timeout = None
@@ -101,12 +105,12 @@ class LsaLookupNames():
     iface_uuid = lsat.MSRPC_UUID_LSAT
     authn = True
 
-    def __init__(self, domain="", username="", password="", remoteName="", k=False, kdcHost="", lmhash="", nthash=""):
+    def __init__(self, domain="", username="", password="", remote_name="", k=False, kdcHost="", lmhash="", nthash=""):
         self.domain = domain
         self.username = username
         self.password = password
-        self.remoteName = remoteName
-        self.string_binding = r"ncacn_np:{}[\PIPE\lsarpc]".format(remoteName)
+        self.remoteName = remote_name
+        self.string_binding = rf"ncacn_np:{remote_name}[\PIPE\lsarpc]"
         self.doKerberos = k
         self.lmhash = lmhash
         self.nthash = nthash
@@ -155,7 +159,6 @@ class LsaLookupNames():
 
         return dce, rpc_transport
 
-
     def open_policy(self, dce):
         request = lsad.LsarOpenPolicy2()
         request['SystemName'] = NULL
@@ -166,7 +169,6 @@ class LsaLookupNames():
         request['DesiredAccess'] = MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
         resp = dce.request(request)
         return resp['PolicyHandle']
-
 
     def LsarLookupNames(self, dce, policyHandle, service):
         request = lsat.LsarLookupNames()

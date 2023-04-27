@@ -6,15 +6,14 @@ import shutil
 import subprocess
 import sys
 import time
-import zipfile
 from datetime import datetime
 from pathlib import Path
 
 from shiv.bootstrap import Environment
-
 # from distutils.ccompiler import new_compiler
 from shiv.builder import create_archive
 from shiv.cli import __version__ as VERSION
+
 
 def build_cme():
     print("building CME")

@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from cme.cmedb import create_workspace, delete_workspace
 from cme.first_run import first_run_setup
 from cme.loaders.protocolloader import ProtocolLoader
-from cme.logger import setup_logger, CMEAdapter
+from cme.logger import CMEAdapter
 from cme.paths import WS_PATH
 from sqlalchemy.dialects.sqlite import Insert
 
@@ -29,7 +29,7 @@ def db_engine():
 @pytest.fixture(scope="session")
 def db_setup(db_engine):
     proto = "smb"
-    setup_logger()
+    # setup_logger()
     logger = CMEAdapter()
     first_run_setup(logger)
     p_loader = ProtocolLoader()

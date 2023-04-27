@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 import random
 import socket
 from os.path import isfile
 from threading import BoundedSemaphore
-from socket import gethostbyname
 from functools import wraps
 from time import sleep
 
-from cme.logger import CMEAdapter
+from cme.config import pwned_label
+from cme.helpers.logger import highlight
+from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
-from cme.helpers.logger import write_log
 
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
@@ -42,7 +41,6 @@ def requires_admin(func):
 
 
 class connection(object):
-
     def __init__(self, args, db, host):
         self.domain = None
         self.args = args
@@ -51,33 +49,40 @@ class connection(object):
         self.conn = None
         self.admin_privs = False
         self.logger = None
-        self.password = ''
-        self.username = ''
+        self.password = ""
+        self.username = ""
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
         self.aesKey = None if not self.args.aesKey else self.args.aesKey
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
-        self.log = None if not self.args.log else self.args.log
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
         self.local_ip = None
-
-        if self.log:
-            CMEAdapter().setup_logfile(self.log[0])
+        self.logger = cme_logger
 
         try:
             self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
         except Exception as e:
-            logging.debug('Error resolving hostname {}: {}'.format(self.hostname, e))
+            self.logger.info(f"Error resolving hostname {self.hostname}: {e}")
             return
 
         if args.jitter:
-            value = random.choice(range(args.jitter[0], args.jitter[1]))
-            logging.debug(f"Doin' the jitterbug for {value} second(s)")
+            jitter = args.jitter
+            if "-" in jitter:
+                start, end = jitter.split("-")
+                jitter = (int(start), int(end))
+            else:
+                jitter = (0, int(jitter))
+
+            value = random.choice(range(jitter[0], jitter[1]))
+            self.logger.debug(f"Doin' the jitterbug for {value} second(s)")
             sleep(value)
 
-        self.proto_flow()
+        try:
+            self.proto_flow()
+        except Exception as e:
+            self.logger.exception(f"Exception while calling proto_flow() on target {self.host}: {e}")
 
     @staticmethod
     def proto_args(std_parser, module_parser):
@@ -89,7 +94,7 @@ class connection(object):
     def enum_host_info(self):
         return
 
-    def print_host_info(info):
+    def print_host_info(self):
         return
 
     def create_conn_obj(self):
@@ -98,7 +103,7 @@ class connection(object):
     def check_if_admin(self):
         return
 
-    def kerberos_login(self):
+    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
         return
 
     def plaintext_login(self, domain, username, password):
@@ -108,52 +113,57 @@ class connection(object):
         return
 
     def proto_flow(self):
+        self.logger.debug(f"Kicking off proto_flow")
+        self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
-            self.proto_logger()
             if self.print_host_info():
                 # because of null session
-                if self.login() or (self.username == '' and self.password == ''):
-                    if hasattr(self.args, 'module') and self.args.module:
+                if self.login() or (self.username == "" and self.password == ""):
+                    if hasattr(self.args, "module") and self.args.module:
                         self.call_modules()
                     else:
                         self.call_cmd_args()
 
     def call_cmd_args(self):
         for k, v in vars(self.args).items():
-            if hasattr(self, k) and hasattr(getattr(self, k), '__call__'):
+            if hasattr(self, k) and hasattr(getattr(self, k), "__call__"):
                 if v is not False and v is not None:
-                    logging.debug('Calling {}()'.format(k))
+                    self.logger.debug(f"Calling {k}()")
                     r = getattr(self, k)()
 
     def call_modules(self):
         for module in self.module:
-            logging.debug(f"Loading module {module}")
-            module_logger = CMEAdapter(extra={
-                'module': module.name.upper(),
-                'host': self.host,
-                'port': self.args.port,
-                'hostname': self.hostname
-            })
+            self.logger.debug(f"Loading module {module.name} - {module}")
+            module_logger = CMEAdapter(
+                extra={
+                    "module_name": module.name.upper(),
+                    "host": self.host,
+                    "port": self.args.port,
+                    "hostname": self.hostname
+                },
+            )
 
+            self.logger.debug(f"Loading context for module {module.name} - {module}")
             context = Context(self.db, module_logger, self.args)
             context.localip = self.local_ip
-            try:
-                if hasattr(module, 'on_request') or hasattr(module, 'has_response'):
-                    self.server.connection = self
-                    self.server.context.localip = self.local_ip
 
-                if hasattr(module, 'on_login'):
-                    module.on_login(context, self)
+            if hasattr(module, "on_request") or hasattr(module, "has_response"):
+                self.logger.debug(f"Module {module.name} has on_request or has_response methods")
+                self.server.connection = self
+                self.server.context.localip = self.local_ip
 
-                if self.admin_privs and hasattr(module, 'on_admin_login'):
-                    module.on_admin_login(context, self)
+            if hasattr(module, "on_login"):
+                self.logger.debug(f"Module {module.name} has on_login method")
+                module.on_login(context, self)
 
-                if (not hasattr(module, 'on_request') and not hasattr(module, 'has_response')) and hasattr(module, 'on_shutdown'):
-                    module.on_shutdown(context, self)
-            except Exception as e:
-                self.logger.error(f"Error while loading module {module}: {e}")
-                pass
+            if self.admin_privs and hasattr(module, "on_admin_login"):
+                self.logger.debug(f"Module {module.name} has on_admin_login method")
+                module.on_admin_login(context, self)
+
+            if (not hasattr(module, "on_request") and not hasattr(module, "has_response")) and hasattr(module, "on_shutdown"):
+                self.logger.debug(f"Module {module.name} has on_shutdown method")
+                module.on_shutdown(context, self)
 
     def inc_failed_login(self, username):
         global global_failed_logins
@@ -349,9 +359,9 @@ class connection(object):
 
         if self.args.use_kcache:
             with sem:
-                username = self.args.username[0] if len(self.args.username) else ''
-                password = self.args.password[0] if len(self.args.password) else ''
-                self.kerberos_login(self.domain, username, password, '', '', self.kdcHost, True)
+                username = self.args.username[0] if len(self.args.username) else ""
+                password = self.args.password[0] if len(self.args.password) else ""
+                self.kerberos_login(self.domain, username, password, "", "", self.kdcHost, True)
                 self.logger.info("Successfully authenticated using Kerberos cache")
                 return True
 
@@ -371,3 +381,6 @@ class connection(object):
                     owned[user_index] = True
                     if not self.args.continue_on_success:
                         return True
+
+    def mark_pwned(self):
+        return highlight(f"({pwned_label})" if self.admin_privs else "")

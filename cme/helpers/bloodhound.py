@@ -13,7 +13,7 @@ def add_user_bh(user, domain, logger, config):
         except:
             from neo4j import GraphDatabase
         from neo4j.exceptions import AuthError, ServiceUnavailable
-        uri = "bolt://{}:{}".format(config.get('BloodHound', 'bh_uri'), config.get('BloodHound', 'bh_port'))
+        uri = f"bolt://{config.get('BloodHound', 'bh_uri')}:{config.get('BloodHound', 'bh_port')}"
 
         driver = GraphDatabase.driver(uri, auth=(config.get('BloodHound', 'bh_user'), config.get('BloodHound', 'bh_pass')), encrypted=False)
         try:
@@ -28,19 +28,24 @@ def add_user_bh(user, domain, logger, config):
                             account_type = 'User'
 
                         result = tx.run(
-                            "MATCH (c:{} {{name:\"{}\"}}) RETURN c".format(account_type, user_owned))
+                            f"MATCH (c:{account_type} {{name:\"{user_owned}\"}}) RETURN c"
+                        )
 
                         if result.data()[0]['c'].get('owned') in (False, None):
-                            logger.debug("MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
+                            logger.debug(
+                                f"MATCH (c:{account_type} {{name:\"{user_owned}\"}}) SET c.owned=True RETURN c.name AS name"
+                            )
                             result = tx.run(
-                                "MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
-                            logger.highlight("Node {} successfully set as owned in BloodHound".format(user_owned))
+                                f"MATCH (c:{account_type} {{name:\"{user_owned}\"}}) SET c.owned=True RETURN c.name AS name"
+                            )
+                            logger.highlight(f"Node {user_owned} successfully set as owned in BloodHound")
         except AuthError as e:
             logger.error(
-                "Provided Neo4J credentials ({}:{}) are not valid.".format(config.get('BloodHound', 'bh_user'), config.get('BloodHound', 'bh_pass')))
+                f"Provided Neo4J credentials ({config.get('BloodHound', 'bh_user')}:{config.get('BloodHound', 'bh_pass')}) are not valid."
+            )
             return
         except ServiceUnavailable as e:
-            logger.error("Neo4J does not seem to be available on {}.".format(uri))
+            logger.error(f"Neo4J does not seem to be available on {uri}.")
             return
         except Exception as e:
             logger.error("Unexpected error with Neo4J")

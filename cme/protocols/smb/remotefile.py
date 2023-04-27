@@ -39,4 +39,4 @@ class RemoteFile:
         return self.__currentOffset
 
     def __str__(self):
-        return "\\\\{}\\{}\\{}".format(self.__smbConnection.getRemoteHost(), self.__share, self.__fileName)
+        return f"\\\\{self.__smbConnection.getRemoteHost()}\\{self.__share}\\{self.__fileName}"

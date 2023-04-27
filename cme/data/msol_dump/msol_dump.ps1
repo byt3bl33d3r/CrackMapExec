@@ -1,5 +1,5 @@
 $sqlbin=@(Get-ChildItem -Path C:\"Program Files"\"Microsoft SQL Server"\ -Filter sqllocaldb.exe -Recurse).fullname
-$db=@(& $sqlbin info | findstr /i ADSy)
+$db=@(cmd /c $sqlbin info | findstr /i ADSy)
 
 $client = new-object System.Data.SqlClient.SqlConnection -ArgumentList "Data Source=(localdb)\$db;Initial Catalog=ADSync"
 

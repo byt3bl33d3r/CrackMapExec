@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
 
-from impacket.dcerpc.v5 import scmr
 from impacket.dcerpc.v5 import rrp
+from impacket.dcerpc.v5 import scmr
 from impacket.examples.secretsdump import RemoteOperations
 
 
@@ -56,6 +55,6 @@ class CMEModule:
             try:
                 remote_ops.finish()
             except scmr.DCERPCSessionError as e:
-                logging.debug(f"Received SessionError while attempting to clean up logins: {e}")
+                context.log.debug(f"Received SessionError while attempting to clean up logins: {e}")
             except Exception as e:
-                logging.debug(f"Received general exception while attempting to clean up logins: {e}")
+                context.log.debug(f"Received general exception while attempting to clean up logins: {e}")

@@ -92,8 +92,8 @@ class CMEModule:
             context.log.debug("Could not upgrade connection: {}".format(e))
             return
 
-        plaintexts = {username:password for _, _, username, password, _,_ in context.db.get_credentials(credtype="plaintext")}
-        nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in context.db.get_credentials(credtype="hash")}
+        plaintexts = {username:password for _, _, username, password, _,_ in context.db.get_credentials(cred_type="plaintext")}
+        nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in context.db.get_credentials(cred_type="hash")}
         if password != '':
             plaintexts[username] = password
         if nthash != '':
@@ -107,7 +107,7 @@ class CMEModule:
                 context.log.debug("Could not get masterkeys: {}".format(e))
 
         if len(self.masterkeys) == 0:
-            context.log.error("No masterkeys looted")
+            context.log.fail("No masterkeys looted")
             return
 
         context.log.success("Got {} decrypted masterkeys. Looting RDCMan secrets".format(highlight(len(self.masterkeys))))
