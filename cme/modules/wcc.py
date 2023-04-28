@@ -5,6 +5,7 @@ from pprint import pprint
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp
 from impacket.dcerpc.v5.rrp import DCERPCSessionError
+from impacket.smbconnection import SessionError as SMBSessionError
 #from impacket.dcerpc.v5.dtypes import RPC_UNICODE_STRING, DWORD, 
 from impacket.examples.secretsdump import RemoteOperations
 from impacket.system_errors import *
@@ -51,8 +52,43 @@ class CMEModule:
 		remoteOps.enableRegistry()
 		dce = remoteOps._RemoteOperations__rrp
 		self.check_config(dce, connection)
-		#self.check_last_successful_update(connection)
 		remoteOps.finish()
+
+	def check_laps(self, dce, smb):
+		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
+		subkeys =  self.reg_get_subkeys(dce, key_name)
+		reasons = []
+		success = False
+		laps_path = '\\Program Files\\LAPS\\CSE'
+
+		for subkey in subkeys:
+			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'DllName')
+			if type(value) == str and 'laps\\cse\\admpwd.dll' in value.lower():
+				reasons.append(f'{key_name}\\...\\DllName matches AdmPwd.dll')
+				success = True
+				laps_path = '\\'.join(value.split('\\')[1:-1])
+				break
+		if not success:
+			reasons.append(f'No match found in {key_name}\\...\\DllName')
+
+		l = ls(smb, laps_path)
+		if l:
+			reasons.append('Found LAPS folder at ' + laps_path)
+		else:
+			success = False
+			reasons.append('LAPS folder does not exist')
+			return success, reasons
+
+
+		l = ls(smb, laps_path + '\\AdmPwd.dll')
+		if l:
+			reasons.append(f'Found {laps_path}\\AdmPwd.dll')
+		else:
+			success = False
+			reasons.append(f'{laps_path}\\AdmPwd.dll not found')
+
+		return success, reasons
+
 
 	def check_last_successful_update(self, connection):
 		records = connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
@@ -66,7 +102,6 @@ class CMEModule:
 			return True, [f'Last update was {days_since_last_update} <= {OUTDATED_THRESHOLD} days ago']
 		else:
 			return False, [f'Last update was {days_since_last_update} > {OUTDATED_THRESHOLD} days ago']
-
 
 	def add_result(self, host, result):
 		self.results[host]['checks'].append({
@@ -161,8 +196,6 @@ class CMEModule:
 				else:
 					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
 
-		# TODO: check_last_successful_update
-		# TODO: check_laps
 		# TODO: check_administrator_name
 		# TODO: check_print_spooler_service
 		# TODO: check_wsus
@@ -176,6 +209,7 @@ class CMEModule:
 
 		for result in (
 			ConfigCheck('Last successful update', 'Checks how old is the last successful update').wrap_check(self.check_last_successful_update, connection),
+			ConfigCheck('LAPS', 'Checks if LAPS is installed').wrap_check(self.check_laps, dce, connection),
 			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure').check((
 					'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'EnableLUA', 1
@@ -294,6 +328,52 @@ class CMEModule:
 			self.add_result(host, result)
 		pprint(self.results)
 
+	def _open_root_key(self, dce, root_key):
+		ans = None
+		if root_key.upper() == 'HKLM':
+			ans = rrp.hOpenLocalMachine(dce)
+		elif root_key.upper() == 'HKCR':
+			ans = rrp.hOpenClassesRoot(dce)
+		elif root_key.upper() == 'HKU':
+			ans = rrp.hOpenUsers(dce)
+		elif root_key.upper() == 'HKCU':
+			ans = rrp.hOpenCurrentUser(dce)
+		elif root_key.upper() == 'HKCC':
+			ans = rrp.hOpenCurrentConfig(dce)
+		else:
+			self.log.error('Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
+		return ans
+
+	def reg_get_subkeys(self, dce, key_name, separator='\\'):
+		root_key, subkey = key_name.split(separator, 1)
+		ans = self._open_root_key(dce, root_key)
+		subkeys = []
+		if ans is None:
+			return ans
+
+		root_key_handle = ans['phKey']
+		try:
+			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
+		except DCERPCSessionError as e:
+			self.debug(e)
+			if e.error_code == ERROR_FILE_NOT_FOUND:
+				return e
+
+		subkey_handle = ans['phkResult']
+		i = 0
+		while True:
+			try:
+				ans = rrp.hBaseRegEnumKey(dce=dce, hKey=subkey_handle, dwIndex=i)
+				subkeys.append(ans['lpNameOut'][:-1])
+				i += 1
+			except DCERPCSessionError as e:
+				if e.error_code == ERROR_NO_MORE_ITEMS:
+					break
+				else:
+					self.debug(e)
+					break
+		return subkeys
+
 	def reg_query_value(self, dce, keyName, valueName=None, separator='\\'):
 		"""
 		Query remote registry data for a given registry value
@@ -331,19 +411,10 @@ class CMEModule:
 			return value_type, value_name[:-1], value_data
 
 		root_key, subkey = keyName.split(separator, 1)
-		if root_key.upper() == 'HKLM':
-			ans = rrp.hOpenLocalMachine(dce)
-		elif root_key.upper() == 'HKCR':
-			ans = rrp.hOpenClassesRoot(dce)
-		elif root_key.upper() == 'HKU':
-			ans = rrp.hOpenUsers(dce)
-		elif root_key.upper() == 'HKCU':
-			ans = rrp.hOpenCurrentUser(dce)
-		elif root_key.upper() == 'HKCC':
-			ans = rrp.hOpenCurrentConfig(dce)
-		else:
-			self.log.error('Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
-			return None
+		ans = self._open_root_key(dce, root_key)
+		if ans is None:
+			return ans
+
 		root_key_handle = ans['phKey']
 		try:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
@@ -363,7 +434,6 @@ class CMEModule:
 					found = True
 					break
 			if not found:
-				self.debug(f'Value {valueName} not found')
 				return DCERPCSessionError(error_code=ERROR_OBJECT_NOT_FOUND)
 
 		for handle in (root_key_handle, subkey_handle):
@@ -377,3 +447,14 @@ def le(reg_sz_string, number):
 
 def in_(obj, seq):
 	return obj in seq
+
+def ls(smb, path='\\', share='C$'):
+	l = []
+	try:
+		l = smb.conn.listPath(share, path)
+	except SMBSessionError as e:
+		if e.getErrorString()[0] == 'STATUS_NO_SUCH_FILE':
+			pass
+		else:
+			raise e
+	return l
