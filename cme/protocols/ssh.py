@@ -157,7 +157,6 @@ class ssh(connection):
 
             shell_access = False
             host_id = self.db.get_hosts(self.host)[0].id
-            self.db.add_loggedin_relation(cred_id, host_id)
 
             if self.check_if_admin():
                 shell_access = True
@@ -174,6 +173,8 @@ class ssh(connection):
                     shell_access = False
                 else:
                     shell_access = True
+
+            self.db.add_loggedin_relation(cred_id, host_id, shell=shell_access)
 
             if self.args.key_file:
                 password = f"{password} (keyfile: {self.args.key_file})"

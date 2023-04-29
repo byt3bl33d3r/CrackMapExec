@@ -58,9 +58,11 @@ class database:
             "id" integer PRIMARY KEY,
             "credid" integer,
             "hostid" integer,
+            "shell" boolean,
             FOREIGN KEY(credid) REFERENCES credentials(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
         )''')
+        # "admin" access with SSH means we have root access, which implies shell access since we run commands to check
         db_conn.execute(
             '''CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
@@ -475,7 +477,7 @@ class database:
         results = self.sess.execute(q).all()
         return results
 
-    def add_loggedin_relation(self, cred_id, host_id):
+    def add_loggedin_relation(self, cred_id, host_id, shell=False):
         relation_query = select(self.LoggedinRelationsTable).filter(
             self.LoggedinRelationsTable.c.credid == cred_id,
             self.LoggedinRelationsTable.c.hostid == host_id
@@ -486,7 +488,8 @@ class database:
         if not results:
             relation = {
                 "credid": cred_id,
-                "hostid": host_id
+                "hostid": host_id,
+                "shell": shell
             }
             try:
                 cme_logger.debug(f"Inserting loggedin_relations: {relation}")
@@ -503,7 +506,7 @@ class database:
             except Exception as e:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
-    def get_loggedin_relations(self, cred_id=None, host_id=None):
+    def get_loggedin_relations(self, cred_id=None, host_id=None, shell=None):
         q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if cred_id:
             q = q.filter(
@@ -512,6 +515,10 @@ class database:
         if host_id:
             q = q.filter(
                 self.LoggedinRelationsTable.c.hostid == host_id
+            )
+        if shell:
+            q = q.filter(
+                self.LoggedinRelationsTable.c.shell == shell
             )
         results = self.sess.execute(q).all()
         return results
