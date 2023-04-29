@@ -19,14 +19,6 @@ from cme.loaders.protocolloader import ProtocolLoader
 from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
 
 
-# # The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-# from requests.packages.urllib3.exceptions import InsecureRequestWarning
-# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-#
-# # if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
-# warnings.filterwarnings("ignore", category=SAWarning)
-
-
 class UserExitedProto(Exception):
     pass
 
@@ -84,7 +76,7 @@ def complete_export(text, line):
     """
     Tab-complete 'creds' commands.
     """
-    commands = ["creds", "plaintext", "hashes", "shares", "local_admins", "signing"]
+    commands = ["creds", "plaintext", "hashes", "shares", "local_admins", "signing", "keys"]
     mline = line.partition(' ')[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
@@ -121,11 +113,11 @@ class DatabaseNavigator(cmd.Cmd):
             print("[-] not enough arguments")
             return
         line = line.split()
-
+        command = line[0].lower()
         # Need to use if/elif/else to keep compatibility with py3.8/3.9
         # Reference DB Function cme/protocols/smb/database.py
         # Users
-        if line[0].lower() == 'creds':
+        if command == "creds":
             if len(line) < 3:
                 print("[-] invalid arguments, export creds <simple|detailed> <filename>")
                 return
@@ -154,11 +146,11 @@ class DatabaseNavigator(cmd.Cmd):
                     formatted_creds.append(entry)
                 write_csv(filename, csv_header, formatted_creds)
             else:
-                print('[-] No such export option: %s' % line[1])
+                print(f"[-] No such export option: {line[1]}")
                 return 
             print('[+] Creds exported')
         # Hosts
-        elif line[0].lower() == 'hosts':
+        elif command == "hosts":
             if len(line) < 3:
                 print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
                 return
@@ -180,11 +172,11 @@ class DatabaseNavigator(cmd.Cmd):
                 signing_hosts = [host[1] for host in hosts]
                 write_list(filename, signing_hosts)
             else:
-                print('[-] No such export option: %s' % line[1])
+                print(f"[-] No such export option: {line[1]}")
                 return 
             print('[+] Hosts exported')
         # Shares
-        elif line[0].lower() == 'shares':
+        elif command == "shares":
             if len(line) < 3:
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
@@ -193,11 +185,11 @@ class DatabaseNavigator(cmd.Cmd):
             csv_header = ["id", "host", "userid", "name", "remark", "read", "write"]
             filename = line[2]
             
-            if line[1].lower() == 'simple':
+            if line[1].lower() == "simple":
                 write_csv(filename, csv_header, shares)
-                print('[+] shares exported')
+                print("[+] shares exported")
             # Detailed view gets hostname, usernames, and true false statement
-            elif line[1].lower() == 'detailed':
+            elif line[1].lower() == "detailed":
                 formatted_shares = []
                 for share in shares:
                     user = self.db.get_users(share[2])[0]
@@ -214,11 +206,11 @@ class DatabaseNavigator(cmd.Cmd):
                     formatted_shares.append(entry)
                 write_csv(filename, csv_header, formatted_shares)
             else:
-                print('[-] No such export option: %s' % line[1])
+                print(f"[-] No such export option: {line[1]}")
                 return 
-            print('[+] Shares exported')
+            print("[+] Shares exported")
         # Local Admin
-        elif line[0].lower() == 'local_admins':
+        elif command == "local_admins":
             if len(line) < 3:
                 print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
                 return
@@ -228,9 +220,9 @@ class DatabaseNavigator(cmd.Cmd):
             csv_header = ["id", "userid", "host"]
             filename = line[2]
             
-            if line[1].lower() == 'simple':
+            if line[1].lower() == "simple":
                 write_csv(filename, csv_header, local_admins)
-            elif line[1].lower() == 'detailed':
+            elif line[1].lower() == "detailed":
                 formatted_local_admins = []
                 for entry in local_admins:
                     user = self.db.get_users(filter_term=entry[1])[0]
@@ -244,10 +236,10 @@ class DatabaseNavigator(cmd.Cmd):
                     formatted_local_admins.append(formatted_entry)
                 write_csv(filename, csv_header, formatted_local_admins)
             else:
-                print('[-] No such export option: %s' % line[1])
+                print(f"[-] No such export option: {line[1]}")
                 return 
             print('[+] Local Admins exported')
-        elif line[0].lower() == 'dpapi':
+        elif command == "dpapi":
             if len(line) < 3:
                 print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
                 return
@@ -257,9 +249,9 @@ class DatabaseNavigator(cmd.Cmd):
             csv_header = ["id", "host", "dpapi_type", "windows_user", "username", "password", "url"]
             filename = line[2]
 
-            if line[1].lower() == 'simple':
+            if line[1].lower() == "simple":
                 write_csv(filename, csv_header, dpapi_secrets)
-            elif line[1].lower() == 'detailed':
+            elif line[1].lower() == "detailed":
                 formatted_dpapi_secret = []
                 for entry in dpapi_secrets:
                     
@@ -279,16 +271,26 @@ class DatabaseNavigator(cmd.Cmd):
                 print('[-] No such export option: %s' % line[1])
                 return 
             print('[+] DPAPI secrets exported')
+        elif command == "keys":
+            if line[1].lower() == "all":
+                keys = self.db.get_keys()
+            else:
+                keys = self.db.get_keys(key_id=int(line[1]))
+            writable_keys = [key[2] for key in keys]
+            filename = line[2]
+            write_list(filename, writable_keys)
         else:
             print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
 
     def help_export(self):
         help_string = """
-        export [creds|hosts|local_admins|shares|signing] [simple|detailed|*] [filename]
+        export [creds|hosts|local_admins|shares|signing|keys] [simple|detailed|*] [filename]
         Exports information to a specified file
         
         * hosts has an additional third option from simple and detailed: signing - this simply writes a list of ips of
         hosts where signing is enabled
+        * keys' third option is either "all" or an id of a key to export
+            export keys [all|id] [filename]
         """
         print_help(help_string)
 
