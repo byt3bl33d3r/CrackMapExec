@@ -721,13 +721,14 @@ class smb(connection):
 
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
 
         for method in methods:
             if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
-                        self.host if not self.kerberos else self.hostname + '.' + self.domain,
+                        self.host if not self.kerberos else self.hostname + "." + self.domain,
                         self.smb_share_name,
                         self.username,
                         self.password,
@@ -748,7 +749,7 @@ class smb(connection):
             elif method == "mmcexec":
                 try:
                     exec_method = MMCEXEC(
-                        self.host if not self.kerberos else self.hostname + '.' + self.domain,
+                        self.host if not self.kerberos else self.hostname + "." + self.domain,
                         self.smb_share_name,
                         self.username,
                         self.password,
