@@ -3,10 +3,13 @@
 
 import random
 import socket
+from io import StringIO
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
 from time import sleep
+
+import paramiko
 
 from cme.config import pwned_label
 from cme.helpers.logger import highlight
@@ -48,7 +51,6 @@ class connection(object):
         self.hostname = host
         self.conn = None
         self.admin_privs = False
-        self.logger = None
         self.password = ""
         self.username = ""
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
@@ -199,10 +201,20 @@ class connection(object):
                     creds = self.db.get_credentials()
                 else:
                     creds = self.db.get_credentials(filter_term=int(cred_id))
+
                 for cred in creds:
                     self.logger.debug(cred)
                     try:
-                        c_id, domain, username, password, cred_type, pillaged_from = cred
+                        if self.protocol == "SSH":
+                            c_id, username, password, cred_type = cred
+                            if cred_type == "key":
+                                key_data = self.db.get_keys(cred_id=cred_id)[0].data
+                                if self.plaintext_login(username, password, private_key=key_data):
+                                    return True
+                        else:
+                            # will probably need to add additional checks here for each protocol, but this was initially
+                            # for SMB
+                            c_id, domain, username, password, cred_type, pillaged_from = cred
 
                         if cred_type and password:
                             if not domain:
@@ -219,7 +231,6 @@ class connection(object):
                                         return True
                                 elif self.hash_login(domain, username, password):
                                     return True
-
                             elif cred_type == "plaintext" and not self.over_fail_limit(username):
                                 if self.args.kerberos:
                                     if self.kerberos_login(domain, username, password, "", "", self.kdcHost, False):
@@ -445,6 +456,10 @@ class connection(object):
                             if not self.over_fail_limit(user):
                                 if self.kerberos_login(self.domain, user, "", "", aesKey.strip(), self.kdcHost, False):
                                     return True
+                elif self.args.key_file:
+                    # at this point, we have a key file with no password/passphrase
+                    if self.plaintext_login(user, None):
+                        return True
 
     def mark_pwned(self):
         return highlight(f"({pwned_label})" if self.admin_privs else "")

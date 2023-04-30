@@ -12,9 +12,10 @@ from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsEr
 
 class ssh(connection):
     def __init__(self, args, db, host):
-        super().__init__(args, db, host)
+        self.protocol = "SSH"
         self.remote_version = None
         self.server_os = None
+        super().__init__(args, db, host)
 
 
     @staticmethod
@@ -126,7 +127,7 @@ class ssh(connection):
             self.admin_privs = True
             return True
 
-    def plaintext_login(self, username, password):
+    def plaintext_login(self, username, password, private_key=None):
         try:
             if self.args.key_file:
                 self.logger.debug(f"Logging in with keyfile: {self.args.key_file}")
@@ -137,12 +138,25 @@ class ssh(connection):
                     self.host,
                     port=self.args.port,
                     username=username,
-                    passphrase=password,
+                    passphrase=password if password != "" else None,
                     key_filename=self.args.key_file,
                     look_for_keys=False,
                     allow_agent=False
                 )
-                cred_id = self.db.add_credential("key", username, password, key=key_data)
+                cred_id = self.db.add_credential("key", username, password if password != "" else "", key=key_data)
+            elif private_key:
+                self.logger.debug(f"Logging in with private key string")
+                key_paramiko = paramiko.RSAKey.from_private_key(StringIO(private_key))
+                self.conn.connect(
+                    self.host,
+                    port=self.args.port,
+                    username=username,
+                    passphrase=password if password != "" else None,
+                    pkey=key_paramiko,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
+                cred_id = self.db.add_credential("key", username, password if password != "" else "", key=private_key)
             else:
                 self.logger.debug(f"Logging in with password")
                 self.conn.connect(
