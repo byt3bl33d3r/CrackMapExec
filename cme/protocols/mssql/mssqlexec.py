@@ -27,6 +27,7 @@ class MSSQLEXEC:
             cme_logger.error(f"Error when attempting to execute command via xp_cmdshell: {e}")
 
         if output:
+            cme_logger.debug(f"Output is enabled")
             for row in command_output:
                 cme_logger.display(row)
             # self.mssql_conn.printReplies()

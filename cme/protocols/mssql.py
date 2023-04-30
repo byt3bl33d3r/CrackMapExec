@@ -323,40 +323,37 @@ class mssql(connection):
 
     def mssql_query(self):
         result = self.conn.sql_query(self.args.mssql_query)
-        self.logger.debug(f"Result: {result}")
-        self.conn.printRows()
+        self.logger.debug(f"SQL Query Result: {result}")
         for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
             if line.strip() != '':
                 self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
     @requires_admin
-    def execute(self, payload=None, get_output=False, methods=None):
+    def execute(self, payload=None, print_output=False):
         if not payload and self.args.execute:
             payload = self.args.execute
-            if not self.args.no_output:
-                get_output = True
 
         self.logger.info(f"Command to execute:\n{payload}")
         try:
             exec_method = MSSQLEXEC(self.conn)
-            raw_output = exec_method.execute(payload, get_output)
+            raw_output = exec_method.execute(payload, print_output)
+            self.logger.info("Executed command via mssqlexec")
+            self.logger.debug(f"Raw output: {raw_output}")
         except Exception as e:
             self.logger.exception(e)
             return None
-
-        self.logger.info("Executed command via mssqlexec")
 
         if hasattr(self, "server"):
             self.server.track_host(self.host)
 
         if self.args.execute or self.args.ps_execute:
-            # self.logger.success('Executed command {}'.format('via {}'.format(self.args.exec_method) if self.args.exec_method else ''))
             self.logger.success("Executed command via mssqlexec")
-            buf = StringIO(raw_output).readlines()
-            for line in buf:
-                if line.strip() != "":
-                    self.logger.highlight(line.strip())
+            if self.args.no_output:
+                self.logger.debug(f"Output set to disabled")
+            else:
+                for line in raw_output:
+                    self.logger.highlight(line)
 
         return raw_output
 
@@ -364,7 +361,8 @@ class mssql(connection):
     def ps_execute(self, payload=None, get_output=False, methods=None, force_ps32=False, dont_obfs=True):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
-            if not self.args.no_output: get_output = True
+            if not self.args.no_output:
+                get_output = True
 
         # We're disabling PS obfuscation by default as it breaks the MSSQLEXEC execution method
         ps_command = create_ps_command(payload, force_ps32=force_ps32, dont_obfs=dont_obfs)
