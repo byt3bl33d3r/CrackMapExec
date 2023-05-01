@@ -3,13 +3,10 @@
 
 import random
 import socket
-from io import StringIO
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
 from time import sleep
-
-import paramiko
 
 from cme.config import pwned_label
 from cme.helpers.logger import highlight
