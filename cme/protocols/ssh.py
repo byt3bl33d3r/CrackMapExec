@@ -3,6 +3,9 @@
 import logging
 
 import sys
+from io import StringIO
+
+import paramiko
 
 from cme.config import process_secret
 from cme.connection import *
