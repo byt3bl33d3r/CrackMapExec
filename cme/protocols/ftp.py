@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+from cme.config import process_secret
 from cme.connection import *
 from cme.logger import CMEAdapter
 from ftplib import FTP, error_reply, error_temp, error_perm, error_proto
@@ -69,7 +69,7 @@ class ftp(connection):
             self.conn.login(user=username, passwd=password)
 
             self.logger.success(
-                f"{username}:{password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}"
+                f"{username}:{process_secret(password)}"
             )
 
             if not self.args.continue_on_success:
@@ -78,7 +78,7 @@ class ftp(connection):
             self.conn.close()
         except Exception as e:
             self.logger.fail(
-                f'{username}:{password if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8} (Response:{e})'
+                f'{username}:{process_secret(password)} (Response:{e})'
             )
             self.conn.close()
             return False
