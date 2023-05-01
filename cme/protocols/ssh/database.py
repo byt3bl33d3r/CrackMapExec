@@ -289,7 +289,7 @@ class database:
             q = q.filter(
                 self.KeysTable.c.credid == cred_id
             )
-        results = self.sess.execute(q)
+        results = self.sess.execute(q).all()
         return results
 
     def add_admin_user(self, credtype, username, secret, host_id=None, cred_id=None):
@@ -408,7 +408,10 @@ class database:
             self.CredentialsTable.c.credtype == cred_type
         )
         results = self.sess.execute(q).first()
-        return results.id
+        if results is None:
+            return None
+        else:
+            return results.id
     
     def is_host_valid(self, host_id):
         """

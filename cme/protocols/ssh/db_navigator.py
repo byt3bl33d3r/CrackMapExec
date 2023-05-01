@@ -7,7 +7,7 @@ from cme.cmedb import DatabaseNavigator, print_table, print_help
 
 class navigator(DatabaseNavigator):
     def display_creds(self, creds):
-        data = [["CredID", "Admin On", "Total Login", "Total Shell", "Username", "Password", "CredType"]]
+        data = [["CredID", "Admin On", "Total Logins", "Total Shells", "Username", "Password", "CredType"]]
 
         for cred in creds:
             cred_id = cred[0]

