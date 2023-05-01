@@ -3,6 +3,7 @@
 
 import random
 import socket
+import sys
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
@@ -453,10 +454,6 @@ class connection(object):
                             if not self.over_fail_limit(user):
                                 if self.kerberos_login(self.domain, user, "", "", aesKey.strip(), self.kdcHost, False):
                                     return True
-                elif self.args.key_file:
-                    # at this point, we have a key file with no password/passphrase
-                    if self.plaintext_login(user, None):
-                        return True
 
     def mark_pwned(self):
         return highlight(f"({pwned_label})" if self.admin_privs else "")
