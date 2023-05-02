@@ -10,7 +10,7 @@ from termcolor import colored
 
 
 def gen_cli_args():
-    VERSION = "5.4.6"
+    VERSION = "5.4.7"
     CODENAME = "Bruce Wayne"
 
     p_loader = ProtocolLoader()
