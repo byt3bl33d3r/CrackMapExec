@@ -6,7 +6,11 @@ from datetime import datetime
 
 from sqlalchemy import MetaData, func, Table, select, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
+from sqlalchemy.exc import (
+    IllegalStateChangeError,
+    NoInspectionAvailable,
+    NoSuchTableError,
+)
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -31,10 +35,7 @@ class database:
         self.db_engine = db_engine
         self.metadata = MetaData()
         self.reflect_tables()
-        session_factory = sessionmaker(
-            bind=self.db_engine,
-            expire_on_commit=True
-        )
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
 
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
@@ -42,7 +43,8 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "hosts" (
+        db_conn.execute(
+            """CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
@@ -54,9 +56,11 @@ class database:
             "spooler" boolean,
             "zerologon" boolean,
             "petitpotam" boolean
-            )''')
+            )"""
+        )
         # type = hash, plaintext
-        db_conn.execute('''CREATE TABLE "users" (
+        db_conn.execute(
+            """CREATE TABLE "users" (
             "id" integer PRIMARY KEY,
             "domain" text,
             "username" text,
@@ -64,31 +68,39 @@ class database:
             "credtype" text,
             "pillaged_from_hostid" integer,
             FOREIGN KEY(pillaged_from_hostid) REFERENCES hosts(id)
-            )''')
-        db_conn.execute('''CREATE TABLE "groups" (
+            )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "groups" (
             "id" integer PRIMARY KEY,
             "domain" text,
             "name" text,
             "rid" text,
             "member_count_ad" integer,
             "last_query_time" text
-            )''')
+            )"""
+        )
         # This table keeps track of which credential has admin access over which machine and vice-versa
-        db_conn.execute('''CREATE TABLE "admin_relations" (
+        db_conn.execute(
+            """CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
             "hostid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
-            )''')
-        db_conn.execute('''CREATE TABLE "group_relations" (
+            )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "group_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
             "groupid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
             FOREIGN KEY(groupid) REFERENCES groups(id)
-            )''')
-        db_conn.execute('''CREATE TABLE "shares" (
+            )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "shares" (
             "id" integer PRIMARY KEY,
             "hostid" text,
             "userid" integer,
@@ -98,15 +110,19 @@ class database:
             "write" boolean,
             FOREIGN KEY(userid) REFERENCES users(id)
             UNIQUE(hostid, userid, name)
-        )''')
-        db_conn.execute('''CREATE TABLE "loggedin_relations" (
+        )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "loggedin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
             "hostid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
-        )''')
-        db_conn.execute('''CREATE TABLE "dpapi_secrets" (
+        )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "dpapi_secrets" (
             "id" integer PRIMARY KEY,
             "host" text,
             "dpapi_type" text,
@@ -115,13 +131,16 @@ class database:
             "password" text,
             "url" text,
             UNIQUE(host, dpapi_type, windows_user, username, password, url)
-        )''')
-        db_conn.execute('''CREATE TABLE "dpapi_backupkey" (
+        )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "dpapi_backupkey" (
             "id" integer PRIMARY KEY,
             "domain" text,
             "pvk" text,
             UNIQUE(domain)
-        )''')
+        )"""
+        )
         # db_conn.execute('''CREATE TABLE "ntds_dumps" (
         #    "id" integer PRIMARY KEY,
         #    "hostid", integer,
@@ -134,15 +153,33 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-                self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
-                self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
-                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-                self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
-                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
-                self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
-                self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table(
+                    "hosts", self.metadata, autoload_with=self.db_engine
+                )
+                self.UsersTable = Table(
+                    "users", self.metadata, autoload_with=self.db_engine
+                )
+                self.GroupsTable = Table(
+                    "groups", self.metadata, autoload_with=self.db_engine
+                )
+                self.SharesTable = Table(
+                    "shares", self.metadata, autoload_with=self.db_engine
+                )
+                self.AdminRelationsTable = Table(
+                    "admin_relations", self.metadata, autoload_with=self.db_engine
+                )
+                self.GroupRelationsTable = Table(
+                    "group_relations", self.metadata, autoload_with=self.db_engine
+                )
+                self.LoggedinRelationsTable = Table(
+                    "loggedin_relations", self.metadata, autoload_with=self.db_engine
+                )
+                self.DpapiSecrets = Table(
+                    "dpapi_secrets", self.metadata, autoload_with=self.db_engine
+                )
+                self.DpapiBackupkey = Table(
+                    "dpapi_backupkey", self.metadata, autoload_with=self.db_engine
+                )
             except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
@@ -166,18 +203,27 @@ class database:
             self.conn.execute(table.delete())
 
     # pull/545
-    def add_host(self, ip, hostname, domain, os, smbv1, signing, spooler=None, zerologon=None, petitpotam=None,
-                 dc=None):
+    def add_host(
+        self,
+        ip,
+        hostname,
+        domain,
+        os,
+        smbv1,
+        signing,
+        spooler=None,
+        zerologon=None,
+        petitpotam=None,
+        dc=None,
+    ):
         """
         Check if this host has already been added to the database, if not, add it in.
         """
-        domain = domain.split('.')[0]
+        domain = domain.split(".")[0]
         hosts = []
         updated_ids = []
 
-        q = select(self.HostsTable).filter(
-            self.HostsTable.c.ip == ip
-        )
+        q = select(self.HostsTable).filter(self.HostsTable.c.ip == ip)
         results = self.conn.execute(q).all()
 
         # create new host
@@ -186,13 +232,13 @@ class database:
                 "ip": ip,
                 "hostname": hostname,
                 "domain": domain,
-                "os": os if os is not None else '',
+                "os": os if os is not None else "",
                 "dc": dc,
                 "smbv1": smbv1,
                 "signing": signing,
                 "spooler": spooler,
                 "zerologon": zerologon,
-                "petitpotam": petitpotam
+                "petitpotam": petitpotam,
             }
             hosts = [new_host]
         # update existing hosts data
@@ -228,38 +274,37 @@ class database:
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
-        update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
         q = q.on_conflict_do_update(
-            index_elements=self.HostsTable.primary_key,
-            set_=update_columns
+            index_elements=self.HostsTable.primary_key, set_=update_columns
         )
 
-        self.conn.execute(
-            q,
-            hosts
-        )  # .scalar()
+        self.conn.execute(q, hosts)  # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
         if updated_ids:
             cme_logger.debug(f"add_host() - Host IDs Updated: {updated_ids}")
             return updated_ids
 
-    def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
+    def add_credential(
+        self, credtype, domain, username, password, group_id=None, pillaged_from=None
+    ):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-        domain = domain.split('.')[0]
+        domain = domain.split(".")[0]
         credentials = []
         groups = []
 
-        if (group_id and not self.is_group_valid(group_id)) or \
-                (pillaged_from and not self.is_host_valid(pillaged_from)):
+        if (group_id and not self.is_group_valid(group_id)) or (
+            pillaged_from and not self.is_host_valid(pillaged_from)
+        ):
             cme_logger.debug(f"Invalid group or host")
             return
 
         q = select(self.UsersTable).filter(
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
             func.lower(self.UsersTable.c.username) == func.lower(username),
-            func.lower(self.UsersTable.c.credtype) == func.lower(credtype)
+            func.lower(self.UsersTable.c.credtype) == func.lower(credtype),
         )
         results = self.conn.execute(q).all()
 
@@ -290,10 +335,7 @@ class database:
                     cred_data["password"] = password
                 if group_id is not None:
                     cred_data["groupid"] = group_id
-                    groups.append({
-                        "userid": cred_data["id"],
-                        "groupid": group_id
-                    })
+                    groups.append({"userid": cred_data["id"], "groupid": group_id})
                 if pillaged_from is not None:
                     cred_data["pillaged_from"] = pillaged_from
                 # only add cred to be updated if it has changed
@@ -302,25 +344,20 @@ class database:
 
         # TODO: find a way to abstract this away to a single Upsert call
         q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
-        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in 'id'}
+        update_columns_users = {
+            col.name: col for col in q_users.excluded if col.name not in "id"
+        }
         q_users = q_users.on_conflict_do_update(
-            index_elements=self.UsersTable.primary_key,
-            set_=update_columns_users
+            index_elements=self.UsersTable.primary_key, set_=update_columns_users
         )
         cme_logger.debug(f"Adding credentials: {credentials}")
 
-        self.conn.execute(
-            q_users,
-            credentials
-        ) # .scalar()
+        self.conn.execute(q_users, credentials)  # .scalar()
 
         if groups:
             q_groups = Insert(self.GroupRelationsTable)
 
-            self.conn.execute(
-                q_groups,
-                groups
-            )
+            self.conn.execute(q_groups, groups)
         # return user_ids
 
     def remove_credentials(self, creds_id):
@@ -329,27 +366,23 @@ class database:
         """
         del_hosts = []
         for cred_id in creds_id:
-            q = delete(self.UsersTable).filter(
-                self.UsersTable.c.id == cred_id
-            )
+            q = delete(self.UsersTable).filter(self.UsersTable.c.id == cred_id)
             del_hosts.append(q)
         self.conn.execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
-        domain = domain.split('.')[0]
+        domain = domain.split(".")[0]
         add_links = []
 
         creds_q = select(self.UsersTable)
         if user_id:
-            creds_q = creds_q.filter(
-                self.UsersTable.c.id == user_id
-            )
+            creds_q = creds_q.filter(self.UsersTable.c.id == user_id)
         else:
             creds_q = creds_q.filter(
                 func.lower(self.UsersTable.c.credtype) == func.lower(credtype),
                 func.lower(self.UsersTable.c.domain) == func.lower(domain),
                 func.lower(self.UsersTable.c.username) == func.lower(username),
-                self.UsersTable.c.password == password
+                self.UsersTable.c.password == password,
             )
         users = self.conn.execute(creds_q)
         hosts = self.get_hosts(host)
@@ -358,13 +391,10 @@ class database:
             for user, host in zip(users, hosts):
                 user_id = user[0]
                 host_id = host[0]
-                link = {
-                    "userid": user_id,
-                    "hostid": host_id
-                }
+                link = {"userid": user_id, "hostid": host_id}
                 admin_relations_select = select(self.AdminRelationsTable).filter(
                     self.AdminRelationsTable.c.userid == user_id,
-                    self.AdminRelationsTable.c.hostid == host_id
+                    self.AdminRelationsTable.c.hostid == host_id,
                 )
                 links = self.conn.execute(admin_relations_select).all()
 
@@ -374,10 +404,7 @@ class database:
         admin_relations_insert = Insert(self.AdminRelationsTable)
 
         if add_links:
-            self.conn.execute(
-                admin_relations_insert,
-                add_links
-            )
+            self.conn.execute(admin_relations_insert, add_links)
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
@@ -398,14 +425,10 @@ class database:
         q = delete(self.AdminRelationsTable)
         if user_ids:
             for user_id in user_ids:
-                q = q.filter(
-                    self.AdminRelationsTable.c.userid == user_id
-                )
+                q = q.filter(self.AdminRelationsTable.c.userid == user_id)
         elif host_ids:
             for host_id in host_ids:
-                q = q.filter(
-                    self.AdminRelationsTable.c.hostid == host_id
-                )
+                q = q.filter(self.AdminRelationsTable.c.hostid == host_id)
         self.conn.execute(q)
 
     def is_credential_valid(self, credential_id):
@@ -414,7 +437,7 @@ class database:
         """
         q = select(self.UsersTable).filter(
             self.UsersTable.c.id == credential_id,
-            self.UsersTable.c.password is not None
+            self.UsersTable.c.password is not None,
         )
         results = self.conn.execute(q).all()
         return len(results) > 0
@@ -425,15 +448,11 @@ class database:
         """
         # if we're returning a single credential by ID
         if self.is_credential_valid(filter_term):
-            q = select(self.UsersTable).filter(
-                self.UsersTable.c.id == filter_term
-            )
+            q = select(self.UsersTable).filter(self.UsersTable.c.id == filter_term)
         elif cred_type:
-            q = select(self.UsersTable).filter(
-                self.UsersTable.c.credtype == cred_type
-            )
+            q = select(self.UsersTable).filter(self.UsersTable.c.credtype == cred_type)
         # if we're filtering by username
-        elif filter_term and filter_term != '':
+        elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
             q = select(self.UsersTable).filter(
                 func.lower(self.UsersTable.c.username).like(like_term)
@@ -446,13 +465,13 @@ class database:
         return results
 
     def get_credential(self, cred_type, domain, username, password):
-        domain = domain.split('.')[0]
+        domain = domain.split(".")[0]
 
         q = select(self.UsersTable).filter(
             self.UsersTable.c.domain == domain,
             self.UsersTable.c.username == username,
             self.UsersTable.c.password == password,
-            self.UsersTable.c.credtype == cred_type
+            self.UsersTable.c.credtype == cred_type,
         )
         results = self.conn.execute(q).first()
         return results.id
@@ -475,9 +494,7 @@ class database:
         """
         Check if this host ID is valid.
         """
-        q = select(self.HostsTable).filter(
-            self.HostsTable.c.id == host_id
-        )
+        q = select(self.HostsTable).filter(self.HostsTable.c.id == host_id)
         results = self.conn.execute(q).all()
         return len(results) > 0
 
@@ -489,50 +506,34 @@ class database:
 
         # if we're returning a single host by ID
         if self.is_host_valid(filter_term):
-            q = q.filter(
-                self.HostsTable.c.id == filter_term
-            )
+            q = q.filter(self.HostsTable.c.id == filter_term)
             results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         # if we're filtering by domain controllers
-        elif filter_term == 'dc':
-            q = q.filter(
-                self.HostsTable.c.dc == True
-            )
+        elif filter_term == "dc":
+            q = q.filter(self.HostsTable.c.dc == True)
             if domain:
-                q = q.filter(
-                    func.lower(self.HostsTable.c.domain) == func.lower(domain)
-                )
-        elif filter_term == 'signing':
+                q = q.filter(func.lower(self.HostsTable.c.domain) == func.lower(domain))
+        elif filter_term == "signing":
             # generally we want hosts that are vulnerable, so signing disabled
-            q = q.filter(
-                self.HostsTable.c.signing == False
-            )
-        elif filter_term == 'spooler':
-            q = q.filter(
-                self.HostsTable.c.spooler == True
-            )
-        elif filter_term == 'zerologon':
-            q = q.filter(
-                self.HostsTable.c.zerologon == True
-            )
-        elif filter_term == 'petitpotam':
-            q = q.filter(
-                self.HostsTable.c.petitpotam == True
-            )
-        elif filter_term is not None and filter_term.startswith('domain'):
+            q = q.filter(self.HostsTable.c.signing == False)
+        elif filter_term == "spooler":
+            q = q.filter(self.HostsTable.c.spooler == True)
+        elif filter_term == "zerologon":
+            q = q.filter(self.HostsTable.c.zerologon == True)
+        elif filter_term == "petitpotam":
+            q = q.filter(self.HostsTable.c.petitpotam == True)
+        elif filter_term is not None and filter_term.startswith("domain"):
             domain = filter_term.split()[1]
             like_term = func.lower(f"%{domain}%")
-            q = q.filter(
-                self.HostsTable.c.domain.like(like_term)
-            )
+            q = q.filter(self.HostsTable.c.domain.like(like_term))
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
             q = q.filter(
-                self.HostsTable.c.ip.like(like_term) |
-                func.lower(self.HostsTable.c.hostname).like(like_term)
+                self.HostsTable.c.ip.like(like_term)
+                | func.lower(self.HostsTable.c.hostname).like(like_term)
             )
         results = self.conn.execute(q).all()
         cme_logger.debug(f"smb hosts() - results: {results}")
@@ -542,9 +543,7 @@ class database:
         """
         Check if this group ID is valid.
         """
-        q = select(self.GroupsTable).filter(
-            self.GroupsTable.c.id == group_id
-        )
+        q = select(self.GroupsTable).filter(self.GroupsTable.c.id == group_id)
         results = self.conn.execute(q).first()
 
         valid = True if results else False
@@ -555,7 +554,7 @@ class database:
     def add_group(self, domain, name, rid=None, member_count_ad=None):
         results = self.get_groups(group_name=name, group_domain=domain)
 
-        domain = domain.split('.')[0]
+        domain = domain.split(".")[0]
         groups = []
         updated_ids = []
 
@@ -564,7 +563,7 @@ class database:
             "name": name,
             "rid": rid,
             "member_count_ad": member_count_ad,
-            "last_query_time": None
+            "last_query_time": None,
         }
 
         if not results:
@@ -578,11 +577,10 @@ class database:
             # insert the group and get the returned id right away, this can be refactored when we can use RETURNING
             q = Insert(self.GroupsTable)
 
-            self.conn.execute(
-                q,
-                groups
+            self.conn.execute(q, groups)
+            new_group_data = self.get_groups(
+                group_name=group_data["name"], group_domain=group_data["domain"]
             )
-            new_group_data = self.get_groups(group_name=group_data["name"], group_domain=group_data["domain"])
             returned_id = [new_group_data[0].id]
             cme_logger.debug(f"Inserted group with ID: {returned_id[0]}")
             return returned_id
@@ -609,16 +607,12 @@ class database:
 
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.GroupsTable)  # .returning(self.GroupsTable.c.id)
-        update_columns = {col.name: col for col in q.excluded if col.name not in 'id'}
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
         q = q.on_conflict_do_update(
-            index_elements=self.GroupsTable.primary_key,
-            set_=update_columns
+            index_elements=self.GroupsTable.primary_key, set_=update_columns
         )
 
-        self.conn.execute(
-            q,
-            groups
-        )
+        self.conn.execute(q, groups)
         # TODO: always return a list and fix code references to not expect a single integer
         # inserted_result = res_inserted_result.first()
         # gid = inserted_result.id
@@ -634,39 +628,36 @@ class database:
         Return groups from the database
         """
         if group_domain:
-            group_domain = group_domain.split('.')[0]
+            group_domain = group_domain.split(".")[0]
 
         if filter_term and self.is_group_valid(filter_term):
-            q = select(self.GroupsTable).filter(
-                self.GroupsTable.c.id == filter_term
-            )
+            q = select(self.GroupsTable).filter(self.GroupsTable.c.id == filter_term)
             results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         elif group_name and group_domain:
             q = select(self.GroupsTable).filter(
                 func.lower(self.GroupsTable.c.name) == func.lower(group_name),
-                func.lower(self.GroupsTable.c.domain) == func.lower(group_domain)
+                func.lower(self.GroupsTable.c.domain) == func.lower(group_domain),
             )
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.GroupsTable).filter(
-                self.GroupsTable.c.name.like(like_term)
-            )
+            q = select(self.GroupsTable).filter(self.GroupsTable.c.name.like(like_term))
         else:
             q = select(self.GroupsTable).filter()
 
         results = self.conn.execute(q).all()
 
         cme_logger.debug(
-            f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
+            f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}"
+        )
         return results
 
     def get_group_relations(self, user_id=None, group_id=None):
         if user_id and group_id:
             q = select(self.GroupRelationsTable).filter(
                 self.GroupRelationsTable.c.id == user_id,
-                self.GroupRelationsTable.c.groupid == group_id
+                self.GroupRelationsTable.c.groupid == group_id,
             )
         elif user_id:
             q = select(self.GroupRelationsTable).filter(
@@ -683,22 +674,16 @@ class database:
     def remove_group_relations(self, user_id=None, group_id=None):
         q = delete(self.GroupRelationsTable)
         if user_id:
-            q = q.filter(
-                self.GroupRelationsTable.c.userid == user_id
-            )
+            q = q.filter(self.GroupRelationsTable.c.userid == user_id)
         elif group_id:
-            q = q.filter(
-                self.GroupRelationsTable.c.groupid == group_id
-            )
+            q = q.filter(self.GroupRelationsTable.c.groupid == group_id)
         self.conn.execute(q)
 
     def is_user_valid(self, user_id):
         """
         Check if this User ID is valid.
         """
-        q = select(self.UsersTable).filter(
-            self.UsersTable.c.id == user_id
-        )
+        q = select(self.UsersTable).filter(self.UsersTable.c.id == user_id)
         results = self.conn.execute(q).all()
         return len(results) > 0
 
@@ -706,36 +691,30 @@ class database:
         q = select(self.UsersTable)
 
         if self.is_user_valid(filter_term):
-            q = q.filter(
-                self.UsersTable.c.id == filter_term
-            )
+            q = q.filter(self.UsersTable.c.id == filter_term)
         # if we're filtering by username
-        elif filter_term and filter_term != '':
+        elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = q.filter(
-                func.lower(self.UsersTable.c.username).like(like_term)
-            )
+            q = q.filter(func.lower(self.UsersTable.c.username).like(like_term))
         results = self.conn.execute(q).all()
         return results
 
     def get_user(self, domain, username):
         q = select(self.UsersTable).filter(
             func.lower(self.UsersTable.c.domain) == func.lower(domain),
-            func.lower(self.UsersTable.c.username) == func.lower(username)
+            func.lower(self.UsersTable.c.username) == func.lower(username),
         )
         results = self.conn.execute(q).all()
         return results
 
     def get_domain_controllers(self, domain=None):
-        return self.get_hosts(filter_term='dc', domain=domain)
+        return self.get_hosts(filter_term="dc", domain=domain)
 
     def is_share_valid(self, share_id):
         """
         Check if this share ID is valid.
         """
-        q = select(self.SharesTable).filter(
-            self.SharesTable.c.id == share_id
-        )
+        q = select(self.SharesTable).filter(self.SharesTable.c.id == share_id)
         results = self.conn.execute(q).all()
 
         cme_logger.debug(f"is_share_valid(shareID={share_id}) => {len(results) > 0}")
@@ -751,21 +730,19 @@ class database:
             "write": write,
         }
         share_id = self.conn.execute(
-            Insert(self.SharesTable).on_conflict_do_nothing(),  # .returning(self.SharesTable.c.id),
-            share_data
+            Insert(
+                self.SharesTable
+            ).on_conflict_do_nothing(),  # .returning(self.SharesTable.c.id),
+            share_data,
         )  # .scalar_one()
         # return share_id
 
     def get_shares(self, filter_term=None):
         if self.is_share_valid(filter_term):
-            q = select(self.SharesTable).filter(
-                self.SharesTable.c.id == filter_term
-            )
+            q = select(self.SharesTable).filter(self.SharesTable.c.id == filter_term)
         elif filter_term:
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.SharesTable).filter(
-                self.SharesTable.c.name.like(like_term)
-            )
+            q = select(self.SharesTable).filter(self.SharesTable.c.name.like(like_term))
         else:
             q = select(self.SharesTable)
         results = self.conn.execute(q).all()
@@ -786,8 +763,7 @@ class database:
     def get_users_with_share_access(self, host_id, share_name, permissions):
         permissions = permissions.lower()
         q = select(self.SharesTable.c.userid).filter(
-            self.SharesTable.c.name == share_name,
-            self.SharesTable.c.hostid == host_id
+            self.SharesTable.c.name == share_name, self.SharesTable.c.hostid == host_id
         )
         if "r" in permissions:
             q = q.filter(self.SharesTable.c.read == 1)
@@ -810,19 +786,15 @@ class database:
 
         if not len(results):
             pvk_encoded = base64.b64encode(pvk)
-            backup_key = {
-                "domain": domain,
-                "pvk": pvk_encoded
-            }
+            backup_key = {"domain": domain, "pvk": pvk_encoded}
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
                 q = Insert(self.DpapiBackupkey)  # .returning(self.DpapiBackupkey.c.id)
 
-                self.conn.execute(
-                    q,
-                    [backup_key]
-                )  # .scalar()
-                cme_logger.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})")
+                self.conn.execute(q, [backup_key])  # .scalar()
+                cme_logger.debug(
+                    f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})"
+                )
                 # return inserted_id
             except Exception as e:
                 cme_logger.debug(f"Issue while inserting DPAPI Backup Key: {e}")
@@ -834,15 +806,16 @@ class database:
         """
         q = select(self.DpapiBackupkey)
         if domain is not None:
-            q = q.filter(
-                func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain)
-            )
+            q = q.filter(func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain))
         results = self.conn.execute(q).all()
 
         cme_logger.debug(f"get_domain_backupkey(domain={domain}) => {results}")
 
         if len(results) > 0:
-            results = [(id_key, domain, base64.b64decode(pvk)) for id_key, domain, pvk in results]
+            results = [
+                (id_key, domain, base64.b64decode(pvk))
+                for id_key, domain, pvk in results
+            ]
         return results
 
     def is_dpapi_secret_valid(self, dpapi_secret_id):
@@ -858,8 +831,15 @@ class database:
         cme_logger.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
         return valid
 
-    def add_dpapi_secrets(self, host: str, dpapi_type: str, windows_user: str, username: str, password: str,
-                          url: str = ''):
+    def add_dpapi_secrets(
+        self,
+        host: str,
+        dpapi_type: str,
+        windows_user: str,
+        username: str,
+        password: str,
+        url: str = "",
+    ):
         """
         Add dpapi secrets to cmedb
         """
@@ -869,39 +849,42 @@ class database:
             "windows_user": windows_user,
             "username": username,
             "password": password,
-            "url": url
+            "url": url,
         }
-        q = Insert(self.DpapiSecrets).on_conflict_do_nothing()  # .returning(self.DpapiSecrets.c.id)
+        q = Insert(
+            self.DpapiSecrets
+        ).on_conflict_do_nothing()  # .returning(self.DpapiSecrets.c.id)
 
-        self.conn.execute(
-            q,
-            [secret]
-        )  # .scalar()
+        self.conn.execute(q, [secret])  # .scalar()
 
         # inserted_result = res_inserted_result.first()
         # inserted_id = inserted_result.id
 
         cme_logger.debug(
-            f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
+            f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})"
+        )
 
-    def get_dpapi_secrets(self, filter_term=None, host: str = None, dpapi_type: str = None, windows_user: str = None,
-                          username: str = None, url: str = None):
+    def get_dpapi_secrets(
+        self,
+        filter_term=None,
+        host: str = None,
+        dpapi_type: str = None,
+        windows_user: str = None,
+        username: str = None,
+        url: str = None,
+    ):
         """
         Get dpapi secrets from cmedb
         """
         q = select(self.DpapiSecrets)
 
         if self.is_dpapi_secret_valid(filter_term):
-            q = q.filter(
-                self.DpapiSecrets.c.id == filter_term
-            )
+            q = q.filter(self.DpapiSecrets.c.id == filter_term)
             results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         elif host:
-            q = q.filter(
-                self.DpapiSecrets.c.host == host
-            )
+            q = q.filter(self.DpapiSecrets.c.host == host)
             results = self.conn.execute(q).first()
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
@@ -911,73 +894,60 @@ class database:
             )
         elif windows_user:
             like_term = func.lower(f"%{windows_user}%")
-            q = q.filter(
-                func.lower(self.DpapiSecrets.c.windows_user).like(like_term)
-            )
+            q = q.filter(func.lower(self.DpapiSecrets.c.windows_user).like(like_term))
         elif username:
             like_term = func.lower(f"%{username}%")
-            q = q.filter(
-                func.lower(self.DpapiSecrets.c.windows_user).like(like_term)
-            )
+            q = q.filter(func.lower(self.DpapiSecrets.c.windows_user).like(like_term))
         elif url:
-            q = q.filter(
-                func.lower(self.DpapiSecrets.c.url) == func.lower(url)
-            )
+            q = q.filter(func.lower(self.DpapiSecrets.c.url) == func.lower(url))
         results = self.conn.execute(q).all()
 
         cme_logger.debug(
-            f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
+            f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}"
+        )
         return results
 
     def add_loggedin_relation(self, user_id, host_id):
         relation_query = select(self.LoggedinRelationsTable).filter(
             self.LoggedinRelationsTable.c.userid == user_id,
-            self.LoggedinRelationsTable.c.hostid == host_id
+            self.LoggedinRelationsTable.c.hostid == host_id,
         )
         results = self.conn.execute(relation_query).all()
 
         # only add one if one doesn't already exist
         if not results:
-            relation = {
-                "userid": user_id,
-                "hostid": host_id
-            }
+            relation = {"userid": user_id, "hostid": host_id}
             try:
                 cme_logger.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+                q = Insert(
+                    self.LoggedinRelationsTable
+                )  # .returning(self.LoggedinRelationsTable.c.id)
 
-                self.conn.execute(
-                    q,
-                    [relation]
-                )  # .scalar()
+                self.conn.execute(q, [relation])  # .scalar()
                 inserted_id_results = self.get_loggedin_relations(user_id, host_id)
-                cme_logger.debug(f"Checking if relation was added: {inserted_id_results}")
+                cme_logger.debug(
+                    f"Checking if relation was added: {inserted_id_results}"
+                )
                 return inserted_id_results[0].id
             except Exception as e:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+        q = select(
+            self.LoggedinRelationsTable
+        )  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
-            q = q.filter(
-                self.LoggedinRelationsTable.c.userid == user_id
-            )
+            q = q.filter(self.LoggedinRelationsTable.c.userid == user_id)
         if host_id:
-            q = q.filter(
-                self.LoggedinRelationsTable.c.hostid == host_id
-            )
+            q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
         results = self.conn.execute(q).all()
         return results
 
     def remove_loggedin_relations(self, user_id=None, host_id=None):
         q = delete(self.LoggedinRelationsTable)
         if user_id:
-            q = q.filter(
-                self.LoggedinRelationsTable.c.userid == user_id
-            )
+            q = q.filter(self.LoggedinRelationsTable.c.userid == user_id)
         elif host_id:
-            q = q.filter(
-                self.LoggedinRelationsTable.c.hostid == host_id
-            )
+            q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
         self.conn.execute(q)

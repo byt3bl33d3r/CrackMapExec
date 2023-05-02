@@ -7,13 +7,24 @@ from ftplib import FTP, error_reply, error_temp, error_perm, error_proto
 
 
 class ftp(connection):
-
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        ftp_parser = parser.add_parser('ftp', help="own stuff using FTP", parents=[std_parser, module_parser])
-        ftp_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        ftp_parser.add_argument("--port", type=int, default=21, help="FTP port (default: 21)")
-        ftp_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        ftp_parser = parser.add_parser(
+            "ftp", help="own stuff using FTP", parents=[std_parser, module_parser]
+        )
+        ftp_parser.add_argument(
+            "--no-bruteforce",
+            action="store_true",
+            help="No spray when using file for username and password (user1 => password1, user2 => password2",
+        )
+        ftp_parser.add_argument(
+            "--port", type=int, default=21, help="FTP port (default: 21)"
+        )
+        ftp_parser.add_argument(
+            "--continue-on-success",
+            action="store_true",
+            help="continues authentication attempts even after successes",
+        )
 
         # TODO: Create more options for the protocol
         # cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
@@ -26,7 +37,7 @@ class ftp(connection):
                 "protocol": "FTP",
                 "host": self.host,
                 "port": self.args.port,
-                "hostname": self.hostname
+                "hostname": self.hostname,
             }
         )
 
@@ -68,17 +79,13 @@ class ftp(connection):
         try:
             self.conn.login(user=username, passwd=password)
 
-            self.logger.success(
-                f"{username}:{process_secret(password)}"
-            )
+            self.logger.success(f"{username}:{process_secret(password)}")
 
             if not self.args.continue_on_success:
                 self.conn.close()
                 return True
             self.conn.close()
         except Exception as e:
-            self.logger.fail(
-                f'{username}:{process_secret(password)} (Response:{e})'
-            )
+            self.logger.fail(f"{username}:{process_secret(password)} (Response:{e})")
             self.conn.close()
             return False

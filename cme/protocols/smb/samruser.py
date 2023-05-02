@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#Stolen from Impacket
+# Stolen from Impacket
 
 from impacket.dcerpc.v5 import transport, samr
 from impacket.dcerpc.v5.rpcrt import DCERPCException
@@ -11,38 +11,40 @@ from cme.logger import cme_logger
 
 
 class UserSamrDump:
-
     KNOWN_PROTOCOLS = {
-        '139/SMB': (r'ncacn_np:%s[\pipe\samr]', 139),
-        '445/SMB': (r'ncacn_np:%s[\pipe\samr]', 445),
+        "139/SMB": (r"ncacn_np:%s[\pipe\samr]", 139),
+        "445/SMB": (r"ncacn_np:%s[\pipe\samr]", 445),
     }
 
     def __init__(self, connection):
         self.logger = cme_logger
-        self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
+        self.addr = (
+            connection.host
+            if not connection.kerberos
+            else connection.hostname + "." + connection.domain
+        )
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
         self.domain = connection.domain
         self.hash = connection.hash
-        self.lmhash = ''
-        self.nthash = ''
+        self.lmhash = ""
+        self.nthash = ""
         self.aesKey = None
         self.doKerberos = connection.kerberos
         self.protocols = UserSamrDump.KNOWN_PROTOCOLS.keys()
         self.users = []
 
         if self.hash is not None:
-            if self.hash.find(':') != -1:
-                self.lmhash, self.nthash = self.hash.split(':')
+            if self.hash.find(":") != -1:
+                self.lmhash, self.nthash = self.hash.split(":")
             else:
                 self.nthash = self.hash
-        
+
         if self.password is None:
-            self.password = ''
+            self.password = ""
 
     def dump(self):
-
         # Try all requested protocols until one works.
         for protocol in self.protocols:
             try:
@@ -61,7 +63,7 @@ class UserSamrDump:
                 self.lmhash,
                 self.nthash,
                 self.aesKey,
-                doKerberos=self.doKerberos
+                doKerberos=self.doKerberos,
             )
             try:
                 self.fetchList(rpctransport)
@@ -80,20 +82,29 @@ class UserSamrDump:
         if resp["ErrorCode"] != 0:
             raise Exception("Connect error")
 
-        resp2 = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle=resp["ServerHandle"],
-                                                      enumerationContext=0,
-                                                      preferedMaximumLength=500)
+        resp2 = samr.hSamrEnumerateDomainsInSamServer(
+            dce,
+            serverHandle=resp["ServerHandle"],
+            enumerationContext=0,
+            preferedMaximumLength=500,
+        )
         if resp2["ErrorCode"] != 0:
             raise Exception("Connect error")
 
-        resp3 = samr.hSamrLookupDomainInSamServer(dce, serverHandle=resp["ServerHandle"],
-                                                  name=resp2["Buffer"]["Buffer"][0]["Name"])
+        resp3 = samr.hSamrLookupDomainInSamServer(
+            dce,
+            serverHandle=resp["ServerHandle"],
+            name=resp2["Buffer"]["Buffer"][0]["Name"],
+        )
         if resp3["ErrorCode"] != 0:
             raise Exception("Connect error")
 
-        resp4 = samr.hSamrOpenDomain(dce, serverHandle=resp["ServerHandle"],
-                                     desiredAccess=samr.MAXIMUM_ALLOWED,
-                                     domainId=resp3["DomainId"])
+        resp4 = samr.hSamrOpenDomain(
+            dce,
+            serverHandle=resp["ServerHandle"],
+            desiredAccess=samr.MAXIMUM_ALLOWED,
+            domainId=resp3["DomainId"],
+        )
         if resp4["ErrorCode"] != 0:
             raise Exception("Connect error")
 
@@ -105,18 +116,30 @@ class UserSamrDump:
         enumerationContext = 0
         while status == STATUS_MORE_ENTRIES:
             try:
-                resp = samr.hSamrEnumerateUsersInDomain(dce, domainHandle, enumerationContext = enumerationContext)
+                resp = samr.hSamrEnumerateUsersInDomain(
+                    dce, domainHandle, enumerationContext=enumerationContext
+                )
             except DCERPCException as e:
                 if str(e).find("STATUS_MORE_ENTRIES") < 0:
                     self.logger.fail("Error enumerating domain user(s)")
-                    break 
+                    break
                 resp = e.get_packet()
             self.logger.success("Enumerated domain user(s)")
             for user in resp["Buffer"]["Buffer"]:
-                r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user["RelativeId"])
-                info = samr.hSamrQueryInformationUser2(dce, r["UserHandle"], samr.USER_INFORMATION_CLASS.UserAllInformation)
-                (username, uid, info_user) = (user["Name"], user["RelativeId"], info["Buffer"]["All"])
-                self.logger.highlight(f"{self.domain}\\{user['Name']:<30} {info_user['AdminComment']}")
+                r = samr.hSamrOpenUser(
+                    dce, domainHandle, samr.MAXIMUM_ALLOWED, user["RelativeId"]
+                )
+                info = samr.hSamrQueryInformationUser2(
+                    dce, r["UserHandle"], samr.USER_INFORMATION_CLASS.UserAllInformation
+                )
+                (username, uid, info_user) = (
+                    user["Name"],
+                    user["RelativeId"],
+                    info["Buffer"]["All"],
+                )
+                self.logger.highlight(
+                    f"{self.domain}\\{user['Name']:<30} {info_user['AdminComment']}"
+                )
                 self.users.append(user["Name"])
                 samr.hSamrCloseHandle(dce, r["UserHandle"])
 

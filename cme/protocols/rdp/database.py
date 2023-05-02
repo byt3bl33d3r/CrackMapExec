@@ -3,7 +3,11 @@
 
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import MetaData, Table
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
+from sqlalchemy.exc import (
+    IllegalStateChangeError,
+    NoInspectionAvailable,
+    NoSuchTableError,
+)
 from cme.logger import cme_logger
 
 
@@ -15,10 +19,7 @@ class database:
         self.db_engine = db_engine
         self.metadata = MetaData()
         self.reflect_tables()
-        session_factory = sessionmaker(
-            bind=self.db_engine,
-            expire_on_commit=True
-        )
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
 
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
@@ -26,26 +27,34 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "credentials" (
+        db_conn.execute(
+            """CREATE TABLE "credentials" (
             "id" integer PRIMARY KEY,
             "username" text,
             "password" text,
             "pkey" text
-            )''')
+            )"""
+        )
 
-        db_conn.execute('''CREATE TABLE "hosts" (
+        db_conn.execute(
+            """CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
             "port" integer,
             "server_banner" text
-            )''')
+            )"""
+        )
 
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
-                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.CredentialsTable = Table(
+                    "credentials", self.metadata, autoload_with=self.db_engine
+                )
+                self.HostsTable = Table(
+                    "hosts", self.metadata, autoload_with=self.db_engine
+                )
             except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
