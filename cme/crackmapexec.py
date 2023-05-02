@@ -97,6 +97,12 @@ def main():
         except Exception as e:
             cme_logger.error(f"Error opening le dank meme: {e}")
             sys.exit(1)
+            
+    if args.protocol == "ssh":
+        if args.key_file:
+            if not args.password:
+                cme_logger.fail(f"Password is required, even if a key file is used - if no passphrase for key, use `-p ''`")
+                sys.exit(1)
 
     if args.use_kcache and not os.environ.get("KRB5CCNAME"):
         cme_logger.error("KRB5CCNAME environment variable is not set")

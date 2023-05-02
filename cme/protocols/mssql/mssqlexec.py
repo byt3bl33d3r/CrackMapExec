@@ -8,26 +8,40 @@ from cme.logger import cme_logger
 class MSSQLEXEC:
     def __init__(self, connection):
         self.mssql_conn = connection
-        self.outputBuffer = ''
+        self.outputBuffer = ""
 
     def execute(self, command, output=False):
+        command_output = []
         try:
             self.enable_xp_cmdshell()
-            self.mssql_conn.sql_query(f"exec master..xp_cmdshell '{command}'")
-
-            if output:
-                self.mssql_conn.printReplies()
-                self.mssql_conn.colMeta[0]["TypeData"] = 80 * 2
-                self.mssql_conn.printRows()
-                self.outputBuffer = self.mssql_conn._MSSQL__rowsPrinter.getMessage()
-                if len(self.outputBuffer):
-                    self.outputBuffer = self.outputBuffer.split('\n', 2)[2]
-
-            self.disable_xp_cmdshell()
-            return self.outputBuffer
-
         except Exception as e:
-            cme_logger.debug(f"Error executing command via mssqlexec: {e}")
+            cme_logger.error(f"Error when attempting to enable x_cmdshell: {e}")
+        try:
+            result = self.mssql_conn.sql_query(f"exec master..xp_cmdshell '{command}'")
+            cme_logger.debug(f"SQL Query Result: {result}")
+            for row in result:
+                if row["output"] == "NULL":
+                    continue
+                command_output.append(row["output"])
+        except Exception as e:
+            cme_logger.error(f"Error when attempting to execute command via xp_cmdshell: {e}")
+
+        if output:
+            cme_logger.debug(f"Output is enabled")
+            for row in command_output:
+                cme_logger.display(row)
+            # self.mssql_conn.printReplies()
+            # self.mssql_conn.colMeta[0]["TypeData"] = 80 * 2
+            # self.mssql_conn.printRows()
+            # self.outputBuffer = self.mssql_conn._MSSQL__rowsPrinter.getMessage()
+            # if len(self.outputBuffer):
+            #     self.outputBuffer = self.outputBuffer.split('\n', 2)[2]
+        try:
+            self.disable_xp_cmdshell()
+        except Exception as e:
+            cme_logger.error(f"[OPSEC] Error when attempting to disable xp_cmdshell: {e}")
+        return command_output
+        # return self.outputBuffer
 
     def enable_xp_cmdshell(self):
         self.mssql_conn.sql_query("exec master.dbo.sp_configure 'show advanced options',1;RECONFIGURE;exec master.dbo.sp_configure 'xp_cmdshell', 1;RECONFIGURE;")

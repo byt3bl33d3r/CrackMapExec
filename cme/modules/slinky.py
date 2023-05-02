@@ -14,7 +14,7 @@ class CMEModule:
     name = "slinky"
     description = "Creates windows shortcuts with the icon attribute containing a UNC path to the specified SMB server in all shares with write permissions"
     supported_protocols = ["smb"]
-    opsec_safe = False
+    opsec_safe = True
     multiple_hosts = True
 
     def __init__(self, context=None, module_options=None):

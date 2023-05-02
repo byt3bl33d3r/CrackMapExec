@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import logging
 
+import sys
+from io import StringIO
+
 import paramiko
 
 from cme.config import process_secret
@@ -12,9 +15,10 @@ from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsEr
 
 class ssh(connection):
     def __init__(self, args, db, host):
-        super().__init__(args, db, host)
+        self.protocol = "SSH"
         self.remote_version = None
         self.server_os = None
+        super().__init__(args, db, host)
 
 
     @staticmethod
@@ -116,23 +120,30 @@ class ssh(connection):
             self.admin_privs = True
             return True
 
-    def plaintext_login(self, username, password):
+    def plaintext_login(self, username, password, private_key=None):
         try:
-            if self.args.key_file:
-                self.logger.debug(f"Logging in with keyfile: {self.args.key_file}")
-                with open(self.args.key_file, "r") as f:
-                    key_data = f.read()
+            if self.args.key_file or private_key:
+                if private_key:
+                    pkey = paramiko.RSAKey.from_private_key(StringIO(private_key))
+                else:
+                    pkey = paramiko.RSAKey.from_private_key_file(self.args.key_file)
 
+                self.logger.debug(f"Logging in with key")
                 self.conn.connect(
                     self.host,
                     port=self.args.port,
                     username=username,
-                    passphrase=password,
-                    key_filename=self.args.key_file,
+                    passphrase=password if password != "" else None,
+                    pkey=pkey,
                     look_for_keys=False,
                     allow_agent=False
                 )
-                cred_id = self.db.add_credential("key", username, password, key=key_data)
+                if private_key:
+                    cred_id = self.db.add_credential("key", username, password if password != "" else "", key=private_key)
+                else:
+                    with open(self.args.key_file, "r") as f:
+                        key_data = f.read()
+                    cred_id = self.db.add_credential("key", username, password if password != "" else "", key=key_data)
             else:
                 self.logger.debug(f"Logging in with password")
                 self.conn.connect(

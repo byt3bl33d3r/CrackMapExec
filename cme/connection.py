@@ -3,6 +3,7 @@
 
 import random
 import socket
+import sys
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
@@ -48,7 +49,6 @@ class connection(object):
         self.hostname = host
         self.conn = None
         self.admin_privs = False
-        self.logger = None
         self.password = ""
         self.username = ""
         self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
@@ -208,6 +208,7 @@ class connection(object):
         secret = []
         cred_type = []
         creds = []  # list of tuples (cred_id, domain, username, secret, cred_type, pillaged_from) coming from the database
+        data = []  # Arbitrary data needed for the login, e.g. ssh_key
 
         for cred_id in self.args.cred_id:
             if isinstance(cred_id, str) and cred_id.lower() == 'all':
@@ -226,7 +227,7 @@ class connection(object):
             secret.append(secret_single)
             cred_type.append(cred_type_single)
 
-        return domain, username, owned, secret, cred_type
+        return domain, username, owned, secret, cred_type, data
 
     def parse_credentials(self):
         """
@@ -300,9 +301,9 @@ class connection(object):
                     secret.append(aesKey)
                     cred_type.append('aesKey')
 
-        return domain, username, owned, secret, cred_type
+        return domain, username, owned, secret, cred_type, [None] * len(secret)
 
-    def try_credentials(self, domain, username, owned, secret, cred_type):
+    def try_credentials(self, domain, username, owned, secret, cred_type, data=None):
         """
         Try to login using the specified credentials and protocol.
         Possible login methods are:
@@ -319,8 +320,10 @@ class connection(object):
             if cred_type == 'plaintext':
                 if self.args.kerberos:
                     return self.kerberos_login(domain, username, secret, '', '', self.kdcHost, False)
-                elif hasattr(self.args, "domain"):
+                elif hasattr(self.args, "domain"):  # Some protocolls don't use domain for login
                     return self.plaintext_login(domain, username, secret)
+                elif self.args.protocol == 'ssh':
+                    return self.plaintext_login(username, secret, data)
                 else:
                     return self.plaintext_login(username, secret)
             elif cred_type == 'hash':
@@ -336,29 +339,32 @@ class connection(object):
 
         :return: True if the login was successful and "--continue-on-success" was not specified, False otherwise.
         """
-        # domain[n] always corresponds to username[n]
+        # domain[n] always corresponds to username[n] and owned [n]
         domain = []
         username = []
         owned = []  # Determines whether we have found a valid credential for this user. Default: False
         # secret[n] always corresponds to cred_type[n]
         secret = []
         cred_type = []
+        data = []  # Arbitrary data needed for the login, e.g. ssh_key
 
         if self.args.cred_id:
-            db_domain, db_username, db_owned, db_secret, db_cred_type = self.query_db_creds()
+            db_domain, db_username, db_owned, db_secret, db_cred_type, db_data = self.query_db_creds()
             domain.extend(db_domain)
             username.extend(db_username)
             owned.extend(db_owned)
             secret.extend(db_secret)
             cred_type.extend(db_cred_type)
+            data.extend(db_data)
 
         if self.args.username:
-            parsed_domain, parsed_username, parsed_owned, parsed_secret, parsed_cred_type = self.parse_credentials()
+            parsed_domain, parsed_username, parsed_owned, parsed_secret, parsed_cred_type, parsed_data = self.parse_credentials()
             domain.extend(parsed_domain)
             username.extend(parsed_username)
             owned.extend(parsed_owned)
             secret.extend(parsed_secret)
             cred_type.extend(parsed_cred_type)
+            data.extend(parsed_data)
 
         if self.args.use_kcache:
             with sem:
@@ -371,7 +377,7 @@ class connection(object):
         if not self.args.no_bruteforce:
             for secr_index, secr in enumerate(secret):
                 for user_index, user in enumerate(username):
-                    if self.try_credentials(domain[user_index], user, owned[user_index], secr, cred_type[secr_index]):
+                    if self.try_credentials(domain[user_index], user, owned[user_index], secr, cred_type[secr_index], data[secr_index]):
                         owned[user_index] = True
                         if not self.args.continue_on_success:
                             return True
@@ -380,7 +386,7 @@ class connection(object):
                 self.logger.error("Number provided of usernames and passwords/hashes do not match!")
                 return False
             for user_index, user in enumerate(username):
-                if self.try_credentials(domain[user_index], user, owned[user_index], secret[user_index], cred_type[user_index]) and not self.args.continue_on_success:
+                if self.try_credentials(domain[user_index], user, owned[user_index], secret[user_index], cred_type[user_index], data[user_index]) and not self.args.continue_on_success:
                     owned[user_index] = True
                     if not self.args.continue_on_success:
                         return True

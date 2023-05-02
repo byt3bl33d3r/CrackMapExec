@@ -14,7 +14,7 @@ class CMEModule:
     name = "scuffy"
     description = "Creates and dumps an arbitrary .scf file with the icon property containing a UNC path to the declared SMB server against all writeable shares"
     supported_protocols = ["smb"]
-    opsec_safe = False
+    opsec_safe = True
     multiple_hosts = True
 
     def __init__(self, context=None, module_options=None):

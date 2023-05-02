@@ -725,7 +725,7 @@ class smb(connection):
             if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
-                        self.host if not self.kerberos else self.hostname + '.' + self.domain,
+                        self.host if not self.kerberos else self.hostname + "." + self.domain,
                         self.smb_share_name,
                         self.username,
                         self.password,
@@ -746,7 +746,7 @@ class smb(connection):
             elif method == "mmcexec":
                 try:
                     exec_method = MMCEXEC(
-                        self.host if not self.kerberos else self.hostname + '.' + self.domain,
+                        self.host if not self.kerberos else self.hostname + "." + self.domain,
                         self.smb_share_name,
                         self.username,
                         self.password,
