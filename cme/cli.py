@@ -52,6 +52,8 @@ def gen_cli_args():
     std_parser.add_argument("-u", metavar="USERNAME", dest='username', nargs='+', default=[], help="username(s) or file(s) containing usernames")
     std_parser.add_argument("-p", metavar="PASSWORD", dest='password', nargs='+', default=[], help="password(s) or file(s) containing passwords")
     std_parser.add_argument("-k", "--kerberos", action='store_true', help="Use Kerberos authentication")
+    std_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
+    std_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
     std_parser.add_argument("--use-kcache", action='store_true', help="Use Kerberos authentication from ccache file (KRB5CCNAME)")
     std_parser.add_argument("--log", metavar="LOG", help="Export result into a custom file")
     std_parser.add_argument("--aesKey",  metavar="AESKEY", nargs='+', help="AES key to use for Kerberos Authentication (128 or 256 bits)")

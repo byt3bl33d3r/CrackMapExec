@@ -164,8 +164,6 @@ class smb(connection):
         smb_parser = parser.add_parser("smb", help="own stuff using SMB", parents=[std_parser, module_parser])
         smb_parser.add_argument("-H", "--hash", metavar="HASH", dest="hash", nargs="+", default=[],
                                 help="NTLM hash(es) or file(s) containing NTLM hashes")
-        smb_parser.add_argument("--no-bruteforce", action="store_true",
-                                help="No spray when using file for username and password (user1 => password1, user2 => password2")
         dgroup = smb_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest="domain", type=str, help="domain to authenticate to")
         dgroup.add_argument("--local-auth", action="store_true", help="authenticate locally to each target")
@@ -174,8 +172,6 @@ class smb(connection):
         smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar="OUTPUT_FILE",
                                 help="outputs all hosts that don't require SMB signing to the specified file")
-        smb_parser.add_argument("--continue-on-success", action="store_true",
-                                help="continues authentication attempts even after successes")
         smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 2 secondes", type=int, default=2)
         smb_parser.add_argument("--laps", dest="laps", metavar="LAPS", type=str, help="LAPS authentification",
                                 nargs="?", const="administrator")

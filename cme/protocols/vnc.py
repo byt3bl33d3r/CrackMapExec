@@ -31,8 +31,6 @@ class vnc(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         vnc_parser = parser.add_parser("vnc", help="own stuff using VNC", parents=[std_parser, module_parser])
-        vnc_parser.add_argument("--no-bruteforce", action='store_true', help="No spray when using file for username and password (user1 => password1, user2 => password2")
-        vnc_parser.add_argument("--continue-on-success", action="store_true", help="continues authentication attempts even after successes")
         vnc_parser.add_argument("--port", type=int, default=5900, help="Custom VNC port")
         vnc_parser.add_argument("--vnc-sleep", type=int, default=5, help="VNC Sleep on socket connection to avoid rate limit")
 

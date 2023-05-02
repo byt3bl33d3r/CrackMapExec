@@ -13,10 +13,8 @@ class ssh(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         ssh_parser = parser.add_parser('ssh', help="own stuff using SSH", parents=[std_parser, module_parser])
-        ssh_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ssh_parser.add_argument("--key-file", type=str, help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.")
         ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
-        ssh_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
         cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')

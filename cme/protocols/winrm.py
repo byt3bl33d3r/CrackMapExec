@@ -43,8 +43,6 @@ class winrm(connection):
     def proto_args(parser, std_parser, module_parser):
         winrm_parser = parser.add_parser('winrm', help="own stuff using WINRM", parents=[std_parser, module_parser])
         winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
-        winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
         winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
         winrm_parser.add_argument("--ssl", action='store_true', help="Connect to SSL Enabled WINRM")
         winrm_parser.add_argument("--ignore-ssl-cert", action='store_true', help="Ignore Certificate Verification")

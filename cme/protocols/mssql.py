@@ -37,8 +37,6 @@ class mssql(connection):
         mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
-        mssql_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
-        mssql_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
