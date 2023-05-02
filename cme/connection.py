@@ -259,7 +259,7 @@ class connection(object):
                 if "\\" in user:
                     domain_single, username_single = user.split("\\")
                 else:
-                    domain_single = self.args.domain if self.args.domain else self.domain
+                    domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                     username_single = user
                 domain.append(domain_single)
                 username.append(username_single)
@@ -277,7 +277,7 @@ class connection(object):
                 cred_type.append('plaintext')
 
         # Parse NTLM-hashes
-        if self.args.hash:
+        if hasattr(self.args, "hash") and self.args.hash:
             for ntlm_hash in self.args.hash:
                 if isfile(ntlm_hash):
                     with open(ntlm_hash, 'r') as ntlm_hash_file:
@@ -319,7 +319,10 @@ class connection(object):
             if cred_type == 'plaintext':
                 if self.args.kerberos:
                     return self.kerberos_login(domain, username, secret, '', '', self.kdcHost, False)
-                return self.plaintext_login(domain, username, secret)
+                elif hasattr(self.args, "domain"):
+                    return self.plaintext_login(domain, username, secret)
+                else:
+                    return self.plaintext_login(username, secret)
             elif cred_type == 'hash':
                 if self.args.kerberos:
                     return self.kerberos_login(domain, username, '', secret, '', self.kdcHost, False)
