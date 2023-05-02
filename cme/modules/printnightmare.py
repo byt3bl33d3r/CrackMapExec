@@ -21,6 +21,7 @@ KNOWN_PROTOCOLS = {
     445: {"bindstr": r"ncacn_np:%s[\pipe\epmapper]"},
 }
 
+
 class CMEModule:
     """
     Check if vulnerable to printnightmare
@@ -107,11 +108,16 @@ class CMEModule:
                 return False
             # If vulnerable, 'ERROR_INVALID_PARAMETER' will be returned
             if e.error_code == system_errors.ERROR_INVALID_PARAMETER:
-                context.log.highlight("Vulnerable, next step https://github.com/ly4k/PrintNightmare")
+                context.log.highlight(
+                    "Vulnerable, next step https://github.com/ly4k/PrintNightmare"
+                )
                 return True
             raise e
-        context.log.highlight("Vulnerable, next step https://github.com/ly4k/PrintNightmare")
+        context.log.highlight(
+            "Vulnerable, next step https://github.com/ly4k/PrintNightmare"
+        )
         return True
+
 
 class DCERPCSessionError(DCERPCException):
     def __init__(self, error_string=None, error_code=None, packet=None):
@@ -148,6 +154,7 @@ system_errors.ERROR_MESSAGES[RPC_E_ACCESS_DENIED] = (
     "RPC_E_ACCESS_DENIED",
     "Access is denied.",
 )
+
 
 ################################################################################
 # STRUCTURES
@@ -301,6 +308,7 @@ OPNUMS = {
     84: (RpcDeletePrinterDriverEx, RpcDeletePrinterDriverExResponse),
     89: (RpcAddPrinterDriverEx, RpcAddPrinterDriverExResponse),
 }
+
 
 ################################################################################
 # HELPER FUNCTIONS
