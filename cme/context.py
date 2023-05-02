@@ -11,11 +11,11 @@ class Context:
             setattr(self, key, value)
 
         self.db = db
-        self.log_folder_path = os.path.join(os.path.expanduser('~/.cme'), 'logs')
+        self.log_folder_path = os.path.join(os.path.expanduser("~/.cme"), "logs")
         self.localip = None
 
         self.conf = configparser.ConfigParser()
-        self.conf.read(os.path.expanduser('~/.cme/cme.conf'))
+        self.conf.read(os.path.expanduser("~/.cme/cme.conf"))
 
         self.log = logger
         # self.log.debug = logging.debug

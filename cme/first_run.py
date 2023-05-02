@@ -15,11 +15,18 @@ def first_run_setup(logger=cme_logger):
         os.mkdir(TMP_PATH)
 
     if not os.path.exists(CME_PATH):
-        logger.display('First time use detected')
-        logger.display('Creating home directory structure')
+        logger.display("First time use detected")
+        logger.display("Creating home directory structure")
         os.mkdir(CME_PATH)
 
-    folders = ['logs', 'modules', 'protocols', 'workspaces', 'obfuscated_scripts', 'screenshots']
+    folders = [
+        "logs",
+        "modules",
+        "protocols",
+        "workspaces",
+        "obfuscated_scripts",
+        "screenshots",
+    ]
     for folder in folders:
         if not os.path.exists(os.path.join(CME_PATH, folder)):
             logger.display(f"Creating missing folder {folder}")
@@ -28,22 +35,24 @@ def first_run_setup(logger=cme_logger):
     initialize_db(logger)
 
     if not os.path.exists(CONFIG_PATH):
-        logger.display('Copying default configuration file')
-        default_path = os.path.join(DATA_PATH, 'cme.conf')
+        logger.display("Copying default configuration file")
+        default_path = os.path.join(DATA_PATH, "cme.conf")
         shutil.copy(default_path, CME_PATH)
     else:
         # This is just a quick check to make sure the config file isn't the old 3.x format
         try:
             config = configparser.ConfigParser()
             config.read(CONFIG_PATH)
-            config.get('CME', 'workspace')
-            config.get('CME', 'pwn3d_label')
-            config.get('CME', 'audit_mode')
-            config.get('BloodHound', 'bh_enabled')
-            config.get('CME', 'log_mode')
+            config.get("CME", "workspace")
+            config.get("CME", "pwn3d_label")
+            config.get("CME", "audit_mode")
+            config.get("BloodHound", "bh_enabled")
+            config.get("CME", "log_mode")
         except (NoSectionError, NoOptionError):
-            logger.display('Old configuration file detected, replacing with new version')
-            default_path = os.path.join(DATA_PATH, 'cme.conf')
+            logger.display(
+                "Old configuration file detected, replacing with new version"
+            )
+            default_path = os.path.join(DATA_PATH, "cme.conf")
             shutil.copy(default_path, CME_PATH)
 
     # if not os.path.exists(CERT_PATH):
@@ -58,7 +67,7 @@ def first_run_setup(logger=cme_logger):
     #         if e.errno == errno.ENOENT:
     #             logger.error('OpenSSL command line utility is not installed, could not generate certificate, using default certificate')
     #             default_path = os.path.join(DATA_PATH, 'default.pem')
-    #             shutil.copy(default_path, CERT_PATH)                
+    #             shutil.copy(default_path, CERT_PATH)
     #         else:
     #             logger.error('Error while generating SSL certificate: {}'.format(e))
     #             sys.exit(1)

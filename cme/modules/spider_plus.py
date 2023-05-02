@@ -12,20 +12,20 @@ from impacket.smbconnection import SessionError
 
 
 CHUNK_SIZE = 4096
-suffixes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB']
+suffixes = ["Bytes", "KB", "MB", "GB", "TB", "PB"]
 
 
 def humansize(nbytes):
     i = 0
-    while nbytes >= 1024 and i < len(suffixes)-1:
-        nbytes /= 1024.
+    while nbytes >= 1024 and i < len(suffixes) - 1:
+        nbytes /= 1024.0
         i += 1
-    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
-    return '%s %s' % (f, suffixes[i])
+    f = ("%.2f" % nbytes).rstrip("0").rstrip(".")
+    return "%s %s" % (f, suffixes[i])
 
 
 def humaclock(time):
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time))
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time))
 
 
 def make_dirs(path):
@@ -43,12 +43,22 @@ def make_dirs(path):
         pass
 
 
-get_list_from_option = lambda opt: list(map(lambda o: o.lower(), filter(bool, opt.split(','))))
+get_list_from_option = lambda opt: list(
+    map(lambda o: o.lower(), filter(bool, opt.split(",")))
+)
 
 
 class SMBSpiderPlus:
-
-    def __init__(self, smb, logger, read_only, exclude_dirs, exclude_exts, max_file_size, output_folder):
+    def __init__(
+        self,
+        smb,
+        logger,
+        read_only,
+        exclude_dirs,
+        exclude_exts,
+        max_file_size,
+        output_folder,
+    ):
         self.smb = smb
         self.host = self.smb.conn.getRemoteHost()
         self.conn_retry = 5
@@ -81,16 +91,18 @@ class SMBSpiderPlus:
         filelist = []
         try:
             # Get file list for the current folder
-            filelist = self.smb.conn.listPath(share, subfolder + '*')
+            filelist = self.smb.conn.listPath(share, subfolder + "*")
 
         except SessionError as e:
-            self.logger.debug(f'Failed listing files on share "{share}" in directory {subfolder}.')
+            self.logger.debug(
+                f'Failed listing files on share "{share}" in directory {subfolder}.'
+            )
             self.logger.debug(str(e))
 
-            if 'STATUS_ACCESS_DENIED' in str(e):
-                self.logger.debug(f"Cannot list files in directory \"{subfolder}\"")
+            if "STATUS_ACCESS_DENIED" in str(e):
+                self.logger.debug(f'Cannot list files in directory "{subfolder}"')
 
-            elif 'STATUS_OBJECT_PATH_NOT_FOUND' in str(e):
+            elif "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):
                 self.logger.debug(f"The directory {subfolder} does not exist.")
 
             elif self.reconnect():
@@ -114,7 +126,7 @@ class SMBSpiderPlus:
         We retry 3 times if there is a SessionError that is not a `STATUS_END_OF_FILE`.
         """
 
-        chunk = ''
+        chunk = ""
         retry = 3
 
         while retry > 0:
@@ -142,24 +154,24 @@ class SMBSpiderPlus:
         try:
             # Get all available shares for the SMB connection
             for share in shares:
-                perms = share['access']
-                name = share['name']
+                perms = share["access"]
+                name = share["name"]
 
-                self.logger.debug(f"Share \"{name}\" has perms {perms}")
+                self.logger.debug(f'Share "{name}" has perms {perms}')
 
                 # We only want to spider readable shares
-                if not 'READ' in perms:
+                if not "READ" in perms:
                     continue
 
                 # `exclude_dirs` is applied to the shares name
                 if name.lower() in self.exclude_dirs:
-                    self.logger.debug(f"Share \"{name}\" has been excluded.")
+                    self.logger.debug(f'Share "{name}" has been excluded.')
                     continue
 
                 try:
                     # Start the spider at the root of the share folder
                     self.results[name] = {}
-                    self._spider(name, '')
+                    self._spider(name, "")
                 except SessionError:
                     traceback.print_exc()
                     self.logger.fail(f"Got a session error while spidering")
@@ -177,9 +189,9 @@ class SMBSpiderPlus:
     def _spider(self, share, subfolder):
         self.logger.debug(f'Spider share "{share}" on folder "{subfolder}"')
 
-        filelist = self.list_path(share, subfolder + '*')
+        filelist = self.list_path(share, subfolder + "*")
         if share.lower() in self.exclude_dirs:
-            self.logger.debug(f'The directory has been excluded')
+            self.logger.debug(f"The directory has been excluded")
             return
 
         # For each entry:
@@ -196,20 +208,26 @@ class SMBSpiderPlus:
                 continue
 
             if result.is_directory():
-                if result.get_longname() in ['.', '..']:
+                if result.get_longname() in [".", ".."]:
                     continue
-                self._spider(share, next_path + '/')
+                self._spider(share, next_path + "/")
 
             else:
                 # Record the file metadata
                 self.results[share][next_path] = {
-                    'size': humansize(result.get_filesize()),
+                    "size": humansize(result.get_filesize()),
                     #'ctime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_ctime())),
-                    'ctime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_ctime_epoch())),
+                    "ctime_epoch": time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(result.get_ctime_epoch())
+                    ),
                     #'mtime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_mtime())),
-                    'mtime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_mtime_epoch())),
+                    "mtime_epoch": time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(result.get_mtime_epoch())
+                    ),
                     #'atime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_atime())),
-                    'atime_epoch': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(result.get_atime_epoch()))
+                    "atime_epoch": time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(result.get_atime_epoch())
+                    ),
                 }
 
                 # The collection logic is here. You can add more checks based
@@ -217,15 +235,19 @@ class SMBSpiderPlus:
 
                 # Check the file extension. We check here to prevent the creation
                 # of a RemoteFile object that perform a remote connection.
-                file_extension = next_path[next_path.rfind('.')+1:]
+                file_extension = next_path[next_path.rfind(".") + 1 :]
                 if file_extension in self.exclude_exts:
-                    self.logger.debug(f'The file "{next_path}" has an excluded extension')
+                    self.logger.debug(
+                        f'The file "{next_path}" has an excluded extension'
+                    )
                     continue
 
                 # If there is not results in the file but the size is correct,
                 # then we save it
                 if result.get_filesize() > self.max_file_size:
-                    self.logger.debug(f'File {result.get_longname()} has size {result.get_filesize()}')
+                    self.logger.debug(
+                        f"File {result.get_longname()} has size {result.get_filesize()}"
+                    )
                     continue
 
                 ## You can add more checks here: date, ...
@@ -248,11 +270,11 @@ class SMBSpiderPlus:
                     remote_file.close()
 
                 except SessionError as e:
-                    if 'STATUS_SHARING_VIOLATION' in str(e):
+                    if "STATUS_SHARING_VIOLATION" in str(e):
                         pass
                 except Exception as e:
                     traceback.print_exc()
-                    self.logger.fail(f'Error reading file {next_path}: {str(e)}')
+                    self.logger.fail(f"Error reading file {next_path}: {str(e)}")
 
     def save_file(self, remote_file):
         # Reset the remote_file to point to the begining of the file
@@ -261,16 +283,16 @@ class SMBSpiderPlus:
         # remove the "\\" before the remote host part
         file_path = str(remote_file)[2:]
         # The remote_file.file_name contains '/'
-        file_path = file_path.replace('/', os.path.sep)
-        file_path = file_path.replace('\\', os.path.sep)
+        file_path = file_path.replace("/", os.path.sep)
+        file_path = file_path.replace("\\", os.path.sep)
         filename = file_path.split(os.path.sep)[-1]
-        directory = os.path.join(self.output_folder, file_path[:-len(filename)])
+        directory = os.path.join(self.output_folder, file_path[: -len(filename)])
 
         # Create the subdirectories based on the share name and file path
         self.logger.debug(f'Create directory "{directory}"')
         make_dirs(directory)
 
-        with open(os.path.join(directory, filename), 'wb') as fd:
+        with open(os.path.join(directory, filename), "wb") as fd:
             while True:
                 chunk = self.read_chunk(remote_file)
                 if not chunk:
@@ -281,46 +303,52 @@ class SMBSpiderPlus:
         # Save the remote host shares metadatas to a json file
         # TODO: use the json file as an input to save only the new or modified
         # files since the last time.
-        path = os.path.join(self.output_folder, f'{self.host}.json')
-        with open(path, 'w', encoding='utf-8') as fd:
+        path = os.path.join(self.output_folder, f"{self.host}.json")
+        with open(path, "w", encoding="utf-8") as fd:
             fd.write(json.dumps(results, indent=4, sort_keys=True))
 
 
 class CMEModule:
     """
-        Spider plus module
-        Module by @vincd
+    Spider plus module
+    Module by @vincd
     """
 
-    name = 'spider_plus'
-    description = 'List files on the target server (excluding `DIR` directories and `EXT` extensions) and save them to the `OUTPUT` directory if they are smaller then `SIZE`'
-    supported_protocols = ['smb']
-    opsec_safe= True # Does the module touch disk?
-    multiple_hosts = True # Does it make sense to run this module on multiple hosts at a time?
+    name = "spider_plus"
+    description = "List files on the target server (excluding `DIR` directories and `EXT` extensions) and save them to the `OUTPUT` directory if they are smaller then `SIZE`"
+    supported_protocols = ["smb"]
+    opsec_safe = True  # Does the module touch disk?
+    multiple_hosts = (
+        True  # Does it make sense to run this module on multiple hosts at a time?
+    )
 
     def options(self, context, module_options):
-
         """
-            READ_ONLY           Only list files and put the name into a JSON (default: True)
-            EXCLUDE_EXTS        Extension file to exclude (Default: ico,lnk)
-            EXCLUDE_DIR         Directory to exclude (Default: print$)
-            MAX_FILE_SIZE       Max file size allowed to dump (Default: 51200)
-            OUTPUT              Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
+        READ_ONLY           Only list files and put the name into a JSON (default: True)
+        EXCLUDE_EXTS        Extension file to exclude (Default: ico,lnk)
+        EXCLUDE_DIR         Directory to exclude (Default: print$)
+        MAX_FILE_SIZE       Max file size allowed to dump (Default: 51200)
+        OUTPUT              Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
         """
 
-        self.read_only = module_options.get('READ_ONLY', True)
-        self.exclude_exts = get_list_from_option(module_options.get('EXCLUDE_EXTS', 'ico,lnk'))
-        self.exlude_dirs = get_list_from_option(module_options.get('EXCLUDE_DIR', 'print$'))
-        self.max_file_size = int(module_options.get('SIZE', 50 * 1024))
-        self.output_folder = module_options.get('OUTPUT', os.path.join('/tmp', 'cme_spider_plus'))
+        self.read_only = module_options.get("READ_ONLY", True)
+        self.exclude_exts = get_list_from_option(
+            module_options.get("EXCLUDE_EXTS", "ico,lnk")
+        )
+        self.exlude_dirs = get_list_from_option(
+            module_options.get("EXCLUDE_DIR", "print$")
+        )
+        self.max_file_size = int(module_options.get("SIZE", 50 * 1024))
+        self.output_folder = module_options.get(
+            "OUTPUT", os.path.join("/tmp", "cme_spider_plus")
+        )
 
     def on_login(self, context, connection):
-
-        context.log.display('Started spidering plus with option:')
-        context.log.display('       DIR: {dir}'.format(dir=self.exlude_dirs))
-        context.log.display('       EXT: {ext}'.format(ext=self.exclude_exts))
-        context.log.display('      SIZE: {size}'.format(size=self.max_file_size))
-        context.log.display('    OUTPUT: {output}'.format(output=self.output_folder))
+        context.log.display("Started spidering plus with option:")
+        context.log.display("       DIR: {dir}".format(dir=self.exlude_dirs))
+        context.log.display("       EXT: {ext}".format(ext=self.exclude_exts))
+        context.log.display("      SIZE: {size}".format(size=self.max_file_size))
+        context.log.display("    OUTPUT: {output}".format(output=self.output_folder))
 
         spider = SMBSpiderPlus(
             connection,

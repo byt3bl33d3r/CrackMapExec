@@ -17,27 +17,30 @@ ldap_error_status = {
     "775": "USER_ACCOUNT_LOCKED",
     "50": "LDAP_INSUFFICIENT_ACCESS",
     "KDC_ERR_CLIENT_REVOKED": "KDC_ERR_CLIENT_REVOKED",
-    "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED"
+    "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED",
 }
 
 
 class LDAPConnect:
-
     def __init__(self, host, port, hostname):
         self.logger = None
         self.proto_logger(host, port, hostname)
 
     def proto_logger(self, host, port, hostname):
         self.logger = CMEAdapter(
-            extra={
-                "protocol": "LDAP",
-                "host": host,
-                "port": port,
-                "hostname": hostname
-            }
+            extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname}
         )
 
-    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
+    def kerberos_login(
+        self,
+        domain,
+        username,
+        password="",
+        ntlm_hash="",
+        aesKey="",
+        kdcHost="",
+        useCache=False,
+    ):
         lmhash = ""
         nthash = ""
 
@@ -51,8 +54,8 @@ class LDAPConnect:
             nthash = ntlm_hash
 
         # Create the baseDN
-        baseDN = ''
-        domainParts = domain.split('.')
+        baseDN = ""
+        domainParts = domain.split(".")
         for i in domainParts:
             baseDN += f"dc={i},"
         # Remove last ','
@@ -60,7 +63,16 @@ class LDAPConnect:
 
         try:
             ldapConnection = ldap_impacket.LDAPConnection(f"ldap://{kdcHost}", baseDN)
-            ldapConnection.kerberosLogin(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdcHost, useCache=False)
+            ldapConnection.kerberosLogin(
+                username,
+                password,
+                domain,
+                lmhash,
+                nthash,
+                aesKey,
+                kdcHost=kdcHost,
+                useCache=False,
+            )
             # Connect to LDAP
             out = f"{domain}{username}:{password if password else ntlm_hash}"
             self.logger.extra["protocol"] = "LDAP"
@@ -70,8 +82,19 @@ class LDAPConnect:
             if str(e).find("strongerAuthRequired") >= 0:
                 # We need to try SSL
                 try:
-                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{kdcHost}", baseDN)
-                    ldapConnection.login(username, password, domain, lmhash, nthash, aesKey, kdcHost=kdcHost, useCache=False)
+                    ldapConnection = ldap_impacket.LDAPConnection(
+                        f"ldaps://{kdcHost}", baseDN
+                    )
+                    ldapConnection.login(
+                        username,
+                        password,
+                        domain,
+                        lmhash,
+                        nthash,
+                        aesKey,
+                        kdcHost=kdcHost,
+                        useCache=False,
+                    )
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
                     # self.logger.success(out)
@@ -80,13 +103,13 @@ class LDAPConnect:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.fail(
                         f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                        color="magenta" if errorCode in ldap_error_status else "red"
+                        color="magenta" if errorCode in ldap_error_status else "red",
                     )
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.fail(
                     f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                    color="magenta" if errorCode in ldap_error_status else "red"
+                    color="magenta" if errorCode in ldap_error_status else "red",
                 )
             return False
 
@@ -98,7 +121,7 @@ class LDAPConnect:
         except KerberosError as e:
             self.logger.fail(
                 f"{domain}\\{username}:{password if password else ntlm_hash} {str(e)}",
-                color="red"
+                color="red",
             )
             return False
 
@@ -113,7 +136,7 @@ class LDAPConnect:
             nthash = ntlm_hash
 
         # Create the baseDN
-        baseDN = ''
+        baseDN = ""
         domainParts = domain.split(".")
         for i in domainParts:
             baseDN += f"dc={i},"
@@ -121,11 +144,13 @@ class LDAPConnect:
         baseDN = baseDN[:-1]
 
         try:
-            ldapConnection = ldap_impacket.LDAPConnection(f"ldap://{domain}", baseDN, domain)
+            ldapConnection = ldap_impacket.LDAPConnection(
+                f"ldap://{domain}", baseDN, domain
+            )
             ldapConnection.login(username, password, domain, lmhash, nthash)
 
             # Connect to LDAP
-            out = u"{domain}\\{username}:{password if password else ntlm_hash}"
+            out = "{domain}\\{username}:{password if password else ntlm_hash}"
             self.logger.extra["protocol"] = "LDAP"
             self.logger.extra["port"] = "389"
             # self.logger.success(out)
@@ -136,7 +161,9 @@ class LDAPConnect:
             if str(e).find("strongerAuthRequired") >= 0:
                 # We need to try SSL
                 try:
-                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{domain}", baseDN, domain)
+                    ldapConnection = ldap_impacket.LDAPConnection(
+                        f"ldaps://{domain}", baseDN, domain
+                    )
                     ldapConnection.login(username, password, domain, lmhash, nthash)
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
@@ -146,13 +173,13 @@ class LDAPConnect:
                     errorCode = str(e).split()[-2][:-1]
                     self.logger.fail(
                         f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                        color="magenta" if errorCode in ldap_error_status else "red"
+                        color="magenta" if errorCode in ldap_error_status else "red",
                     )
             else:
                 errorCode = str(e).split()[-2][:-1]
                 self.logger.fail(
                     f"{domain}\\{username}:{password if password else ntlm_hash} {ldap_error_status[errorCode] if errorCode in ldap_error_status else ''}",
-                    color="magenta" if errorCode in ldap_error_status else "red"
+                    color="magenta" if errorCode in ldap_error_status else "red",
                 )
             return False
 
@@ -161,4 +188,3 @@ class LDAPConnect:
                 f"{domain}\\{username}:{password if password else ntlm_hash} {'Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller'}"
             )
             return False
-

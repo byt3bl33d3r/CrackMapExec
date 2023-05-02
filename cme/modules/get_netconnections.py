@@ -5,17 +5,18 @@ from datetime import datetime
 from cme.helpers.logger import write_log
 import json
 
+
 class CMEModule:
     """
-        Uses WMI to extract network connections, used to find multi-homed hosts.
-        Module by @fang0654
+    Uses WMI to extract network connections, used to find multi-homed hosts.
+    Module by @fang0654
 
     """
 
-    name = 'get_netconnections'
-    description = 'Uses WMI to query network connections.'
-    supported_protocols = ['smb']
-    opsec_safe= True
+    name = "get_netconnections"
+    description = "Uses WMI to query network connections."
+    supported_protocols = ["smb"]
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -25,16 +26,20 @@ class CMEModule:
         pass
 
     def on_admin_login(self, context, connection):
-
         data = []
-        cards = connection.wmi(f"select DNSDomainSuffixSearchOrder, IPAddress from win32_networkadapterconfiguration")
+        cards = connection.wmi(
+            f"select DNSDomainSuffixSearchOrder, IPAddress from win32_networkadapterconfiguration"
+        )
         for c in cards:
-            if c['IPAddress'].get('value'):
-                context.log.success(f"IP Address: {c['IPAddress']['value']}\tSearch Domain: {c['DNSDomainSuffixSearchOrder']['value']}")
-                
+            if c["IPAddress"].get("value"):
+                context.log.success(
+                    f"IP Address: {c['IPAddress']['value']}\tSearch Domain: {c['DNSDomainSuffixSearchOrder']['value']}"
+                )
+
         data.append(cards)
 
-        log_name = 'network-connections-{}-{}.log'.format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        log_name = "network-connections-{}-{}.log".format(
+            connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        )
         write_log(json.dumps(data), log_name)
         context.log.display("Saved raw output to {}".format(log_name))
-

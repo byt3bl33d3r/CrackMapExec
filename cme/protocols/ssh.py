@@ -10,7 +10,11 @@ import paramiko
 from cme.config import process_secret
 from cme.connection import *
 from cme.logger import CMEAdapter
-from paramiko.ssh_exception import AuthenticationException, NoValidConnectionsError, SSHException
+from paramiko.ssh_exception import (
+    AuthenticationException,
+    NoValidConnectionsError,
+    SSHException,
+)
 
 
 class ssh(connection):
@@ -20,55 +24,46 @@ class ssh(connection):
         self.server_os = None
         super().__init__(args, db, host)
 
-
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         ssh_parser = parser.add_parser(
-            "ssh",
-            help="own stuff using SSH",
-            parents=[std_parser, module_parser]
+            "ssh", help="own stuff using SSH", parents=[std_parser, module_parser]
         )
         ssh_parser.add_argument(
             "--no-bruteforce",
-            action='store_true',
-            help="No spray when using file for username and password (user1 => password1, user2 => password2"
+            action="store_true",
+            help="No spray when using file for username and password (user1 => password1, user2 => password2",
         )
         ssh_parser.add_argument(
             "--key-file",
             type=str,
-            help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase."
+            help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.",
         )
         ssh_parser.add_argument(
-            "--port",
-            type=int,
-            default=22,
-            help="SSH port (default: 22)"
+            "--port", type=int, default=22, help="SSH port (default: 22)"
         )
         ssh_parser.add_argument(
             "--continue-on-success",
             action="store_true",
-            help="continues authentication attempts even after successes"
+            help="continues authentication attempts even after successes",
         )
 
         cgroup = ssh_parser.add_argument_group(
-            "Command Execution",
-            "Options for executing commands"
+            "Command Execution", "Options for executing commands"
         )
         cgroup.add_argument(
-            "--no-output",
-            action="store_true",
-            help="do not retrieve command output"
+            "--no-output", action="store_true", help="do not retrieve command output"
         )
         cgroup.add_argument(
             "-x",
             metavar="COMMAND",
             dest="execute",
-            help="execute the specified command"
+            help="execute the specified command",
         )
         cgroup.add_argument(
             "--remote-enum",
             action="store_true",
-            help="executes remote commands for enumeration"
+            help="executes remote commands for enumeration",
         )
 
         return parser
@@ -79,7 +74,7 @@ class ssh(connection):
                 "protocol": "SSH",
                 "host": self.host,
                 "port": self.args.port,
-                "hostname": self.hostname
+                "hostname": self.hostname,
             }
         )
         logging.getLogger("paramiko").setLevel(logging.WARNING)
@@ -96,7 +91,9 @@ class ssh(connection):
             stdin, stdout, stderr = self.conn.exec_command("uname -r")
             self.server_os = stdout.read().decode("utf-8")
             self.logger.debug(f"OS retrieved: {self.server_os}")
-        self.db.add_host(self.host, self.args.port, self.remote_version, os=self.server_os)
+        self.db.add_host(
+            self.host, self.args.port, self.remote_version, os=self.server_os
+        )
 
     def create_conn_obj(self):
         self.conn = paramiko.SSHClient()
@@ -124,8 +121,10 @@ class ssh(connection):
             self.logger.info(f"Determined user is root via `id` command")
             self.admin_privs = True
             return True
-        stdin, stdout, stderr = self.conn.exec_command("sudo -ln | grep 'NOPASSWD: ALL'")
-        if stdout.read().decode("utf-8").find("NOPASSWD: ALL")!= -1:
+        stdin, stdout, stderr = self.conn.exec_command(
+            "sudo -ln | grep 'NOPASSWD: ALL'"
+        )
+        if stdout.read().decode("utf-8").find("NOPASSWD: ALL") != -1:
             self.logger.info(f"Determined user is root via `sudo -ln` command")
             self.admin_privs = True
             return True
@@ -146,14 +145,24 @@ class ssh(connection):
                     passphrase=password if password != "" else None,
                     pkey=pkey,
                     look_for_keys=False,
-                    allow_agent=False
+                    allow_agent=False,
                 )
                 if private_key:
-                    cred_id = self.db.add_credential("key", username, password if password != "" else "", key=private_key)
+                    cred_id = self.db.add_credential(
+                        "key",
+                        username,
+                        password if password != "" else "",
+                        key=private_key,
+                    )
                 else:
                     with open(self.args.key_file, "r") as f:
                         key_data = f.read()
-                    cred_id = self.db.add_credential("key", username, password if password != "" else "", key=key_data)
+                    cred_id = self.db.add_credential(
+                        "key",
+                        username,
+                        password if password != "" else "",
+                        key=key_data,
+                    )
             else:
                 self.logger.debug(f"Logging in with password")
                 self.conn.connect(
@@ -162,7 +171,7 @@ class ssh(connection):
                     username=username,
                     password=password,
                     look_for_keys=False,
-                    allow_agent=False
+                    allow_agent=False,
                 )
                 cred_id = self.db.add_credential("plaintext", username, password)
 
@@ -171,11 +180,21 @@ class ssh(connection):
 
             if self.check_if_admin():
                 shell_access = True
-                self.logger.debug(f"User {username} logged in successfully and is root!")
+                self.logger.debug(
+                    f"User {username} logged in successfully and is root!"
+                )
                 if self.args.key_file:
-                    self.db.add_admin_user("key", username, password, host_id=host_id, cred_id=cred_id)
+                    self.db.add_admin_user(
+                        "key", username, password, host_id=host_id, cred_id=cred_id
+                    )
                 else:
-                    self.db.add_admin_user("plaintext", username, password, host_id=host_id, cred_id=cred_id)
+                    self.db.add_admin_user(
+                        "plaintext",
+                        username,
+                        password,
+                        host_id=host_id,
+                        cred_id=cred_id,
+                    )
             else:
                 stdin, stdout, stderr = self.conn.exec_command("id")
                 output = stdout.read().decode("utf-8")
@@ -198,10 +217,12 @@ class ssh(connection):
 
             if not self.args.continue_on_success:
                 return True
-        except (AuthenticationException, NoValidConnectionsError, ConnectionResetError) as e:
-            self.logger.fail(
-                f"{username}:{process_secret(password)} {e}"
-            )
+        except (
+            AuthenticationException,
+            NoValidConnectionsError,
+            ConnectionResetError,
+        ) as e:
+            self.logger.fail(f"{username}:{process_secret(password)} {e}")
             self.client_close()
             return False
         except Exception as e:

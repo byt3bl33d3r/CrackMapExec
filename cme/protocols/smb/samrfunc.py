@@ -15,39 +15,43 @@ from cme.logger import cme_logger
 class SamrFunc:
     def __init__(self, connection):
         self.logger = cme_logger
-        self.addr = connection.host if not connection.kerberos else connection.hostname + '.' + connection.domain
+        self.addr = (
+            connection.host
+            if not connection.kerberos
+            else connection.hostname + "." + connection.domain
+        )
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
         self.domain = connection.domain
         self.hash = connection.hash
-        self.lmhash = ''
-        self.nthash = ''
-        self.aesKey = None,
+        self.lmhash = ""
+        self.nthash = ""
+        self.aesKey = (None,)
         self.doKerberos = connection.kerberos
 
         if self.hash is not None:
-            if self.hash.find(':') != -1:
-                self.lmhash, self.nthash = self.hash.split(':')
+            if self.hash.find(":") != -1:
+                self.lmhash, self.nthash = self.hash.split(":")
             else:
                 self.nthash = self.hash
 
         if self.password is None:
-            self.password = ''
+            self.password = ""
 
         self.samr_query = SAMRQuery(
             username=self.username,
             password=self.password,
             remote_name=self.addr,
             remote_host=self.addr,
-            kerberos=self.doKerberos
+            kerberos=self.doKerberos,
         )
         self.lsa_query = LSAQuery(
             username=self.username,
             password=self.password,
             remote_name=self.addr,
             remote_host=self.addr,
-            kerberos=self.doKerberos
+            kerberos=self.doKerberos,
         )
 
     def get_builtin_groups(self):
@@ -57,7 +61,7 @@ class SamrFunc:
             logging.error(f"No Builtin group to query locally on")
             return
 
-        domain_handle = self.samr_query.get_domain_handle('Builtin')
+        domain_handle = self.samr_query.get_domain_handle("Builtin")
         groups = self.samr_query.get_domain_aliases(domain_handle)
 
         return groups
@@ -84,10 +88,14 @@ class SamrFunc:
     def get_local_administrators(self):
         self.get_builtin_groups()
         if "Administrators" in self.groups:
-            self.logger.success(f"Found Local Administrators group: RID {self.groups['Administrators']}")
-        domain_handle = self.samr_query.get_domain_handle('Builtin')
+            self.logger.success(
+                f"Found Local Administrators group: RID {self.groups['Administrators']}"
+            )
+        domain_handle = self.samr_query.get_domain_handle("Builtin")
         self.logger.debug(f"Querying group members")
-        member_sids = self.samr_query.get_alias_members(domain_handle, self.groups['Administrators'])
+        member_sids = self.samr_query.get_alias_members(
+            domain_handle, self.groups["Administrators"]
+        )
         member_names = self.lsa_query.lookup_sids(member_sids)
 
         for sid, name in zip(member_sids, member_names):
@@ -95,12 +103,21 @@ class SamrFunc:
 
 
 class SAMRQuery:
-    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host='', kerberos=None):
+    def __init__(
+        self,
+        username="",
+        password="",
+        domain="",
+        port=445,
+        remote_name="",
+        remote_host="",
+        kerberos=None,
+    ):
         self.__username = username
         self.__password = password
         self.__domain = domain
-        self.__lmhash = ''
-        self.__nthash = ''
+        self.__lmhash = ""
+        self.__nthash = ""
         self.__aesKey = None
         self.__port = port
         self.__remote_name = remote_name
@@ -116,14 +133,14 @@ class SAMRQuery:
         rpc_transport = transport.SMBTransport(
             self.__remote_host,
             self.__port,
-            r'\samr',
+            r"\samr",
             self.__username,
             self.__password,
             self.__domain,
             self.__lmhash,
             self.__nthash,
             self.__aesKey,
-            doKerberos=self.__kerberos
+            doKerberos=self.__kerberos,
         )
         return rpc_transport
 
@@ -148,51 +165,66 @@ class SAMRQuery:
             except samr.DCERPCException as e:
                 cme_logger.debug(f"Error while connecting with Samr: {e}")
                 return None
-            return resp['ServerHandle']
+            return resp["ServerHandle"]
         else:
             cme_logger.debug(f"Error creating Samr handle")
             return
 
     def get_domains(self):
         resp = samr.hSamrEnumerateDomainsInSamServer(self.dce, self.server_handle)
-        domains = resp['Buffer']['Buffer']
+        domains = resp["Buffer"]["Buffer"]
         domain_names = []
         for domain in domains:
-            domain_names.append(domain['Name'])
+            domain_names.append(domain["Name"])
         return domain_names
 
     def get_domain_handle(self, domain_name):
-        resp = samr.hSamrLookupDomainInSamServer(self.dce, self.server_handle, domain_name)
-        resp = samr.hSamrOpenDomain(self.dce, serverHandle=self.server_handle, domainId=resp['DomainId'])
-        return resp['DomainHandle']
+        resp = samr.hSamrLookupDomainInSamServer(
+            self.dce, self.server_handle, domain_name
+        )
+        resp = samr.hSamrOpenDomain(
+            self.dce, serverHandle=self.server_handle, domainId=resp["DomainId"]
+        )
+        return resp["DomainHandle"]
 
     def get_domain_aliases(self, domain_handle):
         resp = samr.hSamrEnumerateAliasesInDomain(self.dce, domain_handle)
         aliases = {}
-        for alias in resp['Buffer']['Buffer']:
-            aliases[alias['Name']] = alias['RelativeId']
+        for alias in resp["Buffer"]["Buffer"]:
+            aliases[alias["Name"]] = alias["RelativeId"]
         return aliases
 
     def get_alias_handle(self, domain_handle, alias_id):
-        resp = samr.hSamrOpenAlias(self.dce, domain_handle, desiredAccess=MAXIMUM_ALLOWED, aliasId=alias_id)
-        return resp['AliasHandle']
+        resp = samr.hSamrOpenAlias(
+            self.dce, domain_handle, desiredAccess=MAXIMUM_ALLOWED, aliasId=alias_id
+        )
+        return resp["AliasHandle"]
 
     def get_alias_members(self, domain_handle, alias_id):
         alias_handle = self.get_alias_handle(domain_handle, alias_id)
         resp = samr.hSamrGetMembersInAlias(self.dce, alias_handle)
         member_sids = []
-        for member in resp['Members']['Sids']:
-            member_sids.append(member['SidPointer'].formatCanonical())
+        for member in resp["Members"]["Sids"]:
+            member_sids.append(member["SidPointer"].formatCanonical())
         return member_sids
 
 
 class LSAQuery:
-    def __init__(self, username='', password='', domain='', port=445, remote_name='', remote_host='', kerberos=None):
+    def __init__(
+        self,
+        username="",
+        password="",
+        domain="",
+        port=445,
+        remote_name="",
+        remote_host="",
+        kerberos=None,
+    ):
         self.__username = username
         self.__password = password
         self.__domain = domain
-        self.__lmhash = ''
-        self.__nthash = ''
+        self.__lmhash = ""
+        self.__nthash = ""
         self.__aesKey = None
         self.__port = port
         self.__remote_name = remote_name
@@ -208,7 +240,7 @@ class LSAQuery:
         rpc_transport.setRemoteHost(self.__remote_host)
         if self.__kerberos:
             rpc_transport.set_kerberos(True, None)
-        if hasattr(rpc_transport, 'set_credentials'):
+        if hasattr(rpc_transport, "set_credentials"):
             # This method exists only for selected protocol sequences.
             rpc_transport.set_credentials(
                 self.__username,
@@ -234,12 +266,16 @@ class LSAQuery:
         return dce
 
     def get_policy_handle(self):
-        resp = lsad.hLsarOpenPolicy2(self.dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
-        return resp['PolicyHandle']
+        resp = lsad.hLsarOpenPolicy2(
+            self.dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
+        )
+        return resp["PolicyHandle"]
 
     def lookup_sids(self, sids):
-        resp = lsat.hLsarLookupSids(self.dce, self.policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
+        resp = lsat.hLsarLookupSids(
+            self.dce, self.policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
+        )
         names = []
-        for translated_names in resp['TranslatedNames']['Names']:
-            names.append(translated_names['Name'])
+        for translated_names in resp["TranslatedNames"]["Names"]:
+            names.append(translated_names["Name"])
         return names

