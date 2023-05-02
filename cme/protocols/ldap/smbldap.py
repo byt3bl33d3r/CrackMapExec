@@ -102,7 +102,7 @@ class LDAPConnect:
             )
             return False
 
-    def plaintext_login(self, domain, username, password, ntlm_hash):
+    def auth_login(self, domain, username, password, ntlm_hash):
         lmhash = ""
         nthash = ""
 

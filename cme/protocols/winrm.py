@@ -140,7 +140,7 @@ class winrm(connection):
                 aesKey=self.aesKey
             )
         else:
-            connection = ldapco.plaintext_login(
+            connection = ldapco.auth_login(
                 domain,
                 username[0] if username else '',
                 password[0] if password else '',
