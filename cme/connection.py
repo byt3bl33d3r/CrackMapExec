@@ -138,9 +138,9 @@ class connection(object):
 
     def proto_flow(self):
         self.logger.debug(f"Kicking off proto_flow")
-        self.proto_logger()
         if self.create_conn_obj():
             self.enum_host_info()
+            self.proto_logger()
             if self.print_host_info():
                 # because of null session
                 if self.login() or (self.username == "" and self.password == ""):
