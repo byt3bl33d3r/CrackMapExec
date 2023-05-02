@@ -17,7 +17,7 @@ class CMEModule:
     name = "handlekatz"
     description = "Get lsass dump using handlekatz64 and parse the result with pypykatz"
     supported_protocols = ["smb"]
-    opsec_safe = False
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):

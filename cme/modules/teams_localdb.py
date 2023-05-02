@@ -9,7 +9,7 @@ class CMEModule:
     name = 'teams_localdb'
     description = "Retrieves the cleartext ssoauthcookie from the local Microsoft Teams database, if teams is open we kill all Teams process"
     supported_protocols = ['smb']
-    opsec_safe = False
+    opsec_safe = True
     multiple_hosts = False
 
     def options(self, context, module_options):

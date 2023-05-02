@@ -17,7 +17,7 @@ class CMEModule:
     name = "nanodump"
     description = "Get lsass dump using nanodump and parse the result with pypykatz"
     supported_protocols = ["smb", "mssql"]
-    opsec_safe = False
+    opsec_safe = True
     multiple_hosts = True
     
     def __init__(self, context=None, module_options=None):
