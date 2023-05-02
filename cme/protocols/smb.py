@@ -167,7 +167,9 @@ class smb(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         smb_parser = parser.add_parser(
-            "smb", help="own stuff using SMB", parents=[std_parser, module_parser]
+            "smb",
+            help="own stuff using SMB",
+            parents=[std_parser, module_parser]
         )
         smb_parser.add_argument(
             "-H",
@@ -242,14 +244,19 @@ class smb(connection):
         )
 
         cgroup = smb_parser.add_argument_group(
-            "Credential Gathering", "Options for gathering credentials"
+            "Credential Gathering",
+            "Options for gathering credentials"
         )
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument(
-            "--sam", action="store_true", help="dump SAM hashes from target systems"
+            "--sam",
+            action="store_true",
+            help="dump SAM hashes from target systems"
         )
         cegroup.add_argument(
-            "--lsa", action="store_true", help="dump LSA secrets from target systems"
+            "--lsa",
+            action="store_true",
+            help="dump LSA secrets from target systems"
         )
         cegroup.add_argument(
             "--ntds",
@@ -263,13 +270,14 @@ class smb(connection):
             choices={"password", "cookies"},
             nargs="?",
             const="password",
-            help='dump DPAPI secrets from target systems, can dump cookies if you add "cookies"\n(default: password)',
+            help="dump DPAPI secrets from target systems, can dump cookies if you add \"cookies\"\n(default: password)",
         )
         # cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         # cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
         ngroup = smb_parser.add_argument_group(
-            "Credential Gathering", "Options for gathering credentials"
+            "Credential Gathering",
+            "Options for gathering credentials"
         )
         ngroup.add_argument(
             "--mkfile",
@@ -277,20 +285,30 @@ class smb(connection):
             help="DPAPI option. File with masterkeys in form of {GUID}:SHA1",
         )
         ngroup.add_argument(
-            "--pvk", action="store", help="DPAPI option. File with domain backupkey"
+            "--pvk",
+            action="store",
+            help="DPAPI option. File with domain backupkey"
         )
         ngroup.add_argument(
-            "--enabled", action="store_true", help="Only dump enabled targets from DC"
+            "--enabled",
+            action="store_true",
+            help="Only dump enabled targets from DC"
         )
         ngroup.add_argument(
-            "--user", dest="userntds", type=str, help="Dump selected user from DC"
+            "--user",
+            dest="userntds",
+            type=str,
+            help="Dump selected user from DC"
         )
 
         egroup = smb_parser.add_argument_group(
-            "Mapping/Enumeration", "Options for Mapping/Enumerating"
+            "Mapping/Enumeration",
+            "Options for Mapping/Enumerating"
         )
         egroup.add_argument(
-            "--shares", action="store_true", help="enumerate shares and access"
+            "--shares",
+            action="store_true",
+            help="enumerate shares and access"
         )
         egroup.add_argument(
             "--filter-shares",
@@ -298,16 +316,24 @@ class smb(connection):
             help="Filter share by access, option 'read' 'write' or 'read,write'",
         )
         egroup.add_argument(
-            "--sessions", action="store_true", help="enumerate active sessions"
+            "--sessions",
+            action="store_true",
+            help="enumerate active sessions"
         )
-        egroup.add_argument("--disks", action="store_true", help="enumerate disks")
+        egroup.add_argument(
+            "--disks",
+            action="store_true",
+            help="enumerate disks"
+        )
         egroup.add_argument(
             "--loggedon-users-filter",
             action="store",
             help="only search for specific user, works with regex",
         )
         egroup.add_argument(
-            "--loggedon-users", action="store_true", help="enumerate logged on users"
+            "--loggedon-users",
+            action="store_true",
+            help="enumerate logged on users"
         )
         egroup.add_argument(
             "--users",
@@ -338,7 +364,9 @@ class smb(connection):
             help="enumerate local groups, if a group is specified then its members are enumerated",
         )
         egroup.add_argument(
-            "--pass-pol", action="store_true", help="dump password policy"
+            "--pass-pol",
+            action="store_true",
+            help="dump password policy"
         )
         egroup.add_argument(
             "--rid-brute",
@@ -349,7 +377,10 @@ class smb(connection):
             help="enumerate users by bruteforcing RID's (default: 4000)",
         )
         egroup.add_argument(
-            "--wmi", metavar="QUERY", type=str, help="issues the specified WMI query"
+            "--wmi",
+            metavar="QUERY",
+            type=str,
+            help="issues the specified WMI query"
         )
         egroup.add_argument(
             "--wmi-namespace",
@@ -359,10 +390,14 @@ class smb(connection):
         )
 
         sgroup = smb_parser.add_argument_group(
-            "Spidering", "Options for spidering shares"
+            "Spidering",
+            "Options for spidering shares"
         )
         sgroup.add_argument(
-            "--spider", metavar="SHARE", type=str, help="share to spider"
+            "--spider",
+            metavar="SHARE",
+            type=str,
+            help="share to spider"
         )
         sgroup.add_argument(
             "--spider-folder",
@@ -372,7 +407,9 @@ class smb(connection):
             help="folder to spider (default: root share directory)",
         )
         sgroup.add_argument(
-            "--content", action="store_true", help="enable file content searching"
+            "--content",
+            action="store_true",
+            help="enable file content searching"
         )
         sgroup.add_argument(
             "--exclude-dirs",
@@ -399,11 +436,14 @@ class smb(connection):
             help="max spider recursion depth (default: infinity & beyond)",
         )
         sgroup.add_argument(
-            "--only-files", action="store_true", help="only spider files"
+            "--only-files",
+            action="store_true",
+            help="only spider files"
         )
 
         tgroup = smb_parser.add_argument_group(
-            "Files", "Options for put and get remote files"
+            "Files",
+            "Options for put and get remote files"
         )
         tgroup.add_argument(
             "--put-file",
@@ -424,7 +464,8 @@ class smb(connection):
         )
 
         cgroup = smb_parser.add_argument_group(
-            "Command Execution", "Options for executing commands"
+            "Command Execution",
+            "Options for executing commands"
         )
         cgroup.add_argument(
             "--exec-method",
@@ -447,7 +488,9 @@ class smb(connection):
             help="force the PowerShell command to run in a 32-bit process",
         )
         cgroup.add_argument(
-            "--no-output", action="store_true", help="do not retrieve command output"
+            "--no-output",
+            action="store_true",
+            help="do not retrieve command output"
         )
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument(
@@ -463,10 +506,13 @@ class smb(connection):
             help="execute the specified PowerShell command",
         )
         psgroup = smb_parser.add_argument_group(
-            "Powershell Obfuscation", "Options for PowerShell script obfuscation"
+            "Powershell Obfuscation",
+            "Options for PowerShell script obfuscation"
         )
         psgroup.add_argument(
-            "--obfs", action="store_true", help="Obfuscate PowerShell scripts"
+            "--obfs",
+            action="store_true",
+            help="Obfuscate PowerShell scripts"
         )
         psgroup.add_argument(
             "--amsi-bypass",
@@ -1889,7 +1935,7 @@ class smb(connection):
             except:
                 self.logger.fail(
                     "Your version of CMEDB is not up to date, run cmedb and create a new workspace: \
-                'workspace create dpapi' then re-run the dpapi option"
+                    'workspace create dpapi' then re-run the dpapi option"
                 )
                 return False
             if len(results) > 0:
