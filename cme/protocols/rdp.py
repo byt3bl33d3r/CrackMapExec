@@ -174,21 +174,22 @@ class rdp(connection):
 
     def print_host_info(self):
         if self.domain is None:
-            self.logger.display(
-                f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})"
-            )
+            self.logger.display(f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})")
         else:
-            self.logger.display(
-                f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})"
-            )
+            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})")
         return True
 
     def create_conn_obj(self):
         self.target = RDPTarget(
-            ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout
+            ip=self.host,
+            domain="FAKE",
+            timeout=self.args.rdp_timeout
         )
         self.auth = NTLMCredential(
-            secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS
+            secret="pass",
+            username="user",
+            domain="FAKE",
+            stype=asyauthSecret.PASS
         )
 
         self.check_nla()
@@ -303,9 +304,7 @@ class rdp(connection):
                 if not password:
                     password = getenv("KRB5CCNAME") if not password else password
                     if "/" in password:
-                        self.logger.fail(
-                            "Kerberos ticket need to be on the local directory"
-                        )
+                        self.logger.fail("Kerberos ticket need to be on the local directory")
                         return False
                     ccache = CCache.loadFile(getenv("KRB5CCNAME"))
                     ticketCreds = ccache.credentials[0]
@@ -349,11 +348,7 @@ class rdp(connection):
                         if not self.config.get("CME", "audit_mode")
                         else self.config.get("CME", "audit_mode") * 8
                     ),
-                    highlight(
-                        f'({self.config.get("CME", "pwn3d_label")})'
-                        if self.admin_privs
-                        else ""
-                    ),
+                    self.mark_pwned(),
                 )
             )
             if not self.args.local_auth:
@@ -378,16 +373,7 @@ class rdp(connection):
                 )
             elif "Authentication failed!" in str(e):
                 self.logger.success(
-                    "{}\\{}:{} {}".format(
-                        domain,
-                        username,
-                        password,
-                        highlight(
-                            f'({self.config.get("CME", "pwn3d_label")})'
-                            if self.admin_privs
-                            else ""
-                        ),
-                    )
+                    f"{domain}\\{username}:{password} {self.mark_pwned()}"
                 )
             elif "No such file" in str(e):
                 self.logger.fail(e)
@@ -424,16 +410,7 @@ class rdp(connection):
 
             self.admin_privs = True
             self.logger.success(
-                "{}\\{}:{} {}".format(
-                    domain,
-                    username,
-                    password,
-                    highlight(
-                        f'({self.config.get("CME", "pwn3d_label")})'
-                        if self.admin_privs
-                        else ""
-                    ),
-                )
+                f"{domain}\\{username}:{password} {self.mark_pwned()}"
             )
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
@@ -442,16 +419,7 @@ class rdp(connection):
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(
-                    "{}\\{}:{} {}".format(
-                        domain,
-                        username,
-                        password,
-                        highlight(
-                            f'({self.config.get("CME", "pwn3d_label")})'
-                            if self.admin_privs
-                            else ""
-                        ),
-                    )
+                    f"{domain}\\{username}:{password} {self.mark_pwned()}"
                 )
             else:
                 reason = None
@@ -486,16 +454,7 @@ class rdp(connection):
 
             self.admin_privs = True
             self.logger.success(
-                "{}\\{}:{} {}".format(
-                    self.domain,
-                    username,
-                    ntlm_hash,
-                    highlight(
-                        f'({self.config.get("CME", "pwn3d_label")})'
-                        if self.admin_privs
-                        else ""
-                    ),
-                )
+                f"{self.domain}\\{username}:{ntlm_hash} {self.mark_pwned()}"
             )
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
@@ -504,16 +463,7 @@ class rdp(connection):
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(
-                    "{}\\{}:{} {}".format(
-                        domain,
-                        username,
-                        ntlm_hash,
-                        highlight(
-                            f'({self.config.get("CME", "pwn3d_label")})'
-                            if self.admin_privs
-                            else ""
-                        ),
-                    )
+                    f"{domain}\\{username}:{ntlm_hash} {self.mark_pwned()}"
                 )
             else:
                 reason = None
@@ -537,7 +487,9 @@ class rdp(connection):
     async def screen(self):
         try:
             self.conn = RDPConnection(
-                iosettings=self.iosettings, target=self.target, credentials=self.auth
+                iosettings=self.iosettings,
+                target=self.target,
+                credentials=self.auth
             )
             await self.connect_rdp()
         except Exception as e:
