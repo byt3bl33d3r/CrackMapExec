@@ -175,6 +175,30 @@ class CMEModule:
 			reasons = ['WSUS service not running']
 		return ok, reasons
 
+	def check_nbtns(self, dce):
+		key_name = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces'
+		subkeys = self.reg_get_subkeys(dce, key_name)
+		success = False
+		reasons = []
+		missing = 0
+		nbtns_enabled = 0
+		for subkey in subkeys:
+			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'NetbiosOptions')
+			if type(value) == DCERPCSessionError:
+				if value.error_code == ERROR_OBJECT_NOT_FOUND:
+					missing += 1
+				continue
+			if value != 2:
+				nbtns_enabled += 1
+		if missing > 0:
+			reasons.append(f'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces\\<interface>\\NetbiosOption: value not found on {missing} interfaces')
+		if nbtns_enabled > 0:
+			reasons.append(f'NBTNS enabled on {nbtns_enabled} interfaces out of {len(subkeys)}')
+		if missing == 0 and nbtns_enabled == 0:
+			success = True
+			reasons.append('NBTNS disabled on all interfaces')
+		return success, reasons
+
 	def add_result(self, host, result):
 		self.results[host]['checks'].append({
 			"Check":result.name,
@@ -283,8 +307,6 @@ class CMEModule:
 					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
 
 		# TODO: check_applocker
-		# TODO: check_powershell_v2_availability
-		# TODO: check_nbtns (should be similar to check_laps)
 		# TODO: check_smb_encryption (maybe check the characteristics of the connection we already have ?)
 		# TODO: check_bitlockerconf
 
@@ -364,11 +386,17 @@ class CMEModule:
 					'ValidateServerCert', 1
 				)
 			),
+			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available').check((
+					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine',
+					'PSCompatibleVersion', '2.0', not_(operator.contains)
+				)
+			),
 			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled').check((
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LmCompatibilityLevel', 5, operator.ge
 				)
 			),
+			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces').wrap_check(self.check_nbtns, dce),
 			ConfigCheck('mDNS', 'Checks if mDNS is disabled').check((
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNScache\\Parameters',
 					'EnableMDNS', 0
@@ -550,6 +578,12 @@ def le(reg_sz_string, number):
 
 def in_(obj, seq):
 	return obj in seq
+
+def not_(boolean_operator):
+	def wrapper(*args, **kwargs):
+		return not boolean_operator(*args, **kwargs)
+	wrapper.__name__ = f'not_{boolean_operator.__name__}'
+	return wrapper
 
 def startswith(string, start):
 	return string.startswith(start)
