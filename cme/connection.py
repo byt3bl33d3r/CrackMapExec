@@ -3,7 +3,8 @@
 
 import random
 import socket
-import sys
+from socket import AF_INET, AF_INET6, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME
+from socket import getaddrinfo
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
@@ -21,23 +22,23 @@ user_failed_logins = {}
 
 def gethost_addrinfo(hostname):
     try:
-        for res in socket.getaddrinfo(
+        for res in getaddrinfo(
             hostname,
             None,
-            socket.AF_INET6,
-            socket.SOCK_DGRAM,
-            socket.IPPROTO_IP,
-            socket.AI_CANONNAME,
+            AF_INET6,
+            SOCK_DGRAM,
+            IPPROTO_IP,
+            AI_CANONNAME,
         ):
             af, socktype, proto, canonname, sa = res
     except socket.gaierror:
-        for res in socket.getaddrinfo(
+        for res in getaddrinfo(
             hostname,
             None,
-            socket.AF_INET,
-            socket.SOCK_DGRAM,
-            socket.IPPROTO_IP,
-            socket.AI_CANONNAME,
+            AF_INET,
+            SOCK_DGRAM,
+            IPPROTO_IP,
+            AI_CANONNAME,
         ):
             af, socktype, proto, canonname, sa = res
     if canonname == "":
@@ -277,9 +278,7 @@ class connection(object):
                                         return True
                                 elif self.hash_login(domain, username, password):
                                     return True
-                            elif cred_type == "plaintext" and not self.over_fail_limit(
-                                username
-                            ):
+                            elif cred_type == "plaintext" and not self.over_fail_limit(username):
                                 if self.args.kerberos:
                                     if self.kerberos_login(
                                         domain,

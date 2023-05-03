@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
+from logging import LogRecord
 from logging.handlers import RotatingFileHandler
 import os.path
 import sys
@@ -148,10 +149,10 @@ class CMEAdapter(logging.LoggerAdapter):
         if self.logger.getEffectiveLevel() >= logging.INFO:
             # will be 0 if it's just the console output, so only do this if we actually have file loggers
             if len(self.logger.handlers):
-                for handler in self.logger.handlers:
-                    try:
+                try:
+                    for handler in self.logger.handlers:
                         handler.handle(
-                            logging.LogRecord(
+                            LogRecord(
                                 "cme",
                                 20,
                                 "",
@@ -161,10 +162,8 @@ class CMEAdapter(logging.LoggerAdapter):
                                 exc_info=None,
                             )
                         )
-                    except Exception as e:
-                        self.logger.fail(
-                            f"Issue while trying to custom print handler: {e}"
-                        )
+                except Exception as e:
+                    self.logger.fail(f"Issue while trying to custom print handler: {e}")
         else:
             self.logger.info(text)
 

@@ -60,6 +60,7 @@ from datetime import datetime
 from functools import wraps
 from traceback import format_exc
 import logging
+from json import loads
 
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
@@ -675,33 +676,25 @@ class smb(connection):
 
         from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
-        results = [
-            r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)
-        ]
+        results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
         if len(results) != 0:
             for host in results:
                 values = {
-                    str(attr["type"]).lower(): str(attr["vals"][0])
-                    for attr in host["attributes"]
+                    str(attr["type"]).lower(): str(attr["vals"][0]) for attr in host["attributes"]
                 }
                 if "mslaps-encryptedpassword" in values:
                     self.logger.fail(
                         "LAPS password is encrypted and currently CrackMapExec doesn't support the decryption..."
                     )
-
                     return False
                 elif "mslaps-password" in values:
-                    from json import loads
-
                     r = loads(values["mslaps-password"])
                     msMCSAdmPwd = r["p"]
                     username = r["n"]
                 elif "ms-mcs-admpwd" in values:
                     msMCSAdmPwd = values["ms-mcs-admpwd"]
                 else:
-                    self.logger.fail(
-                        "No result found with attribute ms-MCS-AdmPwd or msLAPS-Password"
-                    )
+                    self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
             logging.debug(
                 f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}"
             )
@@ -1775,9 +1768,7 @@ class smb(connection):
             policy_handle,
             lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation,
         )
-        domain_sid = resp["PolicyInformation"]["PolicyAccountDomainInfo"][
-            "DomainSid"
-        ].formatCanonical()
+        domain_sid = resp["PolicyInformation"]["PolicyAccountDomainInfo"]["DomainSid"].formatCanonical()
 
         so_far = 0
         simultaneous = 1000
@@ -1792,10 +1783,13 @@ class smb(connection):
 
             sids = list()
             for i in range(so_far, so_far + sids_to_check):
-                sids.append(domain_sid + "-%d" % i)
+                sids.append(f"{domain_sid}-{i:d}")
             try:
                 lsat.hLsarLookupSids(
-                    dce, policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
+                    dce,
+                    policy_handle,
+                    sids,
+                    lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
                 )
             except DCERPCException as e:
                 if str(e).find("STATUS_NONE_MAPPED") >= 0:
@@ -1809,28 +1803,22 @@ class smb(connection):
             for n, item in enumerate(resp["TranslatedNames"]["Names"]):
                 if item["Use"] != SID_NAME_USE.SidTypeUnknown:
                     rid = so_far + n
-                    domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]][
-                        "Name"
-                    ]
+                    domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]]["Name"]
                     user = item["Name"]
                     sid_type = SID_NAME_USE.enumItems(item["Use"]).name
                     self.logger.highlight(f"{rid}: {domain}\\{user} ({sid_type})")
-                    entries.append(
-                        {
-                            "rid": rid,
-                            "domain": domain,
-                            "username": user,
-                            "sidtype": sid_type,
-                        }
-                    )
+                    entries.append({
+                        "rid": rid,
+                        "domain": domain,
+                        "username": user,
+                        "sidtype": sid_type,
+                    })
             so_far += simultaneous
         dce.disconnect()
         return entries
 
     def put_file(self):
-        self.logger.display(
-            f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}"
-        )
+        self.logger.display(f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}")
         with open(self.args.put_file[0], "rb") as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
@@ -1841,9 +1829,7 @@ class smb(connection):
                 self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
     def get_file(self):
-        self.logger.display(
-            f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}"
-        )
+        self.logger.display(f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}")
         file_handle = self.args.get_file[1]
         if self.args.append_host:
             file_handle = f"{self.hostname}-{self.args.get_file[1]}"
@@ -1958,11 +1944,10 @@ class smb(connection):
                     dc_conn = DPLootSMBConnection(dc_target)
                     dc_conn.connect()  # Connect to DC
                     if dc_conn.is_admin():
-                        self.logger.success(
-                            "User is Domain Administrator, exporting domain backupkey..."
-                        )
+                        self.logger.success("User is Domain Administrator, exporting domain backupkey...")
                         backupkey_triage = BackupkeyTriage(
-                            target=dc_target, conn=dc_conn
+                            target=dc_target,
+                            conn=dc_conn
                         )
                         backupkey = backupkey_triage.triage_backupkey()
                         self.pvkbytes = backupkey.backupkey_v2
@@ -1995,9 +1980,7 @@ class smb(connection):
 
         plaintexts = {
             username: password
-            for _, _, username, password, _, _ in self.db.get_credentials(
-                cred_type="plaintext"
-            )
+            for _, _, username, password, _, _ in self.db.get_credentials(cred_type="plaintext")
         }
         nthashes = {
             username: nt.split(":")[1] if ":" in nt else nt
@@ -2010,9 +1993,7 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
-            self.logger.display(
-                "Collecting User and Machine masterkeys, grab a coffee and be patient..."
-            )
+            self.logger.display("Collecting User and Machine masterkeys, grab a coffee and be patient...")
             masterkeys_triage = MasterkeysTriage(
                 target=target,
                 conn=conn,
@@ -2030,9 +2011,7 @@ class smb(connection):
             logging.fail("No masterkeys looted")
             return
 
-        self.logger.success(
-            f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets..."
-        )
+        self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
 
         try:
             # Collect User and Machine Credentials Manager secrets
@@ -2076,7 +2055,9 @@ class smb(connection):
             # Collect Chrome Based Browser stored secrets
             dump_cookies = True if self.args.dpapi == "cookies" else False
             browser_triage = BrowserTriage(
-                target=target, conn=conn, masterkeys=masterkeys
+                target=target,
+                conn=conn,
+                masterkeys=masterkeys
             )
             browser_credentials, cookies = browser_triage.triage_browsers(
                 gather_cookies=dump_cookies
@@ -2108,7 +2089,9 @@ class smb(connection):
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(
-                target=target, conn=conn, masterkeys=masterkeys
+                target=target,
+                conn=conn,
+                masterkeys=masterkeys
             )
             vaults = vaults_triage.triage_vaults()
         except Exception as e:

@@ -5,8 +5,11 @@ import cmd
 import configparser
 import csv
 import os
+from os import listdir
+from os.path import exists
+from os.path import join as path_join
 import shutil
-import sqlite3
+from sqlite3 import connect
 import sys
 from textwrap import dedent
 
@@ -70,7 +73,10 @@ def complete_import(text, line):
     """
     Tab-complete 'import' commands
     """
-    commands = ["empire", "metasploit"]
+    commands = (
+        "empire",
+        "metasploit"
+    )
     mline = line.partition(" ")[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
@@ -80,7 +86,7 @@ def complete_export(text, line):
     """
     Tab-complete 'creds' commands.
     """
-    commands = [
+    commands = (
         "creds",
         "plaintext",
         "hashes",
@@ -88,7 +94,7 @@ def complete_export(text, line):
         "local_admins",
         "signing",
         "keys",
-    ]
+    )
     mline = line.partition(" ")[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
@@ -111,7 +117,8 @@ class DatabaseNavigator(cmd.Cmd):
         self.db.shutdown_db()
         sys.exit()
 
-    def help_exit(self):
+    @staticmethod
+    def help_exit():
         help_string = """
         Exits
         """
@@ -131,21 +138,19 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if command == "creds":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export creds <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
                 return
 
             filename = line[2]
             creds = self.db.get_credentials()
-            csv_header = [
+            csv_header = (
                 "id",
                 "domain",
                 "username",
                 "password",
                 "credtype",
                 "pillaged_from",
-            ]
+            )
 
             if line[1].lower() == "simple":
                 write_csv(filename, csv_header, creds)
@@ -173,12 +178,10 @@ class DatabaseNavigator(cmd.Cmd):
         # Hosts
         elif command == "hosts":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export hosts <simple|detailed|signing> <filename>"
-                )
+                print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
                 return
 
-            csv_header_simple = [
+            csv_header_simple = (
                 "id",
                 "ip",
                 "hostname",
@@ -187,8 +190,8 @@ class DatabaseNavigator(cmd.Cmd):
                 "dc",
                 "smbv1",
                 "signing",
-            ]
-            csv_header_detailed = [
+            )
+            csv_header_detailed = (
                 "id",
                 "ip",
                 "hostname",
@@ -200,7 +203,7 @@ class DatabaseNavigator(cmd.Cmd):
                 "spooler",
                 "zerologon",
                 "petitpotam",
-            ]
+            )
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -222,13 +225,19 @@ class DatabaseNavigator(cmd.Cmd):
         # Shares
         elif command == "shares":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export shares <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
 
             shares = self.db.get_shares()
-            csv_header = ["id", "host", "userid", "name", "remark", "read", "write"]
+            csv_header = (
+                "id",
+                "host",
+                "userid",
+                "name",
+                "remark",
+                "read",
+                "write"
+            )
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -240,7 +249,7 @@ class DatabaseNavigator(cmd.Cmd):
                 for share in shares:
                     user = self.db.get_users(share[2])[0]
 
-                    entry = [
+                    entry = (
                         share[0],  # shareID
                         self.db.get_hosts(share[1])[0][2],  # hosts
                         f"{user[1]}\{user[2]}",  # userID
@@ -248,7 +257,7 @@ class DatabaseNavigator(cmd.Cmd):
                         share[4],  # remark
                         bool(share[5]),  # read
                         bool(share[6]),  # write
-                    ]
+                    )
                     formatted_shares.append(entry)
                 write_csv(filename, csv_header, formatted_shares)
             else:
@@ -258,14 +267,16 @@ class DatabaseNavigator(cmd.Cmd):
         # Local Admin
         elif command == "local_admins":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export local_admins <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
                 return
 
             # These values don't change between simple and detailed
             local_admins = self.db.get_admin_relations()
-            csv_header = ["id", "userid", "host"]
+            csv_header = (
+                "id",
+                "userid",
+                "host"
+            )
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -275,11 +286,11 @@ class DatabaseNavigator(cmd.Cmd):
                 for entry in local_admins:
                     user = self.db.get_users(filter_term=entry[1])[0]
 
-                    formatted_entry = [
+                    formatted_entry = (
                         entry[0],  # Entry ID
                         f"{user[1]}/{user[2]}",  # DOMAIN/Username
                         self.db.get_hosts(filter_term=entry[2])[0][2],  # Hostname
-                    ]
+                    )
                     # Can't modify a tuple which is what self.db.get_admin_relations() returns
                     formatted_local_admins.append(formatted_entry)
                 write_csv(filename, csv_header, formatted_local_admins)
@@ -289,14 +300,12 @@ class DatabaseNavigator(cmd.Cmd):
             print("[+] Local Admins exported")
         elif command == "dpapi":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export dpapi <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
                 return
 
             # These values don't change between simple and detailed
             dpapi_secrets = self.db.get_dpapi_secrets()
-            csv_header = [
+            csv_header = (
                 "id",
                 "host",
                 "dpapi_type",
@@ -304,7 +313,7 @@ class DatabaseNavigator(cmd.Cmd):
                 "username",
                 "password",
                 "url",
-            ]
+            )
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -312,7 +321,7 @@ class DatabaseNavigator(cmd.Cmd):
             elif line[1].lower() == "detailed":
                 formatted_dpapi_secret = []
                 for entry in dpapi_secrets:
-                    formatted_entry = [
+                    formatted_entry = (
                         entry[0],  # Entry ID
                         self.db.get_hosts(filter_term=entry[1])[0][2],  # Hostname
                         entry[2],  # DPAPI type
@@ -320,12 +329,12 @@ class DatabaseNavigator(cmd.Cmd):
                         entry[4],  # Username
                         entry[5],  # Password
                         entry[6],  # URL
-                    ]
+                    )
                     # Can't modify a tuple which is what self.db.get_admin_relations() returns
                     formatted_dpapi_secret.append(formatted_entry)
                 write_csv(filename, csv_header, formatted_dpapi_secret)
             else:
-                print("[-] No such export option: %s" % line[1])
+                print(f"[-] No such export option: {line[1]}")
                 return
             print("[+] DPAPI secrets exported")
         elif command == "keys":
@@ -337,11 +346,10 @@ class DatabaseNavigator(cmd.Cmd):
             filename = line[2]
             write_list(filename, writable_keys)
         else:
-            print(
-                "[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi"
-            )
+            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
 
-    def help_export(self):
+    @staticmethod
+    def help_export():
         help_string = """
         export [creds|hosts|local_admins|shares|signing|keys] [simple|detailed|*] [filename]
         Exports information to a specified file
@@ -358,7 +366,9 @@ class DatabaseNavigator(cmd.Cmd):
             return
 
         if line == "empire":
-            headers = {"Content-Type": "application/json"}
+            headers = {
+                "Content-Type": "application/json"
+            }
             # Pull the username and password from the config file
             payload = {
                 "username": self.config.get("Empire", "username"),
@@ -436,8 +446,8 @@ class CMEDBMenu(cmd.Cmd):
         if not proto:
             return
 
-        proto_db_path = os.path.join(WORKSPACE_DIR, self.workspace, proto + ".db")
-        if os.path.exists(proto_db_path):
+        proto_db_path = path_join(WORKSPACE_DIR, self.workspace, f"{proto}.db")
+        if exists(proto_db_path):
             self.conn = create_db_engine(proto_db_path)
             db_nav_object = self.p_loader.load_protocol(self.protocols[proto]["nvpath"])
             db_object = self.p_loader.load_protocol(self.protocols[proto]["dbpath"])
@@ -451,7 +461,8 @@ class CMEDBMenu(cmd.Cmd):
             except UserExitedProto:
                 pass
 
-    def help_proto(self):
+    @staticmethod
+    def help_proto():
         help_string = """
         proto [smb|mssql|winrm]
             *unimplemented protocols: ftp, rdp, ldap, ssh
@@ -474,27 +485,30 @@ class CMEDBMenu(cmd.Cmd):
             self.do_workspace(new_workspace)
         elif subcommand == "list":
             print("[*] Enumerating Workspaces")
-            for workspace in os.listdir(os.path.join(WORKSPACE_DIR)):
+            for workspace in listdir(path_join(WORKSPACE_DIR)):
                 if workspace == self.workspace:
                     print("==> " + workspace)
                 else:
                     print(workspace)
-        elif os.path.exists(os.path.join(WORKSPACE_DIR, line)):
+        elif exists(path_join(WORKSPACE_DIR, line)):
             self.config.set("CME", "workspace", line)
             self.write_configfile()
             self.workspace = line
             self.prompt = f"cmedb ({line}) > "
 
-    def help_workspace(self):
+    @staticmethod
+    def help_workspace():
         help_string = """
         workspace [create <targetName> | workspace list | workspace <targetName>]
         """
         print_help(help_string)
 
-    def do_exit(self, line):
+    @staticmethod
+    def do_exit(line):
         sys.exit()
 
-    def help_exit(self):
+    @staticmethod
+    def help_exit():
         help_string = """
         Exits
         """
@@ -502,18 +516,15 @@ class CMEDBMenu(cmd.Cmd):
 
 
 def create_workspace(workspace_name, p_loader, protocols):
-    os.mkdir(os.path.join(WORKSPACE_DIR, workspace_name))
+    os.mkdir(path_join(WORKSPACE_DIR, workspace_name))
 
     for protocol in protocols.keys():
-        try:
-            protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
-        except KeyError:
-            continue
-        proto_db_path = os.path.join(WORKSPACE_DIR, workspace_name, protocol + ".db")
+        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
+        proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{protocol}.db")
 
-        if not os.path.exists(proto_db_path):
+        if not exists(proto_db_path):
             print(f"[*] Initializing {protocol.upper()} protocol database")
-            conn = sqlite3.connect(proto_db_path)
+            conn = connect(proto_db_path)
             c = conn.cursor()
 
             # try to prevent some weird sqlite I/O errors
@@ -528,27 +539,23 @@ def create_workspace(workspace_name, p_loader, protocols):
 
 
 def delete_workspace(workspace_name):
-    shutil.rmtree(os.path.join(WORKSPACE_DIR, workspace_name))
+    shutil.rmtree(path_join(WORKSPACE_DIR, workspace_name))
 
 
 def initialize_db(logger):
-    if not os.path.exists(os.path.join(WS_PATH, "default")):
+    if not exists(path_join(WS_PATH, "default")):
         logger.debug("Creating default workspace")
-        os.mkdir(os.path.join(WS_PATH, "default"))
+        os.mkdir(path_join(WS_PATH, "default"))
 
     p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
     for protocol in protocols.keys():
-        try:
-            protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
-        except KeyError:
-            continue
+        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
+        proto_db_path = path_join(WS_PATH, "default", f"{protocol}.db")
 
-        proto_db_path = os.path.join(WS_PATH, "default", protocol + ".db")
-
-        if not os.path.exists(proto_db_path):
+        if not exists(proto_db_path):
             logger.debug(f"Initializing {protocol.upper()} protocol database")
-            conn = sqlite3.connect(proto_db_path)
+            conn = connect(proto_db_path)
             c = conn.cursor()
             # try to prevent some weird sqlite I/O errors
             c.execute(
@@ -564,7 +571,7 @@ def initialize_db(logger):
 
 
 def main():
-    if not os.path.exists(CONFIG_PATH):
+    if not exists(CONFIG_PATH):
         print("[-] Unable to find config file")
         sys.exit(1)
     try:

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import threading
+from threading import enumerate
 from sys import exit
 from impacket import smbserver
 
@@ -27,9 +28,7 @@ class CMESMBServer(threading.Thread):
         except Exception as e:
             errno, message = e.args
             if errno == 98 and message == "Address already in use":
-                logger.error(
-                    "Error starting SMB server on port 445: the port is already in use"
-                )
+                logger.error("Error starting SMB server on port 445: the port is already in use")
             else:
                 logger.error(f"Error starting SMB server on port 445: {message}")
                 exit(1)
@@ -46,7 +45,7 @@ class CMESMBServer(threading.Thread):
     def shutdown(self):
         # TODO: should fine the proper way
         # make sure all the threads are killed
-        for thread in threading.enumerate():
+        for thread in enumerate():
             if thread.is_alive():
                 try:
                     self._stop()
