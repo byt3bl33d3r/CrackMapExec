@@ -20,23 +20,6 @@ from asyauth.common.credentials.kerberos import KerberosCredential
 from asyauth.common.constants import asyauthSecret
 from asysocks.unicomm.common.target import UniTarget, UniProto
 
-rdp_error_status = {
-    "0xc0000071": "STATUS_PASSWORD_EXPIRED",
-    "0xc0000234": "STATUS_ACCOUNT_LOCKED_OUT",
-    "0xc0000072": "STATUS_ACCOUNT_DISABLED",
-    "0xc0000193": "STATUS_ACCOUNT_EXPIRED",
-    "0xc000006E": "STATUS_ACCOUNT_RESTRICTION",
-    "0xc000006F": "STATUS_INVALID_LOGON_HOURS",
-    "0xc0000070": "STATUS_INVALID_WORKSTATION",
-    "0xc000015B": "STATUS_LOGON_TYPE_NOT_GRANTED",
-    "0xc0000224": "STATUS_PASSWORD_MUST_CHANGE",
-    "0xc0000022": "STATUS_ACCESS_DENIED",
-    "0xc000006d": "STATUS_LOGON_FAILURE",
-    "0xc000006a": "STATUS_WRONG_PASSWORD ",
-    "KDC_ERR_CLIENT_REVOKED": "KDC_ERR_CLIENT_REVOKED",
-    "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED",
-}
-
 
 class rdp(connection):
     def __init__(self, args, db, host):
@@ -76,6 +59,23 @@ class rdp(connection):
         self.hybrid = False
         self.target = None
         self.auth = None
+
+        self.rdp_error_status = {
+            "0xc0000071": "STATUS_PASSWORD_EXPIRED",
+            "0xc0000234": "STATUS_ACCOUNT_LOCKED_OUT",
+            "0xc0000072": "STATUS_ACCOUNT_DISABLED",
+            "0xc0000193": "STATUS_ACCOUNT_EXPIRED",
+            "0xc000006E": "STATUS_ACCOUNT_RESTRICTION",
+            "0xc000006F": "STATUS_INVALID_LOGON_HOURS",
+            "0xc0000070": "STATUS_INVALID_WORKSTATION",
+            "0xc000015B": "STATUS_LOGON_TYPE_NOT_GRANTED",
+            "0xc0000224": "STATUS_PASSWORD_MUST_CHANGE",
+            "0xc0000022": "STATUS_ACCESS_DENIED",
+            "0xc000006d": "STATUS_LOGON_FAILURE",
+            "0xc000006a": "STATUS_WRONG_PASSWORD ",
+            "KDC_ERR_CLIENT_REVOKED": "KDC_ERR_CLIENT_REVOKED",
+            "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED",
+        }
 
         connection.__init__(self, args, db, host)
 
@@ -364,9 +364,9 @@ class rdp(connection):
         except Exception as e:
             if "KDC_ERR" in str(e):
                 reason = None
-                for word in rdp_error_status.keys():
+                for word in self.rdp_error_status.keys():
                     if word in str(e):
-                        reason = rdp_error_status[word]
+                        reason = self.rdp_error_status[word]
                 self.logger.fail(
                     f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}",
                     color="magenta"
@@ -393,9 +393,9 @@ class rdp(connection):
                 self.logger.fail(e)
             else:
                 reason = None
-                for word in rdp_error_status.keys():
+                for word in self.rdp_error_status.keys():
                     if word in str(e):
-                        reason = rdp_error_status[word]
+                        reason = self.rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
@@ -455,9 +455,9 @@ class rdp(connection):
                 )
             else:
                 reason = None
-                for word in rdp_error_status.keys():
+                for word in self.rdp_error_status.keys():
                     if word in str(e):
-                        reason = rdp_error_status[word]
+                        reason = self.rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
@@ -517,9 +517,9 @@ class rdp(connection):
                 )
             else:
                 reason = None
-                for word in rdp_error_status.keys():
+                for word in self.rdp_error_status.keys():
                     if word in str(e):
-                        reason = rdp_error_status[word]
+                        reason = self.rdp_error_status[word]
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
 
