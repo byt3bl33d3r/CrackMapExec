@@ -199,6 +199,19 @@ class CMEModule:
 			reasons.append('NBTNS disabled on all interfaces')
 		return success, reasons
 
+	def check_applocker(self, dce):
+		key_name = 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\SrpV2'
+		subkeys = self.reg_get_subkeys(dce, key_name)
+		rule_count = 0
+		for collection in subkeys:
+			collection_key_name = key_name + '\\' + collection
+			rules = self.reg_get_subkeys(dce, collection_key_name)
+			rule_count += len(rules)
+		success = rule_count > 0
+		reasons = [f'Found {rule_count} AppLocker rules defined']
+
+		return success, reasons
+
 	def add_result(self, host, result):
 		self.results[host]['checks'].append({
 			"Check":result.name,
@@ -306,9 +319,6 @@ class CMEModule:
 				else:
 					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
 
-		# TODO: check_applocker
-		# TODO: check_bitlockerconf
-
 		for result in (
 			ConfigCheck('Last successful update', 'Checks how old is the last successful update').wrap_check(self.check_last_successful_update, connection),
 			ConfigCheck('LAPS', 'Checks if LAPS is installed').wrap_check(self.check_laps, dce, connection),
@@ -359,6 +369,7 @@ class CMEModule:
 					'CachedLogonsCount', 2, le
 				)
 			),
+			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined').wrap_check(self.check_applocker, dce),
 			ConfigCheck('RDP expiration time', 'Checks RDP session timeout').check((
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services',
 					'MaxDisconnectionTime', 0, operator.gt
@@ -435,6 +446,14 @@ class CMEModule:
 				),(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\LSA',
 					'RestrictedAdminMode', 1
+				)
+			),
+			ConfigCheck('BitLocker configuration', 'Checks the BitLocker configuration (based on https://www.stigviewer.com/stig/windows_10/2020-06-15/finding/V-94859)').check((
+					'HKLM\\SOFTWARE\\Policies\\Microsoft\\FVE',
+					'UseAdvancedStartup', 1
+				),(
+					'HKLM\\SOFTWARE\\Policies\\Microsoft\\FVE',
+					'UseTPMPIN', 1
 				)
 			),
 			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled').wrap_check(self.check_guest_account_disabled, connection),
