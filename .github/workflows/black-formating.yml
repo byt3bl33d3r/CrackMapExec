@@ -1,4 +1,4 @@
-name: black-action
+name: Black-action
 on: [push, pull_request]
 jobs:
   linter_name:
