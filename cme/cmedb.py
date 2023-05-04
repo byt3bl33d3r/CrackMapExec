@@ -73,10 +73,7 @@ def complete_import(text, line):
     """
     Tab-complete 'import' commands
     """
-    commands = (
-        "empire",
-        "metasploit"
-    )
+    commands = ("empire", "metasploit")
     mline = line.partition(" ")[2]
     offs = len(mline) - len(text)
     return [s[offs:] for s in commands if s.startswith(mline)]
@@ -138,7 +135,9 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if command == "creds":
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
+                print(
+                    "[-] invalid arguments, export creds <simple|detailed> <filename>"
+                )
                 return
 
             filename = line[2]
@@ -178,7 +177,9 @@ class DatabaseNavigator(cmd.Cmd):
         # Hosts
         elif command == "hosts":
             if len(line) < 3:
-                print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
+                print(
+                    "[-] invalid arguments, export hosts <simple|detailed|signing> <filename>"
+                )
                 return
 
             csv_header_simple = (
@@ -225,19 +226,13 @@ class DatabaseNavigator(cmd.Cmd):
         # Shares
         elif command == "shares":
             if len(line) < 3:
-                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
+                print(
+                    "[-] invalid arguments, export shares <simple|detailed> <filename>"
+                )
                 return
 
             shares = self.db.get_shares()
-            csv_header = (
-                "id",
-                "host",
-                "userid",
-                "name",
-                "remark",
-                "read",
-                "write"
-            )
+            csv_header = ("id", "host", "userid", "name", "remark", "read", "write")
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -267,16 +262,14 @@ class DatabaseNavigator(cmd.Cmd):
         # Local Admin
         elif command == "local_admins":
             if len(line) < 3:
-                print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
+                print(
+                    "[-] invalid arguments, export local_admins <simple|detailed> <filename>"
+                )
                 return
 
             # These values don't change between simple and detailed
             local_admins = self.db.get_admin_relations()
-            csv_header = (
-                "id",
-                "userid",
-                "host"
-            )
+            csv_header = ("id", "userid", "host")
             filename = line[2]
 
             if line[1].lower() == "simple":
@@ -300,7 +293,9 @@ class DatabaseNavigator(cmd.Cmd):
             print("[+] Local Admins exported")
         elif command == "dpapi":
             if len(line) < 3:
-                print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
+                print(
+                    "[-] invalid arguments, export dpapi <simple|detailed> <filename>"
+                )
                 return
 
             # These values don't change between simple and detailed
@@ -346,7 +341,9 @@ class DatabaseNavigator(cmd.Cmd):
             filename = line[2]
             write_list(filename, writable_keys)
         else:
-            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
+            print(
+                "[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi"
+            )
 
     @staticmethod
     def help_export():
@@ -366,9 +363,7 @@ class DatabaseNavigator(cmd.Cmd):
             return
 
         if line == "empire":
-            headers = {
-                "Content-Type": "application/json"
-            }
+            headers = {"Content-Type": "application/json"}
             # Pull the username and password from the config file
             payload = {
                 "username": self.config.get("Empire", "username"),

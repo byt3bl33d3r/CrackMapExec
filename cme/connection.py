@@ -278,7 +278,9 @@ class connection(object):
                                         return True
                                 elif self.hash_login(domain, username, password):
                                     return True
-                            elif cred_type == "plaintext" and not self.over_fail_limit(username):
+                            elif cred_type == "plaintext" and not self.over_fail_limit(
+                                username
+                            ):
                                 if self.args.kerberos:
                                     if self.kerberos_login(
                                         domain,

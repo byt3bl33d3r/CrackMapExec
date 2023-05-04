@@ -174,22 +174,21 @@ class rdp(connection):
 
     def print_host_info(self):
         if self.domain is None:
-            self.logger.display(f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})")
+            self.logger.display(
+                f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})"
+            )
         else:
-            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})")
+            self.logger.display(
+                f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})"
+            )
         return True
 
     def create_conn_obj(self):
         self.target = RDPTarget(
-            ip=self.host,
-            domain="FAKE",
-            timeout=self.args.rdp_timeout
+            ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout
         )
         self.auth = NTLMCredential(
-            secret="pass",
-            username="user",
-            domain="FAKE",
-            stype=asyauthSecret.PASS
+            secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS
         )
 
         self.check_nla()
@@ -304,7 +303,9 @@ class rdp(connection):
                 if not password:
                     password = getenv("KRB5CCNAME") if not password else password
                     if "/" in password:
-                        self.logger.fail("Kerberos ticket need to be on the local directory")
+                        self.logger.fail(
+                            "Kerberos ticket need to be on the local directory"
+                        )
                         return False
                     ccache = CCache.loadFile(getenv("KRB5CCNAME"))
                     ticketCreds = ccache.credentials[0]
@@ -409,9 +410,7 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(
-                f"{domain}\\{username}:{password} {self.mark_pwned()}"
-            )
+            self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             if not self.args.continue_on_success:
@@ -487,9 +486,7 @@ class rdp(connection):
     async def screen(self):
         try:
             self.conn = RDPConnection(
-                iosettings=self.iosettings,
-                target=self.target,
-                credentials=self.auth
+                iosettings=self.iosettings, target=self.target, credentials=self.auth
             )
             await self.connect_rdp()
         except Exception as e:

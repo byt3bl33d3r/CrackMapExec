@@ -96,9 +96,7 @@ def main():
 
     if args.darrell:
         links = (
-            open(path_join(DATA_PATH, "videos_for_darrell.harambe"))
-            .read()
-            .splitlines()
+            open(path_join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
         )
         try:
             webbrowser.open(random.choice(links))
@@ -121,11 +119,7 @@ def main():
 
     module_server = None
     targets = []
-    server_port_dict = {
-        "http": 80,
-        "https": 443,
-        "smb": 445
-    }
+    server_port_dict = {"http": 80, "https": 443, "smb": 445}
 
     if hasattr(args, "cred_id") and args.cred_id:
         for cred_id in args.cred_id:
@@ -211,21 +205,29 @@ def main():
 
             if not module.opsec_safe:
                 if ignore_opsec:
-                    cme_logger.debug(f"ignore_opsec is set in the configuration, skipping prompt")
-                    cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
+                    cme_logger.debug(
+                        f"ignore_opsec is set in the configuration, skipping prompt"
+                    )
+                    cme_logger.display(
+                        f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded"
+                    )
                 else:
-                    ans = input(highlight(
-                        "[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ",
-                        "red",
-                    ))
+                    ans = input(
+                        highlight(
+                            "[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ",
+                            "red",
+                        )
+                    )
                     if ans.lower() not in ["y", "yes", ""]:
                         exit(1)
 
             if not module.multiple_hosts and len(targets) > 1:
-                ans = input(highlight(
-                    "[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ",
-                    "red",
-                ))
+                ans = input(
+                    highlight(
+                        "[!] Running this module on multiple hosts doesn't really make any sense, are you sure you want to continue? [Y/n] ",
+                        "red",
+                    )
+                )
                 if ans.lower() not in ["y", "yes", ""]:
                     exit(1)
 
@@ -238,11 +240,7 @@ def main():
 
                 # loading a module server multiple times will obviously fail
                 try:
-                    context = Context(
-                        db,
-                        cme_logger,
-                        args
-                    )
+                    context = Context(db, cme_logger, args)
                     module_server = CMEServer(
                         module,
                         context,
@@ -256,19 +254,25 @@ def main():
                 except Exception as e:
                     cme_logger.error(f"Error loading module server for {module}: {e}")
 
-            cme_logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
+            cme_logger.debug(
+                f"proto_object: {protocol_object}, type: {type(protocol_object)}"
+            )
             cme_logger.debug(f"proto object dir: {dir(protocol_object)}")
             # get currently set modules, otherwise default to empty list
             current_modules = getattr(protocol_object, "module", [])
             current_modules.append(module)
             setattr(protocol_object, "module", current_modules)
-            cme_logger.debug(f"proto object module after adding: {protocol_object.module}")
+            cme_logger.debug(
+                f"proto object module after adding: {protocol_object.module}"
+            )
 
     if hasattr(args, "ntds") and args.ntds and not args.userntds:
-        ans = input(highlight(
-            "[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ",
-            "red",
-        ))
+        ans = input(
+            highlight(
+                "[!] Dumping the ntds can crash the DC on Windows Server 2019. Use the option --user <user> to dump a specific user safely or the module -M ntdsutil [Y/n] ",
+                "red",
+            )
+        )
         if ans.lower() not in ["y", "yes", ""]:
             exit(1)
 

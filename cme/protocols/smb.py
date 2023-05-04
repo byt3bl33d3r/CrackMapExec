@@ -168,9 +168,7 @@ class smb(connection):
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         smb_parser = parser.add_parser(
-            "smb",
-            help="own stuff using SMB",
-            parents=[std_parser, module_parser]
+            "smb", help="own stuff using SMB", parents=[std_parser, module_parser]
         )
         smb_parser.add_argument(
             "-H",
@@ -245,19 +243,14 @@ class smb(connection):
         )
 
         cgroup = smb_parser.add_argument_group(
-            "Credential Gathering",
-            "Options for gathering credentials"
+            "Credential Gathering", "Options for gathering credentials"
         )
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument(
-            "--sam",
-            action="store_true",
-            help="dump SAM hashes from target systems"
+            "--sam", action="store_true", help="dump SAM hashes from target systems"
         )
         cegroup.add_argument(
-            "--lsa",
-            action="store_true",
-            help="dump LSA secrets from target systems"
+            "--lsa", action="store_true", help="dump LSA secrets from target systems"
         )
         cegroup.add_argument(
             "--ntds",
@@ -271,14 +264,13 @@ class smb(connection):
             choices={"password", "cookies"},
             nargs="?",
             const="password",
-            help="dump DPAPI secrets from target systems, can dump cookies if you add \"cookies\"\n(default: password)",
+            help='dump DPAPI secrets from target systems, can dump cookies if you add "cookies"\n(default: password)',
         )
         # cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         # cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
 
         ngroup = smb_parser.add_argument_group(
-            "Credential Gathering",
-            "Options for gathering credentials"
+            "Credential Gathering", "Options for gathering credentials"
         )
         ngroup.add_argument(
             "--mkfile",
@@ -286,30 +278,20 @@ class smb(connection):
             help="DPAPI option. File with masterkeys in form of {GUID}:SHA1",
         )
         ngroup.add_argument(
-            "--pvk",
-            action="store",
-            help="DPAPI option. File with domain backupkey"
+            "--pvk", action="store", help="DPAPI option. File with domain backupkey"
         )
         ngroup.add_argument(
-            "--enabled",
-            action="store_true",
-            help="Only dump enabled targets from DC"
+            "--enabled", action="store_true", help="Only dump enabled targets from DC"
         )
         ngroup.add_argument(
-            "--user",
-            dest="userntds",
-            type=str,
-            help="Dump selected user from DC"
+            "--user", dest="userntds", type=str, help="Dump selected user from DC"
         )
 
         egroup = smb_parser.add_argument_group(
-            "Mapping/Enumeration",
-            "Options for Mapping/Enumerating"
+            "Mapping/Enumeration", "Options for Mapping/Enumerating"
         )
         egroup.add_argument(
-            "--shares",
-            action="store_true",
-            help="enumerate shares and access"
+            "--shares", action="store_true", help="enumerate shares and access"
         )
         egroup.add_argument(
             "--filter-shares",
@@ -317,24 +299,16 @@ class smb(connection):
             help="Filter share by access, option 'read' 'write' or 'read,write'",
         )
         egroup.add_argument(
-            "--sessions",
-            action="store_true",
-            help="enumerate active sessions"
+            "--sessions", action="store_true", help="enumerate active sessions"
         )
-        egroup.add_argument(
-            "--disks",
-            action="store_true",
-            help="enumerate disks"
-        )
+        egroup.add_argument("--disks", action="store_true", help="enumerate disks")
         egroup.add_argument(
             "--loggedon-users-filter",
             action="store",
             help="only search for specific user, works with regex",
         )
         egroup.add_argument(
-            "--loggedon-users",
-            action="store_true",
-            help="enumerate logged on users"
+            "--loggedon-users", action="store_true", help="enumerate logged on users"
         )
         egroup.add_argument(
             "--users",
@@ -365,9 +339,7 @@ class smb(connection):
             help="enumerate local groups, if a group is specified then its members are enumerated",
         )
         egroup.add_argument(
-            "--pass-pol",
-            action="store_true",
-            help="dump password policy"
+            "--pass-pol", action="store_true", help="dump password policy"
         )
         egroup.add_argument(
             "--rid-brute",
@@ -378,10 +350,7 @@ class smb(connection):
             help="enumerate users by bruteforcing RID's (default: 4000)",
         )
         egroup.add_argument(
-            "--wmi",
-            metavar="QUERY",
-            type=str,
-            help="issues the specified WMI query"
+            "--wmi", metavar="QUERY", type=str, help="issues the specified WMI query"
         )
         egroup.add_argument(
             "--wmi-namespace",
@@ -391,14 +360,10 @@ class smb(connection):
         )
 
         sgroup = smb_parser.add_argument_group(
-            "Spidering",
-            "Options for spidering shares"
+            "Spidering", "Options for spidering shares"
         )
         sgroup.add_argument(
-            "--spider",
-            metavar="SHARE",
-            type=str,
-            help="share to spider"
+            "--spider", metavar="SHARE", type=str, help="share to spider"
         )
         sgroup.add_argument(
             "--spider-folder",
@@ -408,9 +373,7 @@ class smb(connection):
             help="folder to spider (default: root share directory)",
         )
         sgroup.add_argument(
-            "--content",
-            action="store_true",
-            help="enable file content searching"
+            "--content", action="store_true", help="enable file content searching"
         )
         sgroup.add_argument(
             "--exclude-dirs",
@@ -437,14 +400,11 @@ class smb(connection):
             help="max spider recursion depth (default: infinity & beyond)",
         )
         sgroup.add_argument(
-            "--only-files",
-            action="store_true",
-            help="only spider files"
+            "--only-files", action="store_true", help="only spider files"
         )
 
         tgroup = smb_parser.add_argument_group(
-            "Files",
-            "Options for put and get remote files"
+            "Files", "Options for put and get remote files"
         )
         tgroup.add_argument(
             "--put-file",
@@ -465,8 +425,7 @@ class smb(connection):
         )
 
         cgroup = smb_parser.add_argument_group(
-            "Command Execution",
-            "Options for executing commands"
+            "Command Execution", "Options for executing commands"
         )
         cgroup.add_argument(
             "--exec-method",
@@ -489,9 +448,7 @@ class smb(connection):
             help="force the PowerShell command to run in a 32-bit process",
         )
         cgroup.add_argument(
-            "--no-output",
-            action="store_true",
-            help="do not retrieve command output"
+            "--no-output", action="store_true", help="do not retrieve command output"
         )
         cegroup = cgroup.add_mutually_exclusive_group()
         cegroup.add_argument(
@@ -507,13 +464,10 @@ class smb(connection):
             help="execute the specified PowerShell command",
         )
         psgroup = smb_parser.add_argument_group(
-            "Powershell Obfuscation",
-            "Options for PowerShell script obfuscation"
+            "Powershell Obfuscation", "Options for PowerShell script obfuscation"
         )
         psgroup.add_argument(
-            "--obfs",
-            action="store_true",
-            help="Obfuscate PowerShell scripts"
+            "--obfs", action="store_true", help="Obfuscate PowerShell scripts"
         )
         psgroup.add_argument(
             "--amsi-bypass",
@@ -676,11 +630,14 @@ class smb(connection):
 
         from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
-        results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
+        results = [
+            r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)
+        ]
         if len(results) != 0:
             for host in results:
                 values = {
-                    str(attr["type"]).lower(): str(attr["vals"][0]) for attr in host["attributes"]
+                    str(attr["type"]).lower(): str(attr["vals"][0])
+                    for attr in host["attributes"]
                 }
                 if "mslaps-encryptedpassword" in values:
                     self.logger.fail(
@@ -694,7 +651,9 @@ class smb(connection):
                 elif "ms-mcs-admpwd" in values:
                     msMCSAdmPwd = values["ms-mcs-admpwd"]
                 else:
-                    self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
+                    self.logger.fail(
+                        "No result found with attribute ms-MCS-AdmPwd or msLAPS-Password"
+                    )
             logging.debug(
                 f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}"
             )
@@ -1768,7 +1727,9 @@ class smb(connection):
             policy_handle,
             lsad.POLICY_INFORMATION_CLASS.PolicyAccountDomainInformation,
         )
-        domain_sid = resp["PolicyInformation"]["PolicyAccountDomainInfo"]["DomainSid"].formatCanonical()
+        domain_sid = resp["PolicyInformation"]["PolicyAccountDomainInfo"][
+            "DomainSid"
+        ].formatCanonical()
 
         so_far = 0
         simultaneous = 1000
@@ -1786,10 +1747,7 @@ class smb(connection):
                 sids.append(f"{domain_sid}-{i:d}")
             try:
                 lsat.hLsarLookupSids(
-                    dce,
-                    policy_handle,
-                    sids,
-                    lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
+                    dce, policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
                 )
             except DCERPCException as e:
                 if str(e).find("STATUS_NONE_MAPPED") >= 0:
@@ -1803,22 +1761,28 @@ class smb(connection):
             for n, item in enumerate(resp["TranslatedNames"]["Names"]):
                 if item["Use"] != SID_NAME_USE.SidTypeUnknown:
                     rid = so_far + n
-                    domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]]["Name"]
+                    domain = resp["ReferencedDomains"]["Domains"][item["DomainIndex"]][
+                        "Name"
+                    ]
                     user = item["Name"]
                     sid_type = SID_NAME_USE.enumItems(item["Use"]).name
                     self.logger.highlight(f"{rid}: {domain}\\{user} ({sid_type})")
-                    entries.append({
-                        "rid": rid,
-                        "domain": domain,
-                        "username": user,
-                        "sidtype": sid_type,
-                    })
+                    entries.append(
+                        {
+                            "rid": rid,
+                            "domain": domain,
+                            "username": user,
+                            "sidtype": sid_type,
+                        }
+                    )
             so_far += simultaneous
         dce.disconnect()
         return entries
 
     def put_file(self):
-        self.logger.display(f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}")
+        self.logger.display(
+            f"Copying {self.args.put_file[0]} to {self.args.put_file[1]}"
+        )
         with open(self.args.put_file[0], "rb") as file:
             try:
                 self.conn.putFile(self.args.share, self.args.put_file[1], file.read)
@@ -1829,7 +1793,9 @@ class smb(connection):
                 self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
     def get_file(self):
-        self.logger.display(f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}")
+        self.logger.display(
+            f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}"
+        )
         file_handle = self.args.get_file[1]
         if self.args.append_host:
             file_handle = f"{self.hostname}-{self.args.get_file[1]}"
@@ -1944,10 +1910,11 @@ class smb(connection):
                     dc_conn = DPLootSMBConnection(dc_target)
                     dc_conn.connect()  # Connect to DC
                     if dc_conn.is_admin():
-                        self.logger.success("User is Domain Administrator, exporting domain backupkey...")
+                        self.logger.success(
+                            "User is Domain Administrator, exporting domain backupkey..."
+                        )
                         backupkey_triage = BackupkeyTriage(
-                            target=dc_target,
-                            conn=dc_conn
+                            target=dc_target, conn=dc_conn
                         )
                         backupkey = backupkey_triage.triage_backupkey()
                         self.pvkbytes = backupkey.backupkey_v2
@@ -1980,7 +1947,9 @@ class smb(connection):
 
         plaintexts = {
             username: password
-            for _, _, username, password, _, _ in self.db.get_credentials(cred_type="plaintext")
+            for _, _, username, password, _, _ in self.db.get_credentials(
+                cred_type="plaintext"
+            )
         }
         nthashes = {
             username: nt.split(":")[1] if ":" in nt else nt
@@ -1993,7 +1962,9 @@ class smb(connection):
 
         # Collect User and Machine masterkeys
         try:
-            self.logger.display("Collecting User and Machine masterkeys, grab a coffee and be patient...")
+            self.logger.display(
+                "Collecting User and Machine masterkeys, grab a coffee and be patient..."
+            )
             masterkeys_triage = MasterkeysTriage(
                 target=target,
                 conn=conn,
@@ -2011,7 +1982,9 @@ class smb(connection):
             logging.fail("No masterkeys looted")
             return
 
-        self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
+        self.logger.success(
+            f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets..."
+        )
 
         try:
             # Collect User and Machine Credentials Manager secrets
@@ -2055,9 +2028,7 @@ class smb(connection):
             # Collect Chrome Based Browser stored secrets
             dump_cookies = True if self.args.dpapi == "cookies" else False
             browser_triage = BrowserTriage(
-                target=target,
-                conn=conn,
-                masterkeys=masterkeys
+                target=target, conn=conn, masterkeys=masterkeys
             )
             browser_credentials, cookies = browser_triage.triage_browsers(
                 gather_cookies=dump_cookies
@@ -2089,9 +2060,7 @@ class smb(connection):
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(
-                target=target,
-                conn=conn,
-                masterkeys=masterkeys
+                target=target, conn=conn, masterkeys=masterkeys
             )
             vaults = vaults_triage.triage_vaults()
         except Exception as e:
