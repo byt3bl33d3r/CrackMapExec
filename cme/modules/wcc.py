@@ -307,7 +307,6 @@ class CMEModule:
 					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
 
 		# TODO: check_applocker
-		# TODO: check_smb_encryption (maybe check the characteristics of the connection we already have ?)
 		# TODO: check_bitlockerconf
 
 		for result in (
@@ -413,6 +412,11 @@ class CMEModule:
 				),(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS',
 					'LdapEnforceChannelBinding', 2
+				)
+			),
+			ConfigCheck('SMB encryption', 'Checks if SMB encryption is enabled').check((
+					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters',
+					'EncryptData', 1
 				)
 			),
 			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled').check((
