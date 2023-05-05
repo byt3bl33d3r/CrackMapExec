@@ -51,6 +51,23 @@ class CMEModule:
 		dce = remoteOps._RemoteOperations__rrp
 		self.check_config(dce, connection)
 		remoteOps.finish()
+		self.export_results()
+
+	def export_results(self):
+		with open(self.output, 'w') as output:
+			if self.output_format == 'json':
+				json.dump(self.results, output)
+			elif self.output_format == 'csv':
+				output.write('Host,Check,Description,Status,Reasons')
+				for host in self.results:
+					for result in self.results[host]['checks']:
+						output.write(f'\n{host}')
+						for field in (result['Check'], result['Description'], result['Status'], ' ; '.join(result['Reasons']).replace('\x00','')):
+							if ',' in field:
+								field = field.replace('"', '""')
+								field = f'"{field}"'
+							output.write(f',{field}')
+		print(f'Results written to {self.output}')
 
 	def debug(self, msg, *args):
 		if self.verbose:
@@ -133,8 +150,8 @@ class CMEModule:
 						opstring = '{left} != {right}'
 						nopstring = '{left} == {right}'
 					else:
-						opstring = f'{op.__name__}({{left}}, {{right}}) == True '
-						nopstring = f'{op.__name__}({{left}}, {{right}}) == True '
+						opstring = f'{op.__name__}({{left}}, {{right}}) == True'
+						nopstring = f'{op.__name__}({{left}}, {{right}}) == True'
 
 					value = module.reg_query_value(dce, key, value_name)
 
