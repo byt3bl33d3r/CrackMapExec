@@ -398,6 +398,8 @@ class CMEModule:
 
 	def check_last_successful_update(self, connection):
 		records = connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
+		if len(records) == 0:
+			return False, ['No update found']
 		most_recent_update_date = records[0]['TimeGenerated']['value']
 		most_recent_update_date = most_recent_update_date.split('.')[0]
 		most_recent_update_date = time.strptime(most_recent_update_date, '%Y%m%d%H%M%S')
