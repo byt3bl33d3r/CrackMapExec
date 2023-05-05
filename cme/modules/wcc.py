@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from pprint import pprint
+import operator
+import time
+
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp, samr, scmr
 from impacket.dcerpc.v5.rrp import DCERPCSessionError
 from impacket.smbconnection import SessionError as SMBSessionError
-#from impacket.dcerpc.v5.dtypes import RPC_UNICODE_STRING, DWORD, 
 from impacket.examples.secretsdump import RemoteOperations
 from impacket.system_errors import *
-import operator
-import time
 
 OUTDATED_THRESHOLD = 30
 
@@ -22,8 +22,8 @@ class CMEModule:
 	name = 'wcc'
 	description = 'Check various security configuration items on Windows machines'
 	supported_protocols = ['smb']
-	opsec_safe= True #Does the module touch disk?
-	multiple_hosts = True #Does it make sense to run this module on multiple hosts at a time?
+	opsec_safe= True
+	multiple_hosts = True
 
 	def options(self, context, module_options):
 		'''
@@ -38,47 +38,6 @@ class CMEModule:
 		self.verbose = 'VERBOSE' in module_options
 		self.results = {}
 
-	def debug(self, msg, *args):
-		if self.verbose:
-			try:
-				print(f'\x1b[33m{msg}', *args, '\x1b[0m')
-			except BlockingIOError:
-				pass
-			except TypeError:
-				print('\x1b[33m', repr(msg), *args, '\x1b[0m')
-
-	def get_local_users(self, connection):
-		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		remoteOps.connectSamr(remoteOps.getMachineNameAndDomain()[0])
-		users = remoteOps.getDomainUsers()
-		remoteOps.finish()
-		return dict([(user['RelativeId'], user['Name']) for user in users['Buffer']['Buffer']])
-
-	def get_service(self, service_name, connection):
-		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		machine_name,_ = remoteOps.getMachineNameAndDomain()
-		remoteOps._RemoteOperations__connectSvcCtl()
-		dce = remoteOps._RemoteOperations__scmr
-		scm_handle = scmr.hROpenSCManagerW(dce, machine_name)['lpScHandle']
-		service_handle = scmr.hROpenServiceW(dce, scm_handle, service_name)['lpServiceHandle']
-		service_config = scmr.hRQueryServiceConfigW(dce, service_handle)['lpServiceConfig']
-		service_status = scmr.hRQueryServiceStatus(dce, service_handle)['lpServiceStatus']['dwCurrentState']
-		remoteOps.finish()
-
-		return service_config, service_status
-
-	def get_user_info(self, connection, rid=501):
-		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		machine_name, _ = remoteOps.getMachineNameAndDomain()
-		remoteOps.connectSamr(machine_name)
-		dce = remoteOps._RemoteOperations__samr
-		domain_handle = remoteOps._RemoteOperations__domainHandle
-		user_handle = samr.hSamrOpenUser(dce, domain_handle, userId=rid)['UserHandle']
-		user_info = samr.hSamrQueryInformationUser2(dce, user_handle, samr.USER_INFORMATION_CLASS.UserAllInformation)
-		user_info = user_info['Buffer']['All']
-		remoteOps.finish()
-		return user_info
-
 	def on_admin_login(self, context, connection):
 		self.log = connection.logger
 		self.results.setdefault(connection.host, {'checks':[]})
@@ -88,129 +47,14 @@ class CMEModule:
 		self.check_config(dce, connection)
 		remoteOps.finish()
 
-	def check_laps(self, dce, smb):
-		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
-		subkeys =  self.reg_get_subkeys(dce, key_name)
-		reasons = []
-		success = False
-		laps_path = '\\Program Files\\LAPS\\CSE'
-
-		for subkey in subkeys:
-			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'DllName')
-			if type(value) == str and 'laps\\cse\\admpwd.dll' in value.lower():
-				reasons.append(f'{key_name}\\...\\DllName matches AdmPwd.dll')
-				success = True
-				laps_path = '\\'.join(value.split('\\')[1:-1])
-				break
-		if not success:
-			reasons.append(f'No match found in {key_name}\\...\\DllName')
-
-		l = ls(smb, laps_path)
-		if l:
-			reasons.append('Found LAPS folder at ' + laps_path)
-		else:
-			success = False
-			reasons.append('LAPS folder does not exist')
-			return success, reasons
-
-
-		l = ls(smb, laps_path + '\\AdmPwd.dll')
-		if l:
-			reasons.append(f'Found {laps_path}\\AdmPwd.dll')
-		else:
-			success = False
-			reasons.append(f'{laps_path}\\AdmPwd.dll not found')
-
-		return success, reasons
-
-	def check_last_successful_update(self, connection):
-		records = connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
-		most_recent_update_date = records[0]['TimeGenerated']['value']
-		most_recent_update_date = most_recent_update_date.split('.')[0]
-		most_recent_update_date = time.strptime(most_recent_update_date, '%Y%m%d%H%M%S')
-		most_recent_update_date = time.mktime(most_recent_update_date)
-		now = time.time()
-		days_since_last_update = (now - most_recent_update_date)//86400
-		if days_since_last_update <= OUTDATED_THRESHOLD:
-			return True, [f'Last update was {days_since_last_update} <= {OUTDATED_THRESHOLD} days ago']
-		else:
-			return False, [f'Last update was {days_since_last_update} > {OUTDATED_THRESHOLD} days ago']
-
-	def check_administrator_name(self, connection):
-		users = self.get_local_users(connection)
-		ok = users[500] not in ('Administrator', 'Administrateur')
-		reasons = [f'Administrator name changed to {users[500]}' if ok else 'Administrator name unchanged']
-		return ok, reasons
-
-	def check_guest_account_disabled(self, connection):
-		user_info = self.get_user_info(connection)
-		uac = user_info['UserAccountControl']
-		disabled = bool(uac & samr.USER_ACCOUNT_DISABLED)
-		reasons = ['Guest account disabled' if disabled else 'Guest account enabled']
-		return disabled, reasons
-
-	def check_spooler_service(self, connection):
-		ok = False
-		service_config, service_status = self.get_service('Spooler', connection)
-		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
-			ok = True
-			reasons = ['Spooler service disabled']
-		else:
-			reasons = ['Spooler service enabled']
-			if service_status == scmr.SERVICE_RUNNING:
-				reasons.append('Spooler service running')
-			elif service_status == scmr.SERVICE_STOPPED:
-				ok = True
-				reasons.append('Spooler service not running')
-
-		return ok, reasons
-
-	def check_wsus_running(self, connection):
-		ok = True
-		reasons = []
-		service_config, service_status = self.get_service('wuauserv', connection)
-		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
-			reasons = ['WSUS service disabled']
-		elif service_status != scmr.SERVICE_RUNNING:
-			reasons = ['WSUS service not running']
-		return ok, reasons
-
-	def check_nbtns(self, dce):
-		key_name = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces'
-		subkeys = self.reg_get_subkeys(dce, key_name)
-		success = False
-		reasons = []
-		missing = 0
-		nbtns_enabled = 0
-		for subkey in subkeys:
-			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'NetbiosOptions')
-			if type(value) == DCERPCSessionError:
-				if value.error_code == ERROR_OBJECT_NOT_FOUND:
-					missing += 1
-				continue
-			if value != 2:
-				nbtns_enabled += 1
-		if missing > 0:
-			reasons.append(f'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces\\<interface>\\NetbiosOption: value not found on {missing} interfaces')
-		if nbtns_enabled > 0:
-			reasons.append(f'NBTNS enabled on {nbtns_enabled} interfaces out of {len(subkeys)}')
-		if missing == 0 and nbtns_enabled == 0:
-			success = True
-			reasons.append('NBTNS disabled on all interfaces')
-		return success, reasons
-
-	def check_applocker(self, dce):
-		key_name = 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\SrpV2'
-		subkeys = self.reg_get_subkeys(dce, key_name)
-		rule_count = 0
-		for collection in subkeys:
-			collection_key_name = key_name + '\\' + collection
-			rules = self.reg_get_subkeys(dce, collection_key_name)
-			rule_count += len(rules)
-		success = rule_count > 0
-		reasons = [f'Found {rule_count} AppLocker rules defined']
-
-		return success, reasons
+	def debug(self, msg, *args):
+		if self.verbose:
+			try:
+				print(f'\x1b[33m{msg}', *args, '\x1b[0m')
+			except TypeError:
+				print('\x1b[33m', repr(msg), *args, '\x1b[0m')
+			except Exception as e:
+				print(e)
 
 	def add_result(self, host, result):
 		self.results[host]['checks'].append({
@@ -219,6 +63,9 @@ class CMEModule:
 			"Status":'OK' if result.ok else 'KO',
 			"Reasons":result.reasons
 		})
+
+	# Check methods #
+	#################
 
 	def check_config(self, dce, connection):
 		host = connection.host
@@ -253,6 +100,11 @@ class CMEModule:
 						(key, value_name, expected_value) = spec
 					elif len(spec) == 4:
 						(key, value_name, expected_value, op) = spec
+					else:
+						self.ok = False
+						self.reasons = ['Check could not be performed (invalid specification provided)']
+						return self
+
 					if op == operator.eq:
 						opstring = '{left} == {right}'
 						nopstring = '{left} != {right}'
@@ -278,9 +130,7 @@ class CMEModule:
 						opstring = f'{op.__name__}({{left}}, {{right}}) == True '
 						nopstring = f'{op.__name__}({{left}}, {{right}}) == True '
 
-					module.debug('Checking if {0}'.format(opstring.format(left=f'{key}\\{value_name}', right=f'{expected_value}')))
 					value = module.reg_query_value(dce, key, value_name)
-					module.debug(f'Got value {value}')
 
 					if type(value) == DCERPCSessionError:
 						if missing_ok == False or self.options['KOIfMissing']:
@@ -289,6 +139,9 @@ class CMEModule:
 							self.reasons.append(f'{key}: Key not found')
 						elif value.error_code == ERROR_OBJECT_NOT_FOUND:
 							self.reasons.append(f'{value_name}: Value not found')
+						else:
+							self.ok = False
+							self.reasons.append(f'Error while retrieving value of {key}\\{value_name}: {value}')
 						continue
 
 					if op(value, expected_value):
@@ -319,6 +172,7 @@ class CMEModule:
 				else:
 					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
 
+		# Perform all the checks and store the results for all of them
 		for result in (
 			ConfigCheck('Last successful update', 'Checks how old is the last successful update').wrap_check(self.check_last_successful_update, connection),
 			ConfigCheck('LAPS', 'Checks if LAPS is installed').wrap_check(self.check_laps, dce, connection),
@@ -481,7 +335,133 @@ class CMEModule:
 		):
 			result.log()
 			self.add_result(host, result)
-		pprint(self.results)
+
+	def check_laps(self, dce, smb):
+		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
+		subkeys =  self.reg_get_subkeys(dce, key_name)
+		reasons = []
+		success = False
+		laps_path = '\\Program Files\\LAPS\\CSE'
+
+		for subkey in subkeys:
+			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'DllName')
+			if type(value) == str and 'laps\\cse\\admpwd.dll' in value.lower():
+				reasons.append(f'{key_name}\\...\\DllName matches AdmPwd.dll')
+				success = True
+				laps_path = '\\'.join(value.split('\\')[1:-1])
+				break
+		if not success:
+			reasons.append(f'No match found in {key_name}\\...\\DllName')
+
+		l = ls(smb, laps_path)
+		if l:
+			reasons.append('Found LAPS folder at ' + laps_path)
+		else:
+			success = False
+			reasons.append('LAPS folder does not exist')
+			return success, reasons
+
+
+		l = ls(smb, laps_path + '\\AdmPwd.dll')
+		if l:
+			reasons.append(f'Found {laps_path}\\AdmPwd.dll')
+		else:
+			success = False
+			reasons.append(f'{laps_path}\\AdmPwd.dll not found')
+
+		return success, reasons
+
+	def check_last_successful_update(self, connection):
+		records = connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
+		most_recent_update_date = records[0]['TimeGenerated']['value']
+		most_recent_update_date = most_recent_update_date.split('.')[0]
+		most_recent_update_date = time.strptime(most_recent_update_date, '%Y%m%d%H%M%S')
+		most_recent_update_date = time.mktime(most_recent_update_date)
+		now = time.time()
+		days_since_last_update = (now - most_recent_update_date)//86400
+		if days_since_last_update <= OUTDATED_THRESHOLD:
+			return True, [f'Last update was {days_since_last_update} <= {OUTDATED_THRESHOLD} days ago']
+		else:
+			return False, [f'Last update was {days_since_last_update} > {OUTDATED_THRESHOLD} days ago']
+
+	def check_administrator_name(self, connection):
+		users = self.get_local_users(connection)
+		ok = users[500] not in ('Administrator', 'Administrateur')
+		reasons = [f'Administrator name changed to {users[500]}' if ok else 'Administrator name unchanged']
+		return ok, reasons
+
+	def check_guest_account_disabled(self, connection):
+		user_info = self.get_user_info(connection)
+		uac = user_info['UserAccountControl']
+		disabled = bool(uac & samr.USER_ACCOUNT_DISABLED)
+		reasons = ['Guest account disabled' if disabled else 'Guest account enabled']
+		return disabled, reasons
+
+	def check_spooler_service(self, connection):
+		ok = False
+		service_config, service_status = self.get_service('Spooler', connection)
+		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
+			ok = True
+			reasons = ['Spooler service disabled']
+		else:
+			reasons = ['Spooler service enabled']
+			if service_status == scmr.SERVICE_RUNNING:
+				reasons.append('Spooler service running')
+			elif service_status == scmr.SERVICE_STOPPED:
+				ok = True
+				reasons.append('Spooler service not running')
+
+		return ok, reasons
+
+	def check_wsus_running(self, connection):
+		ok = True
+		reasons = []
+		service_config, service_status = self.get_service('wuauserv', connection)
+		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
+			reasons = ['WSUS service disabled']
+		elif service_status != scmr.SERVICE_RUNNING:
+			reasons = ['WSUS service not running']
+		return ok, reasons
+
+	def check_nbtns(self, dce):
+		key_name = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces'
+		subkeys = self.reg_get_subkeys(dce, key_name)
+		success = False
+		reasons = []
+		missing = 0
+		nbtns_enabled = 0
+		for subkey in subkeys:
+			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'NetbiosOptions')
+			if type(value) == DCERPCSessionError:
+				if value.error_code == ERROR_OBJECT_NOT_FOUND:
+					missing += 1
+				continue
+			if value != 2:
+				nbtns_enabled += 1
+		if missing > 0:
+			reasons.append(f'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces\\<interface>\\NetbiosOption: value not found on {missing} interfaces')
+		if nbtns_enabled > 0:
+			reasons.append(f'NBTNS enabled on {nbtns_enabled} interfaces out of {len(subkeys)}')
+		if missing == 0 and nbtns_enabled == 0:
+			success = True
+			reasons.append('NBTNS disabled on all interfaces')
+		return success, reasons
+
+	def check_applocker(self, dce):
+		key_name = 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\SrpV2'
+		subkeys = self.reg_get_subkeys(dce, key_name)
+		rule_count = 0
+		for collection in subkeys:
+			collection_key_name = key_name + '\\' + collection
+			rules = self.reg_get_subkeys(dce, collection_key_name)
+			rule_count += len(rules)
+		success = rule_count > 0
+		reasons = [f'Found {rule_count} AppLocker rules defined']
+
+		return success, reasons
+
+	# Methods for getting values from the remote registry #
+	#######################################################
 
 	def _open_root_key(self, dce, root_key):
 		ans = None
@@ -596,20 +576,40 @@ class CMEModule:
 
 		return data
 
-def le(reg_sz_string, number):
-	return int(reg_sz_string[:-1]) <= number
+	# Methods for getting values from SAMR and SCM #
+	################################################
 
-def in_(obj, seq):
-	return obj in seq
+	def get_local_users(self, connection):
+		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
+		remoteOps.connectSamr(remoteOps.getMachineNameAndDomain()[0])
+		users = remoteOps.getDomainUsers()
+		remoteOps.finish()
+		return dict([(user['RelativeId'], user['Name']) for user in users['Buffer']['Buffer']])
 
-def not_(boolean_operator):
-	def wrapper(*args, **kwargs):
-		return not boolean_operator(*args, **kwargs)
-	wrapper.__name__ = f'not_{boolean_operator.__name__}'
-	return wrapper
+	def get_service(self, service_name, connection):
+		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
+		machine_name,_ = remoteOps.getMachineNameAndDomain()
+		remoteOps._RemoteOperations__connectSvcCtl()
+		dce = remoteOps._RemoteOperations__scmr
+		scm_handle = scmr.hROpenSCManagerW(dce, machine_name)['lpScHandle']
+		service_handle = scmr.hROpenServiceW(dce, scm_handle, service_name)['lpServiceHandle']
+		service_config = scmr.hRQueryServiceConfigW(dce, service_handle)['lpServiceConfig']
+		service_status = scmr.hRQueryServiceStatus(dce, service_handle)['lpServiceStatus']['dwCurrentState']
+		remoteOps.finish()
 
-def startswith(string, start):
-	return string.startswith(start)
+		return service_config, service_status
+
+	def get_user_info(self, connection, rid=501):
+		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
+		machine_name, _ = remoteOps.getMachineNameAndDomain()
+		remoteOps.connectSamr(machine_name)
+		dce = remoteOps._RemoteOperations__samr
+		domain_handle = remoteOps._RemoteOperations__domainHandle
+		user_handle = samr.hSamrOpenUser(dce, domain_handle, userId=rid)['UserHandle']
+		user_info = samr.hSamrQueryInformationUser2(dce, user_handle, samr.USER_INFORMATION_CLASS.UserAllInformation)
+		user_info = user_info['Buffer']['All']
+		remoteOps.finish()
+		return user_info
 
 def ls(smb, path='\\', share='C$'):
 	l = []
@@ -621,3 +621,21 @@ def ls(smb, path='\\', share='C$'):
 		else:
 			raise e
 	return l
+
+# Comparison operators #
+########################
+
+def le(reg_sz_string, number):
+	return int(reg_sz_string[:-1]) <= number
+
+def in_(obj, seq):
+	return obj in seq
+
+def startswith(string, start):
+	return string.startswith(start)
+
+def not_(boolean_operator):
+	def wrapper(*args, **kwargs):
+		return not boolean_operator(*args, **kwargs)
+	wrapper.__name__ = f'not_{boolean_operator.__name__}'
+	return wrapper
