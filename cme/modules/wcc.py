@@ -196,8 +196,8 @@ class CMEModule:
 					return
 
 				status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
-				reasons = ', '.join(self.reasons) if module.verbose else ''
-				module.log.warning(f'{self.name}: {status}. Reasons: {reasons[:60] + ("..." if len(reasons) > 60 else "")}')
+				reasons = ": " + ', '.join(self.reasons) if module.verbose else ''
+				module.log.warning(f'{status} {self.name}{reasons}')
 
 		# Perform all the checks and store the results for all of them
 		for result in (
