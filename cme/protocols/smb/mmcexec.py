@@ -28,7 +28,7 @@
 #
 
 import logging
-import os
+from os.path import join as path_join
 from time import sleep
 from cme.helpers.misc import gen_random_string
 
@@ -241,7 +241,7 @@ class MMCEXEC:
         while True:
             try:
                 with open(
-                    os.path.join("/tmp", "cme_hosted", self.__output), "r"
+                    path_join("/tmp", "cme_hosted", self.__output), "r"
                 ) as output:
                     self.output_callback(output.read())
                 break
