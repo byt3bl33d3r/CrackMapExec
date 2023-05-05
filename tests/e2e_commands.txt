@@ -166,7 +166,7 @@ crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M user-desc --options
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M whoami
 crackmapexec ldap TARGET -u USERNAME -p PASSWORD KERBEROS -M whoami --options
 ##### WINRM
-crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS
+crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS # need an extra space after this command due to regex
 crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS -X whoami
 crackmapexec winrm TARGET -u USERNAME -p PASSWORD KERBEROS --laps
 crackmapexec mssql TARGET -u USERNAME -p PASSWORD KERBEROS
