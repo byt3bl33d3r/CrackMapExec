@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from pprint import pprint
+import json
 import operator
 import time
 
@@ -13,11 +13,14 @@ from impacket.examples.secretsdump import RemoteOperations
 from impacket.system_errors import *
 
 OUTDATED_THRESHOLD = 30
+DEFAULT_OUTPUT_FILE = './config_checker.json'
+DEFAULT_OUTPUT_FORMAT = 'json'
+VALID_OUTPUT_FORMATS = ['json', 'csv']
 
 class CMEModule:
 	'''
-		Windows Configuration Checker
-		Module by @__fpr
+	Windows Configuration Checker
+	Module by @__fpr
 	'''
 	name = 'wcc'
 	description = 'Check various security configuration items on Windows machines'
@@ -26,16 +29,18 @@ class CMEModule:
 	multiple_hosts = True
 
 	def options(self, context, module_options):
-		'''
-		OUTPUT_FORMAT   Format for report (Default: 'json')
-		OUTPUT          Path for report (Default: './config_checker.json')
-		SEP             Separator for registry key path components (Default: '\\')
+		f'''
+		OUTPUT_FORMAT   Format for report (Default: '{DEFAULT_OUTPUT_FORMAT}')
+		OUTPUT          Path for report (Default: '{DEFAULT_OUTPUT_FILE}')
+		QUIET           Do not print results to stdout (Default: False)
 		VERBOSE         Produce verbose output (Default: False)
 		'''
-		self.output = module_options.get('OUTPUT', './config_checker.json')
-		self.output_format = module_options.get('OUTPUT_FORMAT', 'json')
-		self.sep = module_options.get('SEP', '\\')
-		self.verbose = 'VERBOSE' in module_options
+		self.output = module_options.get('OUTPUT',DEFAULT_OUTPUT_FILE)
+		self.output_format = module_options.get('OUTPUT_FORMAT', DEFAULT_OUTPUT_FORMAT)
+		if self.output_format not in VALID_OUTPUT_FORMATS:
+			self.output_format = DEFAULT_OUTPUT_FORMAT
+		self.verbose = module_options.get('VERBOSE', 'false').lower() in ('true', '1')
+		self.quiet = module_options.get('QUIET', 'false').lower() in ('true', '1')
 		self.results = {}
 
 	def on_admin_login(self, context, connection):
@@ -69,7 +74,8 @@ class CMEModule:
 
 	def check_config(self, dce, connection):
 		host = connection.host
-		module = self
+		module = self # to access the module object from the ConfigCheck class
+
 		class ConfigCheck:
 			"""
 			Class for performing the checks and holding the results
@@ -167,10 +173,12 @@ class CMEModule:
 				return self
 
 			def log(self):
-				if self.ok:
-					module.log.warning(self.name + ': ' + '\x1b[1;32mOK\x1b[0m')
-				else:
-					module.log.warning(self.name + ': ' + '\x1b[1;31mKO\x1b[0m')
+				if module.quiet:
+					return
+
+				status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
+				reasons = ', '.join(self.reasons) if module.verbose else ''
+				module.log.warning(f'{self.name}: {status}. Reasons: {reasons[:60] + ("..." if len(reasons) > 60 else "")}')
 
 		# Perform all the checks and store the results for all of them
 		for result in (
@@ -479,8 +487,8 @@ class CMEModule:
 			self.log.error('Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
 		return ans
 
-	def reg_get_subkeys(self, dce, key_name, separator='\\'):
-		root_key, subkey = key_name.split(separator, 1)
+	def reg_get_subkeys(self, dce, key_name):
+		root_key, subkey = key_name.split('\\', 1)
 		ans = self._open_root_key(dce, root_key)
 		subkeys = []
 		if ans is None:
@@ -490,7 +498,6 @@ class CMEModule:
 		try:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
-			self.debug(e)
 			if e.error_code == ERROR_FILE_NOT_FOUND:
 				return e
 
@@ -505,11 +512,10 @@ class CMEModule:
 				if e.error_code == ERROR_NO_MORE_ITEMS:
 					break
 				else:
-					self.debug(e)
 					break
 		return subkeys
 
-	def reg_query_value(self, dce, keyName, valueName=None, separator='\\'):
+	def reg_query_value(self, dce, keyName, valueName=None):
 		"""
 		Query remote registry data for a given registry value
 		"""
@@ -545,7 +551,7 @@ class CMEModule:
 					value_data = int.from_bytes(value_data, 'little')
 			return value_type, value_name[:-1], value_data
 
-		root_key, subkey = keyName.split(separator, 1)
+		root_key, subkey = keyName.split('\\', 1)
 		ans = self._open_root_key(dce, root_key)
 		if ans is None:
 			return ans
@@ -554,7 +560,6 @@ class CMEModule:
 		try:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
-			self.debug(e)
 			if e.error_code == ERROR_FILE_NOT_FOUND:
 				return e
 
