@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# TODO: use CME logging in ls
+# TODO: review the return values for get_value and reg_get_subkeys
 
 import json
 import operator
@@ -412,13 +414,14 @@ class CMEModule:
 			return False, [f'Last update was {days_since_last_update} > {OUTDATED_THRESHOLD} days ago']
 
 	def check_administrator_name(self, connection):
-		users = self.get_local_users(connection)
-		ok = users[500] not in ('Administrator', 'Administrateur')
-		reasons = [f'Administrator name changed to {users[500]}' if ok else 'Administrator name unchanged']
+		user_info = self.get_user_info(connection, rid=500)
+		name = user_info['UserName']
+		ok = name not in ('Administrator', 'Administrateur')
+		reasons = [f'Administrator name changed to {name}' if ok else 'Administrator name unchanged']
 		return ok, reasons
 
 	def check_guest_account_disabled(self, connection):
-		user_info = self.get_user_info(connection)
+		user_info = self.get_user_info(connection, rid=501)
 		uac = user_info['UserAccountControl']
 		disabled = bool(uac & samr.USER_ACCOUNT_DISABLED)
 		reasons = ['Guest account disabled' if disabled else 'Guest account enabled']
@@ -518,7 +521,7 @@ class CMEModule:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
 			if e.error_code == ERROR_FILE_NOT_FOUND:
-				return e
+				return subkeys
 
 		subkey_handle = ans['phkResult']
 		i = 0
@@ -603,14 +606,10 @@ class CMEModule:
 	# Methods for getting values from SAMR and SCM #
 	################################################
 
-	def get_local_users(self, connection):
-		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		remoteOps.connectSamr(remoteOps.getMachineNameAndDomain()[0])
-		users = remoteOps.getDomainUsers()
-		remoteOps.finish()
-		return dict([(user['RelativeId'], user['Name']) for user in users['Buffer']['Buffer']])
-
 	def get_service(self, service_name, connection):
+		"""
+		Get the service status and configuration for specified service
+		"""
 		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
 		machine_name,_ = remoteOps.getMachineNameAndDomain()
 		remoteOps._RemoteOperations__connectSvcCtl()
@@ -624,9 +623,21 @@ class CMEModule:
 		return service_config, service_status
 
 	def get_user_info(self, connection, rid=501):
+		"""
+		Get user information for the user with the specified RID
+		"""
 		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		machine_name, _ = remoteOps.getMachineNameAndDomain()
-		remoteOps.connectSamr(machine_name)
+		machine_name, domain_name = remoteOps.getMachineNameAndDomain()
+
+		try:
+			remoteOps.connectSamr(machine_name)
+		except samr.DCERPCSessionError:
+			# If connecting to machine_name didn't work, it's probably because
+			# we're dealing with a domain controller, so we need to use the
+			# actual domain name instead of the machine name, because DCs don't
+			# use the SAM
+			remoteOps.connectSamr(domain_name)
+
 		dce = remoteOps._RemoteOperations__samr
 		domain_handle = remoteOps._RemoteOperations__domainHandle
 		user_handle = samr.hSamrOpenUser(dce, domain_handle, userId=rid)['UserHandle']
@@ -643,7 +654,8 @@ def ls(smb, path='\\', share='C$'):
 		if e.getErrorString()[0] == 'STATUS_NO_SUCH_FILE':
 			pass
 		else:
-			raise e
+			with open('./wcc_errors.log', 'a') as f:
+				f.write(f'{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: C:\\{path} {e.getErrorString()}\n')
 	return l
 
 # Comparison operators #
