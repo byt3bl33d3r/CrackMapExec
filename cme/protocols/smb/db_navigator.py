@@ -175,16 +175,11 @@ class navigator(DatabaseNavigator):
                 data = [["ShareID", "Name", "Remark"], [share_id, name, remark]]
                 print_table(data, title="Share")
                 host = self.db.get_hosts(filter_term=host_id)[0]
-                data = [["HostID", "IP", "Hostname", "Domain", "OS", "DC"]]
+                data = [
+                    ["HostID", "IP", "Hostname", "Domain", "OS", "DC"],
+                    [host[0], host[1], host[2], host[3], host[4], host[5]],
+                ]
 
-                host_id = host[0]
-                ip = host[1]
-                hostname = host[2]
-                domain = host[3]
-                os = host[4]
-                dc = host[5]
-
-                data.append([host_id, ip, hostname, domain, os, dc])
                 print_table(data, title="Share Location")
 
                 if users_r_access:
@@ -194,12 +189,7 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            data.append([cred_id, credtype, domain, username, password])
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
                     print_table(data, title="Users(s) with Read Access")
 
                 if users_w_access:
@@ -209,13 +199,7 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-
-                            data.append([cred_id, credtype, domain, username, password])
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
                     print_table(data, title="Users(s) with Write Access")
 
     def help_shares(self):
@@ -251,23 +235,15 @@ class navigator(DatabaseNavigator):
                 ]
 
                 for group in groups:
-                    group_id = group[0]
-                    domain = group[1]
-                    name = group[2]
-                    rid = group[3]
-                    members = len(self.db.get_group_relations(group_id=group_id))
-                    ad_members = group[4]
-                    last_query_time = group[5]
-
                     data.append(
                         [
-                            group_id,
-                            domain,
-                            name,
-                            rid,
-                            members,
-                            ad_members,
-                            last_query_time,
+                            group[0],
+                            group[1],
+                            group[2],
+                            group[3],
+                            len(self.db.get_group_relations(group_id=group_id)),
+                            group[4],
+                            group[5],
                         ]
                     )
                 print_table(data, title="Group")
@@ -290,21 +266,14 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            pillaged_from = cred[5]
-
                             data.append(
                                 [
-                                    cred_id,
-                                    credtype,
-                                    pillaged_from,
-                                    domain,
-                                    username,
-                                    password,
+                                    cred[0],
+                                    cred[4],
+                                    cred[5],
+                                    cred[1],
+                                    cred[2],
+                                    cred[3],
                                 ]
                             )
                 print_table(data, title="Member(s)")
@@ -402,13 +371,8 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=cred_id)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            # pillaged_from = cred[5]
-                            data.append([cred_id, credtype, domain, username, password])
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
+
                 print_table(data, title="Credential(s) with Admin Access")
 
     def help_hosts(self):
@@ -632,17 +596,9 @@ class navigator(DatabaseNavigator):
                 cred_id_list = []
 
                 for cred in creds:
-                    cred_id = cred[0]
-                    cred_id_list.append(cred_id)
-                    domain = cred[1]
-                    username = cred[2]
-                    password = cred[3]
-                    credtype = cred[4]
-                    pillaged_from = cred[5]
+                    cred_id_list.append(cred[0])
+                    data.append([cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]])
 
-                    data.append(
-                        [cred_id, credtype, pillaged_from, domain, username, password]
-                    )
                 print_table(data, title="Credential(s)")
 
                 data = [["GroupID", "Domain", "Name"]]
@@ -670,13 +626,8 @@ class navigator(DatabaseNavigator):
                         hosts = self.db.get_hosts(host_id)
 
                         for host in hosts:
-                            host_id = host[0]
-                            ip = host[1]
-                            hostname = host[2]
-                            domain = host[3]
-                            os = host[4]
+                            data.append([host[0], host[1], host[2], host[3], host[4]])
 
-                            data.append([host_id, ip, hostname, domain, os])
                 print_table(data, title="Admin Access to Host(s)")
 
     def help_creds(self):
@@ -720,7 +671,7 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'hosts' commands.
         """
-        commands = ["add", "remove", "dc"]
+        commands = ("add", "remove", "dc")
 
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
@@ -730,7 +681,7 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'creds' commands.
         """
-        commands = ["add", "remove", "hash", "plaintext"]
+        commands = ("add", "remove", "hash", "plaintext")
 
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
