@@ -2,13 +2,15 @@
 # -*- coding: utf-8 -*-
 import types
 from importlib.machinery import SourceFileLoader
-import os
+from os import listdir
+from os.path import join as path_join
+from os.path import dirname, exists, expanduser
 import cme
 
 
 class ProtocolLoader:
     def __init__(self):
-        self.cme_path = os.path.expanduser("~/.cme")
+        self.cme_path = expanduser("~/.cme")
 
     def load_protocol(self, protocol_path):
         loader = SourceFileLoader("protocol", protocol_path)
@@ -19,23 +21,23 @@ class ProtocolLoader:
     def get_protocols(self):
         protocols = {}
         protocol_paths = [
-            os.path.join(os.path.dirname(cme.__file__), "protocols"),
-            os.path.join(self.cme_path, "protocols"),
+            path_join(dirname(cme.__file__), "protocols"),
+            path_join(self.cme_path, "protocols"),
         ]
 
         for path in protocol_paths:
-            for protocol in os.listdir(path):
+            for protocol in listdir(path):
                 if protocol[-3:] == ".py" and protocol[:-3] != "__init__":
-                    protocol_path = os.path.join(path, protocol)
+                    protocol_path = path_join(path, protocol)
                     protocol_name = protocol[:-3]
 
                     protocols[protocol_name] = {"path": protocol_path}
 
-                    db_file_path = os.path.join(path, protocol_name, "database.py")
-                    db_nav_path = os.path.join(path, protocol_name, "db_navigator.py")
-                    if os.path.exists(db_file_path):
+                    db_file_path = path_join(path, protocol_name, "database.py")
+                    db_nav_path = path_join(path, protocol_name, "db_navigator.py")
+                    if exists(db_file_path):
                         protocols[protocol_name]["dbpath"] = db_file_path
-                    if os.path.exists(db_nav_path):
+                    if exists(db_nav_path):
                         protocols[protocol_name]["nvpath"] = db_nav_path
 
         return protocols
