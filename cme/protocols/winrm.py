@@ -158,14 +158,25 @@ class winrm(connection):
         else:
             # try:
             smb_conn = SMBConnection(self.host, self.host, None, timeout=5)
+            no_ntlm = False
             try:
                 smb_conn.login("", "")
-            except SessionError as e:
+            except BrokenPipeError:
+                self.logger.fail(f"Broken Pipe Error while attempting to login")
+            except Exception as e:
+                if "STATUS_NOT_SUPPORTED" in str(e):
+                    # no ntlm supported
+                    no_ntlm = True
                 pass
 
-            self.domain = smb_conn.getServerDNSDomainName()
-            self.hostname = smb_conn.getServerName()
+            self.domain = (
+                smb_conn.getServerDNSDomainName() if not no_ntlm else self.args.domain
+            )
+            self.hostname = smb_conn.getServerName() if not no_ntlm else self.host
             self.server_os = smb_conn.getServerOS()
+            if isinstance(self.server_os.lower(), bytes):
+                self.server_os = self.server_os.decode("utf-8")
+
             self.logger.extra["hostname"] = self.hostname
 
             self.output_filename = os.path.expanduser(
@@ -339,8 +350,6 @@ class winrm(connection):
                     f"winrm create_conn_obj() - Received response code: {res.status_code}"
                 )
                 self.endpoint = url
-                self.logger.debug(f"Port args: {self.args.port}")
-                self.logger.debug(f"Port extra: {self.logger.extra['port']}")
                 if self.endpoint.startswith("https://"):
                     self.logger.extra["port"] = self.args.port if self.args.port else 5986
                 else:
