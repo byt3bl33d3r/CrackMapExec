@@ -537,6 +537,7 @@ class smb(connection):
         )
         self.hostname = self.conn.getServerName() if not no_ntlm else self.host
         self.server_os = self.conn.getServerOS()
+        self.logger.extra["hostname"] = self.hostname
 
         try:
             self.signing = (
