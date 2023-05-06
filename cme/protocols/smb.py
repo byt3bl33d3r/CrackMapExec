@@ -539,6 +539,9 @@ class smb(connection):
         self.server_os = self.conn.getServerOS()
         self.logger.extra["hostname"] = self.hostname
 
+        if isinstance(self.server_os.lower(), bytes):
+            self.server_os = self.server_os.decode("utf-8")
+
         try:
             self.signing = (
                 self.conn.isSigningRequired()
