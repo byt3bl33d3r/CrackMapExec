@@ -10,22 +10,15 @@ class navigator(DatabaseNavigator):
         data = [["CredID", "Admin On", "CredType", "Domain", "UserName", "Password"]]
 
         for cred in creds:
-            cred_id = cred[0]
-            credtype = cred[1]
-            domain = cred[2]
-            username = cred[3]
-            password = cred[4]
-            # pillaged_from = cred[5]
-
-            links = self.db.get_admin_relations(user_id=cred_id)
+            links = self.db.get_admin_relations(user_id=cred[0])
             data.append(
                 [
-                    cred_id,
+                    cred[0],  # cred_id
                     str(len(links)) + " Host(s)",
-                    credtype,
-                    domain,
-                    username,
-                    password,
+                    cred[1],  # cred_type
+                    cred[2],  # domain
+                    cred[3],  # username
+                    cred[4],  # password
                 ]
             )
         print_table(data, title="Credentials")
@@ -33,24 +26,16 @@ class navigator(DatabaseNavigator):
     def display_hosts(self, hosts):
         data = [["HostID", "Admins", "IP", "Hostname", "Domain", "OS", "DB Instances"]]
         for host in hosts:
-            host_id = host[0]
-            ip = host[1]
-            hostname = host[2]
-            domain = host[3]
-            os = host[4]
-            instances = host[5]
-
-            links = self.db.get_admin_relations(host_id=host_id)
-
+            links = self.db.get_admin_relations(host_id=host[0])
             data.append(
                 [
-                    host_id,
+                    host[0],
                     str(len(links)) + " Cred(s)",
-                    ip,
-                    hostname,
-                    domain,
-                    os,
-                    instances,
+                    host[1],
+                    host[2],
+                    host[3],
+                    host[4],
+                    host[5],
                 ]
             )
         print_table(data, title="Hosts")
@@ -71,15 +56,8 @@ class navigator(DatabaseNavigator):
                 host_id_list = []
 
                 for host in hosts:
-                    host_id = host[0]
-                    host_id_list.append(host_id)
-
-                    ip = host[1]
-                    hostname = host[2]
-                    domain = host[3]
-                    os = host[4]
-
-                    data.append([host_id, ip, hostname, domain, os])
+                    host_id_list.append(host[0])
+                    data.append([host[0], host[1], host[2], host[3], host[4]])
 
                 print_table(data, title="Host(s)")
 
@@ -92,14 +70,7 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=cred_id)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            # pillaged_from = cred[5]
-
-                            data.append([cred_id, credtype, domain, username, password])
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
                 print_table(data, title="Credential(s) with Admin Access")
 
     def do_creds(self, line):
@@ -141,15 +112,8 @@ class navigator(DatabaseNavigator):
             cred_id_list = []
 
             for cred in creds:
-                cred_id = cred[0]
-                cred_id_list.append(cred_id)
-
-                credType = cred[1]
-                domain = cred[2]
-                username = cred[3]
-                password = cred[4]
-
-                data.append([cred_id, credType, domain, username, password])
+                cred_id_list.append(cred[0])
+                data.append([cred[0], cred[1], cred[2], cred[3], cred[4]])
 
             print_table(data, title="Credential(s)")
 
@@ -162,13 +126,7 @@ class navigator(DatabaseNavigator):
                     hosts = self.db.get_hosts(host_id)
 
                     for host in hosts:
-                        host_id = host[0]
-                        ip = host[1]
-                        hostname = host[2]
-                        domain = host[3]
-                        os = host[4]
-
-                        data.append([host_id, ip, hostname, domain, os])
+                        data.append([host[0], host[1], host[2], host[3], host[4]])
             print_table(data, title="Admin Access to Host(s)")
 
     def do_clear_database(self, line):
@@ -180,7 +138,8 @@ class navigator(DatabaseNavigator):
         ):
             self.db.clear_database()
 
-    def help_clear_database(self):
+    @staticmethod
+    def help_clear_database():
         help_string = """
         clear_database
         THIS COMPLETELY DESTROYS ALL DATA IN THE CURRENTLY CONNECTED DATABASE
@@ -192,8 +151,7 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'creds' commands
         """
-        commands = ["add", "remove"]
-
+        commands = ("add", "remove")
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
@@ -202,8 +160,7 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'creds' commands
         """
-        commands = ["add", "remove", "hash", "plaintext"]
-
+        commands = ("add", "remove", "hash", "plaintext")
         mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]

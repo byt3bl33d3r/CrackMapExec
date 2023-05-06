@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import threading
+from threading import enumerate
 from sys import exit
 from impacket import smbserver
 
@@ -46,7 +47,7 @@ class CMESMBServer(threading.Thread):
     def shutdown(self):
         # TODO: should fine the proper way
         # make sure all the threads are killed
-        for thread in threading.enumerate():
+        for thread in enumerate():
             if thread.is_alive():
                 try:
                     self._stop()

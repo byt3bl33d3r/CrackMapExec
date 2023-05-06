@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import importlib
-import os
+from os import listdir
+from os.path import dirname
+from os.path import join as path_join
 import sys
 
 import cme
@@ -130,14 +132,14 @@ class ModuleLoader:
         """
         modules = {}
         modules_paths = [
-            os.path.join(os.path.dirname(cme.__file__), "modules"),
-            os.path.join(CME_PATH, "modules"),
+            path_join(dirname(cme.__file__), "modules"),
+            path_join(CME_PATH, "modules"),
         ]
 
         for path in modules_paths:
-            for module in os.listdir(path):
+            for module in listdir(path):
                 if module[-3:] == ".py" and module != "example_module.py":
-                    module_path = os.path.join(path, module)
+                    module_path = path_join(path, module)
                     module_data = self.get_module_info(module_path)
                     modules.update(module_data)
         return modules

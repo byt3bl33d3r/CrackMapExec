@@ -60,6 +60,7 @@ from datetime import datetime
 from functools import wraps
 from traceback import format_exc
 import logging
+from json import loads
 
 smb_share_name = gen_random_string(5).upper()
 smb_server = None
@@ -642,11 +643,8 @@ class smb(connection):
                     self.logger.fail(
                         "LAPS password is encrypted and currently CrackMapExec doesn't support the decryption..."
                     )
-
                     return False
                 elif "mslaps-password" in values:
-                    from json import loads
-
                     r = loads(values["mslaps-password"])
                     msMCSAdmPwd = r["p"]
                     username = r["n"]
@@ -1746,7 +1744,7 @@ class smb(connection):
 
             sids = list()
             for i in range(so_far, so_far + sids_to_check):
-                sids.append(domain_sid + "-%d" % i)
+                sids.append(f"{domain_sid}-{i:d}")
             try:
                 lsat.hLsarLookupSids(
                     dce, policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta

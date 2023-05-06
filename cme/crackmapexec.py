@@ -15,16 +15,17 @@ from cme.paths import CME_PATH, DATA_PATH
 from cme.console import cme_console
 from cme.logger import cme_logger
 from cme.config import cme_config, cme_workspace, config_log, ignore_opsec
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import asyncio
 import cme.helpers.powershell as powershell
 import shutil
 import webbrowser
 import random
 import os
-import sys
+from os.path import exists
+from os.path import join as path_join
+from sys import exit
 import logging
-import concurrent.futures
 import sqlalchemy
 from rich.progress import Progress
 
@@ -34,7 +35,7 @@ except:
     print(
         "Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)"
     )
-    sys.exit(1)
+    exit(1)
 
 
 def create_db_engine(db_path):
@@ -64,7 +65,7 @@ async def start_run(protocol_obj, args, db, targets):
                     executor.submit(protocol_obj, args, db, target)
                     for target in targets
                 ]
-                for future in concurrent.futures.as_completed(futures):
+                for future in as_completed(futures):
                     current += 1
                     progress.update(tasks, completed=current)
 
@@ -84,7 +85,8 @@ def main():
         cme_logger.logger.setLevel(logging.ERROR)
         root_logger.setLevel(logging.ERROR)
 
-    # if these are the same, it might double log to file (two FileHandlers will be added), but this should never happen by accident
+    # if these are the same, it might double log to file (two FileHandlers will be added)
+    # but this should never happen by accident
     if config_log:
         cme_logger.add_file_log()
     if hasattr(args, "log") and args.log:
@@ -94,16 +96,14 @@ def main():
 
     if args.darrell:
         links = (
-            open(os.path.join(DATA_PATH, "videos_for_darrell.harambe"))
-            .read()
-            .splitlines()
+            open(path_join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
         )
         try:
             webbrowser.open(random.choice(links))
-            sys.exit(1)
+            exit(1)
         except Exception as e:
             cme_logger.error(f"Error opening le dank meme: {e}")
-            sys.exit(1)
+            exit(1)
 
     if args.protocol == "ssh":
         if args.key_file:
@@ -111,11 +111,11 @@ def main():
                 cme_logger.fail(
                     f"Password is required, even if a key file is used - if no passphrase for key, use `-p ''`"
                 )
-                sys.exit(1)
+                exit(1)
 
     if args.use_kcache and not os.environ.get("KRB5CCNAME"):
         cme_logger.error("KRB5CCNAME environment variable is not set")
-        sys.exit(1)
+        exit(1)
 
     module_server = None
     targets = []
@@ -131,11 +131,11 @@ def main():
                     args.cred_id.remove(cred_id)
                 except Exception as e:
                     cme_logger.error(f"Error parsing database credential id: {e}")
-                    sys.exit(1)
+                    exit(1)
 
     if hasattr(args, "target") and args.target:
         for target in args.target:
-            if os.path.exists(target):
+            if exists(target):
                 target_file_type = identify_target_file(target)
                 if target_file_type == "nmap":
                     targets.extend(parse_nmap_xml(target, args.protocol))
@@ -169,7 +169,7 @@ def main():
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), "database")
     cme_logger.debug(f"Protocol DB Object: {protocol_db_object}")
 
-    db_path = os.path.join(CME_PATH, "workspaces", cme_workspace, args.protocol + ".db")
+    db_path = path_join(CME_PATH, "workspaces", cme_workspace, f"{args.protocol}.db")
     cme_logger.debug(f"DB Path: {db_path}")
 
     db_engine = create_db_engine(db_path)
@@ -186,13 +186,13 @@ def main():
         for name, props in sorted(modules.items()):
             if args.protocol in props["supported_protocols"]:
                 cme_logger.display(f"{name:<25} {props['description']}")
-        sys.exit(0)
+        exit(0)
     elif args.module and args.show_module_options:
         for module in args.module:
             cme_logger.display(
                 f"{module} module options:\n{modules[module]['options']}"
             )
-        sys.exit(0)
+        exit(0)
     elif args.module:
         cme_logger.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
         for m in map(str.lower, args.module):
@@ -219,7 +219,7 @@ def main():
                         )
                     )
                     if ans.lower() not in ["y", "yes", ""]:
-                        sys.exit(1)
+                        exit(1)
 
             if not module.multiple_hosts and len(targets) > 1:
                 ans = input(
@@ -229,7 +229,7 @@ def main():
                     )
                 )
                 if ans.lower() not in ["y", "yes", ""]:
-                    sys.exit(1)
+                    exit(1)
 
             if hasattr(module, "on_request") or hasattr(module, "has_response"):
                 if hasattr(module, "required_server"):
@@ -274,7 +274,7 @@ def main():
             )
         )
         if ans.lower() not in ["y", "yes", ""]:
-            sys.exit(1)
+            exit(1)
 
     try:
         asyncio.run(start_run(protocol_object, args, db, targets))

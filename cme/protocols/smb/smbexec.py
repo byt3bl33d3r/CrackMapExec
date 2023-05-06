@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+from os.path import join as path_join
 from time import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from cme.helpers.misc import gen_random_string
@@ -120,9 +121,7 @@ class SMBEXEC:
         else:
             command = self.__shell + data
 
-        with open(
-            os.path.join("/tmp", "cme_hosted", self.__batchFile), "w"
-        ) as batch_file:
+        with open(path_join("/tmp", "cme_hosted", self.__batchFile), "w") as batch_file:
             batch_file.write(command)
 
         self.logger.debug("Hosting batch file with command: " + command)
@@ -168,7 +167,7 @@ class SMBEXEC:
                     sleep(2)
                     pass
                 else:
-                    logger.debug(e)
+                    self.logger.debug(e)
                     pass
 
         self.__smbconnection.deleteFile(self.__share, self.__output)
@@ -187,9 +186,7 @@ class SMBEXEC:
         else:
             command = self.__shell + data
 
-        with open(
-            os.path.join("/tmp", "cme_hosted", self.__batchFile), "w"
-        ) as batch_file:
+        with open(path_join("/tmp", "cme_hosted", self.__batchFile), "w") as batch_file:
             batch_file.write(command)
 
         self.logger.debug("Hosting batch file with command: " + command)
@@ -227,7 +224,7 @@ class SMBEXEC:
         while True:
             try:
                 with open(
-                    os.path.join("/tmp", "cme_hosted", self.__output), "rb"
+                    path_join("/tmp", "cme_hosted", self.__output), "rb"
                 ) as output:
                     self.output_callback(output.read())
                 break

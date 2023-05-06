@@ -31,7 +31,7 @@ class FirefoxTriage:
 
     firefox_generic_path = "Users\\{}\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles"
     share = "C$"
-    false_positive = [
+    false_positive = (
         ".",
         "..",
         "desktop.ini",
@@ -39,7 +39,7 @@ class FirefoxTriage:
         "Default",
         "Default User",
         "All Users",
-    ]
+    )
 
     def __init__(self, target, logger, conn: DPLootSMBConnection = None):
         self.target = target
@@ -127,23 +127,21 @@ class FirefoxTriage:
                 except Exception as e:
                     if "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):
                         continue
-                    print(e)
-                    self.logger.debug(e)
+                    self.logger.exception(e)
         return firefox_data
 
     def get_login_data(self, logins_data):
-        logins = []
         json_logins = json.loads(logins_data)
         if "logins" not in json_logins:
-            return logins  # No logins key in logins.json file
-        for row in json_logins["logins"]:
-            logins.append(
-                (
-                    self.decode_login_data(row["encryptedUsername"]),
-                    self.decode_login_data(row["encryptedPassword"]),
-                    row["hostname"],
-                )
+            return []  # No logins key in logins.json file
+        logins = [
+            (
+                self.decode_login_data(row["encryptedUsername"]),
+                self.decode_login_data(row["encryptedPassword"]),
+                row["hostname"],
             )
+            for row in json_logins["logins"]
+        ]
         return logins
 
     def get_key(self, key4_data, master_password=b""):
@@ -204,10 +202,10 @@ class FirefoxTriage:
         directories = self.conn.listPath(
             shareName=self.share, path=ntpath.normpath(users_dir_path)
         )
+
         for d in directories:
             if d.get_longname() not in self.false_positive and d.is_directory() > 0:
                 users.append(d.get_longname())
-
         return users
 
     @staticmethod
