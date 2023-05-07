@@ -85,8 +85,8 @@ class CMEModule:
                                 share["name"], self.file_path, scfile.read
                             )
                             context.log.success(
-                                f"[OPSEC] Created {self.filename}.searchConnector-ms file on"
-                                f" the {share['name']} share"
+                                f"[OPSEC] Created {self.filename}.searchConnector-ms"
+                                f" file on the {share['name']} share"
                             )
                         except Exception as e:
                             context.log.exception(e)
@@ -103,6 +103,6 @@ class CMEModule:
                         )
                     except Exception as e:
                         context.log.fail(
-                            f"[OPSEC] Error deleting {self.filename}.searchConnector-ms file on"
-                            f" share {share['name']}: {e}"
+                            f"[OPSEC] Error deleting {self.filename}.searchConnector-ms"
+                            f" file on share {share['name']}: {e}"
                         )
