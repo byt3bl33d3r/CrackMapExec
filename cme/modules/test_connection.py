@@ -16,11 +16,6 @@ class CMEModule:
     opsec_safe = True
     multiple_hosts = True
 
-    def __init__(self, context, module_options):
-        self.context = context
-        self.module_options = module_options
-        self.host = None
-
     def options(self, context, module_options):
         """
         HOST      Host to ping
@@ -36,6 +31,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         # $ProgressPreference = 'SilentlyContinue' prevents the "preparing modules for the first time" error
         command = f"$ProgressPreference = 'SilentlyContinue'; Test-Connection {self.host} -quiet -count 1"
+
         output = connection.ps_execute(command, get_output=True)[0]
 
         context.log.debug(f"Output: {output}")
