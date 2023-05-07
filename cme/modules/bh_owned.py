@@ -7,6 +7,8 @@
 #  https://en.hackndo.com [EN]
 
 import sys
+from neo4j import GraphDatabase
+from neo4j.exceptions import AuthError, ServiceUnavailable
 
 
 class CMEModule:
@@ -47,32 +49,27 @@ class CMEModule:
             self.neo4j_pass = module_options["PASS"]
 
     def on_admin_login(self, context, connection):
-        try:
-            from neo4j.v1 import GraphDatabase
-        except:
-            from neo4j import GraphDatabase
-
-        from neo4j.exceptions import AuthError, ServiceUnavailable
-
         if context.local_auth:
             domain = connection.conn.getServerDNSDomainName()
         else:
             domain = connection.domain
 
-        host_fqdn = (connection.hostname + "." + domain).upper()
+        host_fqdn = f"{connection.hostname}.{domain}".upper()
         uri = f"bolt://{self.neo4j_URI}:{self.neo4j_Port}"
+        context.log.debug(f"Neo4j URI: {uri}")
+        context.log.debug(f"User: {self.neo4j_user}, Password: {self.neo4j_pass}")
 
         try:
             driver = GraphDatabase.driver(
                 uri, auth=(self.neo4j_user, self.neo4j_pass), encrypted=False
             )
-        except AuthError as e:
+        except AuthError:
             context.log.fail(
                 f"Provided Neo4J credentials ({self.neo4j_user}:{self.neo4j_pass}) are"
                 " not valid. See --options"
             )
             sys.exit()
-        except ServiceUnavailable as e:
+        except ServiceUnavailable:
             context.log.fail(
                 f"Neo4J does not seem to be available on {uri}. See --options"
             )
