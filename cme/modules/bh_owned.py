@@ -60,7 +60,7 @@ class CMEModule:
             domain = connection.domain
 
         host_fqdn = (connection.hostname + "." + domain).upper()
-        uri = "bolt://{}:{}".format(self.neo4j_URI, self.neo4j_Port)
+        uri = f"bolt://{self.neo4j_URI}:{self.neo4j_Port}"
 
         try:
             driver = GraphDatabase.driver(
@@ -68,27 +68,25 @@ class CMEModule:
             )
         except AuthError as e:
             context.log.fail(
-                "Provided Neo4J credentials ({}:{}) are not valid. See --options".format(
-                    self.neo4j_user, self.neo4j_pass
-                )
+                f"Provided Neo4J credentials ({self.neo4j_user}:{self.neo4j_pass}) are"
+                " not valid. See --options"
             )
             sys.exit()
         except ServiceUnavailable as e:
             context.log.fail(
-                "Neo4J does not seem to be available on {}. See --options".format(uri)
+                f"Neo4J does not seem to be available on {uri}. See --options"
             )
             sys.exit()
         except Exception as e:
             context.log.fail("Unexpected error with Neo4J")
-            context.log.debug("Error : ".format(str(e)))
+            context.log.debug(f"Error {e}: ")
             sys.exit()
 
         with driver.session() as session:
             with session.begin_transaction() as tx:
                 result = tx.run(
-                    'MATCH (c:Computer {{name:"{}"}}) SET c.owned=True RETURN c.name AS name'.format(
-                        host_fqdn
-                    )
+                    f'MATCH (c:Computer {{name:"{host_fqdn}"}}) SET c.owned=True RETURN'
+                    " c.name AS name"
                 )
                 record = result.single()
                 try:
@@ -97,12 +95,11 @@ class CMEModule:
                     value = []
         if len(value) > 0:
             context.log.success(
-                "Node {} successfully set as owned in BloodHound".format(host_fqdn)
+                f"Node {host_fqdn} successfully set as owned in BloodHound"
             )
         else:
             context.log.fail(
-                "Node {} does not appear to be in Neo4J database. Have you imported correct data?".format(
-                    host_fqdn
-                )
+                f"Node {host_fqdn} does not appear to be in Neo4J database. Have you"
+                " imported the correct data?"
             )
         driver.close()
