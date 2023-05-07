@@ -214,7 +214,7 @@ def main():
                 else:
                     ans = input(
                         highlight(
-                            "[!] Module is not opsec safe, are you sure you want to run this? [Y/n] ",
+                            "[!] Module is not opsec safe, are you sure you want to run this? [Y/n] For global configuration, change ignore_opsec value to True on ~/cme/cme.conf",
                             "red",
                         )
                     )

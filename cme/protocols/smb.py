@@ -162,6 +162,7 @@ class smb(connection):
         self.smb_share_name = smb_share_name
         self.pvkbytes = None
         self.no_da = None
+        self.no_ntlm = False
 
         connection.__init__(self, args, db, host)
 
@@ -521,7 +522,7 @@ class smb(connection):
 
     def enum_host_info(self):
         self.local_ip = self.conn.getSMBServer().get_socket().getsockname()[0]
-        no_ntlm = False
+
         try:
             self.conn.login("", "")
         except BrokenPipeError:
@@ -529,15 +530,18 @@ class smb(connection):
         except Exception as e:
             if "STATUS_NOT_SUPPORTED" in str(e):
                 # no ntlm supported
-                no_ntlm = True
+                self.no_ntlm = True
             pass
 
         self.domain = (
-            self.conn.getServerDNSDomainName() if not no_ntlm else self.args.domain
+            self.conn.getServerDNSDomainName() if not self.no_ntlm else self.args.domain
         )
-        self.hostname = self.conn.getServerName() if not no_ntlm else self.host
+        self.hostname = self.conn.getServerName() if not self.no_ntlm else self.host
         self.server_os = self.conn.getServerOS()
         self.logger.extra["hostname"] = self.hostname
+
+        if isinstance(self.server_os.lower(), bytes):
+            self.server_os = self.server_os.decode("utf-8")
 
         try:
             self.signing = (
@@ -705,7 +709,10 @@ class smb(connection):
     ):
         logging.getLogger("impacket").disabled = True
         # Re-connect since we logged off
-        fqdn_host = f"{self.hostname}.{self.domain}"
+        if not self.no_ntlm:
+            fqdn_host = f"{self.hostname}.{self.domain}"
+        else:
+            fqdn_host = f"{self.host}"
         self.create_conn_obj(fqdn_host)
         lmhash = ""
         nthash = ""
@@ -1155,6 +1162,7 @@ class smb(connection):
         force_ps32=False,
         dont_obfs=False,
     ):
+        response = []
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output:
@@ -1164,28 +1172,32 @@ class smb(connection):
         if os.path.isfile(payload):
             with open(payload) as commands:
                 for c in commands:
-                    self.execute(
-                        create_ps_command(
-                            c,
-                            force_ps32=force_ps32,
-                            dont_obfs=dont_obfs,
-                            custom_amsi=amsi_bypass,
-                        ),
-                        get_output,
-                        methods,
+                    response.append(
+                        self.execute(
+                            create_ps_command(
+                                c,
+                                force_ps32=force_ps32,
+                                dont_obfs=dont_obfs,
+                                custom_amsi=amsi_bypass,
+                            ),
+                            get_output,
+                            methods,
+                        )
                     )
         else:
-            self.execute(
-                create_ps_command(
-                    payload,
-                    force_ps32=force_ps32,
-                    dont_obfs=dont_obfs,
-                    custom_amsi=amsi_bypass,
-                ),
-                get_output,
-                methods,
-            )
-        return ""
+            response = [
+                self.execute(
+                    create_ps_command(
+                        payload,
+                        force_ps32=force_ps32,
+                        dont_obfs=dont_obfs,
+                        custom_amsi=amsi_bypass,
+                    ),
+                    get_output,
+                    methods,
+                )
+            ]
+        return response
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())

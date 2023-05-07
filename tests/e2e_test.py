@@ -54,7 +54,7 @@ def generate_commands(args):
                 continue
             line = line.strip()
             line = (
-                line.replace("TARGET", args.target)
+                line.replace("TARGET_HOST", args.target)
                 .replace("USERNAME", f'"{args.username}"')
                 .replace("PASSWORD", f'"{args.password}"')
                 .replace("KERBEROS ", kerberos)
