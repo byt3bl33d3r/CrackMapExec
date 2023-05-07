@@ -16,6 +16,11 @@ class CMEModule:
     opsec_safe = True
     multiple_hosts = True
 
+    def __init__(self, context, module_options):
+        self.context = context
+        self.module_options = module_options
+        self.host = None
+
     def options(self, context, module_options):
         """
         HOST      Host to ping
@@ -29,13 +34,15 @@ class CMEModule:
         self.host = module_options["HOST"]
 
     def on_admin_login(self, context, connection):
-        command = "Test-Connection {} -quiet -count 1".format(self.host)
+        # $ProgressPreference = 'SilentlyContinue' prevents the "preparing modules for the first time" error
+        command = f"$ProgressPreference = 'SilentlyContinue'; Test-Connection {self.host} -quiet -count 1"
+        output = connection.ps_execute(command, get_output=True)[0]
 
-        output = connection.ps_execute(command, get_output=True)
+        context.log.debug(f"Output: {output}")
+        context.log.debug(f"Type: {type(output)}")
 
-        if output:
-            output = output.strip()
-            if bool(output) is True:
-                context.log.success("Pinged successfully")
-            elif bool(output) is False:
-                context.log.fail("Host unreachable")
+        if output == "True":
+            context.log.success("Pinged successfully")
+        else:
+            context.log.fail("Host unreachable")
+

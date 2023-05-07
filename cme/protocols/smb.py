@@ -1158,6 +1158,7 @@ class smb(connection):
         force_ps32=False,
         dont_obfs=False,
     ):
+        response = []
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output:
@@ -1167,28 +1168,32 @@ class smb(connection):
         if os.path.isfile(payload):
             with open(payload) as commands:
                 for c in commands:
-                    self.execute(
-                        create_ps_command(
-                            c,
-                            force_ps32=force_ps32,
-                            dont_obfs=dont_obfs,
-                            custom_amsi=amsi_bypass,
-                        ),
-                        get_output,
-                        methods,
+                    response.append(
+                        self.execute(
+                            create_ps_command(
+                                c,
+                                force_ps32=force_ps32,
+                                dont_obfs=dont_obfs,
+                                custom_amsi=amsi_bypass,
+                            ),
+                            get_output,
+                            methods,
+                        )
                     )
         else:
-            self.execute(
-                create_ps_command(
-                    payload,
-                    force_ps32=force_ps32,
-                    dont_obfs=dont_obfs,
-                    custom_amsi=amsi_bypass,
-                ),
-                get_output,
-                methods,
-            )
-        return ""
+            response = [
+                self.execute(
+                    create_ps_command(
+                        payload,
+                        force_ps32=force_ps32,
+                        dont_obfs=dont_obfs,
+                        custom_amsi=amsi_bypass,
+                    ),
+                    get_output,
+                    methods,
+                )
+            ]
+        return response
 
     def shares(self):
         temp_dir = ntpath.normpath("\\" + gen_random_string())
