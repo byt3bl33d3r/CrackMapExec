@@ -351,9 +351,13 @@ class winrm(connection):
                 )
                 self.endpoint = url
                 if self.endpoint.startswith("https://"):
-                    self.logger.extra["port"] = self.args.port if self.args.port else 5986
+                    self.logger.extra["port"] = (
+                        self.args.port if self.args.port else 5986
+                    )
                 else:
-                    self.logger.extra["port"] = self.args.port if self.args.port else 5985
+                    self.logger.extra["port"] = (
+                        self.args.port if self.args.port else 5985
+                    )
                 return True
             except requests.exceptions.Timeout as e:
                 self.logger.info(f"Connection Timed out to WinRM service: {e}")
