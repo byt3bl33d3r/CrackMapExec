@@ -41,4 +41,3 @@ class CMEModule:
             context.log.success("Pinged successfully")
         else:
             context.log.fail("Host unreachable")
-
