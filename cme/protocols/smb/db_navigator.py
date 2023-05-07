@@ -241,7 +241,7 @@ class navigator(DatabaseNavigator):
                             group[1],
                             group[2],
                             group[3],
-                            len(self.db.get_group_relations(group_id=group_id)),
+                            len(self.db.get_group_relations(group_id=group[0])),
                             group[4],
                             group[5],
                         ]
@@ -267,14 +267,7 @@ class navigator(DatabaseNavigator):
 
                         for cred in creds:
                             data.append(
-                                [
-                                    cred[0],
-                                    cred[4],
-                                    cred[5],
-                                    cred[1],
-                                    cred[2],
-                                    cred[3],
-                                ]
+                                [cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]]
                             )
                 print_table(data, title="Member(s)")
 
@@ -653,7 +646,8 @@ class navigator(DatabaseNavigator):
     def do_clear_database(self, line):
         if (
             input(
-                "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "
+                "This will destroy all data in the current database, are you SURE you"
+                " want to run this? (y/n): "
             )
             == "y"
         ):
