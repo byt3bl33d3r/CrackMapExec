@@ -2,6 +2,7 @@
 # Credit to https://github.com/dirkjanm/adidnsdump @_dirkjan
 # module by @mpgn_x64
 
+from os.path import expanduser
 import codecs
 import socket
 from builtins import str
@@ -40,8 +41,9 @@ def get_dns_resolver(server, context):
         dnsresolver.nameservers = [server]
     except socket.error:
         context.info(
-            "Using System DNS to resolve unknown entries. Make sure resolving your target domain works here or specify an IP"
-            " as target host to use that server for queries"
+            "Using System DNS to resolve unknown entries. Make sure resolving your"
+            " target domain works here or specify an IP as target host to use that"
+            " server for queries"
         )
     return dnsresolver
 
@@ -137,7 +139,8 @@ class CMEModule:
         except ldap.LDAPSearchError as e:
             if e.getErrorString().find("sizeLimitExceeded") >= 0:
                 context.log.debug(
-                    "sizeLimitExceeded exception caught, giving up and processing the data received"
+                    "sizeLimitExceeded exception caught, giving up and processing the"
+                    " data received"
                 )
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
@@ -205,7 +208,7 @@ class CMEModule:
                             )
 
         context.log.highlight("Found %d records" % len(outdata))
-        path = os.path.expanduser(
+        path = expanduser(
             "~/.cme/logs/{}_network_{}.log".format(
                 connection.domain, datetime.now().strftime("%Y-%m-%d_%H%M%S")
             )
@@ -225,7 +228,8 @@ class CMEModule:
         context.log.success("Dumped {} records to {}".format(len(outdata), path))
         if not self.showall and not self.showhosts:
             context.log.display(
-                "To extract CIDR from the {} ip, run  the following command: cat your_file | mapcidr -aa -silent | mapcidr -a -silent".format(
+                "To extract CIDR from the {} ip, run  the following command: cat"
+                " your_file | mapcidr -aa -silent | mapcidr -a -silent".format(
                     len(outdata)
                 )
             )

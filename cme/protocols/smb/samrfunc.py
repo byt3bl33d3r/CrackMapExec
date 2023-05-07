@@ -5,10 +5,12 @@
 # Code refactored and added to by @mjhallenbeck (Marshall-Hallenbeck on GitHub)
 
 import logging
+
 from impacket.dcerpc.v5 import transport, lsat, lsad, samr
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
-
+from impacket.nmb import NetBIOSError
+from impacket.smbconnection import SessionError
 from cme.logger import cme_logger
 
 
@@ -150,10 +152,10 @@ class SAMRQuery:
             dce = rpc_transport.get_dce_rpc()
             dce.connect()
             dce.bind(samr.MSRPC_UUID_SAMR)
-        except impacket.nmb.NetBIOSError as e:
+        except NetBIOSError as e:
             logging.error(f"NetBIOSError on Connection: {e}")
             return
-        except impacket.smbconnection.SessionError as e:
+        except SessionError as e:
             logging.error(f"SessionError on Connection: {e}")
             return
         return dce
@@ -232,6 +234,7 @@ class LSAQuery:
         self.__kerberos = kerberos
         self.dce = self.get_dce()
         self.policy_handle = self.get_policy_handle()
+        self.logger = cme_logger
 
     def get_transport(self):
         string_binding = f"ncacn_np:{self.__remote_name}[\\pipe\\lsarpc]"
@@ -260,7 +263,7 @@ class LSAQuery:
                 dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
             dce.connect()
             dce.bind(lsat.MSRPC_UUID_LSAT)
-        except impacket.nmb.NetBIOSError as e:
+        except NetBIOSError as e:
             self.logger.fail(f"NetBIOSError on Connection: {e}")
             return None
         return dce

@@ -130,13 +130,10 @@ class KerberosAttacks:
                 ).decode(),
             )
         else:
-            logging.error(
-                "Skipping %s/%s due to incompatible e-type %d"
-                % (
-                    decodedTGS["ticket"]["sname"]["name-string"][0],
-                    decodedTGS["ticket"]["sname"]["name-string"][1],
-                    decodedTGS["ticket"]["enc-part"]["etype"],
-                )
+            cme_logger.error(
+                "Skipping"
+                f" {decodedTGS['ticket']['sname']['name-string'][0]}/{decodedTGS['ticket']['sname']['name-string'][1]} due"
+                f" to incompatible e-type {decodedTGS['ticket']['enc-part']['etype']:d}"
             )
 
         return entry

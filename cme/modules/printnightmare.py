@@ -2,19 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import sys
-from impacket import system_errors, version
+from impacket import system_errors
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.structure import Structure
-from impacket.examples import logger
-from impacket.examples.utils import parse_target
 from impacket.dcerpc.v5 import transport, rprn
 from impacket.dcerpc.v5.ndr import NDRCALL, NDRPOINTER, NDRSTRUCT, NDRUNION, NULL
 from impacket.dcerpc.v5.dtypes import DWORD, LPWSTR, ULONG, WSTR
-from impacket.dcerpc.v5.rprn import (
-    checkNullString,
-    STRING_HANDLE,
-    PBYTE_ARRAY,
-)
+from impacket.dcerpc.v5.rprn import checkNullString, STRING_HANDLE, PBYTE_ARRAY
 
 KNOWN_PROTOCOLS = {
     135: {"bindstr": r"ncacn_ip_tcp:%s[135]"},
@@ -232,18 +226,12 @@ class DRIVER_INFO_2_ARRAY(Structure):
 
 class DRIVER_INFO_UNION(NDRUNION):
     commonHdr = (("tag", ULONG),)
-    union = {
-        1: ("pNotUsed", PDRIVER_INFO_1),
-        2: ("Level2", PDRIVER_INFO_2),
-    }
+    union = {1: ("pNotUsed", PDRIVER_INFO_1), 2: ("Level2", PDRIVER_INFO_2)}
 
 
 # MS-RPRN - 3.1.4.1.8.3
 class DRIVER_CONTAINER(NDRSTRUCT):
-    structure = (
-        ("Level", DWORD),
-        ("DriverInfo", DRIVER_INFO_UNION),
-    )
+    structure = (("Level", DWORD), ("DriverInfo", DRIVER_INFO_UNION))
 
 
 ################################################################################

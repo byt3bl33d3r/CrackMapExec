@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import socket
 
 import ldap3
 import ssl
@@ -75,7 +76,8 @@ class CMEModule:
             except Exception as e:
                 context.log.fail("\n   [!] " + dcTarget + " -", str(e))
                 context.log.fail(
-                    "        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host"
+                    "        * Ensure DNS is resolving properly, and that you can reach"
+                    " LDAPS on this host"
                 )
 
         # Conduct a bind to LDAPS with channel binding supported

@@ -8,7 +8,6 @@ from os import getenv
 from impacket.krb5.ccache import CCache
 from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
-from cme.helpers.logger import highlight
 from cme.logger import CMEAdapter
 from aardwolf.connection import RDPConnection
 from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
@@ -96,7 +95,10 @@ class rdp(connection):
         rdp_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
-            help="No spray when using file for username and password (user1 => password1, user2 => password2",
+            help=(
+                "No spray when using file for username and password (user1 =>"
+                " password1, user2 => password2"
+            ),
         )
         rdp_parser.add_argument(
             "--continue-on-success",
@@ -175,11 +177,13 @@ class rdp(connection):
     def print_host_info(self):
         if self.domain is None:
             self.logger.display(
-                f"Probably old, doesn't not support HYBRID or HYBRID_EX (nla:{self.nla})"
+                "Probably old, doesn't not support HYBRID or HYBRID_EX"
+                f" (nla:{self.nla})"
             )
         else:
             self.logger.display(
-                f"{self.server_os} (name:{self.hostname}) (domain:{self.domain}) (nla:{self.nla})"
+                f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})"
+                f" (nla:{self.nla})"
             )
         return True
 
@@ -340,14 +344,16 @@ class rdp(connection):
                 "{}\\{}{} {}".format(
                     domain,
                     username,
-                    # Show what was used between cleartext, nthash, aesKey and ccache
-                    " from ccache"
-                    if useCache
-                    else ":%s"
-                    % (
-                        kerb_pass
-                        if not self.config.get("CME", "audit_mode")
-                        else self.config.get("CME", "audit_mode") * 8
+                    (
+                        # Show what was used between cleartext, nthash, aesKey and ccache
+                        " from ccache"
+                        if useCache
+                        else ":%s"
+                        % (
+                            kerb_pass
+                            if not self.config.get("CME", "audit_mode")
+                            else self.config.get("CME", "audit_mode") * 8
+                        )
                     ),
                     self.mark_pwned(),
                 )
@@ -364,13 +370,17 @@ class rdp(connection):
                     if word in str(e):
                         reason = self.rdp_error_status[word]
                 self.logger.fail(
-                    f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}",
-                    color="magenta"
-                    if (
-                        (reason or "CredSSP" in str(e))
-                        and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN"
-                    )
-                    else "red",
+                    (
+                        f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}"
+                    ),
+                    color=(
+                        "magenta"
+                        if (
+                            (reason or "CredSSP" in str(e))
+                            and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+                        )
+                        else "red"
+                    ),
                 )
             elif "Authentication failed!" in str(e):
                 self.logger.success(
@@ -386,13 +396,17 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}",
-                    color="magenta"
-                    if (
-                        (reason or "CredSSP" in str(e))
-                        and reason != "STATUS_LOGON_FAILURE"
-                    )
-                    else "red",
+                    (
+                        f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}"
+                    ),
+                    color=(
+                        "magenta"
+                        if (
+                            (reason or "CredSSP" in str(e))
+                            and reason != "STATUS_LOGON_FAILURE"
+                        )
+                        else "red"
+                    ),
                 )
             return False
 
@@ -428,13 +442,17 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}",
-                    color="magenta"
-                    if (
-                        (reason or "CredSSP" in str(e))
-                        and reason != "STATUS_LOGON_FAILURE"
-                    )
-                    else "red",
+                    (
+                        f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}"
+                    ),
+                    color=(
+                        "magenta"
+                        if (
+                            (reason or "CredSSP" in str(e))
+                            and reason != "STATUS_LOGON_FAILURE"
+                        )
+                        else "red"
+                    ),
                 )
             return False
 
@@ -473,13 +491,17 @@ class rdp(connection):
                     reason = "User valid but cannot connect"
 
                 self.logger.fail(
-                    f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}",
-                    color="magenta"
-                    if (
-                        (reason or "CredSSP" in str(e))
-                        and reason != "STATUS_LOGON_FAILURE"
-                    )
-                    else "red",
+                    (
+                        f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}"
+                    ),
+                    color=(
+                        "magenta"
+                        if (
+                            (reason or "CredSSP" in str(e))
+                            and reason != "STATUS_LOGON_FAILURE"
+                        )
+                        else "red"
+                    ),
                 )
             return False
 

@@ -6,8 +6,12 @@
 # v0.4
 
 import base64
+import re
+import sys
 
 from pypykatz.pypykatz import pypykatz
+
+from cme.helpers.bloodhound import add_user_bh
 
 
 class CMEModule:
@@ -69,7 +73,7 @@ class CMEModule:
                     )
                 )
             except Exception as e:
-                context.log.fail("Error writing file to share {}: {}".format(share, e))
+                context.log.fail(f"Error writing file to share {self.share}: {e}")
 
         # get pid lsass
         command = 'tasklist /v /fo csv | findstr /i "lsass"'

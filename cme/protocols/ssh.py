@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import sys
 from io import StringIO
 
 import paramiko
@@ -32,12 +31,18 @@ class ssh(connection):
         ssh_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
-            help="No spray when using file for username and password (user1 => password1, user2 => password2",
+            help=(
+                "No spray when using file for username and password (user1 =>"
+                " password1, user2 => password2"
+            ),
         )
         ssh_parser.add_argument(
             "--key-file",
             type=str,
-            help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.",
+            help=(
+                "Authenticate using the specified private key. Treats the password"
+                " parameter as the key's passphrase."
+            ),
         )
         ssh_parser.add_argument(
             "--port", type=int, default=22, help="SSH port (default: 22)"

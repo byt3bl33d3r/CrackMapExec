@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 from os import mkdir
 from os.path import exists
 from os.path import join as path_join

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
@@ -60,7 +61,8 @@ class CMEModule:
                 }
                 if "mslaps-encryptedpassword" in values:
                     context.log.fail(
-                        "LAPS password is encrypted and currently CrackMapExec doesn't support the decryption..."
+                        "LAPS password is encrypted and currently CrackMapExec doesn't"
+                        " support the decryption..."
                     )
 
                     return
@@ -73,7 +75,8 @@ class CMEModule:
                     )
                 else:
                     context.log.fail(
-                        "No result found with attribute ms-MCS-AdmPwd or msLAPS-Password"
+                        "No result found with attribute ms-MCS-AdmPwd or"
+                        " msLAPS-Password"
                     )
 
             laps_computers = sorted(laps_computers, key=lambda x: x[0])
