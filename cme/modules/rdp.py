@@ -62,9 +62,7 @@ class CMEModule:
                 0,
             )
 
-            rtype, data = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00"
-            )
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00")
 
             if int(data) == 0:
                 context.log.success("RDP enabled successfully")
@@ -97,9 +95,7 @@ class CMEModule:
                 1,
             )
 
-            rtype, data = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00"
-            )
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00")
 
             if int(data) == 1:
                 context.log.success("RDP disabled successfully")

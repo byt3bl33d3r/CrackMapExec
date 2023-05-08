@@ -45,9 +45,7 @@ class CMEModule:
             search_filter = f"(distinguishedName=CN={self.server},CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,"
             self.context.log.highlight("Using PKI CN: {}".format(self.server))
 
-        context.log.display(
-            "Starting LDAP search with search filter '{}'".format(search_filter)
-        )
+        context.log.display("Starting LDAP search with search filter '{}'".format(search_filter))
 
         try:
             sc = ldap.SimplePagedResultsControl()
@@ -101,22 +99,14 @@ class CMEModule:
                             urls.append(match.group(1))
         except Exception as e:
             entry = host_name or "item"
-            self.context.log.fail(
-                "Skipping {}, cannot process LDAP entry due to error: '{}'".format(
-                    entry, str(e)
-                )
-            )
+            self.context.log.fail("Skipping {}, cannot process LDAP entry due to error: '{}'".format(entry, str(e)))
 
         if host_name:
-            self.context.log.highlight(
-                "Found PKI Enrollment Server: {}".format(host_name)
-            )
+            self.context.log.highlight("Found PKI Enrollment Server: {}".format(host_name))
         if cn:
             self.context.log.highlight("Found CN: {}".format(cn))
         for url in urls:
-            self.context.log.highlight(
-                "Found PKI Enrollment WebService: {}".format(url)
-            )
+            self.context.log.highlight("Found PKI Enrollment WebService: {}".format(url))
 
     def process_templates(self, item):
         """
@@ -136,9 +126,7 @@ class CMEModule:
                         templates.append(template_name)
         except Exception as e:
             entry = template_name or "item"
-            self.context.log.fail(
-                f"Skipping {entry}, cannot process LDAP entry due to error: '{e}'"
-            )
+            self.context.log.fail(f"Skipping {entry}, cannot process LDAP entry due to error: '{e}'")
 
         if templates:
             for t in templates:

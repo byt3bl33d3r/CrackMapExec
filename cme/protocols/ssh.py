@@ -25,40 +25,26 @@ class ssh(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        ssh_parser = parser.add_parser(
-            "ssh", help="own stuff using SSH", parents=[std_parser, module_parser]
-        )
+        ssh_parser = parser.add_parser("ssh", help="own stuff using SSH", parents=[std_parser, module_parser])
         ssh_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
-            help=(
-                "No spray when using file for username and password (user1 =>"
-                " password1, user2 => password2"
-            ),
+            help=("No spray when using file for username and password (user1 =>" " password1, user2 => password2"),
         )
         ssh_parser.add_argument(
             "--key-file",
             type=str,
-            help=(
-                "Authenticate using the specified private key. Treats the password"
-                " parameter as the key's passphrase."
-            ),
+            help=("Authenticate using the specified private key. Treats the password" " parameter as the key's passphrase."),
         )
-        ssh_parser.add_argument(
-            "--port", type=int, default=22, help="SSH port (default: 22)"
-        )
+        ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
         ssh_parser.add_argument(
             "--continue-on-success",
             action="store_true",
             help="continues authentication attempts even after successes",
         )
 
-        cgroup = ssh_parser.add_argument_group(
-            "Command Execution", "Options for executing commands"
-        )
-        cgroup.add_argument(
-            "--no-output", action="store_true", help="do not retrieve command output"
-        )
+        cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
+        cgroup.add_argument("--no-output", action="store_true", help="do not retrieve command output")
         cgroup.add_argument(
             "-x",
             metavar="COMMAND",
@@ -96,9 +82,7 @@ class ssh(connection):
             stdin, stdout, stderr = self.conn.exec_command("uname -r")
             self.server_os = stdout.read().decode("utf-8")
             self.logger.debug(f"OS retrieved: {self.server_os}")
-        self.db.add_host(
-            self.host, self.args.port, self.remote_version, os=self.server_os
-        )
+        self.db.add_host(self.host, self.args.port, self.remote_version, os=self.server_os)
 
     def create_conn_obj(self):
         self.conn = paramiko.SSHClient()
@@ -126,9 +110,7 @@ class ssh(connection):
             self.logger.info(f"Determined user is root via `id` command")
             self.admin_privs = True
             return True
-        stdin, stdout, stderr = self.conn.exec_command(
-            "sudo -ln | grep 'NOPASSWD: ALL'"
-        )
+        stdin, stdout, stderr = self.conn.exec_command("sudo -ln | grep 'NOPASSWD: ALL'")
         if stdout.read().decode("utf-8").find("NOPASSWD: ALL") != -1:
             self.logger.info(f"Determined user is root via `sudo -ln` command")
             self.admin_privs = True
@@ -185,13 +167,9 @@ class ssh(connection):
 
             if self.check_if_admin():
                 shell_access = True
-                self.logger.debug(
-                    f"User {username} logged in successfully and is root!"
-                )
+                self.logger.debug(f"User {username} logged in successfully and is root!")
                 if self.args.key_file:
-                    self.db.add_admin_user(
-                        "key", username, password, host_id=host_id, cred_id=cred_id
-                    )
+                    self.db.add_admin_user("key", username, password, host_id=host_id, cred_id=cred_id)
                 else:
                     self.db.add_admin_user(
                         "plaintext",
@@ -216,9 +194,7 @@ class ssh(connection):
 
             display_shell_access = f" - shell access!" if shell_access else ""
 
-            self.logger.success(
-                f"{username}:{process_secret(password)} {self.mark_pwned()}{highlight(display_shell_access)}"
-            )
+            self.logger.success(f"{username}:{process_secret(password)} {self.mark_pwned()}{highlight(display_shell_access)}")
 
             if not self.args.continue_on_success:
                 return True

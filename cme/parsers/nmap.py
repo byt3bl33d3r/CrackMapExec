@@ -29,9 +29,7 @@ def parse_nmap_xml(nmap_output_file, protocol):
         ip = host["address"][0]["@addr"]
         for port in host["ports"]["port"]:
             if port["state"]["@state"] == "open":
-                if "service" in port and (
-                    port["service"]["@name"] in protocol_dict[protocol]["services"]
-                ):
+                if "service" in port and (port["service"]["@name"] in protocol_dict[protocol]["services"]):
                     if ip not in targets:
                         targets.append(ip)
                 elif port["@portid"] in protocol_dict[protocol]["ports"]:

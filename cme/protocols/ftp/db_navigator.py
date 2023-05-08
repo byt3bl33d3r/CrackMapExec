@@ -6,12 +6,7 @@ from cme.cmedb import DatabaseNavigator, print_help
 
 class navigator(DatabaseNavigator):
     def do_clear_database(self, line):
-        if (
-            input(
-                "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "
-            )
-            == "y"
-        ):
+        if input("This will destroy all data in the current database, are you SURE you want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):

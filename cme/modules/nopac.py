@@ -21,9 +21,7 @@ class CMEModule:
         """ """
 
     def on_login(self, context, connection):
-        user_name = Principal(
-            connection.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value
-        )
+        user_name = Principal(connection.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
         try:
             tgt_with_pac, cipher, old_session_key, session_key = getKerberosTGT(
                 user_name,
@@ -52,6 +50,4 @@ class CMEModule:
                 context.log.highlight("VULNERABLE")
                 context.log.highlight("Next step: https://github.com/Ridter/noPac")
         except OSError as e:
-            context.log.debug(
-                f"Error connecting to Kerberos (port 88) on {connection.host}"
-            )
+            context.log.debug(f"Error connecting to Kerberos (port 88) on {connection.host}")

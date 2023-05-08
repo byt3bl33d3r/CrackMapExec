@@ -156,9 +156,7 @@ class TSCH_EXEC:
         logging.info(f"Task XML: {xml}")
         taskCreated = False
         logging.info(f"Creating task \\{tmpName}")
-        tsch.hSchRpcRegisterTask(
-            dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE
-        )
+        tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
         taskCreated = True
 
         logging.info(f"Running task \\{tmpName}")
@@ -184,24 +182,18 @@ class TSCH_EXEC:
             if fileless:
                 while True:
                     try:
-                        with open(
-                            os.path.join("/tmp", "cme_hosted", tmpFileName), "r"
-                        ) as output:
+                        with open(os.path.join("/tmp", "cme_hosted", tmpFileName), "r") as output:
                             self.output_callback(output.read())
                         break
                     except IOError:
                         sleep(2)
             else:
-                peer = ":".join(
-                    map(str, self.__rpctransport.get_socket().getpeername())
-                )
+                peer = ":".join(map(str, self.__rpctransport.get_socket().getpeername()))
                 smbConnection = self.__rpctransport.get_smb_connection()
                 while True:
                     try:
                         logging.info(f"Attempting to read ADMIN$\\Temp\\{tmpFileName}")
-                        smbConnection.getFile(
-                            "ADMIN$", f"Temp\\{tmpFileName}", self.output_callback
-                        )
+                        smbConnection.getFile("ADMIN$", f"Temp\\{tmpFileName}", self.output_callback)
                         break
                     except Exception as e:
                         if str(e).find("SHARING") > 0:

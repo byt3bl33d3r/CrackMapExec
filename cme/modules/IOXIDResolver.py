@@ -13,9 +13,7 @@ from impacket.dcerpc.v5.dcomrt import IObjectExporter
 
 class CMEModule:
     name = "ioxidresolver"
-    description = (
-        "Thie module helps you to identify hosts that have additional active interfaces"
-    )
+    description = "Thie module helps you to identify hosts that have additional active interfaces"
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = False

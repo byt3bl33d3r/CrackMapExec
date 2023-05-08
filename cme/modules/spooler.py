@@ -51,14 +51,8 @@ class CMEModule:
         self.__stringbinding = KNOWN_PROTOCOLS[self.port]["bindstr"] % connection.host
         context.log.debug("StringBinding %s" % self.__stringbinding)
         rpctransport = transport.DCERPCTransportFactory(self.__stringbinding)
-        rpctransport.set_credentials(
-            connection.username, connection.password, connection.domain, lmhash, nthash
-        )
-        rpctransport.setRemoteHost(
-            connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain
-        )
+        rpctransport.set_credentials(connection.username, connection.password, connection.domain, lmhash, nthash)
+        rpctransport.setRemoteHost(connection.host if not connection.kerberos else connection.hostname + "." + connection.domain)
         rpctransport.set_dport(self.port)
 
         if connection.kerberos:
@@ -70,16 +64,8 @@ class CMEModule:
             error_text = "Protocol failed: %s" % e
             context.log.critical(error_text)
 
-            if (
-                RPC_PROXY_INVALID_RPC_PORT_ERR in error_text
-                or RPC_PROXY_RPC_OUT_DATA_404_ERR in error_text
-                or RPC_PROXY_CONN_A1_404_ERR in error_text
-                or RPC_PROXY_CONN_A1_0X6BA_ERR in error_text
-            ):
-                context.log.critical(
-                    "This usually means the target does not allow "
-                    "to connect to its epmapper using RpcProxy."
-                )
+            if RPC_PROXY_INVALID_RPC_PORT_ERR in error_text or RPC_PROXY_RPC_OUT_DATA_404_ERR in error_text or RPC_PROXY_CONN_A1_404_ERR in error_text or RPC_PROXY_CONN_A1_0X6BA_ERR in error_text:
+                context.log.critical("This usually means the target does not allow " "to connect to its epmapper using RpcProxy.")
                 return
 
         # Display results.
@@ -91,13 +77,8 @@ class CMEModule:
             if (tmp_uuid in endpoints) is not True:
                 endpoints[tmp_uuid] = {}
                 endpoints[tmp_uuid]["Bindings"] = list()
-            if (
-                uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18]
-                in epm.KNOWN_UUIDS
-            ):
-                endpoints[tmp_uuid]["EXE"] = epm.KNOWN_UUIDS[
-                    uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18]
-                ]
+            if uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18] in epm.KNOWN_UUIDS:
+                endpoints[tmp_uuid]["EXE"] = epm.KNOWN_UUIDS[uuid.uuidtup_to_bin(uuid.string_to_uuidtup(tmp_uuid))[:18]]
             else:
                 endpoints[tmp_uuid]["EXE"] = "N/A"
             endpoints[tmp_uuid]["annotation"] = entry["annotation"][:-1].decode("utf-8")
@@ -112,9 +93,7 @@ class CMEModule:
             if "MS-RPRN" in endpoints[endpoint]["Protocol"]:
                 context.log.debug("Protocol: %s " % endpoints[endpoint]["Protocol"])
                 context.log.debug("Provider: %s " % endpoints[endpoint]["EXE"])
-                context.log.debug(
-                    "UUID    : %s %s" % (endpoint, endpoints[endpoint]["annotation"])
-                )
+                context.log.debug("UUID    : %s %s" % (endpoint, endpoints[endpoint]["annotation"]))
                 context.log.debug("Bindings: ")
                 for binding in endpoints[endpoint]["Bindings"]:
                     context.log.debug("          %s" % binding)

@@ -8,4 +8,4 @@ jobs:
       - uses: actions/checkout@v2
       - uses: rickstaa/action-black@v1
         with:
-          black_args: ". --check"
+          black_args: ". --line-length 1000 --check"

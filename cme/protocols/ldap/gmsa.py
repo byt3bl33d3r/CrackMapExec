@@ -28,20 +28,9 @@ class MSDS_MANAGEDPASSWORD_BLOB(Structure):
         else:
             endData = self["PreviousPasswordOffset"]
 
-        self["CurrentPassword"] = self.rawData[self["CurrentPasswordOffset"] :][
-            : endData - self["CurrentPasswordOffset"]
-        ]
+        self["CurrentPassword"] = self.rawData[self["CurrentPasswordOffset"] :][: endData - self["CurrentPasswordOffset"]]
         if self["PreviousPasswordOffset"] != 0:
-            self["PreviousPassword"] = self.rawData[self["PreviousPasswordOffset"] :][
-                : self["QueryPasswordIntervalOffset"] - self["PreviousPasswordOffset"]
-            ]
+            self["PreviousPassword"] = self.rawData[self["PreviousPasswordOffset"] :][: self["QueryPasswordIntervalOffset"] - self["PreviousPasswordOffset"]]
 
-        self["QueryPasswordInterval"] = self.rawData[
-            self["QueryPasswordIntervalOffset"] :
-        ][
-            : self["UnchangedPasswordIntervalOffset"]
-            - self["QueryPasswordIntervalOffset"]
-        ]
-        self["UnchangedPasswordInterval"] = self.rawData[
-            self["UnchangedPasswordIntervalOffset"] :
-        ]
+        self["QueryPasswordInterval"] = self.rawData[self["QueryPasswordIntervalOffset"] :][: self["UnchangedPasswordIntervalOffset"] - self["QueryPasswordIntervalOffset"]]
+        self["UnchangedPasswordInterval"] = self.rawData[self["UnchangedPasswordIntervalOffset"] :]

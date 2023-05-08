@@ -12,9 +12,7 @@ class CMEModule:
     description = "I do something"
     supported_protocols = []
     opsec_safe = True  # Does the module touch disk?
-    multiple_hosts = (
-        True  # Does it make sense to run this module on multiple hosts at a time?
-    )
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def __init__(self, context=None, module_options=None):
         self.context = context

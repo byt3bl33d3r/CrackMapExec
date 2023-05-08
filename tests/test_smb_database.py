@@ -17,9 +17,7 @@ from sqlalchemy.dialects.sqlite import Insert
 @pytest.fixture(scope="session")
 def db_engine():
     db_path = os.path.join(WS_PATH, "test/smb.db")
-    db_engine = create_engine(
-        f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True
-    )
+    db_engine = create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
     yield db_engine
     db_engine.dispose()
 

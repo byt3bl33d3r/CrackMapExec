@@ -63,11 +63,7 @@ class CMEModule:
             context.log.fail("No masterkeys looted")
             return
 
-        context.log.success(
-            "Got {} decrypted masterkeys. Looting Wifi interfaces".format(
-                highlight(len(masterkeys))
-            )
-        )
+        context.log.success("Got {} decrypted masterkeys. Looting Wifi interfaces".format(highlight(len(masterkeys))))
 
         try:
             # Collect Chrome Based Browser stored secrets
@@ -89,11 +85,6 @@ class CMEModule:
                         )
                     )
                 except:
-                    context.log.highlight(
-                        "[%s] %s - Passphrase: %s"
-                        % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password)
-                    )
+                    context.log.highlight("[%s] %s - Passphrase: %s" % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password))
             else:
-                context.log.highlight(
-                    "[WPA-EAP] %s - %s" % (wifi_cred.ssid, wifi_cred.eap_type)
-                )
+                context.log.highlight("[WPA-EAP] %s - %s" % (wifi_cred.ssid, wifi_cred.eap_type))

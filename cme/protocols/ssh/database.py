@@ -88,29 +88,14 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect():
             try:
-                self.CredentialsTable = Table(
-                    "credentials", self.metadata, autoload_with=self.db_engine
-                )
-                self.HostsTable = Table(
-                    "hosts", self.metadata, autoload_with=self.db_engine
-                )
-                self.LoggedinRelationsTable = Table(
-                    "loggedin_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.AdminRelationsTable = Table(
-                    "admin_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.KeysTable = Table(
-                    "keys", self.metadata, autoload_with=self.db_engine
-                )
+                self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+                self.KeysTable = Table("keys", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
                 ssh_workspace = f"~/.cme/workspaces/{cme_workspace}/ssh.db"
-                print(
-                    "[-] Error reflecting tables for SSH protocol - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    f"[-] Optionally save the old DB data (`cp {ssh_workspace} ~/cme_ssh.bak`)\n"
-                    f"[-] Then remove the CME SSH DB (`rm -rf {ssh_workspace}`) and run CME to initialize the new DB"
-                )
+                print("[-] Error reflecting tables for SSH protocol - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" f"[-] Optionally save the old DB data (`cp {ssh_workspace} ~/cme_ssh.bak`)\n" f"[-] Then remove the CME SSH DB (`rm -rf {ssh_workspace}`) and run CME to initialize the new DB")
                 exit()
 
     def shutdown_db(self):
@@ -170,9 +155,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(
-            index_elements=self.HostsTable.primary_key, set_=update_columns
-        )
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
 
         self.sess.execute(q, hosts)  # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
@@ -192,10 +175,8 @@ class database:
                 select(self.CredentialsTable)
                 .join(self.KeysTable)
                 .filter(
-                    func.lower(self.CredentialsTable.c.username)
-                    == func.lower(username),
-                    func.lower(self.CredentialsTable.c.credtype)
-                    == func.lower(credtype),
+                    func.lower(self.CredentialsTable.c.username) == func.lower(username),
+                    func.lower(self.CredentialsTable.c.credtype) == func.lower(credtype),
                     self.KeysTable.c.data == key,
                 )
             )
@@ -232,15 +213,9 @@ class database:
                     credentials.append(cred_data)
 
         # TODO: find a way to abstract this away to a single Upsert call
-        q_users = Insert(
-            self.CredentialsTable
-        )  # .returning(self.CredentialsTable.c.id)
-        update_columns_users = {
-            col.name: col for col in q_users.excluded if col.name not in "id"
-        }
-        q_users = q_users.on_conflict_do_update(
-            index_elements=self.CredentialsTable.primary_key, set_=update_columns_users
-        )
+        q_users = Insert(self.CredentialsTable)  # .returning(self.CredentialsTable.c.id)
+        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in "id"}
+        q_users = q_users.on_conflict_do_update(index_elements=self.CredentialsTable.primary_key, set_=update_columns_users)
         cme_logger.debug(f"Adding credentials: {credentials}")
 
         self.sess.execute(q_users, credentials)  # .scalar()
@@ -261,17 +236,13 @@ class database:
         """
         del_hosts = []
         for cred_id in creds_id:
-            q = delete(self.CredentialsTable).filter(
-                self.CredentialsTable.c.id == cred_id
-            )
+            q = delete(self.CredentialsTable).filter(self.CredentialsTable.c.id == cred_id)
             del_hosts.append(q)
         self.sess.execute(q)
 
     def add_key(self, cred_id, key):
         # check if key relation already exists
-        check_q = self.sess.execute(
-            select(self.KeysTable).filter(self.KeysTable.c.credid == cred_id)
-        ).all()
+        check_q = self.sess.execute(select(self.KeysTable).filter(self.KeysTable.c.credid == cred_id)).all()
         cme_logger.debug(f"check_q: {check_q}")
         if check_q:
             cme_logger.debug(f"Key already exists for cred_id {cred_id}")
@@ -279,13 +250,7 @@ class database:
 
         key_data = {"credid": cred_id, "data": key}
         self.sess.execute(Insert(self.KeysTable), key_data)
-        key_id = (
-            self.sess.execute(
-                select(self.KeysTable).filter(self.KeysTable.c.credid == cred_id)
-            )
-            .all()[0]
-            .id
-        )
+        key_id = self.sess.execute(select(self.KeysTable).filter(self.KeysTable.c.credid == cred_id)).all()[0].id
         cme_logger.debug(f"Key added: {key_id}")
         return key_id
 
@@ -334,13 +299,9 @@ class database:
 
     def get_admin_relations(self, cred_id=None, host_id=None):
         if cred_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.credid == cred_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.credid == cred_id)
         elif host_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.hostid == host_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
         else:
             q = select(self.AdminRelationsTable)
 
@@ -374,19 +335,13 @@ class database:
         """
         # if we're returning a single credential by ID
         if self.is_credential_valid(filter_term):
-            q = select(self.CredentialsTable).filter(
-                self.CredentialsTable.c.id == filter_term
-            )
+            q = select(self.CredentialsTable).filter(self.CredentialsTable.c.id == filter_term)
         elif cred_type:
-            q = select(self.CredentialsTable).filter(
-                self.CredentialsTable.c.credtype == cred_type
-            )
+            q = select(self.CredentialsTable).filter(self.CredentialsTable.c.credtype == cred_type)
         # if we're filtering by username
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.CredentialsTable).filter(
-                func.lower(self.CredentialsTable.c.username).like(like_term)
-            )
+            q = select(self.CredentialsTable).filter(func.lower(self.CredentialsTable.c.username).like(like_term))
         # otherwise return all credentials
         else:
             q = select(self.CredentialsTable)
@@ -455,9 +410,7 @@ class database:
         return results
 
     def get_user(self, domain, username):
-        q = select(self.CredentialsTable).filter(
-            func.lower(self.CredentialsTable.c.username) == func.lower(username)
-        )
+        q = select(self.CredentialsTable).filter(func.lower(self.CredentialsTable.c.username) == func.lower(username))
         results = self.sess.execute(q).all()
         return results
 
@@ -474,23 +427,17 @@ class database:
             try:
                 cme_logger.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(
-                    self.LoggedinRelationsTable
-                )  # .returning(self.LoggedinRelationsTable.c.id)
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
 
                 self.sess.execute(q, [relation])  # .scalar()
                 inserted_id_results = self.get_loggedin_relations(cred_id, host_id)
-                cme_logger.debug(
-                    f"Checking if relation was added: {inserted_id_results}"
-                )
+                cme_logger.debug(f"Checking if relation was added: {inserted_id_results}")
                 return inserted_id_results[0].id
             except Exception as e:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, cred_id=None, host_id=None, shell=None):
-        q = select(
-            self.LoggedinRelationsTable
-        )  # .returning(self.LoggedinRelationsTable.c.id)
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if cred_id:
             q = q.filter(self.LoggedinRelationsTable.c.credid == cred_id)
         if host_id:

@@ -41,11 +41,7 @@ class CMEModule:
         obfuscate = True if "OBFUSCATE" in module_options else False
         # we can use commands instead of backslashes - this is because Linux and OSX treat them differently
         default_obfuscation = "Token,All,1"
-        obfuscate_cmd = (
-            module_options["OBFUSCATE_CMD"]
-            if "OBFUSCATE_CMD" in module_options
-            else default_obfuscation
-        )
+        obfuscate_cmd = module_options["OBFUSCATE_CMD"] if "OBFUSCATE_CMD" in module_options else default_obfuscation
         context.log.debug(f"Obfuscate: {obfuscate} - Obfuscate_cmd: {obfuscate_cmd}")
 
         # Pull the host and port from the config file
@@ -111,9 +107,7 @@ class CMEModule:
             if "not found" in stager_response.json()["detail"]:
                 context.log.fail(f"Listener {module_options['LISTENER']} not found")
             else:
-                context.log.fail(
-                    f"Stager response received a non-200 when creating stager: {stager_response.status_code} {stager_response.text}"
-                )
+                context.log.fail(f"Stager response received a non-200 when creating stager: {stager_response.status_code} {stager_response.text}")
             sys.exit(1)
 
         context.log.debug(f"Response Code: {stager_response.status_code}")
@@ -134,13 +128,9 @@ class CMEModule:
         self.empire_launcher = download_response.text
 
         if download_response.status_code == 200:
-            context.log.success(
-                f"Successfully generated launcher for listener '{module_options['LISTENER']}'"
-            )
+            context.log.success(f"Successfully generated launcher for listener '{module_options['LISTENER']}'")
         else:
-            context.log.fail(
-                f"Something went wrong when retrieving stager Powershell command"
-            )
+            context.log.fail(f"Something went wrong when retrieving stager Powershell command")
 
     def on_admin_login(self, context, connection):
         if self.empire_launcher:

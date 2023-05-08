@@ -20,9 +20,7 @@ class RemoteFile:
         self.__currentOffset = 0
 
     def open(self):
-        self.__fid = self.__smbConnection.openFile(
-            self.__tid, self.__fileName, desiredAccess=self.__access
-        )
+        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName, desiredAccess=self.__access)
 
     def seek(self, offset, whence):
         # Implement whence, for now it's always from the beginning of the file
@@ -31,9 +29,7 @@ class RemoteFile:
 
     def read(self, bytesToRead):
         if bytesToRead > 0:
-            data = self.__smbConnection.readFile(
-                self.__tid, self.__fid, self.__currentOffset, bytesToRead
-            )
+            data = self.__smbConnection.readFile(self.__tid, self.__fid, self.__currentOffset, bytesToRead)
             self.__currentOffset += len(data)
             return data
         return ""

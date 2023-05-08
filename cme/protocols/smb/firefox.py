@@ -62,42 +62,24 @@ class FirefoxTriage:
         users = self.get_users()
         for user in users:
             try:
-                directories = self.conn.remote_list_dir(
-                    share=self.share, path=self.firefox_generic_path.format(user)
-                )
+                directories = self.conn.remote_list_dir(share=self.share, path=self.firefox_generic_path.format(user))
             except Exception as e:
                 if "STATUS_OBJECT_PATH_NOT_FOUND" in str(e):
                     continue
                 self.logger.debug(e)
             if directories is None:
                 continue
-            for d in [
-                d
-                for d in directories
-                if d.get_longname() not in self.false_positive and d.is_directory() > 0
-            ]:
+            for d in [d for d in directories if d.get_longname() not in self.false_positive and d.is_directory() > 0]:
                 try:
-                    logins_path = (
-                        self.firefox_generic_path.format(user)
-                        + "\\"
-                        + d.get_longname()
-                        + "\\logins.json"
-                    )
+                    logins_path = self.firefox_generic_path.format(user) + "\\" + d.get_longname() + "\\logins.json"
                     logins_data = self.conn.readFile(self.share, logins_path)
                     if logins_data is None:
                         continue  # No logins.json file found
                     logins = self.get_login_data(logins_data=logins_data)
                     if len(logins) == 0:
                         continue  # No logins profile found
-                    key4_path = (
-                        self.firefox_generic_path.format(user)
-                        + "\\"
-                        + d.get_longname()
-                        + "\\key4.db"
-                    )
-                    key4_data = self.conn.readFile(
-                        self.share, key4_path, bypass_shared_violation=True
-                    )
+                    key4_path = self.firefox_generic_path.format(user) + "\\" + d.get_longname() + "\\key4.db"
+                    key4_data = self.conn.readFile(self.share, key4_path, bypass_shared_violation=True)
                     if key4_data is None:
                         continue
                     key = self.get_key(key4_data=key4_data)
@@ -109,12 +91,8 @@ class FirefoxTriage:
                     if key is None:
                         continue
                     for username, pwd, host in logins:
-                        decoded_username = self.decrypt(
-                            key=key, iv=username[1], ciphertext=username[2]
-                        ).decode("utf-8")
-                        password = self.decrypt(
-                            key=key, iv=pwd[1], ciphertext=pwd[2]
-                        ).decode("utf-8")
+                        decoded_username = self.decrypt(key=key, iv=username[1], ciphertext=username[2]).decode("utf-8")
+                        password = self.decrypt(key=key, iv=pwd[1], ciphertext=pwd[2]).decode("utf-8")
                         if password is not None and decoded_username is not None:
                             firefox_data.append(
                                 FirefoxData(
@@ -154,9 +132,7 @@ class FirefoxTriage:
         row = next(cursor)
 
         if row:
-            global_salt, master_password, _ = self.is_master_password_correct(
-                key_data=row, master_password=master_password
-            )
+            global_salt, master_password, _ = self.is_master_password_correct(key_data=row, master_password=master_password)
             if global_salt:
                 try:
                     cursor.execute("SELECT a11,a102 FROM nssPrivate;")
@@ -167,9 +143,7 @@ class FirefoxTriage:
                     a102 = row[1]
                     if a102 == CKA_ID:
                         decoded_a11 = decoder.decode(a11)
-                        key = self.decrypt_3des(
-                            decoded_a11, master_password, global_salt
-                        )
+                        key = self.decrypt_3des(decoded_a11, master_password, global_salt)
                         if key is not None:
                             fh.close()
                             return key[:24]
@@ -185,9 +159,7 @@ class FirefoxTriage:
             global_salt = key_data[0]  # Item1
             item2 = key_data[1]
             decoded_item2 = decoder.decode(item2)
-            cleartext_data = self.decrypt_3des(
-                decoded_item2, master_password, global_salt
-            )
+            cleartext_data = self.decrypt_3des(decoded_item2, master_password, global_salt)
             if cleartext_data != "password-check\x02\x02".encode():
                 return "", "", ""
             return global_salt, master_password, entry_salt
@@ -199,9 +171,7 @@ class FirefoxTriage:
         users = list()
 
         users_dir_path = "Users\\*"
-        directories = self.conn.listPath(
-            shareName=self.share, path=ntpath.normpath(users_dir_path)
-        )
+        directories = self.conn.listPath(shareName=self.share, path=ntpath.normpath(users_dir_path))
 
         for d in directories:
             if d.get_longname() not in self.false_positive and d.is_directory() > 0:
@@ -264,9 +234,7 @@ class FirefoxTriage:
             assert key_length == 32
 
             k = sha1(global_salt + master_password).digest()
-            key = pbkdf2_hmac(
-                "sha256", k, entry_salt, iteration_count, dklen=key_length
-            )
+            key = pbkdf2_hmac("sha256", k, entry_salt, iteration_count, dklen=key_length)
 
             # https://hg.mozilla.org/projects/nss/rev/fc636973ad06392d11597620b602779b4af312f6#l6.49
             iv = b"\x04\x0e" + decoded_item[0][0][1][1][1].asOctets()

@@ -72,11 +72,7 @@ class PassPolDump:
 
     def __init__(self, connection):
         self.logger = cme_logger
-        self.addr = (
-            connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain
-        )
+        self.addr = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
@@ -176,9 +172,7 @@ class PassPolDump:
             domainInformationClass=samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation,
         )
         self.__min_pass_len = re["Buffer"]["Password"]["MinPasswordLength"] or "None"
-        self.__pass_hist_len = (
-            re["Buffer"]["Password"]["PasswordHistoryLength"] or "None"
-        )
+        self.__pass_hist_len = re["Buffer"]["Password"]["PasswordHistoryLength"] or "None"
         self.__max_pass_age = convert(
             int(re["Buffer"]["Password"]["MaxPasswordAge"]["LowPart"]),
             int(re["Buffer"]["Password"]["MaxPasswordAge"]["HighPart"]),
@@ -194,12 +188,8 @@ class PassPolDump:
             domainHandle=domainHandle,
             domainInformationClass=samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation,
         )
-        self.__rst_accnt_lock_counter = convert(
-            0, re["Buffer"]["Lockout"]["LockoutObservationWindow"], lockout=True
-        )
-        self.__lock_accnt_dur = convert(
-            0, re["Buffer"]["Lockout"]["LockoutDuration"], lockout=True
-        )
+        self.__rst_accnt_lock_counter = convert(0, re["Buffer"]["Lockout"]["LockoutObservationWindow"], lockout=True)
+        self.__lock_accnt_dur = convert(0, re["Buffer"]["Lockout"]["LockoutDuration"], lockout=True)
         self.__accnt_lock_thres = re["Buffer"]["Lockout"]["LockoutThreshold"] or "None"
 
         re = samr.hSamrQueryInformationDomain2(
@@ -240,26 +230,20 @@ class PassPolDump:
         for domain in self.__domains:
             cme_logger.debug(f"{domain['Name']}")
 
-        self.logger.success(
-            f"Dumping password info for domain: {self.__domains[0]['Name']}"
-        )
+        self.logger.success(f"Dumping password info for domain: {self.__domains[0]['Name']}")
 
         self.logger.highlight(f"Minimum password length: {self.__min_pass_len}")
         self.logger.highlight(f"Password history length: {self.__pass_hist_len}")
         self.logger.highlight(f"Maximum password age: {self.__max_pass_age}")
         self.logger.highlight("")
-        self.logger.highlight(
-            f"Password Complexity Flags: {self.__pass_prop or 'None'}"
-        )
+        self.logger.highlight(f"Password Complexity Flags: {self.__pass_prop or 'None'}")
 
         for i, a in enumerate(self.__pass_prop):
             self.logger.highlight(f"\t{PASSCOMPLEX[i]} {str(a)}")
 
         self.logger.highlight("")
         self.logger.highlight(f"Minimum password age: {self.__min_pass_age}")
-        self.logger.highlight(
-            f"Reset Account Lockout Counter: {self.__rst_accnt_lock_counter}"
-        )
+        self.logger.highlight(f"Reset Account Lockout Counter: {self.__rst_accnt_lock_counter}")
         self.logger.highlight(f"Locked Account Duration: {self.__lock_accnt_dur}")
         self.logger.highlight(f"Account Lockout Threshold: {self.__accnt_lock_thres}")
         self.logger.highlight(f"Forced Log off Time: {self.__force_logoff_time}")

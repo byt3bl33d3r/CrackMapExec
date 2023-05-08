@@ -153,40 +153,17 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.HostsTable = Table(
-                    "hosts", self.metadata, autoload_with=self.db_engine
-                )
-                self.UsersTable = Table(
-                    "users", self.metadata, autoload_with=self.db_engine
-                )
-                self.GroupsTable = Table(
-                    "groups", self.metadata, autoload_with=self.db_engine
-                )
-                self.SharesTable = Table(
-                    "shares", self.metadata, autoload_with=self.db_engine
-                )
-                self.AdminRelationsTable = Table(
-                    "admin_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.GroupRelationsTable = Table(
-                    "group_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.LoggedinRelationsTable = Table(
-                    "loggedin_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.DpapiSecrets = Table(
-                    "dpapi_secrets", self.metadata, autoload_with=self.db_engine
-                )
-                self.DpapiBackupkey = Table(
-                    "dpapi_backupkey", self.metadata, autoload_with=self.db_engine
-                )
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.GroupsTable = Table("groups", self.metadata, autoload_with=self.db_engine)
+                self.SharesTable = Table("shares", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+                self.GroupRelationsTable = Table("group_relations", self.metadata, autoload_with=self.db_engine)
+                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+                self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
+                self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 exit()
 
     def shutdown_db(self):
@@ -275,9 +252,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(
-            index_elements=self.HostsTable.primary_key, set_=update_columns
-        )
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
 
         self.conn.execute(q, hosts)  # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
@@ -285,9 +260,7 @@ class database:
             cme_logger.debug(f"add_host() - Host IDs Updated: {updated_ids}")
             return updated_ids
 
-    def add_credential(
-        self, credtype, domain, username, password, group_id=None, pillaged_from=None
-    ):
+    def add_credential(self, credtype, domain, username, password, group_id=None, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
@@ -295,9 +268,7 @@ class database:
         credentials = []
         groups = []
 
-        if (group_id and not self.is_group_valid(group_id)) or (
-            pillaged_from and not self.is_host_valid(pillaged_from)
-        ):
+        if (group_id and not self.is_group_valid(group_id)) or (pillaged_from and not self.is_host_valid(pillaged_from)):
             cme_logger.debug(f"Invalid group or host")
             return
 
@@ -344,12 +315,8 @@ class database:
 
         # TODO: find a way to abstract this away to a single Upsert call
         q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
-        update_columns_users = {
-            col.name: col for col in q_users.excluded if col.name not in "id"
-        }
-        q_users = q_users.on_conflict_do_update(
-            index_elements=self.UsersTable.primary_key, set_=update_columns_users
-        )
+        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in "id"}
+        q_users = q_users.on_conflict_do_update(index_elements=self.UsersTable.primary_key, set_=update_columns_users)
         cme_logger.debug(f"Adding credentials: {credentials}")
 
         self.conn.execute(q_users, credentials)  # .scalar()
@@ -408,13 +375,9 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.userid == user_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.userid == user_id)
         elif host_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.hostid == host_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
         else:
             q = select(self.AdminRelationsTable)
 
@@ -454,9 +417,7 @@ class database:
         # if we're filtering by username
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.UsersTable).filter(
-                func.lower(self.UsersTable.c.username).like(like_term)
-            )
+            q = select(self.UsersTable).filter(func.lower(self.UsersTable.c.username).like(like_term))
         # otherwise return all credentials
         else:
             q = select(self.UsersTable)
@@ -477,15 +438,11 @@ class database:
         return results.id
 
     def is_credential_local(self, credential_id):
-        q = select(self.UsersTable.c.domain).filter(
-            self.UsersTable.c.id == credential_id
-        )
+        q = select(self.UsersTable.c.domain).filter(self.UsersTable.c.id == credential_id)
         user_domain = self.conn.execute(q).all()
 
         if user_domain:
-            q = select(self.HostsTable).filter(
-                func.lower(self.HostsTable.c.id) == func.lower(user_domain)
-            )
+            q = select(self.HostsTable).filter(func.lower(self.HostsTable.c.id) == func.lower(user_domain))
             results = self.conn.execute(q).all()
 
             return len(results) > 0
@@ -531,10 +488,7 @@ class database:
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = q.filter(
-                self.HostsTable.c.ip.like(like_term)
-                | func.lower(self.HostsTable.c.hostname).like(like_term)
-            )
+            q = q.filter(self.HostsTable.c.ip.like(like_term) | func.lower(self.HostsTable.c.hostname).like(like_term))
         results = self.conn.execute(q).all()
         cme_logger.debug(f"smb hosts() - results: {results}")
         return results
@@ -578,9 +532,7 @@ class database:
             q = Insert(self.GroupsTable)
 
             self.conn.execute(q, groups)
-            new_group_data = self.get_groups(
-                group_name=group_data["name"], group_domain=group_data["domain"]
-            )
+            new_group_data = self.get_groups(group_name=group_data["name"], group_domain=group_data["domain"])
             returned_id = [new_group_data[0].id]
             cme_logger.debug(f"Inserted group with ID: {returned_id[0]}")
             return returned_id
@@ -608,9 +560,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.GroupsTable)  # .returning(self.GroupsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(
-            index_elements=self.GroupsTable.primary_key, set_=update_columns
-        )
+        q = q.on_conflict_do_update(index_elements=self.GroupsTable.primary_key, set_=update_columns)
 
         self.conn.execute(q, groups)
         # TODO: always return a list and fix code references to not expect a single integer
@@ -648,9 +598,7 @@ class database:
 
         results = self.conn.execute(q).all()
 
-        cme_logger.debug(
-            f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}"
-        )
+        cme_logger.debug(f"get_groups(filter_term={filter_term}, groupName={group_name}, groupDomain={group_domain}) => {results}")
         return results
 
     def get_group_relations(self, user_id=None, group_id=None):
@@ -660,13 +608,9 @@ class database:
                 self.GroupRelationsTable.c.groupid == group_id,
             )
         elif user_id:
-            q = select(self.GroupRelationsTable).filter(
-                self.GroupRelationsTable.c.id == user_id
-            )
+            q = select(self.GroupRelationsTable).filter(self.GroupRelationsTable.c.id == user_id)
         elif group_id:
-            q = select(self.GroupRelationsTable).filter(
-                self.GroupRelationsTable.c.groupid == group_id
-            )
+            q = select(self.GroupRelationsTable).filter(self.GroupRelationsTable.c.groupid == group_id)
 
         results = self.conn.execute(q).all()
         return results
@@ -730,9 +674,7 @@ class database:
             "write": write,
         }
         share_id = self.conn.execute(
-            Insert(
-                self.SharesTable
-            ).on_conflict_do_nothing(),  # .returning(self.SharesTable.c.id),
+            Insert(self.SharesTable).on_conflict_do_nothing(),  # .returning(self.SharesTable.c.id),
             share_data,
         )  # .scalar_one()
         # return share_id
@@ -762,9 +704,7 @@ class database:
 
     def get_users_with_share_access(self, host_id, share_name, permissions):
         permissions = permissions.lower()
-        q = select(self.SharesTable.c.userid).filter(
-            self.SharesTable.c.name == share_name, self.SharesTable.c.hostid == host_id
-        )
+        q = select(self.SharesTable.c.userid).filter(self.SharesTable.c.name == share_name, self.SharesTable.c.hostid == host_id)
         if "r" in permissions:
             q = q.filter(self.SharesTable.c.read == 1)
         if "w" in permissions:
@@ -779,9 +719,7 @@ class database:
         :domain is the domain fqdn
         :pvk is the domain backupkey
         """
-        q = select(self.DpapiBackupkey).filter(
-            func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain)
-        )
+        q = select(self.DpapiBackupkey).filter(func.lower(self.DpapiBackupkey.c.domain) == func.lower(domain))
         results = self.conn.execute(q).all()
 
         if not len(results):
@@ -792,9 +730,7 @@ class database:
                 q = Insert(self.DpapiBackupkey)  # .returning(self.DpapiBackupkey.c.id)
 
                 self.conn.execute(q, [backup_key])  # .scalar()
-                cme_logger.debug(
-                    f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})"
-                )
+                cme_logger.debug(f"add_domain_backupkey(domain={domain}, pvk={pvk_encoded})")
                 # return inserted_id
             except Exception as e:
                 cme_logger.debug(f"Issue while inserting DPAPI Backup Key: {e}")
@@ -812,10 +748,7 @@ class database:
         cme_logger.debug(f"get_domain_backupkey(domain={domain}) => {results}")
 
         if len(results) > 0:
-            results = [
-                (id_key, domain, base64.b64decode(pvk))
-                for id_key, domain, pvk in results
-            ]
+            results = [(id_key, domain, base64.b64decode(pvk)) for id_key, domain, pvk in results]
         return results
 
     def is_dpapi_secret_valid(self, dpapi_secret_id):
@@ -823,9 +756,7 @@ class database:
         Check if this group ID is valid.
         :dpapi_secret_id is a primary id
         """
-        q = select(self.DpapiSecrets).filter(
-            func.lower(self.DpapiSecrets.c.id) == dpapi_secret_id
-        )
+        q = select(self.DpapiSecrets).filter(func.lower(self.DpapiSecrets.c.id) == dpapi_secret_id)
         results = self.conn.execute(q).first()
         valid = True if results is not None else False
         cme_logger.debug(f"is_dpapi_secret_valid(groupID={dpapi_secret_id}) => {valid}")
@@ -851,18 +782,14 @@ class database:
             "password": password,
             "url": url,
         }
-        q = Insert(
-            self.DpapiSecrets
-        ).on_conflict_do_nothing()  # .returning(self.DpapiSecrets.c.id)
+        q = Insert(self.DpapiSecrets).on_conflict_do_nothing()  # .returning(self.DpapiSecrets.c.id)
 
         self.conn.execute(q, [secret])  # .scalar()
 
         # inserted_result = res_inserted_result.first()
         # inserted_id = inserted_result.id
 
-        cme_logger.debug(
-            f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})"
-        )
+        cme_logger.debug(f"add_dpapi_secrets(host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, password={password}, url={url})")
 
     def get_dpapi_secrets(
         self,
@@ -889,9 +816,7 @@ class database:
             # all() returns a list, so we keep the return format the same so consumers don't have to guess
             return [results]
         elif dpapi_type:
-            q = q.filter(
-                func.lower(self.DpapiSecrets.c.dpapi_type) == func.lower(dpapi_type)
-            )
+            q = q.filter(func.lower(self.DpapiSecrets.c.dpapi_type) == func.lower(dpapi_type))
         elif windows_user:
             like_term = func.lower(f"%{windows_user}%")
             q = q.filter(func.lower(self.DpapiSecrets.c.windows_user).like(like_term))
@@ -902,9 +827,7 @@ class database:
             q = q.filter(func.lower(self.DpapiSecrets.c.url) == func.lower(url))
         results = self.conn.execute(q).all()
 
-        cme_logger.debug(
-            f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}"
-        )
+        cme_logger.debug(f"get_dpapi_secrets(filter_term={filter_term}, host={host}, dpapi_type={dpapi_type}, windows_user={windows_user}, username={username}, url={url}) => {results}")
         return results
 
     def add_loggedin_relation(self, user_id, host_id):
@@ -920,23 +843,17 @@ class database:
             try:
                 cme_logger.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(
-                    self.LoggedinRelationsTable
-                )  # .returning(self.LoggedinRelationsTable.c.id)
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
 
                 self.conn.execute(q, [relation])  # .scalar()
                 inserted_id_results = self.get_loggedin_relations(user_id, host_id)
-                cme_logger.debug(
-                    f"Checking if relation was added: {inserted_id_results}"
-                )
+                cme_logger.debug(f"Checking if relation was added: {inserted_id_results}")
                 return inserted_id_results[0].id
             except Exception as e:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(
-            self.LoggedinRelationsTable
-        )  # .returning(self.LoggedinRelationsTable.c.id)
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(self.LoggedinRelationsTable.c.userid == user_id)
         if host_id:

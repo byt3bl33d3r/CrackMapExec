@@ -27,9 +27,7 @@ class UserExitedProto(Exception):
 
 
 def create_db_engine(db_path):
-    db_engine = create_engine(
-        f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True
-    )
+    db_engine = create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
     return db_engine
 
 
@@ -135,9 +133,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if command == "creds":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export creds <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
                 return
 
             filename = line[2]
@@ -177,9 +173,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Hosts
         elif command == "hosts":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export hosts <simple|detailed|signing> <filename>"
-                )
+                print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
                 return
 
             csv_header_simple = (
@@ -226,9 +220,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Shares
         elif command == "shares":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export shares <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
 
             shares = self.db.get_shares()
@@ -262,9 +254,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Local Admin
         elif command == "local_admins":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export local_admins <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
                 return
 
             # These values don't change between simple and detailed
@@ -293,9 +283,7 @@ class DatabaseNavigator(cmd.Cmd):
             print("[+] Local Admins exported")
         elif command == "dpapi":
             if len(line) < 3:
-                print(
-                    "[-] invalid arguments, export dpapi <simple|detailed> <filename>"
-                )
+                print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
                 return
 
             # These values don't change between simple and detailed
@@ -341,9 +329,7 @@ class DatabaseNavigator(cmd.Cmd):
             filename = line[2]
             write_list(filename, writable_keys)
         else:
-            print(
-                "[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi"
-            )
+            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
 
     @staticmethod
     def help_export():
@@ -391,11 +377,7 @@ class DatabaseNavigator(cmd.Cmd):
                     creds = r.json()
 
                     for cred in creds["creds"]:
-                        if (
-                            cred["credtype"] == "token"
-                            or cred["credtype"] == "krbtgt"
-                            or cred["username"].endswith("$")
-                        ):
+                        if cred["credtype"] == "token" or cred["credtype"] == "krbtgt" or cred["username"].endswith("$"):
                             continue
                         self.db.add_credential(
                             cred["credtype"],
@@ -449,9 +431,7 @@ class CMEDBMenu(cmd.Cmd):
             self.config.set("CME", "last_used_db", proto)
             self.write_configfile()
             try:
-                proto_menu = getattr(db_nav_object, "navigator")(
-                    self, getattr(db_object, "database")(self.conn), proto
-                )
+                proto_menu = getattr(db_nav_object, "navigator")(self, getattr(db_object, "database")(self.conn), proto)
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
@@ -553,9 +533,7 @@ def initialize_db(logger):
             conn = connect(proto_db_path)
             c = conn.cursor()
             # try to prevent some weird sqlite I/O errors
-            c.execute(
-                "PRAGMA journal_mode = OFF"
-            )  # could try setting to PERSIST if DB corruption starts occurring
+            c.execute("PRAGMA journal_mode = OFF")  # could try setting to PERSIST if DB corruption starts occurring
             c.execute("PRAGMA foreign_keys = 1")
             # set a small timeout (5s) so if another thread is writing to the database, the entire program doesn't crash
             c.execute("PRAGMA busy_timeout = 5000")

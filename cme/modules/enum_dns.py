@@ -33,9 +33,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         if not self.domains:
             domains = []
-            output = connection.wmi(
-                "Select Name FROM MicrosoftDNS_Zone", "root\\microsoftdns"
-            )
+            output = connection.wmi("Select Name FROM MicrosoftDNS_Zone", "root\\microsoftdns")
 
             if output:
                 for result in output:
@@ -72,8 +70,6 @@ class CMEModule:
                         context.log.highlight("\t" + d)
                         data += "\t" + d + "\n"
 
-        log_name = "DNS-Enum-{}-{}.log".format(
-            connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        )
+        log_name = "DNS-Enum-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(data, log_name)
         context.log.display(f"Saved raw output to {log_name}")

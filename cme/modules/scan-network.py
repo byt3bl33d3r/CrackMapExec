@@ -16,9 +16,7 @@ from ldap3 import LEVEL
 
 
 def get_dns_zones(connection, root, debug=False):
-    connection.search(
-        root, "(objectClass=dnsZone)", search_scope=LEVEL, attributes=["dc"]
-    )
+    connection.search(root, "(objectClass=dnsZone)", search_scope=LEVEL, attributes=["dc"])
     zones = []
     for entry in connection.response:
         if entry["type"] != "searchResEntry":
@@ -40,11 +38,7 @@ def get_dns_resolver(server, context):
         socket.inet_aton(server)
         dnsresolver.nameservers = [server]
     except socket.error:
-        context.info(
-            "Using System DNS to resolve unknown entries. Make sure resolving your"
-            " target domain works here or specify an IP as target host to use that"
-            " server for queries"
-        )
+        context.info("Using System DNS to resolve unknown entries. Make sure resolving your" " target domain works here or specify an IP as target host to use that" " server for queries")
     return dnsresolver
 
 
@@ -114,10 +108,7 @@ class CMEModule:
             else:
                 print("Could not parse ONLY_HOSTS option.")
         if module_options and "ONLY_HOSTS" in module_options:
-            if (
-                module_options["ONLY_HOSTS"].lower() == "true"
-                or module_options["ONLY_HOSTS"] == "1"
-            ):
+            if module_options["ONLY_HOSTS"].lower() == "true" or module_options["ONLY_HOSTS"] == "1":
                 self.showhosts = True
             else:
                 print("Could not parse ONLY_HOSTS option.")
@@ -138,10 +129,7 @@ class CMEModule:
             )
         except ldap.LDAPSearchError as e:
             if e.getErrorString().find("sizeLimitExceeded") >= 0:
-                context.log.debug(
-                    "sizeLimitExceeded exception caught, giving up and processing the"
-                    " data received"
-                )
+                context.log.debug("sizeLimitExceeded exception caught, giving up and processing the" " data received")
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 list_sites = e.getAnswers()
@@ -165,10 +153,7 @@ class CMEModule:
                 if RECORD_TYPE_MAPPING[dr["Type"]] == "A":
                     if dr["Type"] == 1:
                         address = DNS_RPC_RECORD_A(dr["Data"])
-                        if (
-                            str(recordname) != "DomainDnsZones"
-                            and str(recordname) != "ForestDnsZones"
-                        ):
+                        if str(recordname) != "DomainDnsZones" and str(recordname) != "ForestDnsZones":
                             outdata.append(
                                 {
                                     "name": recordname,
@@ -176,16 +161,9 @@ class CMEModule:
                                     "value": address.formatCanonical(),
                                 }
                             )
-                    if dr["Type"] in [
-                        a
-                        for a in RECORD_TYPE_MAPPING
-                        if RECORD_TYPE_MAPPING[a] in ["CNAME", "NS", "PTR"]
-                    ]:
+                    if dr["Type"] in [a for a in RECORD_TYPE_MAPPING if RECORD_TYPE_MAPPING[a] in ["CNAME", "NS", "PTR"]]:
                         address = DNS_RPC_RECORD_NODE_NAME(dr["Data"])
-                        if (
-                            str(recordname) != "DomainDnsZones"
-                            and str(recordname) != "ForestDnsZones"
-                        ):
+                        if str(recordname) != "DomainDnsZones" and str(recordname) != "ForestDnsZones":
                             outdata.append(
                                 {
                                     "name": recordname,
@@ -195,10 +173,7 @@ class CMEModule:
                             )
                     elif dr["Type"] == 28:
                         address = DNS_RPC_RECORD_AAAA(dr["Data"])
-                        if (
-                            str(recordname) != "DomainDnsZones"
-                            and str(recordname) != "ForestDnsZones"
-                        ):
+                        if str(recordname) != "DomainDnsZones" and str(recordname) != "ForestDnsZones":
                             outdata.append(
                                 {
                                     "name": recordname,
@@ -208,31 +183,18 @@ class CMEModule:
                             )
 
         context.log.highlight("Found %d records" % len(outdata))
-        path = expanduser(
-            "~/.cme/logs/{}_network_{}.log".format(
-                connection.domain, datetime.now().strftime("%Y-%m-%d_%H%M%S")
-            )
-        )
+        path = expanduser("~/.cme/logs/{}_network_{}.log".format(connection.domain, datetime.now().strftime("%Y-%m-%d_%H%M%S")))
         with codecs.open(path, "w", "utf-8") as outfile:
             for row in outdata:
                 if self.showhosts:
                     outfile.write("{}\n".format(row["name"] + "." + connection.domain))
                 elif self.showall:
-                    outfile.write(
-                        "{} \t {}\n".format(
-                            row["name"] + "." + connection.domain, row["value"]
-                        )
-                    )
+                    outfile.write("{} \t {}\n".format(row["name"] + "." + connection.domain, row["value"]))
                 else:
                     outfile.write("{}\n".format(row["value"]))
         context.log.success("Dumped {} records to {}".format(len(outdata), path))
         if not self.showall and not self.showhosts:
-            context.log.display(
-                "To extract CIDR from the {} ip, run  the following command: cat"
-                " your_file | mapcidr -aa -silent | mapcidr -a -silent".format(
-                    len(outdata)
-                )
-            )
+            context.log.display("To extract CIDR from the {} ip, run  the following command: cat" " your_file | mapcidr -aa -silent | mapcidr -a -silent".format(len(outdata)))
 
 
 class DNS_RECORD(Structure):
@@ -414,8 +376,6 @@ class DNS_RPC_RECORD_TS(Structure):
     def toDatetime(self):
         microseconds = int(self["entombedTime"] / 10)
         try:
-            return datetime.datetime(1601, 1, 1) + datetime.timedelta(
-                microseconds=microseconds
-            )
+            return datetime.datetime(1601, 1, 1) + datetime.timedelta(microseconds=microseconds)
         except OverflowError:
             return None

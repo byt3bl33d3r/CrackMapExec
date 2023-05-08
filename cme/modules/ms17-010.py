@@ -22,9 +22,7 @@ class CMEModule:
     def on_login(self, context, connection):
         if check(connection.host):
             context.log.highlight("VULNERABLE")
-            context.log.highlight(
-                "Next step: https://www.rapid7.com/db/modules/exploit/windows/smb/ms17_010_eternalblue/"
-            )
+            context.log.highlight("Next step: https://www.rapid7.com/db/modules/exploit/windows/smb/ms17_010_eternalblue/")
 
 
 class SMB_HEADER(Structure):

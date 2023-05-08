@@ -33,16 +33,8 @@ class CMEModule:
     def on_login(self, context, connection):
         success = 0
         results = {}
-        target = (
-            connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain
-        )
-        context.log.debug(
-            "Detecting installed services on {} using LsarLookupNames()...".format(
-                target
-            )
-        )
+        target = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
+        context.log.debug("Detecting installed services on {} using LsarLookupNames()...".format(target))
 
         try:
             lsa = LsaLookupNames(
@@ -62,9 +54,7 @@ class CMEModule:
                 for service in product["services"]:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service["name"])
-                        context.log.display(
-                            f"Detected installed service on {connection.host}: {product['name']} {service['description']}"
-                        )
+                        context.log.display(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product["name"] not in results:
                             results[product["name"]] = {"services": []}
                         results[product["name"]]["services"].append(service)
@@ -74,18 +64,14 @@ class CMEModule:
         except Exception as e:
             context.log.fail(str(e))
 
-        context.log.display(
-            f"Detecting running processes on {connection.host} by enumerating pipes..."
-        )
+        context.log.display(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:
             for f in connection.conn.listPath("IPC$", "\\*"):
                 fl = f.get_longname()
                 for i, product in enumerate(conf["products"]):
                     for pipe in product["pipes"]:
                         if pathlib.PurePath(fl).match(pipe["name"]):
-                            context.log.debug(
-                                f"{product['name']} running claim found on {connection.host} by existing pipe {fl} (likely processes: {pipe['processes']})"
-                            )
+                            context.log.debug(f"{product['name']} running claim found on {connection.host} by existing pipe {fl} (likely processes: {pipe['processes']})")
                             if product["name"] not in results:
                                 results[product["name"]] = {}
                             if "pipes" not in results[product["name"]]:
@@ -168,9 +154,7 @@ class LsaLookupNames:
         # Authenticate if specified
         if self.authn and hasattr(rpc_transport, "set_credentials"):
             # This method exists only for selected protocol sequences.
-            rpc_transport.set_credentials(
-                self.username, self.password, self.domain, self.lmhash, self.nthash
-            )
+            rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
 
         if self.doKerberos:
             rpc_transport.set_kerberos(self.doKerberos, kdcHost=self.dcHost)
@@ -323,9 +307,7 @@ conf = {
         },
         {
             "name": "Carbon Black App Control",
-            "services": [
-                {"name": "Parity", "description": "Carbon Black App Control Agent"}
-            ],
+            "services": [{"name": "Parity", "description": "Carbon Black App Control Agent"}],
             "pipes": [],
         },
         {

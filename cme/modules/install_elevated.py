@@ -59,24 +59,16 @@ class CMEModule:
                 )
                 rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
             except rrp.DCERPCSessionError:
-                context.log.highlight(
-                    "AlwaysInstallElevated Status: 1 (Enabled: Computer Only)"
-                )
+                context.log.highlight("AlwaysInstallElevated Status: 1 (Enabled: Computer Only)")
                 return
             if aie_user_value == 0:
-                context.log.highlight(
-                    "AlwaysInstallElevated Status: 1 (Enabled: Computer Only)"
-                )
+                context.log.highlight("AlwaysInstallElevated Status: 1 (Enabled: Computer Only)")
             else:
                 context.log.highlight("AlwaysInstallElevated Status: 1 (Enabled)")
         finally:
             try:
                 remote_ops.finish()
             except scmr.DCERPCSessionError as e:
-                context.log.debug(
-                    f"Received SessionError while attempting to clean up logins: {e}"
-                )
+                context.log.debug(f"Received SessionError while attempting to clean up logins: {e}")
             except Exception as e:
-                context.log.debug(
-                    f"Received general exception while attempting to clean up logins: {e}"
-                )
+                context.log.debug(f"Received general exception while attempting to clean up logins: {e}")

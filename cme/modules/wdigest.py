@@ -58,14 +58,10 @@ class CMEModule:
                 1,
             )
 
-            rtype, data = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "UseLogonCredential\x00"
-            )
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "UseLogonCredential\x00")
 
             if int(data) == 1:
-                context.log.success(
-                    "UseLogonCredential registry key created successfully"
-                )
+                context.log.success("UseLogonCredential registry key created successfully")
 
         try:
             remoteOps.finish()
@@ -111,9 +107,7 @@ class CMEModule:
                     "UseLogonCredential\x00",
                 )
             except DCERPCException:
-                context.log.success(
-                    "UseLogonCredential registry key deleted successfully"
-                )
+                context.log.success("UseLogonCredential registry key deleted successfully")
 
                 try:
                     remoteOps.finish()

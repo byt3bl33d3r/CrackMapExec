@@ -17,9 +17,7 @@ class CMEModule:
     description = "Get description of the users. May contained password"
     supported_protocols = ["ldap"]
     opsec_safe = True  # Does the module touch disk?
-    multiple_hosts = (
-        True  # Does it make sense to run this module on multiple hosts at a time?
-    )
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         """
@@ -36,11 +34,7 @@ class CMEModule:
             self.MINLENGTH = module_options["MINLENGTH"]
         if "PASSWORDPOLICY" in module_options:
             self.PASSWORDPOLICY = True
-            self.regex = re.compile(
-                "((?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*\d)|(?=[^ ]*[a-z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*[^\w \n]))[^ \n]{"
-                + self.MINLENGTH
-                + ",}"
-            )  # Credit : https://stackoverflow.com/questions/31191248/regex-password-must-have-at-least-3-of-the-4-of-the-following
+            self.regex = re.compile("((?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*\d)|(?=[^ ]*[a-z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*\d)(?=[^ ]*[^\w \n])|(?=[^ ]*[A-Z])(?=[^ ]*[a-z])(?=[^ ]*[^\w \n]))[^ \n]{" + self.MINLENGTH + ",}")  # Credit : https://stackoverflow.com/questions/31191248/regex-password-must-have-at-least-3-of-the-4-of-the-following
 
     def on_login(self, context, connection):
         """Concurrent. Required if on_admin_login is not present. This gets called on each authenticated connection"""
@@ -56,9 +50,7 @@ class CMEModule:
             )
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find("sizeLimitExceeded") >= 0:
-                context.log.debug(
-                    "sizeLimitExceeded exception caught, giving up and processing the data received"
-                )
+                context.log.debug("sizeLimitExceeded exception caught, giving up and processing the data received")
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
@@ -84,17 +76,13 @@ class CMEModule:
                     answers.append([sAMAccountName, description])
             except Exception as e:
                 context.log.debug("Exception:", exc_info=True)
-                context.log.debug(
-                    "Skipping item, cannot process due to error %s" % str(e)
-                )
+                context.log.debug("Skipping item, cannot process due to error %s" % str(e))
                 pass
         answers = self.filter_answer(context, answers)
         if len(answers) > 0:
             context.log.success("Found following users: ")
             for answer in answers:
-                context.log.highlight(
-                    "User: {} description: {}".format(answer[0], answer[1])
-                )
+                context.log.highlight("User: {} description: {}".format(answer[0], answer[1]))
 
     def filter_answer(self, context, answers):
         # No option to filter
@@ -119,16 +107,9 @@ class CMEModule:
                     if self.regex.search(description):
                         conditionPasswordPolicy = True
 
-                if (
-                    self.FILTER
-                    and conditionFilter
-                    and self.PASSWORDPOLICY
-                    and conditionPasswordPolicy
-                ):
+                if self.FILTER and conditionFilter and self.PASSWORDPOLICY and conditionPasswordPolicy:
                     answersFiltered.append([answer[0], description])
-                elif (
-                    not self.FILTER and self.PASSWORDPOLICY and conditionPasswordPolicy
-                ):
+                elif not self.FILTER and self.PASSWORDPOLICY and conditionPasswordPolicy:
                     answersFiltered.append([answer[0], description])
                 elif not self.PASSWORDPOLICY and self.FILTER and conditionFilter:
                     answersFiltered.append([answer[0], description])

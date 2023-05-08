@@ -51,9 +51,7 @@ class navigator(DatabaseNavigator):
             members = len(self.db.get_group_relations(group_id=group_id))
             ad_members = group[4]
             last_query_time = group[5]
-            data.append(
-                [group_id, domain, name, rid, members, ad_members, last_query_time]
-            )
+            data.append([group_id, domain, name, rid, members, ad_members, last_query_time])
         print_table(data, title="Groups")
 
     # pull/545
@@ -126,12 +124,8 @@ class navigator(DatabaseNavigator):
             name = share[3]
             remark = share[4]
 
-            users_r_access = self.db.get_users_with_share_access(
-                host_id=host_id, share_name=name, permissions="r"
-            )
-            users_w_access = self.db.get_users_with_share_access(
-                host_id=host_id, share_name=name, permissions="w"
-            )
+            users_r_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="r")
+            users_w_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="w")
             data.append(
                 [
                     share_id,
@@ -165,12 +159,8 @@ class navigator(DatabaseNavigator):
                 name = share[3]
                 remark = share[4]
 
-                users_r_access = self.db.get_users_with_share_access(
-                    host_id=host_id, share_name=name, permissions="r"
-                )
-                users_w_access = self.db.get_users_with_share_access(
-                    host_id=host_id, share_name=name, permissions="w"
-                )
+                users_r_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="r")
+                users_w_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="w")
 
                 data = [["ShareID", "Name", "Remark"], [share_id, name, remark]]
                 print_table(data, title="Share")
@@ -266,9 +256,7 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            data.append(
-                                [cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]]
-                            )
+                            data.append([cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]])
                 print_table(data, title="Member(s)")
 
     def help_groups(self):
@@ -644,13 +632,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        if (
-            input(
-                "This will destroy all data in the current database, are you SURE you"
-                " want to run this? (y/n): "
-            )
-            == "y"
-        ):
+        if input("This will destroy all data in the current database, are you SURE you" " want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):

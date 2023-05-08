@@ -26,9 +26,7 @@ class navigator(DatabaseNavigator):
 
             admin_links = self.db.get_admin_relations(cred_id=cred_id)
             total_users = self.db.get_loggedin_relations(cred_id=cred_id)
-            total_shell = total_users = self.db.get_loggedin_relations(
-                cred_id=cred_id, shell=True
-            )
+            total_shell = total_users = self.db.get_loggedin_relations(cred_id=cred_id, shell=True)
 
             data.append(
                 [
@@ -95,12 +93,8 @@ class navigator(DatabaseNavigator):
                     data.append([host_id, host, port, banner, os])
                 print_table(data, title="Host")
 
-                admin_access_data = [
-                    ["CredID", "CredType", "UserName", "Password", "Shell"]
-                ]
-                nonadmin_access_data = [
-                    ["CredID", "CredType", "UserName", "Password", "Shell"]
-                ]
+                admin_access_data = [["CredID", "CredType", "UserName", "Password", "Shell"]]
+                nonadmin_access_data = [["CredID", "CredType", "UserName", "Password", "Shell"]]
                 for host_id in host_id_list:
                     admin_links = self.db.get_admin_relations(host_id=host_id)
                     nonadmin_links = self.db.get_loggedin_relations(host_id=host_id)
@@ -116,9 +110,7 @@ class navigator(DatabaseNavigator):
                             credtype = cred[3]
                             shell = True
 
-                            admin_access_data.append(
-                                [cred_id, credtype, username, password, shell]
-                            )
+                            admin_access_data.append([cred_id, credtype, username, password, shell])
 
                     # probably a better way to do this without looping through and requesting them all again,
                     # but I just want to get this working for now
@@ -143,9 +135,7 @@ class navigator(DatabaseNavigator):
                         title="Credential(s) with Non Admin Access",
                     )
                 if len(admin_access_data) > 1:
-                    print_table(
-                        admin_access_data, title="Credential(s) with Admin Access"
-                    )
+                    print_table(admin_access_data, title="Credential(s) with Admin Access")
 
     def help_hosts(self):
         help_string = """
@@ -208,12 +198,8 @@ class navigator(DatabaseNavigator):
                     cred_data.append([cred_id, username, password, credtype])
                 print_table(cred_data, title="Credential(s)")
 
-                admin_access_data = [
-                    ["HostID", "Host", "Port", "Banner", "OS", "Shell"]
-                ]
-                nonadmin_access_data = [
-                    ["HostID", "Host", "Port", "Banner", "OS", "Shell"]
-                ]
+                admin_access_data = [["HostID", "Host", "Port", "Banner", "OS", "Shell"]]
+                nonadmin_access_data = [["HostID", "Host", "Port", "Banner", "OS", "Shell"]]
 
                 for cred_id in cred_id_list:
                     admin_links = self.db.get_admin_relations(cred_id=cred_id)
@@ -228,13 +214,9 @@ class navigator(DatabaseNavigator):
                             port = h[2]
                             banner = h[3]
                             os = h[4]
-                            shell = (
-                                True  # if we have root via SSH, we know it's a shell
-                            )
+                            shell = True  # if we have root via SSH, we know it's a shell
 
-                            admin_access_data.append(
-                                [host_id, host, port, banner, os, shell]
-                            )
+                            admin_access_data.append([host_id, host, port, banner, os, shell])
 
                     # probably a better way to do this without looping through and requesting them all again,
                     # but I just want to get this working for now
@@ -253,9 +235,7 @@ class navigator(DatabaseNavigator):
 
                 # we look if it's greater than one because the header row always exists
                 if len(nonadmin_access_data) > 1:
-                    print_table(
-                        nonadmin_access_data, title="Non-Admin Access to Host(s)"
-                    )
+                    print_table(nonadmin_access_data, title="Non-Admin Access to Host(s)")
                 if len(admin_access_data) > 1:
                     print_table(admin_access_data, title="Admin Access to Host(s)")
 
@@ -307,13 +287,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        if (
-            input(
-                "This will destroy all data in the current database, are you SURE you"
-                " want to run this? (y/n): "
-            )
-            == "y"
-        ):
+        if input("This will destroy all data in the current database, are you SURE you" " want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):

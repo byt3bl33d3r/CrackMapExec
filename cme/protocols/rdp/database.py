@@ -49,19 +49,10 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.CredentialsTable = Table(
-                    "credentials", self.metadata, autoload_with=self.db_engine
-                )
-                self.HostsTable = Table(
-                    "hosts", self.metadata, autoload_with=self.db_engine
-                )
+                self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 exit()
 
     def shutdown_db(self):

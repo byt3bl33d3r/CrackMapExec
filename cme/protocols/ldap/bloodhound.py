@@ -18,21 +18,15 @@ class BloodHound(object):
         self.proto_logger(port, hostname, host)
 
     def proto_logger(self, port, hostname, host):
-        self.logger = CMEAdapter(
-            extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname}
-        )
+        self.logger = CMEAdapter(extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname})
 
     def connect(self):
         if len(self.ad.dcs()) == 0:
-            self.logger.fail(
-                "Could not find a domain controller. Consider specifying a domain and/or DNS server."
-            )
+            self.logger.fail("Could not find a domain controller. Consider specifying a domain and/or DNS server.")
             sys.exit(1)
 
         if not self.ad.baseDN:
-            self.logger.fail(
-                "Could not figure out the domain to query. Please specify this manually with -d"
-            )
+            self.logger.fail("Could not figure out the domain to query. Please specify this manually with -d")
             sys.exit(1)
 
         pdc = self.ad.dcs()[0]
@@ -87,9 +81,7 @@ class BloodHound(object):
                 cache_computers=do_computer_enum,
             )
             # Initialize enumerator
-            membership_enum = MembershipEnumerator(
-                self.ad, self.pdc, collect, disable_pooling
-            )
+            membership_enum = MembershipEnumerator(self.ad, self.pdc, collect, disable_pooling)
             membership_enum.enumerate_memberships(timestamp=timestamp)
         elif "container" in collect:
             # Fetch domains for later, computers if needed
@@ -99,16 +91,12 @@ class BloodHound(object):
                 cache_computers=do_computer_enum,
             )
             # Initialize enumerator
-            membership_enum = MembershipEnumerator(
-                self.ad, self.pdc, collect, disable_pooling
-            )
+            membership_enum = MembershipEnumerator(self.ad, self.pdc, collect, disable_pooling)
             membership_enum.do_container_collection(timestamp=timestamp)
         elif do_computer_enum:
             # We need to know which computers to query regardless
             # We also need the domains to have a mapping from NETBIOS -> FQDN for local admins
-            self.pdc.prefetch_info(
-                "objectprops" in collect, "acl" in collect, cache_computers=True
-            )
+            self.pdc.prefetch_info("objectprops" in collect, "acl" in collect, cache_computers=True)
         elif "trusts" in collect:
             # Prefetch domains
             self.pdc.get_domains("acl" in collect)
@@ -126,9 +114,7 @@ class BloodHound(object):
                 computerfile=computerfile,
                 exclude_dcs=exclude_dcs,
             )
-            computer_enum.enumerate_computers(
-                self.ad.computers, num_workers=num_workers, timestamp=timestamp
-            )
+            computer_enum.enumerate_computers(self.ad.computers, num_workers=num_workers, timestamp=timestamp)
         end_time = time.time()
         minutes, seconds = divmod(int(end_time - start_time), 60)
         self.logger.highlight("Done in %02dM %02dS" % (minutes, seconds))

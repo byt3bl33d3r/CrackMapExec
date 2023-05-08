@@ -64,25 +64,17 @@ class CMEModule:
                     try:
                         self.value = int(self.value)
                     except:
-                        context.log.fail(
-                            f"Invalid registry value type specified: {self.value}"
-                        )
+                        context.log.fail(f"Invalid registry value type specified: {self.value}")
                         return
                 if self.type in type_dict:
                     self.type = type_dict[self.type]
                 else:
-                    context.log.fail(
-                        f"Invalid registry value type specified: {self.type}"
-                    )
+                    context.log.fail(f"Invalid registry value type specified: {self.type}")
                     return
             else:
                 self.type = 1
 
-        if (
-            module_options
-            and "DELETE" in module_options
-            and module_options["DELETE"].lower() == "true"
-        ):
+        if module_options and "DELETE" in module_options and module_options["DELETE"].lower() == "true":
             self.delete = True
 
     def on_admin_login(self, context, connection):
@@ -108,46 +100,32 @@ class CMEModule:
                 self.path = self.path.replace("HKCR\\", "")
                 ans = rrp.hOpenClassesRoot(remote_ops._RemoteOperations__rrp)
             else:
-                self.context.log.fail(
-                    f"Unsupported registry hive specified in path: {self.path}"
-                )
+                self.context.log.fail(f"Unsupported registry hive specified in path: {self.path}")
                 return
 
             reg_handle = ans["phKey"]
-            ans = rrp.hBaseRegOpenKey(
-                remote_ops._RemoteOperations__rrp, reg_handle, self.path
-            )
+            ans = rrp.hBaseRegOpenKey(remote_ops._RemoteOperations__rrp, reg_handle, self.path)
             key_handle = ans["phkResult"]
 
             if self.delete:
                 # Delete registry
                 try:
                     # Check if value exists
-                    data_type, reg_value = rrp.hBaseRegQueryValue(
-                        remote_ops._RemoteOperations__rrp, key_handle, self.key
-                    )
+                    data_type, reg_value = rrp.hBaseRegQueryValue(remote_ops._RemoteOperations__rrp, key_handle, self.key)
                 except:
                     self.context.log.fail(f"Registry key {self.key} does not exist")
                     return
                 # Delete value
-                rrp.hBaseRegDeleteValue(
-                    remote_ops._RemoteOperations__rrp, key_handle, self.key
-                )
-                self.context.log.success(
-                    f"Registry key {self.key} has been deleted successfully"
-                )
+                rrp.hBaseRegDeleteValue(remote_ops._RemoteOperations__rrp, key_handle, self.key)
+                self.context.log.success(f"Registry key {self.key} has been deleted successfully")
                 rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
 
             if self.value is not None:
                 # Check if value exists
                 try:
                     # Check if value exists
-                    data_type, reg_value = rrp.hBaseRegQueryValue(
-                        remote_ops._RemoteOperations__rrp, key_handle, self.key
-                    )
-                    self.context.log.highlight(
-                        f"Key {self.key} exists with value {reg_value}"
-                    )
+                    data_type, reg_value = rrp.hBaseRegQueryValue(remote_ops._RemoteOperations__rrp, key_handle, self.key)
+                    self.context.log.highlight(f"Key {self.key} exists with value {reg_value}")
                     # Modification
                     rrp.hBaseRegSetValue(
                         remote_ops._RemoteOperations__rrp,
@@ -156,9 +134,7 @@ class CMEModule:
                         self.type,
                         self.value,
                     )
-                    self.context.log.success(
-                        f"Key {self.key} has been modified to {self.value}"
-                    )
+                    self.context.log.success(f"Key {self.key} has been modified to {self.value}")
                 except:
                     rrp.hBaseRegSetValue(
                         remote_ops._RemoteOperations__rrp,
@@ -167,16 +143,12 @@ class CMEModule:
                         self.type,
                         self.value,
                     )
-                    self.context.log.success(
-                        f"New Key {self.key} has been added with value {self.value}"
-                    )
+                    self.context.log.success(f"New Key {self.key} has been added with value {self.value}")
                     rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
             else:
                 # Query
                 try:
-                    data_type, reg_value = rrp.hBaseRegQueryValue(
-                        remote_ops._RemoteOperations__rrp, key_handle, self.key
-                    )
+                    data_type, reg_value = rrp.hBaseRegQueryValue(remote_ops._RemoteOperations__rrp, key_handle, self.key)
                     self.context.log.highlight(f"{self.key}: {reg_value}")
                 except:
                     if self.delete:
@@ -186,9 +158,7 @@ class CMEModule:
                         return
             rrp.hBaseRegCloseKey(remote_ops._RemoteOperations__rrp, key_handle)
         except DCERPCException as e:
-            self.context.log.fail(
-                f"DCERPC Error while querying or modifying registry: {e}"
-            )
+            self.context.log.fail(f"DCERPC Error while querying or modifying registry: {e}")
         except Exception as e:
             self.context.log.fail(f"Error while querying or modifying registry: {e}")
         finally:

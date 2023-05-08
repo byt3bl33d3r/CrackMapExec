@@ -70,22 +70,11 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.HostsTable = Table(
-                    "hosts", self.metadata, autoload_with=self.db_engine
-                )
-                self.UsersTable = Table(
-                    "users", self.metadata, autoload_with=self.db_engine
-                )
-                self.AdminRelationsTable = Table(
-                    "admin_relations", self.metadata, autoload_with=self.db_engine
-                )
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 exit()
 
     def shutdown_db(self):
@@ -148,9 +137,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(
-            index_elements=self.HostsTable.primary_key, set_=update_columns
-        )
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
         self.conn.execute(q, hosts)
 
     def add_credential(self, credtype, domain, username, password, pillaged_from=None):
@@ -187,23 +174,17 @@ class database:
                 "credtype": credtype,
                 "pillaged_from_hostid": pillaged_from,
             }
-            q = insert(self.UsersTable).values(
-                user_data
-            )  # .returning(self.UsersTable.c.id)
+            q = insert(self.UsersTable).values(user_data)  # .returning(self.UsersTable.c.id)
             self.conn.execute(q)  # .first()
         else:
             for user in results:
                 # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    q = update(self.UsersTable).values(
-                        credential_data
-                    )  # .returning(self.UsersTable.c.id)
+                    q = update(self.UsersTable).values(credential_data)  # .returning(self.UsersTable.c.id)
                     results = self.conn.execute(q)  # .first()
                     # user_rowid = results.id
 
-        cme_logger.debug(
-            f"add_credential(credtype={credtype}, domain={domain}, username={username}, password={password}, pillaged_from={pillaged_from})"
-        )
+        cme_logger.debug(f"add_credential(credtype={credtype}, domain={domain}, username={username}, password={password}, pillaged_from={pillaged_from})")
         return user_rowid
 
     def remove_credentials(self, creds_id):
@@ -254,13 +235,9 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.userid == user_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.userid == user_id)
         elif host_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.hostid == host_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
         else:
             q = select(self.AdminRelationsTable)
 
@@ -300,9 +277,7 @@ class database:
         # if we're filtering by username
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.UsersTable).filter(
-                func.lower(self.UsersTable.c.username).like(like_term)
-            )
+            q = select(self.UsersTable).filter(func.lower(self.UsersTable.c.username).like(like_term))
         # otherwise return all credentials
         else:
             q = select(self.UsersTable)
@@ -338,10 +313,7 @@ class database:
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.HostsTable).filter(
-                self.HostsTable.c.ip.like(like_term)
-                | func.lower(self.HostsTable.c.hostname).like(like_term)
-            )
+            q = select(self.HostsTable).filter(self.HostsTable.c.ip.like(like_term) | func.lower(self.HostsTable.c.hostname).like(like_term))
 
         results = self.conn.execute(q).all()
         return results

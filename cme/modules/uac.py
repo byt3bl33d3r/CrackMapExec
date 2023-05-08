@@ -33,9 +33,7 @@ class CMEModule:
             "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
         )
         keyHandle = ans["phkResult"]
-        dataType, uac_value = rrp.hBaseRegQueryValue(
-            remoteOps._RemoteOperations__rrp, keyHandle, "EnableLUA"
-        )
+        dataType, uac_value = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "EnableLUA")
 
         if uac_value == 1:
             context.log.highlight("UAC Status: 1 (UAC Enabled)")

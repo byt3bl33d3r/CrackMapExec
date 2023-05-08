@@ -17,11 +17,7 @@ from cme.logger import cme_logger
 class SamrFunc:
     def __init__(self, connection):
         self.logger = cme_logger
-        self.addr = (
-            connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain
-        )
+        self.addr = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
@@ -90,14 +86,10 @@ class SamrFunc:
     def get_local_administrators(self):
         self.get_builtin_groups()
         if "Administrators" in self.groups:
-            self.logger.success(
-                f"Found Local Administrators group: RID {self.groups['Administrators']}"
-            )
+            self.logger.success(f"Found Local Administrators group: RID {self.groups['Administrators']}")
         domain_handle = self.samr_query.get_domain_handle("Builtin")
         self.logger.debug(f"Querying group members")
-        member_sids = self.samr_query.get_alias_members(
-            domain_handle, self.groups["Administrators"]
-        )
+        member_sids = self.samr_query.get_alias_members(domain_handle, self.groups["Administrators"])
         member_names = self.lsa_query.lookup_sids(member_sids)
 
         for sid, name in zip(member_sids, member_names):
@@ -181,12 +173,8 @@ class SAMRQuery:
         return domain_names
 
     def get_domain_handle(self, domain_name):
-        resp = samr.hSamrLookupDomainInSamServer(
-            self.dce, self.server_handle, domain_name
-        )
-        resp = samr.hSamrOpenDomain(
-            self.dce, serverHandle=self.server_handle, domainId=resp["DomainId"]
-        )
+        resp = samr.hSamrLookupDomainInSamServer(self.dce, self.server_handle, domain_name)
+        resp = samr.hSamrOpenDomain(self.dce, serverHandle=self.server_handle, domainId=resp["DomainId"])
         return resp["DomainHandle"]
 
     def get_domain_aliases(self, domain_handle):
@@ -197,9 +185,7 @@ class SAMRQuery:
         return aliases
 
     def get_alias_handle(self, domain_handle, alias_id):
-        resp = samr.hSamrOpenAlias(
-            self.dce, domain_handle, desiredAccess=MAXIMUM_ALLOWED, aliasId=alias_id
-        )
+        resp = samr.hSamrOpenAlias(self.dce, domain_handle, desiredAccess=MAXIMUM_ALLOWED, aliasId=alias_id)
         return resp["AliasHandle"]
 
     def get_alias_members(self, domain_handle, alias_id):
@@ -269,15 +255,11 @@ class LSAQuery:
         return dce
 
     def get_policy_handle(self):
-        resp = lsad.hLsarOpenPolicy2(
-            self.dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES
-        )
+        resp = lsad.hLsarOpenPolicy2(self.dce, MAXIMUM_ALLOWED | lsat.POLICY_LOOKUP_NAMES)
         return resp["PolicyHandle"]
 
     def lookup_sids(self, sids):
-        resp = lsat.hLsarLookupSids(
-            self.dce, self.policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta
-        )
+        resp = lsat.hLsarLookupSids(self.dce, self.policy_handle, sids, lsat.LSAP_LOOKUP_LEVEL.LsapLookupWksta)
         names = []
         for translated_names in resp["TranslatedNames"]["Names"]:
             names.append(translated_names["Name"])

@@ -52,9 +52,7 @@ def build_cme():
     [shutil.rmtree(p) for p in Path("build").glob("**/*.dist-info")]
 
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
         entry_point="cme.crackmapexec:main",
         script=None,
         compile_pyc=False,
@@ -74,9 +72,7 @@ def build_cme():
 def build_cmedb():
     print("building CMEDB")
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
         entry_point="cme.cmedb:main",
         script=None,
         compile_pyc=False,

