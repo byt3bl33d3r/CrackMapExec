@@ -22,8 +22,7 @@ class database:
         session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
 
         Session = scoped_session(session_factory)
-        # this is still named "conn" when it is the session object; TODO: rename
-        self.conn = Session()
+        self.sess = Session()
 
     @staticmethod
     def db_schema(db_conn):
