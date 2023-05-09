@@ -16,7 +16,7 @@ from cme.logger import cme_logger
 
 class SamrFunc:
     def __init__(self, connection):
-        self.logger = cme_logger
+        self.logger = connection.logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
@@ -50,6 +50,7 @@ class SamrFunc:
             remote_name=self.addr,
             remote_host=self.addr,
             kerberos=self.doKerberos,
+            logger=self.logger
         )
 
     def get_builtin_groups(self):
@@ -207,6 +208,7 @@ class LSAQuery:
         remote_name="",
         remote_host="",
         kerberos=None,
+        logger=None
     ):
         self.__username = username
         self.__password = password
@@ -220,7 +222,7 @@ class LSAQuery:
         self.__kerberos = kerberos
         self.dce = self.get_dce()
         self.policy_handle = self.get_policy_handle()
-        self.logger = cme_logger
+        self.logger = logger
 
     def get_transport(self):
         string_binding = f"ncacn_np:{self.__remote_name}[\\pipe\\lsarpc]"

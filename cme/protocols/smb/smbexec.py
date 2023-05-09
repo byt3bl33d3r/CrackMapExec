@@ -26,6 +26,7 @@ class SMBEXEC:
         hashes=None,
         share=None,
         port=445,
+        logger=cme_logger
     ):
         self.__host = host
         self.__share_name = "C$"
@@ -50,7 +51,7 @@ class SMBEXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
-        self.logger = cme_logger
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash

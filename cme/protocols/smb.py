@@ -941,6 +941,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
+                        logger=self.logger
                     )
                     self.logger.info("Executed command via wmiexec")
                     break
@@ -999,6 +1000,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
+                        self.logger
                     )
                     self.logger.info("Executed command via smbexec")
                     break

@@ -25,6 +25,7 @@ class WMIEXEC:
         kdcHost=None,
         hashes=None,
         share=None,
+        logger=cme_logger
     ):
         self.__target = target
         self.__username = username
@@ -43,7 +44,7 @@ class WMIEXEC:
         self.__kdcHost = kdcHost
         self.__doKerberos = doKerberos
         self.__retOutput = True
-        self.logger = cme_logger
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash
