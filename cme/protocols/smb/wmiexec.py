@@ -25,6 +25,7 @@ class WMIEXEC:
         kdcHost=None,
         hashes=None,
         share=None,
+        logger=cme_logger
     ):
         self.__target = target
         self.__username = username
@@ -43,7 +44,7 @@ class WMIEXEC:
         self.__kdcHost = kdcHost
         self.__doKerberos = doKerberos
         self.__retOutput = True
-        self.logger = cme_logger
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash
@@ -66,9 +67,7 @@ class WMIEXEC:
             doKerberos=self.__doKerberos,
             kdcHost=self.__kdcHost,
         )
-        iInterface = self.__dcom.CoCreateInstanceEx(
-            wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login
-        )
+        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()
@@ -127,11 +126,7 @@ class WMIEXEC:
         self.__output = gen_random_string(6)
         local_ip = self.__smbconnection.getSMBServer().get_socket().getsockname()[0]
 
-        command = (
-            self.__shell
-            + data
-            + f" 1> \\\\{local_ip}\\{self.__share_name}\\{self.__output} 2>&1"
-        )
+        command = self.__shell + data + f" 1> \\\\{local_ip}\\{self.__share_name}\\{self.__output} 2>&1"
 
         self.logger.debug("Executing command: " + command)
         self.__win32Process.Create(command, self.__pwd, None)
@@ -140,9 +135,7 @@ class WMIEXEC:
     def get_output_fileless(self):
         while True:
             try:
-                with open(
-                    os.path.join("/tmp", "cme_hosted", self.__output), "r"
-                ) as output:
+                with open(os.path.join("/tmp", "cme_hosted", self.__output), "r") as output:
                     self.output_callback(output.read())
                 break
             except IOError:
@@ -155,9 +148,7 @@ class WMIEXEC:
 
         while True:
             try:
-                self.__smbconnection.getFile(
-                    self.__share, self.__output, self.output_callback
-                )
+                self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
                 if str(e).find("STATUS_SHARING_VIOLATION") >= 0:

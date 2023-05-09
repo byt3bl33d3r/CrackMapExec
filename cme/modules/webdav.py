@@ -36,9 +36,7 @@ class CMEModule:
         that the WebClient service is running on the target.
         """
         try:
-            remote_file = RemoteFile(
-                connection.conn, "DAV RPC Service", "IPC$", access=FILE_READ_DATA
-            )
+            remote_file = RemoteFile(connection.conn, "DAV RPC Service", "IPC$", access=FILE_READ_DATA)
 
             remote_file.open()
             remote_file.close()

@@ -70,23 +70,13 @@ class CMEModule:
                 if not self.cleanup:
                     with open(self.scf_path, "rb") as scf:
                         try:
-                            connection.conn.putFile(
-                                share["name"], self.file_path, scf.read
-                            )
-                            context.log.success(
-                                f"Created SCF file on the {share['name']} share"
-                            )
+                            connection.conn.putFile(share["name"], self.file_path, scf.read)
+                            context.log.success(f"Created SCF file on the {share['name']} share")
                         except Exception as e:
-                            context.log.fail(
-                                f"Error writing SCF file to share {share['name']}: {e}"
-                            )
+                            context.log.fail(f"Error writing SCF file to share {share['name']}: {e}")
                 else:
                     try:
                         connection.conn.deleteFile(share["name"], self.file_path)
-                        context.log.success(
-                            f"Deleted SCF file on the {share['name']} share"
-                        )
+                        context.log.success(f"Deleted SCF file on the {share['name']} share")
                     except Exception as e:
-                        context.log.fail(
-                            f"Error deleting SCF file on share {share['name']}: {e}"
-                        )
+                        context.log.fail(f"Error deleting SCF file on share {share['name']}: {e}")

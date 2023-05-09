@@ -32,16 +32,12 @@ from rich.progress import Progress
 try:
     import librlers
 except:
-    print(
-        "Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)"
-    )
+    print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     exit(1)
 
 
 def create_db_engine(db_path):
-    db_engine = sqlalchemy.create_engine(
-        f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True
-    )
+    db_engine = sqlalchemy.create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
     return db_engine
 
 
@@ -61,10 +57,7 @@ async def start_run(protocol_obj, args, db, targets):
                     total=total,
                 )
                 cme_logger.debug(f"Creating thread for {protocol_obj}")
-                futures = [
-                    executor.submit(protocol_obj, args, db, target)
-                    for target in targets
-                ]
+                futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
                 for future in as_completed(futures):
                     current += 1
                     progress.update(tasks, completed=current)
@@ -95,9 +88,7 @@ def main():
     cme_logger.debug(f"Passed args: {args}")
 
     if args.darrell:
-        links = (
-            open(path_join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
-        )
+        links = open(path_join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
         try:
             webbrowser.open(random.choice(links))
             exit(1)
@@ -108,9 +99,7 @@ def main():
     if args.protocol == "ssh":
         if args.key_file:
             if not args.password:
-                cme_logger.fail(
-                    f"Password is required, even if a key file is used - if no passphrase for key, use `-p ''`"
-                )
+                cme_logger.fail(f"Password is required, even if a key file is used - if no passphrase for key, use `-p ''`")
                 exit(1)
 
     if args.use_kcache and not os.environ.get("KRB5CCNAME"):
@@ -189,9 +178,7 @@ def main():
         exit(0)
     elif args.module and args.show_module_options:
         for module in args.module:
-            cme_logger.display(
-                f"{module} module options:\n{modules[module]['options']}"
-            )
+            cme_logger.display(f"{module} module options:\n{modules[module]['options']}")
         exit(0)
     elif args.module:
         cme_logger.debug(f"Modules to be Loaded: {args.module}, {type(args.module)}")
@@ -205,12 +192,8 @@ def main():
 
             if not module.opsec_safe:
                 if ignore_opsec:
-                    cme_logger.debug(
-                        f"ignore_opsec is set in the configuration, skipping prompt"
-                    )
-                    cme_logger.display(
-                        f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded"
-                    )
+                    cme_logger.debug(f"ignore_opsec is set in the configuration, skipping prompt")
+                    cme_logger.display(f"Ignore OPSEC in configuration is set and OPSEC unsafe module loaded")
                 else:
                     ans = input(
                         highlight(
@@ -254,17 +237,13 @@ def main():
                 except Exception as e:
                     cme_logger.error(f"Error loading module server for {module}: {e}")
 
-            cme_logger.debug(
-                f"proto_object: {protocol_object}, type: {type(protocol_object)}"
-            )
+            cme_logger.debug(f"proto_object: {protocol_object}, type: {type(protocol_object)}")
             cme_logger.debug(f"proto object dir: {dir(protocol_object)}")
             # get currently set modules, otherwise default to empty list
             current_modules = getattr(protocol_object, "module", [])
             current_modules.append(module)
             setattr(protocol_object, "module", current_modules)
-            cme_logger.debug(
-                f"proto object module after adding: {protocol_object.module}"
-            )
+            cme_logger.debug(f"proto object module after adding: {protocol_object.module}")
 
     if hasattr(args, "ntds") and args.ntds and not args.userntds:
         ans = input(

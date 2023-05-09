@@ -29,15 +29,9 @@ class CMEModule:
         self.showservers = True
 
         if module_options and "SHOWSERVERS" in module_options:
-            if (
-                module_options["SHOWSERVERS"].lower() == "true"
-                or module_options["SHOWSERVERS"] == "1"
-            ):
+            if module_options["SHOWSERVERS"].lower() == "true" or module_options["SHOWSERVERS"] == "1":
                 self.showservers = True
-            elif (
-                module_options["SHOWSERVERS"].lower() == "false"
-                or module_options["SHOWSERVERS"] == "0"
-            ):
+            elif module_options["SHOWSERVERS"].lower() == "false" or module_options["SHOWSERVERS"] == "0":
                 self.showservers = False
             else:
                 print("Could not parse showservers option.")
@@ -75,23 +69,11 @@ class CMEModule:
                 attributes=["distinguishedName", "name"],
                 sizeLimit=999,
             )
-            if (
-                len(
-                    [
-                        subnet
-                        for subnet in list_subnets
-                        if isinstance(subnet, ldapasn1_impacket.SearchResultEntry)
-                    ]
-                )
-                == 0
-            ):
+            if len([subnet for subnet in list_subnets if isinstance(subnet, ldapasn1_impacket.SearchResultEntry)]) == 0:
                 context.log.highlight('Site "%s"' % site_name)
             else:
                 for subnet in list_subnets:
-                    if (
-                        isinstance(subnet, ldapasn1_impacket.SearchResultEntry)
-                        is not True
-                    ):
+                    if isinstance(subnet, ldapasn1_impacket.SearchResultEntry) is not True:
                         continue
                     subnet = searchResEntry_to_dict(subnet)
                     subnet_dn = subnet["distinguishedName"]
@@ -105,35 +87,14 @@ class CMEModule:
                             attributes=["cn"],
                             sizeLimit=999,
                         )
-                        if (
-                            len(
-                                [
-                                    server
-                                    for server in list_servers
-                                    if isinstance(
-                                        server, ldapasn1_impacket.SearchResultEntry
-                                    )
-                                ]
-                            )
-                            == 0
-                        ):
+                        if len([server for server in list_servers if isinstance(server, ldapasn1_impacket.SearchResultEntry)]) == 0:
                             if len(site_description) != 0:
-                                context.log.highlight(
-                                    'Site "%s" (Subnet:%s) (description:"%s")'
-                                    % (site_name, subnet_name, site_description)
-                                )
+                                context.log.highlight('Site "%s" (Subnet:%s) (description:"%s")' % (site_name, subnet_name, site_description))
                             else:
-                                context.log.highlight(
-                                    'Site "%s" (Subnet:%s)' % (site_name, subnet_name)
-                                )
+                                context.log.highlight('Site "%s" (Subnet:%s)' % (site_name, subnet_name))
                         else:
                             for server in list_servers:
-                                if (
-                                    isinstance(
-                                        server, ldapasn1_impacket.SearchResultEntry
-                                    )
-                                    is not True
-                                ):
+                                if isinstance(server, ldapasn1_impacket.SearchResultEntry) is not True:
                                     continue
                                 server = searchResEntry_to_dict(server)["cn"]
                                 if len(site_description) != 0:
@@ -147,17 +108,9 @@ class CMEModule:
                                         )
                                     )
                                 else:
-                                    context.log.highlight(
-                                        'Site "%s" (Subnet:%s) (Server:%s)'
-                                        % (site_name, subnet_name, server)
-                                    )
+                                    context.log.highlight('Site "%s" (Subnet:%s) (Server:%s)' % (site_name, subnet_name, server))
                     else:
                         if len(site_description) != 0:
-                            context.log.highlight(
-                                'Site "%s" (Subnet:%s) (description:"%s")'
-                                % (site_name, subnet_name, site_description)
-                            )
+                            context.log.highlight('Site "%s" (Subnet:%s) (description:"%s")' % (site_name, subnet_name, site_description))
                         else:
-                            context.log.highlight(
-                                'Site "%s" (Subnet:%s)' % (site_name, subnet_name)
-                            )
+                            context.log.highlight('Site "%s" (Subnet:%s)' % (site_name, subnet_name))

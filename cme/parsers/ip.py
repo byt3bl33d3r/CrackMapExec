@@ -19,10 +19,7 @@ def parse_targets(target):
                 for ip in ip_range:
                     yield str(ip)
         else:
-            if (
-                ip_interface(target).ip.version == 6
-                and ip_address(target).is_link_local
-            ):
+            if ip_interface(target).ip.version == 6 and ip_address(target).is_link_local:
                 yield str(target)
             else:
                 for ip in ip_network(target, strict=False):

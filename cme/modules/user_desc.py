@@ -53,19 +53,13 @@ class CMEModule:
                 self.search_filter += f"(description={module_options['DESC_FILTER']})"
 
             if "DESC_INVERT" in module_options:
-                self.search_filter += (
-                    f"(!(description={module_options['DESC_INVERT']}))"
-                )
+                self.search_filter += f"(!(description={module_options['DESC_INVERT']}))"
 
             if "USER_FILTER" in module_options:
-                self.search_filter += (
-                    f"(sAMAccountName={module_options['USER_FILTER']})"
-                )
+                self.search_filter += f"(sAMAccountName={module_options['USER_FILTER']})"
 
             if "USER_INVERT" in module_options:
-                self.search_filter += (
-                    f"(!(sAMAccountName={module_options['USER_INVERT']}))"
-                )
+                self.search_filter += f"(!(sAMAccountName={module_options['USER_INVERT']}))"
 
             self.search_filter += ")"
 
@@ -80,12 +74,8 @@ class CMEModule:
         On successful LDAP login we perform a search for all user objects that have a description.
         Users can specify additional LDAP filters that are applied to the query.
         """
-        self.create_log_file(
-            connection.conn.getRemoteHost(), datetime.now().strftime("%Y%m%d_%H%M%S")
-        )
-        context.log.info(
-            f"Starting LDAP search with search filter '{self.search_filter}'"
-        )
+        self.create_log_file(connection.conn.getRemoteHost(), datetime.now().strftime("%Y%m%d_%H%M%S"))
+        context.log.info(f"Starting LDAP search with search filter '{self.search_filter}'")
 
         try:
             sc = ldap.SimplePagedResultsControl()
@@ -155,18 +145,14 @@ class CMEModule:
                     description = attribute["vals"][0].asOctets().decode("utf-8")
         except Exception as e:
             entry = sAMAccountName or "item"
-            self.context.error(
-                f"Skipping {entry}, cannot process LDAP entry due to error: '{str(e)}'"
-            )
+            self.context.error(f"Skipping {entry}, cannot process LDAP entry due to error: '{str(e)}'")
 
         if description and sAMAccountName not in self.account_names:
             self.desc_count += 1
             self.append_to_log(sAMAccountName, description)
 
             if self.highlight(description):
-                self.context.log.highlight(
-                    f"User: {sAMAccountName} - Description: {description}"
-                )
+                self.context.log.highlight(f"User: {sAMAccountName} - Description: {description}")
 
             self.account_names.add(sAMAccountName)
 

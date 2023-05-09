@@ -40,12 +40,8 @@ class CMEModule:
         if self.search_type == "ALL" or self.search_type == "PROCESS":
             # search for keepass process
             search_keepass_process_command_str = 'powershell.exe "Get-Process kee* -IncludeUserName | Select-Object -Property Id,UserName,ProcessName | ConvertTo-CSV -NoTypeInformation"'
-            search_keepass_process_output_csv = connection.execute(
-                search_keepass_process_command_str, True
-            )  # we return the powershell command as a CSV for easier column parsing
-            csv_reader = reader(
-                search_keepass_process_output_csv.split("\n"), delimiter=","
-            )
+            search_keepass_process_output_csv = connection.execute(search_keepass_process_command_str, True)  # we return the powershell command as a CSV for easier column parsing
+            csv_reader = reader(search_keepass_process_output_csv.split("\n"), delimiter=",")
             next(csv_reader)  # to skip the csv header line
             row_number = 0  # as csv_reader is an iterator we can't get its length without exhausting it
             for row in csv_reader:
@@ -65,15 +61,9 @@ class CMEModule:
 
         # search for keepass-related files
         if self.search_type == "ALL" or self.search_type == "FILES":
-            search_keepass_files_payload = "Get-ChildItem -Path {} -Recurse -Force -Include ('KeePass.config.xml','KeePass.exe','*.kdbx') -ErrorAction SilentlyContinue | Select FullName -ExpandProperty FullName".format(
-                self.search_path
-            )
-            search_keepass_files_cmd = 'powershell.exe "{}"'.format(
-                search_keepass_files_payload
-            )
-            search_keepass_files_output = connection.execute(
-                search_keepass_files_cmd, True
-            ).split("\r\n")
+            search_keepass_files_payload = "Get-ChildItem -Path {} -Recurse -Force -Include ('KeePass.config.xml','KeePass.exe','*.kdbx') -ErrorAction SilentlyContinue | Select FullName -ExpandProperty FullName".format(self.search_path)
+            search_keepass_files_cmd = 'powershell.exe "{}"'.format(search_keepass_files_payload)
+            search_keepass_files_output = connection.execute(search_keepass_files_cmd, True).split("\r\n")
             found = False
             found_xml = False
             for file in search_keepass_files_output:

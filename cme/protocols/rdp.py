@@ -80,9 +80,7 @@ class rdp(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        rdp_parser = parser.add_parser(
-            "rdp", help="own stuff using RDP", parents=[std_parser, module_parser]
-        )
+        rdp_parser = parser.add_parser("rdp", help="own stuff using RDP", parents=[std_parser, module_parser])
         rdp_parser.add_argument(
             "-H",
             "--hash",
@@ -95,19 +93,14 @@ class rdp(connection):
         rdp_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
-            help=(
-                "No spray when using file for username and password (user1 =>"
-                " password1, user2 => password2"
-            ),
+            help=("No spray when using file for username and password (user1 =>" " password1, user2 => password2"),
         )
         rdp_parser.add_argument(
             "--continue-on-success",
             action="store_true",
             help="continues authentication attempts even after successes",
         )
-        rdp_parser.add_argument(
-            "--port", type=int, default=3389, help="Custom RDP port"
-        )
+        rdp_parser.add_argument("--port", type=int, default=3389, help="Custom RDP port")
         rdp_parser.add_argument(
             "--rdp-timeout",
             type=int,
@@ -135,17 +128,13 @@ class rdp(connection):
             help="authenticate locally to each target",
         )
 
-        egroup = rdp_parser.add_argument_group(
-            "Screenshot", "Remote Desktop Screenshot"
-        )
+        egroup = rdp_parser.add_argument_group("Screenshot", "Remote Desktop Screenshot")
         egroup.add_argument(
             "--screenshot",
             action="store_true",
             help="Screenshot RDP if connection success",
         )
-        egroup.add_argument(
-            "--screentime", type=int, default=10, help="Time to wait for desktop image"
-        )
+        egroup.add_argument("--screentime", type=int, default=10, help="Time to wait for desktop image")
         egroup.add_argument(
             "--res",
             default="1024x768",
@@ -176,24 +165,14 @@ class rdp(connection):
 
     def print_host_info(self):
         if self.domain is None:
-            self.logger.display(
-                "Probably old, doesn't not support HYBRID or HYBRID_EX"
-                f" (nla:{self.nla})"
-            )
+            self.logger.display("Probably old, doesn't not support HYBRID or HYBRID_EX" f" (nla:{self.nla})")
         else:
-            self.logger.display(
-                f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})"
-                f" (nla:{self.nla})"
-            )
+            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})" f" (nla:{self.nla})")
         return True
 
     def create_conn_obj(self):
-        self.target = RDPTarget(
-            ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout
-        )
-        self.auth = NTLMCredential(
-            secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS
-        )
+        self.target = RDPTarget(ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout)
+        self.auth = NTLMCredential(secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS)
 
         self.check_nla()
 
@@ -216,15 +195,9 @@ class rdp(connection):
                     info_domain = self.conn.get_extra_info()
                     self.domain = info_domain["dnsdomainname"]
                     self.hostname = info_domain["computername"]
-                    self.server_os = (
-                        info_domain["os_guess"]
-                        + " Build "
-                        + str(info_domain["os_build"])
-                    )
+                    self.server_os = info_domain["os_guess"] + " Build " + str(info_domain["os_build"])
 
-                    self.output_filename = os.path.expanduser(
-                        f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
-                    )
+                    self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}")
                     self.output_filename = self.output_filename.replace(":", "-")
                     break
 
@@ -254,11 +227,7 @@ class rdp(connection):
                     credentials=self.auth,
                 )
                 asyncio.run(self.connect_rdp())
-                if (
-                    str(proto) == "SUPP_PROTOCOLS.RDP"
-                    or str(proto) == "SUPP_PROTOCOLS.SSL"
-                    or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP"
-                ):
+                if str(proto) == "SUPP_PROTOCOLS.RDP" or str(proto) == "SUPP_PROTOCOLS.SSL" or str(proto) == "SUPP_PROTOCOLS.SSL|SUPP_PROTOCOLS.RDP":
                     self.nla = False
                     return
             except Exception as e:
@@ -307,15 +276,11 @@ class rdp(connection):
                 if not password:
                     password = getenv("KRB5CCNAME") if not password else password
                     if "/" in password:
-                        self.logger.fail(
-                            "Kerberos ticket need to be on the local directory"
-                        )
+                        self.logger.fail("Kerberos ticket need to be on the local directory")
                         return False
                     ccache = CCache.loadFile(getenv("KRB5CCNAME"))
                     ticketCreds = ccache.credentials[0]
-                    username = (
-                        ticketCreds["client"].prettyPrint().decode().split("@")[0]
-                    )
+                    username = ticketCreds["client"].prettyPrint().decode().split("@")[0]
             else:
                 stype = asyauthSecret.PASS if not nthash else asyauthSecret.NT
 
@@ -334,9 +299,7 @@ class rdp(connection):
                 domain=domain,
                 stype=stype,
             )
-            self.conn = RDPConnection(
-                iosettings=self.iosettings, target=self.target, credentials=self.auth
-            )
+            self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
@@ -348,12 +311,7 @@ class rdp(connection):
                         # Show what was used between cleartext, nthash, aesKey and ccache
                         " from ccache"
                         if useCache
-                        else ":%s"
-                        % (
-                            kerb_pass
-                            if not self.config.get("CME", "audit_mode")
-                            else self.config.get("CME", "audit_mode") * 8
-                        )
+                        else ":%s" % (kerb_pass if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8)
                     ),
                     self.mark_pwned(),
                 )
@@ -370,22 +328,11 @@ class rdp(connection):
                     if word in str(e):
                         reason = self.rdp_error_status[word]
                 self.logger.fail(
-                    (
-                        f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}"
-                    ),
-                    color=(
-                        "magenta"
-                        if (
-                            (reason or "CredSSP" in str(e))
-                            and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN"
-                        )
-                        else "red"
-                    ),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}"),
+                    color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN") else "red"),
                 )
             elif "Authentication failed!" in str(e):
-                self.logger.success(
-                    f"{domain}\\{username}:{password} {self.mark_pwned()}"
-                )
+                self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
             elif "No such file" in str(e):
                 self.logger.fail(e)
             else:
@@ -396,17 +343,8 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (
-                        f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}"
-                    ),
-                    color=(
-                        "magenta"
-                        if (
-                            (reason or "CredSSP" in str(e))
-                            and reason != "STATUS_LOGON_FAILURE"
-                        )
-                        else "red"
-                    ),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}"),
+                    color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
 
@@ -418,9 +356,7 @@ class rdp(connection):
                 domain=domain,
                 stype=asyauthSecret.PASS,
             )
-            self.conn = RDPConnection(
-                iosettings=self.iosettings, target=self.target, credentials=self.auth
-            )
+            self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
@@ -431,9 +367,7 @@ class rdp(connection):
                 return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(
-                    f"{domain}\\{username}:{password} {self.mark_pwned()}"
-                )
+                self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -442,17 +376,8 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (
-                        f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}"
-                    ),
-                    color=(
-                        "magenta"
-                        if (
-                            (reason or "CredSSP" in str(e))
-                            and reason != "STATUS_LOGON_FAILURE"
-                        )
-                        else "red"
-                    ),
+                    (f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}"),
+                    color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
 
@@ -464,24 +389,18 @@ class rdp(connection):
                 domain=domain,
                 stype=asyauthSecret.NT,
             )
-            self.conn = RDPConnection(
-                iosettings=self.iosettings, target=self.target, credentials=self.auth
-            )
+            self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(
-                f"{self.domain}\\{username}:{ntlm_hash} {self.mark_pwned()}"
-            )
+            self.logger.success(f"{self.domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(
-                    f"{domain}\\{username}:{ntlm_hash} {self.mark_pwned()}"
-                )
+                self.logger.success(f"{domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -491,25 +410,14 @@ class rdp(connection):
                     reason = "User valid but cannot connect"
 
                 self.logger.fail(
-                    (
-                        f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}"
-                    ),
-                    color=(
-                        "magenta"
-                        if (
-                            (reason or "CredSSP" in str(e))
-                            and reason != "STATUS_LOGON_FAILURE"
-                        )
-                        else "red"
-                    ),
+                    (f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}"),
+                    color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
 
     async def screen(self):
         try:
-            self.conn = RDPConnection(
-                iosettings=self.iosettings, target=self.target, credentials=self.auth
-            )
+            self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
             await self.connect_rdp()
         except Exception as e:
             return
@@ -517,9 +425,7 @@ class rdp(connection):
         await asyncio.sleep(int(5))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser(
-                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
-            )
+            filename = os.path.expanduser(f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png")
             buffer.save(filename, "png")
             self.logger.highlight(f"Screenshot saved {filename}")
 
@@ -529,20 +435,14 @@ class rdp(connection):
     async def nla_screen(self):
         # Otherwise it crash
         self.iosettings.supported_protocols = None
-        self.auth = NTLMCredential(
-            secret="", username="", domain="", stype=asyauthSecret.PASS
-        )
-        self.conn = RDPConnection(
-            iosettings=self.iosettings, target=self.target, credentials=self.auth
-        )
+        self.auth = NTLMCredential(secret="", username="", domain="", stype=asyauthSecret.PASS)
+        self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
         await self.connect_rdp_old(self.url)
         await asyncio.sleep(int(self.args.screentime))
 
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser(
-                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
-            )
+            filename = os.path.expanduser(f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png")
             buffer.save(filename, "png")
             self.logger.highlight(f"NLA Screenshot saved {filename}")
 

@@ -27,19 +27,13 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         data = []
-        cards = connection.wmi(
-            f"select DNSDomainSuffixSearchOrder, IPAddress from win32_networkadapterconfiguration"
-        )
+        cards = connection.wmi(f"select DNSDomainSuffixSearchOrder, IPAddress from win32_networkadapterconfiguration")
         for c in cards:
             if c["IPAddress"].get("value"):
-                context.log.success(
-                    f"IP Address: {c['IPAddress']['value']}\tSearch Domain: {c['DNSDomainSuffixSearchOrder']['value']}"
-                )
+                context.log.success(f"IP Address: {c['IPAddress']['value']}\tSearch Domain: {c['DNSDomainSuffixSearchOrder']['value']}")
 
         data.append(cards)
 
-        log_name = "network-connections-{}-{}.log".format(
-            connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        )
+        log_name = "network-connections-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(json.dumps(data), log_name)
         context.log.display("Saved raw output to {}".format(log_name))

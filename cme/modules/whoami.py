@@ -8,9 +8,7 @@ class CMEModule:
     description = "Get details of provided user"
     supported_protocols = ["ldap"]
     opsec_safe = True  # Does the module touch disk?
-    multiple_hosts = (
-        True  # Does it make sense to run this module on multiple hosts at a time?
-    )
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         """
@@ -27,9 +25,7 @@ class CMEModule:
         else:
             searchFilter = f"(sAMAccountName={format(self.username)})"
 
-        context.log.debug(
-            f"Using naming context: {searchBase} and {searchFilter} as search filter"
-        )
+        context.log.debug(f"Using naming context: {searchBase} and {searchFilter} as search filter")
 
         # Get attributes of provided user
         r = connection.ldapConnection.search(
@@ -72,9 +68,7 @@ class CMEModule:
                 for group in response["vals"]:
                     context.log.highlight(f"Member of: {group}")
             elif "servicePrincipalName" in str(response["type"]):
-                context.log.highlight(
-                    f"Service Account Name(s) found - Potentially Kerberoastable user!"
-                )
+                context.log.highlight(f"Service Account Name(s) found - Potentially Kerberoastable user!")
                 for spn in response["vals"]:
                     context.log.highlight(f"Service Account Name: {spn}")
             else:

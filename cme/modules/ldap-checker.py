@@ -22,9 +22,7 @@ class CMEModule:
     """
 
     name = "ldap-checker"
-    description = (
-        "Checks whether LDAP signing and binding are required and / or enforced"
-    )
+    description = "Checks whether LDAP signing and binding are required and / or enforced"
     supported_protocols = ["ldap"]
     opsec_safe = True
     multiple_hosts = True
@@ -53,9 +51,7 @@ class CMEModule:
         def run_ldaps_noEPA(inputUser, inputPassword, dcTarget):
             try:
                 tls = ldap3.Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
-                ldapServer = ldap3.Server(
-                    dcTarget, use_ssl=True, port=636, get_info=ldap3.ALL, tls=tls
-                )
+                ldapServer = ldap3.Server(dcTarget, use_ssl=True, port=636, get_info=ldap3.ALL, tls=tls)
                 ldapConn = ldap3.Connection(
                     ldapServer,
                     user=inputUser,
@@ -75,10 +71,7 @@ class CMEModule:
                     exit()
             except Exception as e:
                 context.log.fail("\n   [!] " + dcTarget + " -", str(e))
-                context.log.fail(
-                    "        * Ensure DNS is resolving properly, and that you can reach"
-                    " LDAPS on this host"
-                )
+                context.log.fail("        * Ensure DNS is resolving properly, and that you can reach" " LDAPS on this host")
 
         # Conduct a bind to LDAPS with channel binding supported
         # but intentionally miscalculated. In the case that and
@@ -147,9 +140,7 @@ class CMEModule:
                     ssl_sock.close()
                     return False
                 else:
-                    context.log.fail(
-                        "Unexpected error during LDAPS handshake: " + str(e)
-                    )
+                    context.log.fail("Unexpected error during LDAPS handshake: " + str(e))
                     ssl_sock.close()
                     return False
 
@@ -157,9 +148,7 @@ class CMEModule:
         # requirements are enforced based on potential errors
         # during the bind attempt.
         def run_ldap(inputUser, inputPassword, dcTarget):
-            ldapServer = ldap3.Server(
-                dcTarget, use_ssl=False, port=389, get_info=ldap3.ALL
-            )
+            ldapServer = ldap3.Server(dcTarget, use_ssl=False, port=389, get_info=ldap3.ALL)
             ldapConn = ldap3.Connection(
                 ldapServer,
                 user=inputUser,
@@ -176,9 +165,7 @@ class CMEModule:
                     context.log.debug("UNEXPECTED ERROR: " + str(ldapConn.result))
             else:
                 # LDAPS bind successful
-                return (
-                    False  # because LDAP server signing requirements are not enforced
-                )
+                return False  # because LDAP server signing requirements are not enforced
                 exit()
 
         # Run trough all our code blocks to determine LDAP signing and channel binding settings.
@@ -190,23 +177,11 @@ class CMEModule:
         elif ldapIsProtected == True:
             context.log.fail("LDAP Signing IS Enforced")
         if DoesLdapsCompleteHandshake(dcTarget) == True:
-            ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(
-                inputUser, inputPassword, dcTarget
-            )
-            ldapsChannelBindingWhenSupportedCheck = asyncio.run(
-                run_ldaps_withEPA(inputUser, inputPassword, dcTarget)
-            )
-            if (
-                ldapsChannelBindingAlwaysCheck == False
-                and ldapsChannelBindingWhenSupportedCheck == True
-            ):
-                context.log.highlight(
-                    'LDAPS Channel Binding is set to "When Supported"'
-                )
-            elif (
-                ldapsChannelBindingAlwaysCheck == False
-                and ldapsChannelBindingWhenSupportedCheck == False
-            ):
+            ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
+            ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
+            if ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == True:
+                context.log.highlight('LDAPS Channel Binding is set to "When Supported"')
+            elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
                 context.log.highlight('LDAPS Channel Binding is set to "NEVER"')
             elif ldapsChannelBindingAlwaysCheck == True:
                 context.log.fail('LDAPS Channel Binding is set to "Required"')
@@ -214,7 +189,4 @@ class CMEModule:
                 context.log.fail("\nSomething went wrong...")
                 exit()
         else:
-            context.log.fail(
-                dcTarget
-                + " - cannot complete TLS handshake, cert likely not configured"
-            )
+            context.log.fail(dcTarget + " - cannot complete TLS handshake, cert likely not configured")

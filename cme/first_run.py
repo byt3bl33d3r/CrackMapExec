@@ -51,9 +51,7 @@ def first_run_setup(logger=cme_logger):
             config.get("BloodHound", "bh_enabled")
             config.get("CME", "log_mode")
         except (NoSectionError, NoOptionError):
-            logger.display(
-                "Old configuration file detected, replacing with new version"
-            )
+            logger.display("Old configuration file detected, replacing with new version")
             default_path = path_join(DATA_PATH, "cme.conf")
             shutil.copy(default_path, CME_PATH)
 

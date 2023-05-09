@@ -29,6 +29,4 @@ class CMEModule:
         searchFilter = "(objectClass=*)"
         attributes = ["ms-DS-MachineAccountQuota"]
         result = connection.search(searchFilter, attributes)
-        context.log.highlight(
-            "MachineAccountQuota: %d" % result[0]["attributes"][0]["vals"][0]
-        )
+        context.log.highlight("MachineAccountQuota: %d" % result[0]["attributes"][0]["vals"][0])

@@ -182,9 +182,7 @@ class navigator(DatabaseNavigator):
                     credtype = cred[4]
                     pillaged_from = cred[5]
 
-                    data.append(
-                        [cred_id, credtype, pillaged_from, domain, username, password]
-                    )
+                    data.append([cred_id, credtype, pillaged_from, domain, username, password])
                 print_table(data, title="Credential(s)")
 
                 data = [["HostID", "IP", "Hostname", "Domain", "OS"]]
@@ -226,12 +224,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        if (
-            input(
-                "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "
-            )
-            == "y"
-        ):
+        if input("This will destroy all data in the current database, are you SURE you want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):

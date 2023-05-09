@@ -8,9 +8,7 @@ from cme.helpers.powershell import get_ps_script
 
 class CMEModule:
     name = "msol"
-    description = (
-        "Dump MSOL cleartext password from the localDB on the Azure AD-Connect Server"
-    )
+    description = "Dump MSOL cleartext password from the localDB on the Azure AD-Connect Server"
     supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
@@ -65,9 +63,7 @@ class CMEModule:
         context.log.display(f"Uploading {self.msol}")
         with open(file_to_upload, "rb") as msol:
             try:
-                connection.conn.putFile(
-                    self.share, f"{self.tmp_share}{self.msol}", msol.read
-                )
+                connection.conn.putFile(self.share, f"{self.tmp_share}{self.msol}", msol.read)
                 context.log.success(f"Msol script successfully uploaded")
             except Exception as e:
                 context.log.fail(f"Error writing file to share {self.tmp_share}: {e}")
@@ -89,6 +85,4 @@ class CMEModule:
                 connection.conn.deleteFile(self.share, f"{self.tmp_share}{self.msol}")
                 context.log.success(f"Msol script successfully deleted")
             except Exception as e:
-                context.log.fail(
-                    f"[OPSEC] Error deleting msol script on {self.share}: {e}"
-                )
+                context.log.fail(f"[OPSEC] Error deleting msol script on {self.share}: {e}")

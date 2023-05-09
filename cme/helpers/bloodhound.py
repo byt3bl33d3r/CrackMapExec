@@ -36,24 +36,14 @@ def add_user_bh(user, domain, logger, config):
                             user_owned = info["username"] + "@" + info["domain"]
                             account_type = "User"
 
-                        result = tx.run(
-                            f'MATCH (c:{account_type} {{name:"{user_owned}"}}) RETURN c'
-                        )
+                        result = tx.run(f'MATCH (c:{account_type} {{name:"{user_owned}"}}) RETURN c')
 
                         if result.data()[0]["c"].get("owned") in (False, None):
-                            logger.debug(
-                                f'MATCH (c:{account_type} {{name:"{user_owned}"}}) SET c.owned=True RETURN c.name AS name'
-                            )
-                            result = tx.run(
-                                f'MATCH (c:{account_type} {{name:"{user_owned}"}}) SET c.owned=True RETURN c.name AS name'
-                            )
-                            logger.highlight(
-                                f"Node {user_owned} successfully set as owned in BloodHound"
-                            )
+                            logger.debug(f'MATCH (c:{account_type} {{name:"{user_owned}"}}) SET c.owned=True RETURN c.name AS name')
+                            result = tx.run(f'MATCH (c:{account_type} {{name:"{user_owned}"}}) SET c.owned=True RETURN c.name AS name')
+                            logger.highlight(f"Node {user_owned} successfully set as owned in BloodHound")
         except AuthError as e:
-            logger.error(
-                f"Provided Neo4J credentials ({config.get('BloodHound', 'bh_user')}:{config.get('BloodHound', 'bh_pass')}) are not valid."
-            )
+            logger.error(f"Provided Neo4J credentials ({config.get('BloodHound', 'bh_user')}:{config.get('BloodHound', 'bh_pass')}) are not valid.")
             return
         except ServiceUnavailable as e:
             logger.error(f"Neo4J does not seem to be available on {uri}.")

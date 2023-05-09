@@ -73,25 +73,12 @@ class database:
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
             try:
-                self.HostsTable = Table(
-                    "hosts", self.metadata, autoload_with=self.db_engine
-                )
-                self.UsersTable = Table(
-                    "users", self.metadata, autoload_with=self.db_engine
-                )
-                self.AdminRelationsTable = Table(
-                    "admin_relations", self.metadata, autoload_with=self.db_engine
-                )
-                self.LoggedinRelationsTable = Table(
-                    "loggedin_relations", self.metadata, autoload_with=self.db_engine
-                )
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 exit()
 
     def shutdown_db(self):
@@ -152,9 +139,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(
-            index_elements=self.HostsTable.primary_key, set_=update_columns
-        )
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
         self.conn.execute(q, hosts)
 
     def add_credential(self, credtype, domain, username, password, pillaged_from=None):
@@ -215,12 +200,8 @@ class database:
 
         # TODO: find a way to abstract this away to a single Upsert call
         q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
-        update_columns_users = {
-            col.name: col for col in q_users.excluded if col.name not in "id"
-        }
-        q_users = q_users.on_conflict_do_update(
-            index_elements=self.UsersTable.primary_key, set_=update_columns_users
-        )
+        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in "id"}
+        q_users = q_users.on_conflict_do_update(index_elements=self.UsersTable.primary_key, set_=update_columns_users)
         self.conn.execute(q_users, credentials)  # .scalar()
         # return user_ids
 
@@ -271,13 +252,9 @@ class database:
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.userid == user_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.userid == user_id)
         elif host_id:
-            q = select(self.AdminRelationsTable).filter(
-                self.AdminRelationsTable.c.hostid == host_id
-            )
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
         else:
             q = select(self.AdminRelationsTable)
 
@@ -317,9 +294,7 @@ class database:
         # if we're filtering by username
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.UsersTable).filter(
-                func.lower(self.UsersTable.c.username).like(like_term)
-            )
+            q = select(self.UsersTable).filter(func.lower(self.UsersTable.c.username).like(like_term))
         # otherwise return all credentials
         else:
             q = select(self.UsersTable)
@@ -328,15 +303,11 @@ class database:
         return results
 
     def is_credential_local(self, credential_id):
-        q = select(self.UsersTable.c.domain).filter(
-            self.UsersTable.c.id == credential_id
-        )
+        q = select(self.UsersTable.c.domain).filter(self.UsersTable.c.id == credential_id)
         user_domain = self.conn.execute(q).all()
 
         if user_domain:
-            q = select(self.HostsTable).filter(
-                func.lower(self.HostsTable.c.id) == func.lower(user_domain)
-            )
+            q = select(self.HostsTable).filter(func.lower(self.HostsTable.c.id) == func.lower(user_domain))
             results = self.conn.execute(q).all()
 
             return len(results) > 0
@@ -369,10 +340,7 @@ class database:
         # if we're filtering by ip/hostname
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = q.filter(
-                self.HostsTable.c.ip.like(like_term)
-                | func.lower(self.HostsTable.c.hostname).like(like_term)
-            )
+            q = q.filter(self.HostsTable.c.ip.like(like_term) | func.lower(self.HostsTable.c.hostname).like(like_term))
         results = self.conn.execute(q).all()
         cme_logger.debug(f"winrm get_hosts() - results: {results}")
         return results
@@ -417,9 +385,7 @@ class database:
             relation = {"userid": user_id, "hostid": host_id}
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(
-                    self.LoggedinRelationsTable
-                )  # .returning(self.LoggedinRelationsTable.c.id)
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
 
                 self.conn.execute(q, [relation])  # .scalar()
                 # return inserted_ids
@@ -427,9 +393,7 @@ class database:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(
-            self.LoggedinRelationsTable
-        )  # .returning(self.LoggedinRelationsTable.c.id)
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(self.LoggedinRelationsTable.c.userid == user_id)
         if host_id:

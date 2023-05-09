@@ -122,12 +122,8 @@ class ACE_FLAGS(Enum):
 # Since these two flags are the same for Allowed and Denied access, the same class will be used from 'ldaptypes'
 # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-access_allowed_object_ace
 class OBJECT_ACE_FLAGS(Enum):
-    ACE_OBJECT_TYPE_PRESENT = (
-        ldaptypes.ACCESS_ALLOWED_OBJECT_ACE.ACE_OBJECT_TYPE_PRESENT
-    )
-    ACE_INHERITED_OBJECT_TYPE_PRESENT = (
-        ldaptypes.ACCESS_ALLOWED_OBJECT_ACE.ACE_INHERITED_OBJECT_TYPE_PRESENT
-    )
+    ACE_OBJECT_TYPE_PRESENT = ldaptypes.ACCESS_ALLOWED_OBJECT_ACE.ACE_OBJECT_TYPE_PRESENT
+    ACE_INHERITED_OBJECT_TYPE_PRESENT = ldaptypes.ACCESS_ALLOWED_OBJECT_ACE.ACE_INHERITED_OBJECT_TYPE_PRESENT
 
 
 # Access Mask enum
@@ -223,9 +219,7 @@ class CMEModule:
         self.context = context
 
         if not module_options:
-            context.log.fail(
-                "Select an option, example: -M daclread -o TARGET=Administrator ACTION=read"
-            )
+            context.log.fail("Select an option, example: -M daclread -o TARGET=Administrator ACTION=read")
             exit(1)
 
         if module_options and "TARGET" in module_options:
@@ -274,9 +268,7 @@ class CMEModule:
         On a successful LDAP login we perform a search for the targets' SID, their Security Decriptors and the principal's SID if there is one specified
         """
 
-        context.log.highlight(
-            "Be carefull, this module cannot read the DACLS recursively."
-        )
+        context.log.highlight("Be carefull, this module cannot read the DACLS recursively.")
         self.baseDN = connection.ldapConnection._baseDN
         self.ldap_session = connection.ldapConnection
 
@@ -287,18 +279,17 @@ class CMEModule:
                 self.principal_sid = format_sid(
                     self.ldap_session.search(
                         searchBase=self.baseDN,
-                        searchFilter="(sAMAccountName=%s)"
-                        % escape_filter_chars(_lookedup_principal),
+                        searchFilter="(sAMAccountName=%s)" % escape_filter_chars(_lookedup_principal),
                         attributes=["objectSid"],
-                    )[0][1][0][1][0]
+                    )[0][
+                        1
+                    ][0][
+                        1
+                    ][0]
                 )
-                context.log.highlight(
-                    "Found principal SID to filter on: %s" % self.principal_sid
-                )
+                context.log.highlight("Found principal SID to filter on: %s" % self.principal_sid)
             except Exception as e:
-                context.log.fail(
-                    "Principal SID not found in LDAP (%s)" % _lookedup_principal
-                )
+                context.log.fail("Principal SID not found in LDAP (%s)" % _lookedup_principal)
                 exit(1)
 
         # Searching for the targets SID and their Security Decriptors
@@ -309,19 +300,11 @@ class CMEModule:
                 self.search_target_principal_security_descriptor(context, connection)
                 # Extract security descriptor data
                 self.target_principal_dn = self.target_principal[0]
-                self.principal_raw_security_descriptor = str(
-                    self.target_principal[1][0][1][0]
-                ).encode("latin-1")
-                self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(
-                    data=self.principal_raw_security_descriptor
-                )
-                context.log.highlight(
-                    "Target principal found in LDAP (%s)" % self.target_principal[0]
-                )
+                self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode("latin-1")
+                self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(data=self.principal_raw_security_descriptor)
+                context.log.highlight("Target principal found in LDAP (%s)" % self.target_principal[0])
             except Exception as e:
-                context.log.fail(
-                    "Target SID not found in LDAP (%s)" % self.target_sAMAccountName
-                )
+                context.log.fail("Target SID not found in LDAP (%s)" % self.target_sAMAccountName)
                 exit(1)
 
             if self.action == "read":
@@ -336,27 +319,14 @@ class CMEModule:
                 try:
                     self.target_sAMAccountName = target.strip()
                     # Searching for target account with its security descriptor
-                    self.search_target_principal_security_descriptor(
-                        context, connection
-                    )
+                    self.search_target_principal_security_descriptor(context, connection)
                     # Extract security descriptor data
                     self.target_principal_dn = self.target_principal[0]
-                    self.principal_raw_security_descriptor = str(
-                        self.target_principal[1][0][1][0]
-                    ).encode("latin-1")
-                    self.principal_security_descriptor = (
-                        ldaptypes.SR_SECURITY_DESCRIPTOR(
-                            data=self.principal_raw_security_descriptor
-                        )
-                    )
-                    context.log.highlight(
-                        "Target principal found in LDAP (%s)"
-                        % self.target_sAMAccountName
-                    )
+                    self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode("latin-1")
+                    self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(data=self.principal_raw_security_descriptor)
+                    context.log.highlight("Target principal found in LDAP (%s)" % self.target_sAMAccountName)
                 except Exception as e:
-                    context.log.fail(
-                        "Target SID not found in LDAP (%s)" % self.target_sAMAccountName
-                    )
+                    context.log.fail("Target SID not found in LDAP (%s)" % self.target_sAMAccountName)
                     continue
 
                 if self.action == "read":
@@ -367,9 +337,7 @@ class CMEModule:
     # Main read funtion
     # Prints the parsed DACL
     def read(self, context):
-        parsed_dacl = self.parse_dacl(
-            context, self.principal_security_descriptor["Dacl"]
-        )
+        parsed_dacl = self.parse_dacl(context, self.principal_security_descriptor["Dacl"])
         self.print_parsed_dacl(context, parsed_dacl)
         return
 
@@ -377,9 +345,7 @@ class CMEModule:
     # This function is called before any writing action (write, remove or restore)
     def backup(self, context):
         backup = {}
-        backup["sd"] = binascii.hexlify(self.principal_raw_security_descriptor).decode(
-            "latin-1"
-        )
+        backup["sd"] = binascii.hexlify(self.principal_raw_security_descriptor).decode("latin-1")
         backup["dn"] = str(self.target_principal_dn)
         if not self.filename:
             self.filename = "dacledit-%s-%s.bak" % (
@@ -400,8 +366,7 @@ class CMEModule:
             _lookedup_principal = self.target_sAMAccountName
             target = self.ldap_session.search(
                 searchBase=self.baseDN,
-                searchFilter="(sAMAccountName=%s)"
-                % escape_filter_chars(_lookedup_principal),
+                searchFilter="(sAMAccountName=%s)" % escape_filter_chars(_lookedup_principal),
                 attributes=["nTSecurityDescriptor"],
                 searchControls=controls,
             )
@@ -416,10 +381,7 @@ class CMEModule:
         try:
             self.target_principal = target[0]
         except Exception as e:
-            context.log.fail(
-                "Principal not found in LDAP (%s), probably an LDAP session issue."
-                % _lookedup_principal
-            )
+            context.log.fail("Principal not found in LDAP (%s), probably an LDAP session issue." % _lookedup_principal)
             exit(0)
 
     # Attempts to retieve the SID and Distinguisehd Name from the sAMAccountName
@@ -452,12 +414,18 @@ class CMEModule:
                     searchBase=self.baseDN,
                     searchFilter="(objectSid=%s)" % sid,
                     attributes=["sAMAccountName"],
-                )[0][0]
+                )[
+                    0
+                ][0]
                 samname = self.ldap_session.search(
                     searchBase=self.baseDN,
                     searchFilter="(objectSid=%s)" % sid,
                     attributes=["sAMAccountName"],
-                )[0][1][0][1][0]
+                )[0][
+                    1
+                ][0][
+                    1
+                ][0]
                 return samname
             except Exception as e:
                 context.log.debug("SID not found in LDAP: %s" % sid)
@@ -516,8 +484,7 @@ class CMEModule:
                     ace["Ace"]["Mask"]["Mask"],
                 )
                 parsed_ace["Trustee (SID)"] = "%s (%s)" % (
-                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical())
-                    or "UNKNOWN",
+                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical()) or "UNKNOWN",
                     ace["Ace"]["Sid"].formatCanonical(),
                 )
 
@@ -550,31 +517,23 @@ class CMEModule:
                         parsed_ace["Object type (GUID)"] = "UNKNOWN (%s)" % obj_type
                 # Extracts the InheritedObjectType GUID values
                 if ace["Ace"]["InheritedObjectTypeLen"] != 0:
-                    inh_obj_type = bin_to_string(
-                        ace["Ace"]["InheritedObjectType"]
-                    ).lower()
+                    inh_obj_type = bin_to_string(ace["Ace"]["InheritedObjectType"]).lower()
                     try:
                         parsed_ace["Inherited type (GUID)"] = "%s (%s)" % (
                             OBJECT_TYPES_GUID[inh_obj_type],
                             inh_obj_type,
                         )
                     except KeyError:
-                        parsed_ace["Inherited type (GUID)"] = (
-                            "UNKNOWN (%s)" % inh_obj_type
-                        )
+                        parsed_ace["Inherited type (GUID)"] = "UNKNOWN (%s)" % inh_obj_type
                 # Extract the Trustee SID (the object that has the right over the DACL bearer)
                 parsed_ace["Trustee (SID)"] = "%s (%s)" % (
-                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical())
-                    or "UNKNOWN",
+                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical()) or "UNKNOWN",
                     ace["Ace"]["Sid"].formatCanonical(),
                 )
 
         else:
             # If the ACE is not an access allowed
-            context.log.debug(
-                "ACE Type (%s) unsupported for parsing yet, feel free to contribute"
-                % ace["TypeName"]
-            )
+            context.log.debug("ACE Type (%s) unsupported for parsing yet, feel free to contribute" % ace["TypeName"])
             parsed_ace = {}
             parsed_ace["ACE type"] = ace["TypeName"]
             _ace_flags = []
@@ -582,9 +541,7 @@ class CMEModule:
                 if ace.hasFlag(FLAG.value):
                     _ace_flags.append(FLAG.name)
             parsed_ace["ACE flags"] = ", ".join(_ace_flags) or "None"
-            parsed_ace[
-                "DEBUG"
-            ] = "ACE type not supported for parsing by dacleditor.py, feel free to contribute"
+            parsed_ace["DEBUG"] = "ACE type not supported for parsing by dacleditor.py, feel free to contribute"
         return parsed_ace
 
     # Prints a full DACL by printing each parsed ACE
@@ -600,76 +557,38 @@ class CMEModule:
             # Filter on specific rights
             if self.rights is not None:
                 try:
-                    if (self.rights == "FullControl") and (
-                        self.rights not in parsed_ace["Access mask"]
-                    ):
+                    if (self.rights == "FullControl") and (self.rights not in parsed_ace["Access mask"]):
                         print_ace = False
-                    if (self.rights == "DCSync") and (
-                        ("Object type (GUID)" not in parsed_ace)
-                        or (
-                            RIGHTS_GUID.DS_Replication_Get_Changes_All.value
-                            not in parsed_ace["Object type (GUID)"]
-                        )
-                    ):
+                    if (self.rights == "DCSync") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.DS_Replication_Get_Changes_All.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
-                    if (self.rights == "WriteMembers") and (
-                        ("Object type (GUID)" not in parsed_ace)
-                        or (
-                            RIGHTS_GUID.WriteMembers.value
-                            not in parsed_ace["Object type (GUID)"]
-                        )
-                    ):
+                    if (self.rights == "WriteMembers") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.WriteMembers.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
-                    if (self.rights == "ResetPassword") and (
-                        ("Object type (GUID)" not in parsed_ace)
-                        or (
-                            RIGHTS_GUID.ResetPassword.value
-                            not in parsed_ace["Object type (GUID)"]
-                        )
-                    ):
+                    if (self.rights == "ResetPassword") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.ResetPassword.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)"
-                        % e
-                    )
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on specific right GUID
             if self.rights_guid is not None:
                 try:
-                    if ("Object type (GUID)" not in parsed_ace) or (
-                        self.rights_guid not in parsed_ace["Object type (GUID)"]
-                    ):
+                    if ("Object type (GUID)" not in parsed_ace) or (self.rights_guid not in parsed_ace["Object type (GUID)"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)"
-                        % e
-                    )
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on ACE type
             if self.ace_type == "allowed":
                 try:
-                    if ("ACCESS_ALLOWED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and (
-                        "ACCESS_ALLOWED_ACE" not in parsed_ace["ACE Type"]
-                    ):
+                    if ("ACCESS_ALLOWED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and ("ACCESS_ALLOWED_ACE" not in parsed_ace["ACE Type"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)"
-                        % e
-                    )
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             else:
                 try:
-                    if ("ACCESS_DENIED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and (
-                        "ACCESS_DENIED_ACE" not in parsed_ace["ACE Type"]
-                    ):
+                    if ("ACCESS_DENIED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and ("ACCESS_DENIED_ACE" not in parsed_ace["ACE Type"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)"
-                        % e
-                    )
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on trusted principal
             if self.principal_sid is not None:
@@ -677,10 +596,7 @@ class CMEModule:
                     if self.principal_sid not in parsed_ace["Trustee (SID)"]:
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)"
-                        % e
-                    )
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             if print_ace:
                 self.context.log.highlight("%-28s" % "ACE[%d] info" % i)
                 self.print_parsed_ace(parsed_ace)
@@ -691,9 +607,7 @@ class CMEModule:
     def print_parsed_ace(self, parsed_ace):
         elements_name = list(parsed_ace.keys())
         for attribute in elements_name:
-            self.context.log.highlight(
-                "    %-26s: %s" % (attribute, parsed_ace[attribute])
-            )
+            self.context.log.highlight("    %-26s: %s" % (attribute, parsed_ace[attribute]))
 
     # Retrieves the GUIDs for the specified rights
     def build_guids_for_rights(self):

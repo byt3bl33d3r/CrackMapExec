@@ -7,8 +7,6 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 
-from cme.logger import cme_logger
-
 
 class UserSamrDump:
     KNOWN_PROTOCOLS = {
@@ -17,12 +15,8 @@ class UserSamrDump:
     }
 
     def __init__(self, connection):
-        self.logger = cme_logger
-        self.addr = (
-            connection.host
-            if not connection.kerberos
-            else connection.hostname + "." + connection.domain
-        )
+        self.logger = connection.logger
+        self.addr = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
         self.password = connection.password
@@ -116,9 +110,7 @@ class UserSamrDump:
         enumerationContext = 0
         while status == STATUS_MORE_ENTRIES:
             try:
-                resp = samr.hSamrEnumerateUsersInDomain(
-                    dce, domainHandle, enumerationContext=enumerationContext
-                )
+                resp = samr.hSamrEnumerateUsersInDomain(dce, domainHandle, enumerationContext=enumerationContext)
             except DCERPCException as e:
                 if str(e).find("STATUS_MORE_ENTRIES") < 0:
                     self.logger.fail("Error enumerating domain user(s)")
@@ -126,20 +118,14 @@ class UserSamrDump:
                 resp = e.get_packet()
             self.logger.success("Enumerated domain user(s)")
             for user in resp["Buffer"]["Buffer"]:
-                r = samr.hSamrOpenUser(
-                    dce, domainHandle, samr.MAXIMUM_ALLOWED, user["RelativeId"]
-                )
-                info = samr.hSamrQueryInformationUser2(
-                    dce, r["UserHandle"], samr.USER_INFORMATION_CLASS.UserAllInformation
-                )
+                r = samr.hSamrOpenUser(dce, domainHandle, samr.MAXIMUM_ALLOWED, user["RelativeId"])
+                info = samr.hSamrQueryInformationUser2(dce, r["UserHandle"], samr.USER_INFORMATION_CLASS.UserAllInformation)
                 (username, uid, info_user) = (
                     user["Name"],
                     user["RelativeId"],
                     info["Buffer"]["All"],
                 )
-                self.logger.highlight(
-                    f"{self.domain}\\{user['Name']:<30} {info_user['AdminComment']}"
-                )
+                self.logger.highlight(f"{self.domain}\\{user['Name']:<30} {info_user['AdminComment']}")
                 self.users.append(user["Name"])
                 samr.hSamrCloseHandle(dce, r["UserHandle"])
 

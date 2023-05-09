@@ -51,9 +51,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             self.server.hosts.remove(self.client_address[0])
             if hasattr(self.server.module, "on_shutdown"):
-                self.server.module.on_shutdown(
-                    self.server.context, self.server.connection
-                )
+                self.server.module.on_shutdown(self.server.context, self.server.connection)
         except ValueError:
             pass
 
@@ -67,24 +65,18 @@ class CMEServer(threading.Thread):
             self.server.hosts = []
             self.server.module = module
             self.server.context = context
-            self.server.log = CMEAdapter(
-                extra={"module_name": self.server.module.name.upper()}
-            )
+            self.server.log = CMEAdapter(extra={"module_name": self.server.module.name.upper()})
             self.cert_path = os.path.join(os.path.expanduser("~/.cme"), "cme.pem")
             self.server.track_host = self.track_host
 
             logger.debug("CME server type: " + server_type)
             if server_type == "https":
-                self.server.socket = ssl.wrap_socket(
-                    self.server.socket, certfile=self.cert_path, server_side=True
-                )
+                self.server.socket = ssl.wrap_socket(self.server.socket, certfile=self.cert_path, server_side=True)
 
         except Exception as e:
             errno, message = e.args
             if errno == 98 and message == "Address already in use":
-                logger.error(
-                    "Error starting HTTP(S) server: the port is already in use, try specifying a diffrent port using --server-port"
-                )
+                logger.error("Error starting HTTP(S) server: the port is already in use, try specifying a diffrent port using --server-port")
             else:
                 logger.error(f"Error starting HTTP(S) server: {message}")
 
@@ -105,9 +97,7 @@ class CMEServer(threading.Thread):
     def shutdown(self):
         try:
             while len(self.server.hosts) > 0:
-                self.server.log.info(
-                    f"Waiting on {highlight(len(self.server.hosts))} host(s)"
-                )
+                self.server.log.info(f"Waiting on {highlight(len(self.server.hosts))} host(s)")
                 sleep(15)
         except KeyboardInterrupt:
             pass

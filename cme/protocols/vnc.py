@@ -30,9 +30,7 @@ class vnc(connection):
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        vnc_parser = parser.add_parser(
-            "vnc", help="own stuff using VNC", parents=[std_parser, module_parser]
-        )
+        vnc_parser = parser.add_parser("vnc", help="own stuff using VNC", parents=[std_parser, module_parser])
         vnc_parser.add_argument(
             "--no-bruteforce",
             action="store_true",
@@ -43,9 +41,7 @@ class vnc(connection):
             action="store_true",
             help="continues authentication attempts even after successes",
         )
-        vnc_parser.add_argument(
-            "--port", type=int, default=5900, help="Custom VNC port"
-        )
+        vnc_parser.add_argument("--port", type=int, default=5900, help="Custom VNC port")
         vnc_parser.add_argument(
             "--vnc-sleep",
             type=int,
@@ -59,9 +55,7 @@ class vnc(connection):
             action="store_true",
             help="Screenshot VNC if connection success",
         )
-        egroup.add_argument(
-            "--screentime", type=int, default=5, help="Time to wait for desktop image"
-        )
+        egroup.add_argument("--screentime", type=int, default=5, help="Time to wait for desktop image")
 
         return parser
 
@@ -91,12 +85,8 @@ class vnc(connection):
     def create_conn_obj(self):
         try:
             self.target = RDPTarget(ip=self.host, port=self.args.port)
-            credential = UniCredential(
-                protocol=asyauthProtocol.PLAIN, stype=asyauthSecret.NONE
-            )
-            self.conn = VNCConnection(
-                target=self.target, credentials=credential, iosettings=self.iosettings
-            )
+            credential = UniCredential(protocol=asyauthProtocol.PLAIN, stype=asyauthSecret.NONE)
+            self.conn = VNCConnection(target=self.target, credentials=credential, iosettings=self.iosettings)
             asyncio.run(self.connect_vnc(True))
         except Exception as e:
             self.logger.debug(str(e))
@@ -117,9 +107,7 @@ class vnc(connection):
             stype = asyauthSecret.PASS
             if password == "":
                 stype = asyauthSecret.NONE
-            self.credential = UniCredential(
-                secret=password, protocol=asyauthProtocol.PLAIN, stype=stype
-            )
+            self.credential = UniCredential(secret=password, protocol=asyauthProtocol.PLAIN, stype=stype)
             self.conn = VNCConnection(
                 target=self.target,
                 credentials=self.credential,
@@ -131,11 +119,7 @@ class vnc(connection):
             self.logger.success(
                 "{} {}".format(
                     password,
-                    highlight(
-                        f"({self.config.get('CME', 'pwn3d_label')})"
-                        if self.admin_privs
-                        else ""
-                    ),
+                    highlight(f"({self.config.get('CME', 'pwn3d_label')})" if self.admin_privs else ""),
                 )
             )
             if not self.args.continue_on_success:
@@ -147,11 +131,7 @@ class vnc(connection):
                 self.logger.success(
                     "{} {}".format(
                         "No password seems to be accepted by the server",
-                        highlight(
-                            f"({self.config.get('CME', 'pwn3d_label')})"
-                            if self.admin_privs
-                            else ""
-                        ),
+                        highlight(f"({self.config.get('CME', 'pwn3d_label')})" if self.admin_privs else ""),
                     )
                 )
             else:
@@ -159,16 +139,12 @@ class vnc(connection):
             return False
 
     async def screen(self):
-        self.conn = VNCConnection(
-            target=self.target, credentials=self.credential, iosettings=self.iosettings
-        )
+        self.conn = VNCConnection(target=self.target, credentials=self.credential, iosettings=self.iosettings)
         await self.connect_vnc()
         await asyncio.sleep(int(self.args.screentime))
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
             buffer = self.conn.get_desktop_buffer(VIDEO_FORMAT.PIL)
-            filename = os.path.expanduser(
-                f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png"
-            )
+            filename = os.path.expanduser(f"~/.cme/screenshots/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.png")
             buffer.save(filename, "png")
             self.logger.highlight(f"Screenshot saved {filename}")
 

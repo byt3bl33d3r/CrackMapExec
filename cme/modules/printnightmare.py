@@ -102,14 +102,10 @@ class CMEModule:
                 return False
             # If vulnerable, 'ERROR_INVALID_PARAMETER' will be returned
             if e.error_code == system_errors.ERROR_INVALID_PARAMETER:
-                context.log.highlight(
-                    "Vulnerable, next step https://github.com/ly4k/PrintNightmare"
-                )
+                context.log.highlight("Vulnerable, next step https://github.com/ly4k/PrintNightmare")
                 return True
             raise e
-        context.log.highlight(
-            "Vulnerable, next step https://github.com/ly4k/PrintNightmare"
-        )
+        context.log.highlight("Vulnerable, next step https://github.com/ly4k/PrintNightmare")
         return True
 
 
@@ -198,18 +194,10 @@ class DRIVER_INFO_2_BLOB(Structure):
         name_len = name.find("\0")
         self["Name"] = checkNullString(name[:name_len])
 
-        self["ConfigFile"] = data[
-            self["ConfigFileOffset"] + offset : self["DataFileOffset"] + offset
-        ].decode("utf-16-le")
-        self["DataFile"] = data[
-            self["DataFileOffset"] + offset : self["DriverPathOffset"] + offset
-        ].decode("utf-16-le")
-        self["DriverPath"] = data[
-            self["DriverPathOffset"] + offset : self["EnvironmentOffset"] + offset
-        ].decode("utf-16-le")
-        self["Environment"] = data[
-            self["EnvironmentOffset"] + offset : self["NameOffset"] + offset
-        ].decode("utf-16-le")
+        self["ConfigFile"] = data[self["ConfigFileOffset"] + offset : self["DataFileOffset"] + offset].decode("utf-16-le")
+        self["DataFile"] = data[self["DataFileOffset"] + offset : self["DriverPathOffset"] + offset].decode("utf-16-le")
+        self["DriverPath"] = data[self["DriverPathOffset"] + offset : self["EnvironmentOffset"] + offset].decode("utf-16-le")
+        self["Environment"] = data[self["EnvironmentOffset"] + offset : self["NameOffset"] + offset].decode("utf-16-le")
 
 
 class DRIVER_INFO_2_ARRAY(Structure):

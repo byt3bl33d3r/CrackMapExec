@@ -32,9 +32,7 @@ class CMEModule:
                 exit(1)
             self.user = module_options["USER"]
         else:
-            context.log.fail(
-                "Missing USER option, use --options to list available parameters"
-            )
+            context.log.fail("Missing USER option, use --options to list available parameters")
             exit(1)
 
     def on_login(self, context, connection):
@@ -51,9 +49,7 @@ class CMEModule:
             )
         except ldap_impacket.LDAPSearchError as e:
             if e.getErrorString().find("sizeLimitExceeded") >= 0:
-                context.log.debug(
-                    "sizeLimitExceeded exception caught, giving up and processing the data received"
-                )
+                context.log.debug("sizeLimitExceeded exception caught, giving up and processing the data received")
                 # We reached the sizeLimit, process the answers we have already and that's it. Until we implement
                 # paged queries
                 resp = e.getAnswers()
@@ -85,14 +81,10 @@ class CMEModule:
 
             except Exception as e:
                 context.log.debug("Exception:", exc_info=True)
-                context.log.debug(
-                    "Skipping item, cannot process due to error %s" % str(e)
-                )
+                context.log.debug("Skipping item, cannot process due to error %s" % str(e))
                 pass
         if len(memberOf) > 0:
-            context.log.success(
-                "User: {} is member of following groups: ".format(self.user)
-            )
+            context.log.success("User: {} is member of following groups: ".format(self.user))
             for group in memberOf:
                 # Split the string on the "," character to get a list of the group name and parent group names
                 group_parts = group.split(",")
