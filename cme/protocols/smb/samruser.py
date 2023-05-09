@@ -7,8 +7,6 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.nt_errors import STATUS_MORE_ENTRIES
 
-from cme.logger import cme_logger
-
 
 class UserSamrDump:
     KNOWN_PROTOCOLS = {
@@ -17,7 +15,7 @@ class UserSamrDump:
     }
 
     def __init__(self, connection):
-        self.logger = cme_logger
+        self.logger = connection.logger
         self.addr = connection.host if not connection.kerberos else connection.hostname + "." + connection.domain
         self.protocol = connection.args.port
         self.username = connection.username
