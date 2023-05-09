@@ -163,6 +163,7 @@ class smb(connection):
         self.pvkbytes = None
         self.no_da = None
         self.no_ntlm = False
+        self.protocol = "SMB"
 
         connection.__init__(self, args, db, host)
 
