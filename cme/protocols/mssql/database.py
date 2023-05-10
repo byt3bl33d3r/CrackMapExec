@@ -96,9 +96,7 @@ class database:
         TODO: return inserted or updated row ids as a list
         """
         cme_logger.debug(f"{domain} {ip} {os} {instances}")
-        if domain:
-            domain = domain.split(".")[0].upper()
-        else:
+        if not domain:
             domain = ""
         hosts = []
 
@@ -144,7 +142,6 @@ class database:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-        domain = domain.split(".")[0].upper()
         user_rowid = None
 
         credential_data = {}
@@ -198,7 +195,6 @@ class database:
         self.conn.execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
-        domain = domain.split(".")[0].upper()
 
         if user_id:
             q = select(self.UsersTable).filter(self.UsersTable.c.id == user_id)
