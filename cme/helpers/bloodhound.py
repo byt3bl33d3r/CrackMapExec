@@ -43,13 +43,13 @@ def add_user_bh(user, domain, logger, config):
                             result = tx.run(f'MATCH (c:{account_type} {{name:"{user_owned}"}}) SET c.owned=True RETURN c.name AS name')
                             logger.highlight(f"Node {user_owned} successfully set as owned in BloodHound")
         except AuthError as e:
-            logger.error(f"Provided Neo4J credentials ({config.get('BloodHound', 'bh_user')}:{config.get('BloodHound', 'bh_pass')}) are not valid.")
+            logger.fail(f"Provided Neo4J credentials ({config.get('BloodHound', 'bh_user')}:{config.get('BloodHound', 'bh_pass')}) are not valid.")
             return
         except ServiceUnavailable as e:
-            logger.error(f"Neo4J does not seem to be available on {uri}.")
+            logger.fail(f"Neo4J does not seem to be available on {uri}.")
             return
         except Exception as e:
-            logger.error("Unexpected error with Neo4J")
-            logger.error("Account not found on the domain")
+            logger.fail("Unexpected error with Neo4J")
+            logger.fail("Account not found on the domain")
             return
         driver.close()
