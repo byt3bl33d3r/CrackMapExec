@@ -196,7 +196,6 @@ class database:
         """
         Check if this host has already been added to the database, if not, add it in.
         """
-        domain = domain.split(".")[0]
         hosts = []
         updated_ids = []
 
@@ -264,7 +263,6 @@ class database:
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-        domain = domain.split(".")[0]
         credentials = []
         groups = []
 
@@ -338,7 +336,6 @@ class database:
         self.conn.execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
-        domain = domain.split(".")[0]
         add_links = []
 
         creds_q = select(self.UsersTable)
@@ -426,7 +423,6 @@ class database:
         return results
 
     def get_credential(self, cred_type, domain, username, password):
-        domain = domain.split(".")[0]
 
         q = select(self.UsersTable).filter(
             self.UsersTable.c.domain == domain,
@@ -508,7 +504,6 @@ class database:
     def add_group(self, domain, name, rid=None, member_count_ad=None):
         results = self.get_groups(group_name=name, group_domain=domain)
 
-        domain = domain.split(".")[0]
         groups = []
         updated_ids = []
 
@@ -577,8 +572,6 @@ class database:
         """
         Return groups from the database
         """
-        if group_domain:
-            group_domain = group_domain.split(".")[0]
 
         if filter_term and self.is_group_valid(filter_term):
             q = select(self.GroupsTable).filter(self.GroupsTable.c.id == filter_term)
