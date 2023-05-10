@@ -389,6 +389,7 @@ class ldap(connection):
             self.server_os = self.conn.getServerOS()
             self.signing = self.conn.isSigningRequired() if self.smbv1 else self.conn._SMBConnection._Connection["RequireSigning"]
             self.os_arch = self.get_os_arch()
+            self.logger.extra["hostname"] = self.hostname
 
             if not self.domain:
                 self.domain = self.hostname
@@ -1483,7 +1484,7 @@ class ldap(connection):
         collect = resolve_collection_methods("Default" if not self.args.collection else self.args.collection)
         if not collect:
             return
-        self.logger.highlight("Resolved collection methods: %s", ", ".join(list(collect)))
+        self.logger.highlight("Resolved collection methods: " + ", ".join(list(collect)))
 
         self.logger.debug("Using DNS to retrieve domain information")
         ad.dns_resolve(domain=self.domain)

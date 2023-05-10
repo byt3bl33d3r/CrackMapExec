@@ -657,16 +657,7 @@ class smb(connection):
                     kerb_pass = ""
                     self.logger.debug(f"Attempting to do Kerberos Login with useCache: {useCache}")
 
-                self.conn.kerberosLogin(
-                    username,
-                    password,
-                    domain,
-                    lmhash,
-                    nthash,
-                    aesKey,
-                    kdcHost,
-                    useCache=useCache,
-                )
+                self.conn.kerberosLogin( username, password, domain, lmhash, nthash, aesKey, kdcHost, useCache=useCache)
                 self.check_if_admin()
 
                 if username == "":
