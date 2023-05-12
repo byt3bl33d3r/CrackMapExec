@@ -107,7 +107,7 @@ def doSearch(self,context, connection,searchFilter,attributeName):
              attribute = "dNSHostName"
              doSearch(self, context, connection, searchFilter, attribute)
             else:
-                context.log.success('Unable to find any members of the ' + self.GROUP + ' group:')
+                context.log.success('Unable to find any members of the ' + self.GROUP + ' group')
 
     except ldap_impacket.LDAPSearchError as e:
         logging.debug(e)
