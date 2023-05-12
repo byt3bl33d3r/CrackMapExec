@@ -20,7 +20,10 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        COMP-DESC - Specify a computer description to filter on
+        COMP-DESC: Specify COMP-DESC to call the module
+        DESC: Specify the DESC option to enter your description text to search for
+        Usage: crackmapexec ldap $DC-IP -u Username -p Password -M COMP-DESC -o DESC="server"
+               crackmapexec ldap $DC-IP -u Username -p Password -M COMP-DESC -o DESC="XP"
         '''
 
         self.DESC = ''
