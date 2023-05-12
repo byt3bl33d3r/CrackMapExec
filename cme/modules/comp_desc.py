@@ -11,6 +11,12 @@ class CMEModule:
       Initial module:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
     '''
+    
+    name = 'COMP-DESC'
+    description = 'Retrieves computers containing the specified description'
+    supported_protocols = ['ldap']
+    opsec_safe = True
+    multiple_hosts = False
 
     def options(self, context, module_options):
         '''
@@ -24,13 +30,6 @@ class CMEModule:
         else:
             context.log.error('DESC option is required!')
             exit(1)
-
-
-    name = 'COMP-DESC'
-    description = 'Retrieves computers containing the specified description'
-    supported_protocols = ['ldap']
-    opsec_safe = True
-    multiple_hosts = False
 
     def on_login(self, context, connection):
 
