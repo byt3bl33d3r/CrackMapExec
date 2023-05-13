@@ -60,7 +60,6 @@ class CMEModule:
         # If the primaryGroupID relates to Domain Users or Guests use this unique filter
         if self.primaryGroupID == "513" or self.primaryGroupID == "514":
             searchFilter = "(|(memberOf="+distinguishedName+")(primaryGroupID="+self.primaryGroupID+"))"
-            #searchFilter = "(|(memberOf=cn=Users)(primaryGroupID=" + self.primaryGroupID + "))"
             attribute = "sAMAccountName"
             searchResult = doSearch(self, context, connection, searchFilter, attribute)
 
