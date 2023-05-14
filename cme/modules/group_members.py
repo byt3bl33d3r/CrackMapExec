@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
 from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
 class CMEModule:
     '''
-      Module by CyberCelt
+      Module by CyberCelt: @Cyb3rCelt
 
       Initial module:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
@@ -68,6 +67,7 @@ class CMEModule:
             attribute = "sAMAccountName"
             searchResult = doSearch(self, context, connection, searchFilter, attribute)
 
+# Carry out an LDAP search for the Group with the supplied Group name
 def doSearch(self,context, connection,searchFilter,attributeName):
     try:
         context.log.debug('Search Filter=%s' % searchFilter)
@@ -111,5 +111,5 @@ def doSearch(self,context, connection,searchFilter,attributeName):
                 context.log.success('Unable to find any members of the "' + self.GROUP + '" group')
 
     except Exception as e:
-        logging.debug(e)
+        context.log.debug("Exception:", e)
         return False
