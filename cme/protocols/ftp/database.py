@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from pathlib import Path
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import (
@@ -18,6 +19,8 @@ class database:
         self.LoggedinRelationsTable = None
 
         self.db_engine = db_engine
+        self.db_path = self.db_engine.url.database
+        self.protocol = Path(self.db_path).stem.upper()
         self.metadata = MetaData()
         self.reflect_tables()
 
@@ -46,9 +49,15 @@ class database:
             FOREIGN KEY(credid) REFERENCES credentials(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
         )""")
+        db_conn.execute("""CREATE TABLE "directory_listings" (
+                "id" integer PRIMARY KEY,
+                "lir_id" integer,
+                "data" text,
+                FOREIGN KEY(lir_id) REFERENCES loggedin_relations(id)
+            )""")
 
     def reflect_tables(self):
-        with self.db_engine.connect() as conn:
+        with self.db_engine.connect():
             try:
                 self.CredentialsTable = Table(
                     "credentials", self.metadata, autoload_with=self.db_engine
@@ -59,12 +68,16 @@ class database:
                 self.LoggedinRelationsTable = Table(
                     "loggedin_relations", self.metadata, autoload_with=self.db_engine
                 )
+                self.LoggedinRelationsTable = Table(
+                    "directory_listings", self.metadata, autoload_with=self.db_engine
+                )
             except (NoInspectionAvailable, NoSuchTableError):
                 print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
+                    f"""
+                    [-] Error reflecting tables for the {self.protocol} protocol - this means there is a DB schema mismatch
+                    [-] This is probably because a newer version of CME is being ran on an old DB schema
+                    [-] Optionally save the old DB data (`cp {self.db_path} ~/cme_{self.protocol.lower()}.bak`)
+                    [-] Then remove the {self.protocol} DB (`rm -f {self.db_path}`) and run CME to initialize the new DB"""
                 )
                 exit()
 

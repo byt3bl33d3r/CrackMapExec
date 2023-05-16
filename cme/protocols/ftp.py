@@ -7,6 +7,12 @@ from ftplib import FTP, error_reply, error_temp, error_perm, error_proto
 
 
 class ftp(connection):
+    def __init__(self, args, db, host):
+        self.protocol = "FTP"
+        self.remote_version = None
+
+        super().__init__(args, db, host)
+
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         ftp_parser = parser.add_parser("ftp", help="own stuff using FTP", parents=[std_parser, module_parser])
@@ -24,7 +30,7 @@ class ftp(connection):
 
         # TODO: Create more options for the protocol
         # cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
-        # cgroup.add_argument('--ls', metavar="COMMAND", dest='list_directory', help='List files in the directory')
+        # cgroup.add_argument("--ls", action="store_true", help="List files in the directory")
         return parser
 
     def proto_logger(self):
@@ -51,7 +57,6 @@ class ftp(connection):
         return True
 
     def print_host_info(self):
-        self.logger.extra["protocol"] = "FTP"
         self.logger.display(f"Banner:{self.remote_version}")
         return True
 
