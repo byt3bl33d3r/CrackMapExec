@@ -34,6 +34,7 @@ class CMEAdapter(logging.LoggerAdapter):
         logging.getLogger("pypykatz").disabled = True
         logging.getLogger("minidump").disabled = True
         logging.getLogger("lsassy").disabled = True
+        #logging.getLogger("impacket").disabled = True
 
     def format(self, msg, *args, **kwargs):
         """

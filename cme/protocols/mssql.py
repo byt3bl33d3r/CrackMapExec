@@ -213,9 +213,9 @@ class mssql(connection):
         try:
             self.conn = tds.MSSQL(self.host, self.args.port)
             self.conn.connect()
-        except socket.error:
+        except socket.error as e:
+            self.logger.debug(f"Error connecting to MSSQL: {e}")
             return False
-
         return True
 
     def check_if_admin(self):
@@ -248,7 +248,6 @@ class mssql(connection):
         except:
             pass
         self.create_conn_obj()
-        logging.getLogger("impacket").disabled = True
 
         nthash = ""
         hashes = None
@@ -291,27 +290,18 @@ class mssql(connection):
             self.domain = domain
             self.check_if_admin()
 
-            out = "{}{}{} {}".format(
-                f"{domain}\\" if not self.args.local_auth else "",
-                username,
-                # Show what was used between cleartext, nthash, aesKey and ccache
-                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
-            )
-            self.logger.success(out)
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
+            domain = f"{domain}\\" if not self.args.local_auth else ""
+
+            self.logger.success(f"{domain}{username}{used_ccache} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
             if not self.args.continue_on_success:
                 return True
         except Exception as e:
-            self.logger.fail(
-                "{}\\{}{} {}".format(
-                    f"{domain}\\" if not self.args.local_auth else "",
-                    username,
-                    " from ccache" if useCache else f":{kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}",
-                    e,
-                )
-            )
+            used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
+            domain = f"{domain}\\" if not self.args.local_auth else ""
+            self.logger.fail(f"{domain}\\{username}{used_ccache} {e}")
             return False
 
     def plaintext_login(self, domain, username, password):
@@ -327,7 +317,7 @@ class mssql(connection):
                 domain = ""
             res = self.conn.login(None, username, password, domain, None, not self.args.local_auth)
             if res is not True:
-                self.conn.printReplies()
+                self.handle_mssql_reply()
                 return False
 
             self.password = password
@@ -339,12 +329,8 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user("plaintext", domain, username, password, self.host)
 
-            out = "{}{}:{} {}".format(
-                f"{domain}\\" if not self.args.local_auth else "",
-                username,
-                process_secret(password),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
-            )
+            domain = f"{domain}\\" if not self.args.local_auth else ""
+            out = f"{domain}{username}:{process_secret(password)} {self.mark_pwned()}"
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -395,12 +381,7 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user("hash", domain, username, ntlm_hash, self.host)
 
-            out = "{}\\{} {} {}".format(
-                domain,
-                username,
-                process_secret(ntlm_hash),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
-            )
+            out = f"{domain}\\{username} {process_secret(ntlm_hash)} {self.mark_pwned()}"
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
@@ -494,20 +475,17 @@ class mssql(connection):
 
     # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
     # The whole tds library in impacket needs a good overhaul to preserve my sanity
-    def printRepliesCME(self):
-        for keys in self.replies.keys():
-            for i, key in enumerate(self.replies[keys]):
+    def handle_mssql_reply(self):
+        for keys in self.conn.replies.keys():
+            for i, key in enumerate(self.conn.replies[keys]):
                 if key["TokenType"] == TDS_ERROR_TOKEN:
                     error = f"ERROR({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}"
-                    self.lastError = SQLErrorException(f"ERROR: Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
-                    self._MSSQL__rowsPrinter.error(error)
-
+                    self.conn.lastError = SQLErrorException(f"ERROR: Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
+                    self.logger.fail(error)
                 elif key["TokenType"] == TDS_INFO_TOKEN:
-                    self._MSSQL__rowsPrinter.info(f"INFO({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
-
+                    self.logger.display(f"INFO({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
                 elif key["TokenType"] == TDS_LOGINACK_TOKEN:
-                    self._MSSQL__rowsPrinter.info(f"ACK: Result: {key['Interface']} - {key['ProgName'].decode('utf-16le')} ({key['MajorVer']:d}{key['MinorVer']:d} {key['BuildNumHi']:d}{key['BuildNumLow']:d}) ")
-
+                    self.logger.display(f"ACK: Result: {key['Interface']} - {key['ProgName'].decode('utf-16le')} ({key['MajorVer']:d}{key['MinorVer']:d} {key['BuildNumHi']:d}{key['BuildNumLow']:d}) ")
                 elif key["TokenType"] == TDS_ENVCHANGE_TOKEN:
                     if key["Type"] in (
                         TDS_ENVCHANGE_DATABASE,
@@ -530,6 +508,4 @@ class mssql(connection):
                             _type = "PACKETSIZE"
                         else:
                             _type = f"{key['Type']:d}"
-                        self._MSSQL__rowsPrinter.info(f"ENVCHANGE({_type}): Old Value: {record['OldValue'].decode('utf-16le')}, New Value: {record['NewValue'].decode('utf-16le')}")
-
-    tds.MSSQL.printReplies = printRepliesCME
+                        self.logger.display(f"ENVCHANGE({_type}): Old Value: {record['OldValue'].decode('utf-16le')}, New Value: {record['NewValue'].decode('utf-16le')}")
