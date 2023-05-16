@@ -50,11 +50,11 @@ class database:
             FOREIGN KEY(hostid) REFERENCES hosts(id)
         )""")
         db_conn.execute("""CREATE TABLE "directory_listings" (
-                "id" integer PRIMARY KEY,
-                "lir_id" integer,
-                "data" text,
-                FOREIGN KEY(lir_id) REFERENCES loggedin_relations(id)
-            )""")
+            "id" integer PRIMARY KEY,
+            "lir_id" integer,
+            "data" text,
+            FOREIGN KEY(lir_id) REFERENCES loggedin_relations(id)
+        )""")
 
     def reflect_tables(self):
         with self.db_engine.connect():
