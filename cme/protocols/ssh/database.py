@@ -10,6 +10,7 @@ from sqlalchemy.exc import (
 )
 
 import os
+from pathlib import Path
 import configparser
 
 from cme.logger import cme_logger
@@ -30,6 +31,8 @@ class database:
         self.KeysTable = None
 
         self.db_engine = db_engine
+        self.db_path = self.db_engine.url.database
+        self.protocol = Path(self.db_path).stem.upper()
         self.metadata = MetaData()
         self.reflect_tables()
         session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
@@ -94,8 +97,13 @@ class database:
                 self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
                 self.KeysTable = Table("keys", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                ssh_workspace = f"~/.cme/workspaces/{cme_workspace}/ssh.db"
-                print("[-] Error reflecting tables for SSH protocol - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" f"[-] Optionally save the old DB data (`cp {ssh_workspace} ~/cme_ssh.bak`)\n" f"[-] Then remove the CME SSH DB (`rm -rf {ssh_workspace}`) and run CME to initialize the new DB")
+                print(
+                    f"""
+                    [-] Error reflecting tables for the {self.protocol} protocol - this means there is a DB schema mismatch
+                    [-] This is probably because a newer version of CME is being ran on an old DB schema
+                    [-] Optionally save the old DB data (`cp {self.db_path} ~/cme_{self.protocol.lower()}.bak`)
+                    [-] Then remove the CME {self.protocol} DB (`rm -f {self.db_path}`) and run CME to initialize the new DB"""
+                )
                 exit()
 
     def shutdown_db(self):
