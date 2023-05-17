@@ -2,19 +2,20 @@
 # -*- coding: utf-8 -*-
 import binascii
 import hashlib
-from datetime import datetime
 import os
 import requests
+
+from datetime import datetime
+from pypsrp.client import Client
+
 from impacket.smbconnection import SMBConnection
+from impacket.examples.secretsdump import LocalOperations, LSASecrets, SAMHashes
 
 from cme.config import process_secret
 from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
-from cme.protocols.ldap.smbldap import LDAPConnect
+from cme.protocols.ldap.laps import LDAPConnect, LAPSv2Extract
 from cme.logger import CMEAdapter
-from pypsrp.client import Client
-from impacket.examples.secretsdump import LocalOperations, LSASecrets, SAMHashes
-
 
 class winrm(connection):
     def __init__(self, args, db, host):
@@ -213,25 +214,36 @@ class winrm(connection):
 
         msMCSAdmPwd = ""
         sAMAccountName = ""
-        username = ""
+        username_laps = ""
 
         from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
         results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
         if len(results) != 0:
             for host in results:
-                values = {str(attr["type"]).lower(): str(attr["vals"][0]) for attr in host["attributes"]}
+                values = {str(attr["type"]).lower(): attr["vals"][0] for attr in host["attributes"]}
                 if "mslaps-encryptedpassword" in values:
-                    self.logger.fail("LAPS password is encrypted and currently CrackMapExec doesn't" " support the decryption...")
-                    return False
+                    from json import loads
+                    msMCSAdmPwd = values["mslaps-encryptedpassword"]
+                    d = LAPSv2Extract(
+                        bytes(msMCSAdmPwd),
+                        username[0] if username else "",
+                        password[0] if password else "",
+                        domain,
+                        ntlm_hash[0] if ntlm_hash else "",
+                        self.args.kerberos,
+                        339)
+                    data = d.run()
+                    r = loads(data)
+                    msMCSAdmPwd = r["p"]
+                    username_laps = r["n"]
                 elif "mslaps-password" in values:
                     from json import loads
-
-                    r = loads(values["mslaps-password"])
+                    r = loads(str(values["mslaps-password"]))
                     msMCSAdmPwd = r["p"]
-                    username = r["n"]
+                    username_laps = r["n"]
                 elif "ms-mcs-admpwd" in values:
-                    msMCSAdmPwd = values["ms-mcs-admpwd"]
+                    msMCSAdmPwd = str(values["ms-mcs-admpwd"])
                 else:
                     self.logger.fail("No result found with attribute ms-MCS-AdmPwd or" " msLAPS-Password")
             self.logger.debug("Host: {:<20} Password: {} {}".format(sAMAccountName, msMCSAdmPwd, self.hostname))
@@ -239,7 +251,7 @@ class winrm(connection):
             self.logger.fail("msMCSAdmPwd or msLAPS-Password is empty or account cannot read LAPS" " property for {}".format(self.hostname))
             return False
 
-        self.username = self.args.laps if not username else username
+        self.username = self.args.laps if not username_laps else username_laps
         self.password = msMCSAdmPwd
 
         if msMCSAdmPwd == "":
