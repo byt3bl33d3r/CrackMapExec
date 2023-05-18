@@ -626,7 +626,7 @@ class smb(connection):
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
         return True
 
-    def kerberos_login( self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
+    def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
         logging.getLogger("impacket").disabled = True
         # Re-connect since we logged off
         if not self.no_ntlm:
