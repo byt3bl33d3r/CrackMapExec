@@ -585,6 +585,7 @@ class smb(connection):
                         domain,
                         ntlm_hash[0] if ntlm_hash else "",
                         self.args.kerberos,
+                        self.args.kdcHost,
                         339)
                     data = d.run()
                     r = loads(data)

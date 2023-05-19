@@ -177,8 +177,7 @@ class LDAPConnect:
             return False
 
 class LAPSv2Extract:
-    def __init__(self, data, username, password, domain, ntlm_hash, do_kerberos, port):
-
+    def __init__(self, data, username, password, domain, ntlm_hash, do_kerberos, kdcHost, port):
         if ntlm_hash.find(":") != -1:
             self.lmhash, self.nthash = ntlm_hash.split(":")
         else:
@@ -190,76 +189,80 @@ class LAPSv2Extract:
         self.password = password
         self.domain = domain
         self.do_kerberos = do_kerberos
+        self.kdcHost = kdcHost
         self.logger = None
         self.proto_logger(self.domain, port, self.domain)
 
     def proto_logger(self, host, port, hostname):
         self.logger = CMEAdapter(extra={"protocol": "LDAP", "host": host, "port": port, "hostname": hostname})
 
-    def rpc_connect(self, username, password, domain, lmhash, nthash, doKerberos, dcHost):
-        stringBinding = hept_map(destHost=dcHost, remoteIf=MSRPC_UUID_GKDI, protocol = 'ncacn_ip_tcp')
-
-        rpctransport = transport.DCERPCTransportFactory(stringBinding)
-        if hasattr(rpctransport, 'set_credentials'):
-            rpctransport.set_credentials(username=username, password=password, domain=domain, lmhash=lmhash, nthash=nthash)
-        if doKerberos:
-            rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
-        if dcHost:
-            rpctransport.setRemoteHost(dcHost)
-        dce = rpctransport.get_dce_rpc()
-        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_INTEGRITY)
-        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
-        self.logger.info("[-] Connecting to %s" % stringBinding)
-        try:
-            dce.connect()
-        except Exception as e:
-            self.logger.info("Something went wrong, check error status => %s" % str(e))
-            return None
-        self.logger.info("[+] Connected")
-        self.logger.info("[+] Binding to MS-GKDI")
-        try:
-            dce.bind(MSRPC_UUID_GKDI)
-        except Exception as e:
-            import traceback
-            traceback.self.logger.info_stack()
-            self.logger.info("Something went wrong, check error status => %s" % str(e))
-            return None
-        self.logger.info("[+] Successfully bound")
-        return dce
-
     def run(self):
+        KDSCache = {}
         self.logger.info('[-] Unpacking blob')
-        rawblob = EncryptedPasswordBlob(self.data)
-        parsed_cms_data, remaining = decoder.decode(rawblob['Blob'], asn1Spec=rfc5652.ContentInfo())
-        enveloped_data_blob = parsed_cms_data['content']
-        parsed_enveloped_data, _ = decoder.decode(enveloped_data_blob, asn1Spec=rfc5652.EnvelopedData())
+        try:
+            encryptedLAPSBlob = EncryptedPasswordBlob(self.data)
+            parsed_cms_data, remaining = decoder.decode(encryptedLAPSBlob['Blob'], asn1Spec=rfc5652.ContentInfo())
+            enveloped_data_blob = parsed_cms_data['content']
+            parsed_enveloped_data, _ = decoder.decode(enveloped_data_blob, asn1Spec=rfc5652.EnvelopedData())
 
-        recipient_infos = parsed_enveloped_data['recipientInfos']
-        kek_recipient_info = recipient_infos[0]['kekri']
-        kek_identifier = kek_recipient_info['kekid'] 
-        key_id = KeyIdentifier(bytes(kek_identifier['keyIdentifier']))
-        tmp,_ = decoder.decode(kek_identifier['other']['keyAttr'])
-        sid = tmp['field-1'][0][0][1].asOctets().decode("utf-8") 
-        target_sd = create_sd(sid)
-
-        # 3. Connect on RPC over TCP to MS-GKDI to call opnum 0 GetKey 
-        dce = self.rpc_connect(username=self.username, password=self.password, domain=self.domain, lmhash=self.lmhash, nthash=self.nthash, doKerberos=self.do_kerberos, dcHost=self.domain)
-        if dce is None:
+            recipient_infos = parsed_enveloped_data['recipientInfos']
+            kek_recipient_info = recipient_infos[0]['kekri']
+            kek_identifier = kek_recipient_info['kekid']
+            key_id = KeyIdentifier(bytes(kek_identifier['keyIdentifier']))
+            tmp,_ = decoder.decode(kek_identifier['other']['keyAttr'])
+            sid = tmp['field-1'][0][0][1].asOctets().decode("utf-8")
+            target_sd = create_sd(sid)
+        except Exception as e:
+            logging.error('Cannot unpack msLAPS-EncryptedPassword blob due to error %s' % str(e))
             return
-        self.logger.info("[-] Calling MS-GKDI GetKey")
-        resp = GkdiGetKey(dce, target_sd=target_sd, l0=key_id['L0Index'], l1=key_id['L1Index'], l2=key_id['L2Index'], root_key_id=key_id['RootKeyId'])
-        self.logger.info("[-] Decrypting password")
-        # 4. Unpack GroupKeyEnvelope
-        gke = GroupKeyEnvelope(b''.join(resp['pbbOut']))
+
+        # Check if item is in cache
+        if key_id['RootKeyId'] in KDSCache:
+            self.logger.info("Got KDS from cache")
+            gke = KDSCache[key_id['RootKeyId']]
+        else:
+            # Connect on RPC over TCP to MS-GKDI to call opnum 0 GetKey
+            stringBinding = hept_map(destHost=self.domain, remoteIf=MSRPC_UUID_GKDI, protocol='ncacn_ip_tcp')
+            rpctransport = transport.DCERPCTransportFactory(stringBinding)
+            if hasattr(rpctransport, 'set_credentials'):
+                rpctransport.set_credentials(username=self.username, password=self.password, domain=self.domain, lmhash=self.lmhash, nthash=self.nthash)
+            if self.do_kerberos:
+                self.logger.info("Connecting using kerberos")
+                rpctransport.set_kerberos(self.do_kerberos, kdcHost=self.kdcHost)
+
+            dce = rpctransport.get_dce_rpc()
+            dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_INTEGRITY)
+            dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
+            self.logger.info("Connecting to %s" % stringBinding)
+            try:
+                dce.connect()
+            except Exception as e:
+                logging.error("Something went wrong, check error status => %s" % str(e))
+                return False
+            self.logger.info("Connected")
+            try:
+                dce.bind(MSRPC_UUID_GKDI)
+            except Exception as e:
+                logging.error("Something went wrong, check error status => %s" % str(e))
+                return False
+            self.logger.info("Successfully bound")
+
+
+            self.logger.info("Calling MS-GKDI GetKey")
+            resp = GkdiGetKey(dce, target_sd=target_sd, l0=key_id['L0Index'], l1=key_id['L1Index'], l2=key_id['L2Index'], root_key_id=key_id['RootKeyId'])
+            self.logger.info("Decrypting password")
+            # Unpack GroupKeyEnvelope
+            gke = GroupKeyEnvelope(b''.join(resp['pbbOut']))
+            KDSCache[gke['RootKeyId']] = gke
 
         kek = compute_kek(gke, key_id)
-
+        self.logger.info("KEK:\t%s" % kek)
         enc_content_parameter = bytes(parsed_enveloped_data["encryptedContentInfo"]["contentEncryptionAlgorithm"]["parameters"])
         iv, _ = decoder.decode(enc_content_parameter)
         iv = bytes(iv[0])
 
         cek = unwrap_cek(kek, bytes(kek_recipient_info['encryptedKey']))
-
+        self.logger.info("CEK:\t%s" % cek)
         plaintext = decrypt_plaintext(cek, iv, remaining)
         self.logger.info(plaintext[:-18].decode('utf-16le'))
         return plaintext[:-18].decode('utf-16le')
