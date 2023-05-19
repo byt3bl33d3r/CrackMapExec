@@ -101,7 +101,7 @@ class ssh(connection):
             return False
 
     def try_root_exec(self):
-        stdin, stdout, _ = self.conn.exec_command(f"sudo {self.args.execute}", get_pty=True)
+        stdin, stdout, _ = self.conn.exec_command(f"sudo -k -- sh -c '{self.args.execute}'", get_pty=True)
         stdin.write(f"{self.successful_password}\n")
         stdin.flush()
         return stdout
