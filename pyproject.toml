@@ -35,7 +35,7 @@ neo4j = "^4.1.1"
 pylnk3 = "^0.4.2"
 pypsrp = "^0.7.0"
 paramiko = "^2.7.2"
-impacket =  { git = "https://github.com/mpgn/impacket.git", branch = "master" }
+impacket =  { git = "https://github.com/mpgn/impacket.git", branch = "gkdi" }
 dsinternals = "^1.2.4"
 xmltodict = "^0.12.0"
 terminaltables = "^3.1.0"
@@ -51,6 +51,7 @@ masky = "^0.2.0"
 sqlalchemy = "^2.0.4"
 aiosqlite = "^0.18.0"
 pytest = "^7.2.2"
+pyasn1-modules = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
