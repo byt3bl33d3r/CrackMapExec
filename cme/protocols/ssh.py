@@ -22,6 +22,8 @@ class ssh(connection):
 
         cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
+        cgroup.add_argument('--try-root-upgrade', action='store_true', help="try executing command as root using sudo or su, but execs as user on failure")
+        cgroup.add_argument('--force-root-upgrade', action='store_true', help="try executing command as root using sudo or su; don't exec anything on failure")
         cgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
 
         return parser
@@ -62,6 +64,16 @@ class ssh(connection):
         if stdout.read().decode('utf-8').find('uid=0(root)') != -1:
             self.admin_privs = True
 
+    def check_if_admin_with_sudo(self):
+        try:
+            stdin, stdout, stderr = self.conn.exec_command('sudo -k id', get_pty=True)
+            stdin.write(f"{self.successful_password}\n")
+            stdin.flush()
+            if stdout.read().decode('utf-8').find('uid=0(root)') != -1:
+                self.admin_privs = True
+        except:
+            return
+
     def plaintext_login(self, username, password):
         try:
             if self.args.key_file:
@@ -70,8 +82,12 @@ class ssh(connection):
                 self.conn.connect(self.host, port=self.args.port, username=username, passphrase=passwd, key_filename=self.args.key_file, look_for_keys=False, allow_agent=False)
             else:
                 self.conn.connect(self.host, port=self.args.port, username=username, password=password, look_for_keys=False, allow_agent=False)
+                self.successful_password = password
 
             self.check_if_admin()
+            if self.successful_password and (self.args.try_root_upgrade or self.args.force_root_upgrade):
+                self.check_if_admin_with_sudo()
+
             self.logger.success(u'{}:{} {}'.format(username,
                                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
@@ -84,9 +100,18 @@ class ssh(connection):
             self.client_close()
             return False
 
+    def try_root_exec(self):
+        stdin, stdout, _ = self.conn.exec_command(f"sudo {self.args.execute}", get_pty=True)
+        stdin.write(f"{self.successful_password}\n")
+        stdin.flush()
+        return stdout
+
     def execute(self, payload=None, get_output=False):
         try:
-            stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
+            if self.successful_password and (self.args.force_root_upgrade or (self.args.try_root_upgrade and self.admin_privs)):
+                stdout = self.try_root_exec()
+            else:
+                stdin, stdout, stderr = self.conn.exec_command(self.args.execute)
         except AttributeError:
             return ''
         self.logger.success('Executed command')
