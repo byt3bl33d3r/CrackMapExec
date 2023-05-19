@@ -41,7 +41,7 @@ from cme.protocols.smb.smbspider import SMBSpider
 from cme.protocols.smb.passpol import PassPolDump
 from cme.protocols.smb.samruser import UserSamrDump
 from cme.protocols.smb.samrfunc import SamrFunc
-from cme.protocols.ldap.smbldap import LDAPConnect
+from cme.protocols.ldap.laps import LDAPConnect, LAPSv2Extract
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.bloodhound import add_user_bh
@@ -568,23 +568,35 @@ class smb(connection):
 
         msMCSAdmPwd = ""
         sAMAccountName = ""
-        username = ""
+        username_laps = ""
 
         from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
         results = [r for r in results if isinstance(r, ldapasn1_impacket.SearchResultEntry)]
         if len(results) != 0:
             for host in results:
-                values = {str(attr["type"]).lower(): str(attr["vals"][0]) for attr in host["attributes"]}
+                values = {str(attr["type"]).lower(): attr["vals"][0] for attr in host["attributes"]}
                 if "mslaps-encryptedpassword" in values:
-                    self.logger.fail("LAPS password is encrypted and currently CrackMapExec doesn't support the decryption...")
-                    return False
-                elif "mslaps-password" in values:
-                    r = loads(values["mslaps-password"])
+                    msMCSAdmPwd = values["mslaps-encryptedpassword"]
+                    d = LAPSv2Extract(
+                        bytes(msMCSAdmPwd),
+                        username[0] if username else "",
+                        password[0] if password else "",
+                        domain,
+                        ntlm_hash[0] if ntlm_hash else "",
+                        self.args.kerberos,
+                        self.args.kdcHost,
+                        339)
+                    data = d.run()
+                    r = loads(data)
                     msMCSAdmPwd = r["p"]
-                    username = r["n"]
+                    username_laps = r["n"]
+                elif "mslaps-password" in values:
+                    r = loads(str(values["mslaps-password"]))
+                    msMCSAdmPwd = r["p"]
+                    username_laps = r["n"]
                 elif "ms-mcs-admpwd" in values:
-                    msMCSAdmPwd = values["ms-mcs-admpwd"]
+                    msMCSAdmPwd = str(values["ms-mcs-admpwd"])
                 else:
                     self.logger.fail("No result found with attribute ms-MCS-AdmPwd or msLAPS-Password")
             logging.debug(f"Host: {sAMAccountName:<20} Password: {msMCSAdmPwd} {self.hostname}")
@@ -593,7 +605,7 @@ class smb(connection):
 
             return False
 
-        self.username = self.args.laps if not username else username
+        self.username = self.args.laps if not username_laps else username_laps
         self.password = msMCSAdmPwd
 
         if msMCSAdmPwd == "":
@@ -615,16 +627,7 @@ class smb(connection):
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
         return True
 
-    def kerberos_login(
-        self,
-        domain,
-        username,
-        password="",
-        ntlm_hash="",
-        aesKey="",
-        kdcHost="",
-        useCache=False,
-    ):
+    def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
         logging.getLogger("impacket").disabled = True
         # Re-connect since we logged off
         if not self.no_ntlm:
