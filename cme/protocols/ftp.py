@@ -88,11 +88,30 @@ class ftp(connection):
                 else:
                     self.logger.success(f"{username}:{process_secret(password)}")
 
+            if self.args.ls:
+                files = self.list_directory_full()
+                for file in files:
+                    self.logger.highlight(file)
+
             if not self.args.continue_on_success:
                 self.conn.close()
                 return True
+
             self.conn.close()
         except Exception as e:
             self.logger.fail(f"{username}:{process_secret(password)} (Response:{e})")
             self.conn.close()
             return False
+
+    def list_directory_full(self):
+        # in the future we can use mlsd/nlst if we want, but this gives a full output like `ls -la`
+        # ftplib's "dir" prints directly to stdout, and "nlst" only returns the folder name, not full details
+        files = []
+        self.conn.retrlines("LIST", callback=files.append)
+        return files
+
+    def supported_commands(self):
+        raw_supported_commands = self.conn.sendcmd("HELP")
+        supported_commands = [item for sublist in (x.split() for x in raw_supported_commands.split("\n")[1:-1]) for item in sublist]
+        self.logger.debug(f"Supported commands: {supported_commands}")
+        return supported_commands
