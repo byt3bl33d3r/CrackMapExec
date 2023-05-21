@@ -28,9 +28,8 @@ class ftp(connection):
             help="continues authentication attempts even after successes",
         )
 
-        # TODO: Create more options for the protocol
-        # cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
-        # cgroup.add_argument("--ls", action="store_true", help="List files in the directory")
+        cgroup = ftp_parser.add_argument_group("FTP Access", "Options for enumerating your access")
+        cgroup.add_argument("--ls", action="store_true", help="List files in the directory")
         return parser
 
     def proto_logger(self):
@@ -52,12 +51,14 @@ class ftp(connection):
                         pass
 
     def enum_host_info(self):
-        self.remote_version = self.conn.getwelcome()
-        self.remote_version = self.remote_version.split("220", 1)[1]
+        welcome = self.conn.getwelcome()
+        self.logger.debug(f"Welcome result: {welcome}")
+        self.remote_version = welcome.split("220", 1)[1].strip()  # strip out the extra space in the front
+        self.logger.debug(f"Remote version: {self.remote_version}")
         return True
 
     def print_host_info(self):
-        self.logger.display(f"Banner:{self.remote_version}")
+        self.logger.display(f"Banner: {self.remote_version}")
         return True
 
     def create_conn_obj(self):
@@ -78,9 +79,14 @@ class ftp(connection):
 
     def plaintext_login(self, username, password):
         try:
-            self.conn.login(user=username, passwd=password)
-
-            self.logger.success(f"{username}:{process_secret(password)}")
+            resp = self.conn.login(user=username, passwd=password)
+            self.logger.debug(f"Response: {resp}")
+            # 230 is "User logged in, proceed" response, ftplib raises an exception on failed login
+            if "230" in resp:
+                if username in ["anonymous", ""] and password in ["", "-"]:
+                    self.logger.success(f"{username}:{process_secret(password)} {highlight('- Anonymous Login!')}")
+                else:
+                    self.logger.success(f"{username}:{process_secret(password)}")
 
             if not self.args.continue_on_success:
                 self.conn.close()
