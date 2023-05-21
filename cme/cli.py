@@ -68,10 +68,56 @@ def gen_cli_args():
 
     subparsers = parser.add_subparsers(title="protocols", dest="protocol", description="available protocols")
 
+
+
+    module_parser = argparse.ArgumentParser(add_help=False)
+    mgroup = module_parser.add_mutually_exclusive_group()
+    mgroup.add_argument("-M", "--module", action="append", metavar="MODULE", help="module to use")
+    module_parser.add_argument(
+        "-o",
+        metavar="MODULE_OPTION",
+        nargs="+",
+        default=[],
+        dest="module_options",
+        help="module options",
+    )
+    module_parser.add_argument("-L", "--list-modules", action="store_true", help="list available modules")
+    module_parser.add_argument(
+        "--options",
+        dest="show_module_options",
+        action="store_true",
+        help="display module options",
+    )
+    module_parser.add_argument(
+        "--server",
+        choices={"http", "https"},
+        default="https",
+        help="use the selected server (default: https)",
+    )
+    module_parser.add_argument(
+        "--server-host",
+        type=str,
+        default="0.0.0.0",
+        metavar="HOST",
+        help="IP to bind the server to (default: 0.0.0.0)",
+    )
+    module_parser.add_argument(
+        "--server-port",
+        metavar="PORT",
+        type=int,
+        help="start the server on the specified port",
+    )
+    module_parser.add_argument(
+        "--connectback-host",
+        type=str,
+        metavar="CHOST",
+        help="IP for the remote system to connect back to (default: same as server-host)",
+    )
+
     std_parser = argparse.ArgumentParser(add_help=False)
     std_parser.add_argument(
         "target",
-        nargs="+",
+        nargs="+" if not module_parser.parse_known_args()[0].list_modules else "*",
         type=str,
         help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s), file(s) containing a list of targets, NMap XML or .Nessus file(s)",
     )
@@ -137,50 +183,6 @@ def gen_cli_args():
         metavar="LIMIT",
         type=int,
         help="max number of failed login attempts per host",
-    )
-
-    module_parser = argparse.ArgumentParser(add_help=False)
-    mgroup = module_parser.add_mutually_exclusive_group()
-    mgroup.add_argument("-M", "--module", action="append", metavar="MODULE", help="module to use")
-    module_parser.add_argument(
-        "-o",
-        metavar="MODULE_OPTION",
-        nargs="+",
-        default=[],
-        dest="module_options",
-        help="module options",
-    )
-    module_parser.add_argument("-L", "--list-modules", action="store_true", help="list available modules")
-    module_parser.add_argument(
-        "--options",
-        dest="show_module_options",
-        action="store_true",
-        help="display module options",
-    )
-    module_parser.add_argument(
-        "--server",
-        choices={"http", "https"},
-        default="https",
-        help="use the selected server (default: https)",
-    )
-    module_parser.add_argument(
-        "--server-host",
-        type=str,
-        default="0.0.0.0",
-        metavar="HOST",
-        help="IP to bind the server to (default: 0.0.0.0)",
-    )
-    module_parser.add_argument(
-        "--server-port",
-        metavar="PORT",
-        type=int,
-        help="start the server on the specified port",
-    )
-    module_parser.add_argument(
-        "--connectback-host",
-        type=str,
-        metavar="CHOST",
-        help="IP for the remote system to connect back to (default: same as server-host)",
     )
 
     for protocol in protocols.keys():
