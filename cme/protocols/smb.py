@@ -243,7 +243,7 @@ class smb(connection):
         )
 
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
-        cegroup = cgroup.add_mutually_exclusive_group()
+        cegroup = cgroup.add_argument_group()
         cegroup.add_argument("--sam", action="store_true", help="dump SAM hashes from target systems")
         cegroup.add_argument("--lsa", action="store_true", help="dump LSA secrets from target systems")
         cegroup.add_argument(
