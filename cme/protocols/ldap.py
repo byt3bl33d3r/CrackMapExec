@@ -219,7 +219,7 @@ class ldap(connection):
         )
         no_smb_arg.make_required = [domain_arg]
 
-        egroup = ldap_parser.add_argument_group("Retrevie hash on the remote DC", "Options to get hashes from Kerberos")
+        egroup = ldap_parser.add_argument_group("Retrieve hash on the remote DC", "Options to get hashes from Kerberos")
         egroup.add_argument("--asreproast", help="Get AS_REP response ready to crack with hashcat")
         egroup.add_argument("--kerberoasting", help="Get TGS ticket ready to crack with hashcat")
 
