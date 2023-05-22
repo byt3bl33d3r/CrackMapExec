@@ -90,6 +90,7 @@ class ftp(connection):
 
             if self.args.ls:
                 files = self.list_directory_full()
+                self.logger.display(f"Directory Listing")
                 for file in files:
                     self.logger.highlight(file)
 
