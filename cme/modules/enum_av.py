@@ -349,5 +349,15 @@ conf = {
             ],
             "pipes": [],
         },
+        {
+            "name": "Sophos",
+            "services": [],
+            "pipes": [
+                {"name": "SophosUI", "processes": [""]},
+                {"name": "SophosEventStore", "processes": [""]},
+                {"name": "sophos_deviceencryption", "processes": [""]},
+                {"name": "sophoslivequery_*", "processes": [""]},
+            ],
+        },
     ]
 }
