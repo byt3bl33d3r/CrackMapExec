@@ -260,7 +260,7 @@ class ldap(connection):
         bgroup.add_argument(
             "-c",
             "--collection",
-            help="Which information to collect. Supported: Group, LocalAdmin, Session, Trusts, Default, DCOnly, DCOM, RDP, PSRemote, LoggedOn, Container, ObjectProps, ACL, All. You can specify more than one by separating them with a comma. (default: Default)'",
+            help="Which information to collect. Supported: Group, LocalAdmin, Session, Trusts, Default, DCOnly, DCOM, RDP, PSRemote, LoggedOn, Container, ObjectProps, ACL, All (all except LoggedOn). You can specify more than one by separating them with a comma. (default: Default)'",
         )
 
         return parser
