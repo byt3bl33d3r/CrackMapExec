@@ -350,8 +350,45 @@ conf = {
             "pipes": [],
         },
         {
-            "name": "Sophos",
-            "services": [],
+            "name": "Sophos Intercept X",
+            "services": [
+                {
+                "name": "SntpService",
+                "description": "Sophos Network Threat Protection"
+                },
+                {
+                "name": "Sophos Endpoint Defense Service",
+                "description": "Sophos Endpoint Defense Service"
+                },
+                {
+                "name": "Sophos File Scanner Service",
+                "description": "Sophos File Scanner Service"
+                },
+                {
+                "name": "Sophos Health Service",
+                "description": "Sophos Health Service"
+                },
+                {
+                "name": "Sophos Live Query",
+                "description": "Sophos Live Query"
+                },
+                {
+                "name": "Sophos Managed Threat Response",
+                "description": "Sophos Managed Threat Response"
+                },
+                {
+                "name": "Sophos MCS Agent",
+                "description": "Sophos MCS Agent"
+                },
+                {
+                "name": "Sophos MCS Client",
+                "description": "Sophos MCS Client"
+                },
+                {
+                "name": "Sophos System Protection Service",
+                "description": "Sophos System Protection Service"
+                }
+            ],
             "pipes": [
                 {"name": "SophosUI", "processes": [""]},
                 {"name": "SophosEventStore", "processes": [""]},
