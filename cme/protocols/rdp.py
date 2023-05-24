@@ -196,6 +196,7 @@ class rdp(connection):
                     self.domain = info_domain["dnsdomainname"]
                     self.hostname = info_domain["computername"]
                     self.server_os = info_domain["os_guess"] + " Build " + str(info_domain["os_build"])
+                    self.logger.extra["hostname"] = self.hostname
 
                     self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}")
                     self.output_filename = self.output_filename.replace(":", "-")
@@ -238,16 +239,7 @@ class rdp(connection):
         if err is not None:
             raise err
 
-    def kerberos_login(
-        self,
-        domain,
-        username,
-        password="",
-        ntlm_hash="",
-        aesKey="",
-        kdcHost="",
-        useCache=False,
-    ):
+    def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
         try:
             lmhash = ""
             nthash = ""
@@ -291,6 +283,7 @@ class rdp(connection):
                 proxies=None,
                 dns=None,
                 dc_ip=self.domain,
+                domain=self.domain
             )
             self.auth = KerberosCredential(
                 target=kerberos_target,
