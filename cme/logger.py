@@ -88,7 +88,7 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def success(self, msg, *args, **kwargs):
+    def success(self, msg, color='green', *args, **kwargs):
         """
         Print some sort of success to the user
         """
@@ -98,7 +98,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[+]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -118,7 +118,7 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def fail(self, msg, *args, **kwargs):
+    def fail(self, msg, color='red', *args, **kwargs):
         """
         Prints a failure (may or may not be an error) - e.g. login creds didn't work
         """
@@ -127,7 +127,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 return
         except AttributeError:
             pass
-        msg, kwargs = self.format(f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[-]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -181,10 +181,14 @@ class CMEAdapter(logging.LoggerAdapter):
 
     @staticmethod
     def init_log_file():
+        newpath = os.path.expanduser("~/.cme") + "/logs/" + datetime.now().strftime('%Y-%m-%d')
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
         log_filename = os.path.join(
             os.path.expanduser("~/.cme"),
             "logs",
-            f"full-log_{datetime.now().strftime('%Y-%m-%d')}.log",
+            datetime.now().strftime('%Y-%m-%d'),
+            f"log_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log",
         )
         return log_filename
 

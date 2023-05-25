@@ -52,6 +52,7 @@ sqlalchemy = "^2.0.4"
 aiosqlite = "^0.18.0"
 pytest = "^7.2.2"
 pyasn1-modules = "^0.3.0"
+rich = "^13.3.5"
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"

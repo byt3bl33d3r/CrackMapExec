@@ -235,10 +235,14 @@ class DatabaseNavigator(cmd.Cmd):
                 formatted_shares = []
                 for share in shares:
                     user = self.db.get_users(share[2])[0]
+                    if self.db.get_hosts(share[1]): 
+                        share_host = self.db.get_hosts(share[1])[0][2] 
+                    else: 
+                        share_host = "ERROR"
 
                     entry = (
                         share[0],  # shareID
-                        self.db.get_hosts(share[1])[0][2],  # hosts
+                        share_host,  # hosts
                         f"{user[1]}\{user[2]}",  # userID
                         share[3],  # name
                         share[4],  # remark
@@ -247,10 +251,10 @@ class DatabaseNavigator(cmd.Cmd):
                     )
                     formatted_shares.append(entry)
                 write_csv(filename, csv_header, formatted_shares)
+                print("[+] Shares exported")
             else:
                 print(f"[-] No such export option: {line[1]}")
                 return
-            print("[+] Shares exported")
         # Local Admin
         elif command == "local_admins":
             if len(line) < 3:
