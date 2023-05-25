@@ -87,7 +87,7 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def success(self, msg, *args, **kwargs):
+    def success(self, msg, color='green', *args, **kwargs):
         """
         Print some sort of success to the user
         """
@@ -97,7 +97,7 @@ class CMEAdapter(logging.LoggerAdapter):
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[+]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -117,7 +117,7 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def fail(self, msg, *args, **kwargs):
+    def fail(self, msg, color='red', *args, **kwargs):
         """
         Prints a failure (may or may not be an error) - e.g. login creds didn't work
         """
@@ -126,7 +126,7 @@ class CMEAdapter(logging.LoggerAdapter):
                 return
         except AttributeError:
             pass
-        msg, kwargs = self.format(f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[-]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
