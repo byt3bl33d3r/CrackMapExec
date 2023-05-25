@@ -51,6 +51,7 @@ ldap_error_status = {
     "773": "STATUS_PASSWORD_MUST_CHANGE",
     "775": "USER_ACCOUNT_LOCKED",
     "50": "LDAP_INSUFFICIENT_ACCESS",
+    "0": "LDAP Signing IS Enforced",
     "KDC_ERR_CLIENT_REVOKED": "KDC_ERR_CLIENT_REVOKED",
     "KDC_ERR_PREAUTH_FAILED": "KDC_ERR_PREAUTH_FAILED",
 }
@@ -561,18 +562,18 @@ class ldap(connection):
                         add_user_bh(self.username, self.domain, self.logger, self.config)
                     if not self.args.continue_on_success:
                         return True
-                except ldap_impacket.LDAPSessionError as e:
-                    error_code = str(e).split()[-2][:-1]
-                    self.logger.fail(
-                        f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {ldap_error_status[error_code] if error_code in ldap_error_status else ''}",
-                        color="magenta" if error_code in ldap_error_status else "red",
-                    )
-                    return False
                 except SessionError as e:
                     error, desc = e.getErrorString()
                     self.logger.fail(
                         f"{self.domain}\\{self.username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {str(error)}",
                         color="magenta" if error in ldap_error_status else "red",
+                    )
+                    return False
+                except:
+                    error_code = str(e).split()[-2][:-1]
+                    self.logger.fail(
+                        f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {ldap_error_status[error_code] if error_code in ldap_error_status else ''}",
+                        color="magenta" if error_code in ldap_error_status else "red",
                     )
                     return False
             else:
@@ -621,7 +622,7 @@ class ldap(connection):
                 # We need to try SSL
                 try:
                     # Connect to LDAPS
-                    ldaps_url = f"{proto}://{self.target}"
+                    ldaps_url = f"ldaps://{self.target}"
                     self.logger.info(f"Connecting to {ldaps_url} - {self.baseDN} [4]")
                     self.ldapConnection = ldap_impacket.LDAPConnection(ldaps_url, self.baseDN)
                     self.ldapConnection.login(
@@ -643,7 +644,7 @@ class ldap(connection):
                         add_user_bh(self.username, self.domain, self.logger, self.config)
                     if not self.args.continue_on_success:
                         return True
-                except ldap_impacket.LDAPSessionError as e:
+                except:
                     error_code = str(e).split()[-2][:-1]
                     self.logger.fail(
                         f"{self.domain}\\{self.username}:{self.password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8} {ldap_error_status[error_code] if error_code in ldap_error_status else ''}",

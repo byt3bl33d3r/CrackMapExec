@@ -42,6 +42,9 @@ class CMEModule:
         async def run_ldaps_noEPA(target, credential):
             ldapsClientConn = MSLDAPClientConnection(target, credential)
             _, err = await ldapsClientConn.connect()
+            if err is not None:
+                context.log.fail("ERROR while connecting to " + str(connection.domain) + ": " + str(err))
+                exit()
             _, err = await ldapsClientConn.bind()
             if "data 80090346" in str(err):
                 return True  # channel binding IS enforced
@@ -63,6 +66,7 @@ class CMEModule:
             _, err = await ldapsClientConn.connect()
             if err is not None:
                 context.log.fail("ERROR while connecting to " + str(connection.domain) + ": " + str(err))
+                exit()
             # forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
             ldapsClientConn.cb_data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             _, err = await ldapsClientConn.bind()
@@ -115,14 +119,17 @@ class CMEModule:
         async def run_ldap(target, credential):
             ldapsClientConn = MSLDAPClientConnection(target, credential)
             _, err = await ldapsClientConn.connect()
-            _, err = await ldapsClientConn.bind()
-            if "stronger" in str(err):
-                return True  # because LDAP server signing requirements ARE enforced
-            elif ("data 52e" or "data 532") in str(err):
-                context.log.fail("Not connected... exiting")
-                exit()
-            elif err is None:
-                return False
+            if err is None:
+                _, err = await ldapsClientConn.bind()
+                if "stronger" in str(err):
+                    return True  # because LDAP server signing requirements ARE enforced
+                elif ("data 52e" or "data 532") in str(err):
+                    context.log.fail("Not connected... exiting")
+                    exit()
+                elif err is None:
+                    return False
+            else:
+                context.log.fail(str(err))
 
         # Run trough all our code blocks to determine LDAP signing and channel binding settings.   
         stype = asyauthSecret.PASS if not connection.nthash else asyauthSecret.NT
