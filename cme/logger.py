@@ -180,10 +180,14 @@ class CMEAdapter(logging.LoggerAdapter):
 
     @staticmethod
     def init_log_file():
+        newpath = os.path.expanduser("~/.cme") + "/logs/" + datetime.now().strftime('%Y-%m-%d')
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
         log_filename = os.path.join(
             os.path.expanduser("~/.cme"),
             "logs",
-            f"full-log_{datetime.now().strftime('%Y-%m-%d')}.log",
+            datetime.now().strftime('%Y-%m-%d'),
+            f"log_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log",
         )
         return log_filename
 
