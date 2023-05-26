@@ -569,8 +569,9 @@ class smb(connection):
             self.conn = SMBConnection(self.host if not kdc else kdc, self.host if not kdc else kdc, None, self.args.port, timeout=self.args.smb_timeout)
             self.smbv1 = False
         except socket.error as e:
-            if str(e).find('Too many open files') != -1:
-                self.logger.error('SMBv3 connection error on {}: {}'.format(self.host if not kdc else kdc, e))
+            if str(e).find('Too many open files') != -1: #OSError: [Errno 24] Too many open files
+                if not logger is None: 
+                    self.logger.error('SMBv3 connection error on {}: {}'.format(self.host if not kdc else kdc, e))                    
             return False
         except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host if not kdc else kdc, e))
