@@ -40,6 +40,8 @@ class mssql(connection):
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
         mssql_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         mssql_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        mssql_parser.add_argument("--continue-until-admin", action='store_true', help="continues authentication attempts until success admin authentication")
+
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
         cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
@@ -209,7 +211,9 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except Exception as e:
             self.logger.error(u'{}\\{}{} {}'.format('{}\\'.format(domain) if not self.args.local_auth else '',
@@ -249,7 +253,9 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,
@@ -296,7 +302,9 @@ class mssql(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except Exception as e:
             self.logger.error(u'{}\\{}:{} {}'.format(domain,

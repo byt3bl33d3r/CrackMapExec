@@ -38,6 +38,7 @@ class winrm(connection):
         winrm_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         winrm_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         winrm_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        winrm_parser.add_argument("--continue-until-admin", action='store_true', help="continues authentication attempts until success admin authentication")
         winrm_parser.add_argument("--port", type=int, default=0, help="Custom WinRM port")
         winrm_parser.add_argument("--ssl", action='store_true', help="Connect to SSL Enabled WINRM")
         winrm_parser.add_argument("--ignore-ssl-cert", action='store_true', help="Ignore Certificate Verification")
@@ -223,7 +224,9 @@ class winrm(connection):
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config) 
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
 
         except Exception as e:
@@ -290,7 +293,9 @@ class winrm(connection):
                                                        highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
 
         except Exception as e:

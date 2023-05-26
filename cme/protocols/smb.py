@@ -155,6 +155,8 @@ class smb(connection):
         smb_parser.add_argument("--smb-server-port", default="445", help="specify a server port for SMB", type=int)
         smb_parser.add_argument("--gen-relay-list", metavar='OUTPUT_FILE', help="outputs all hosts that don't require SMB signing to the specified file")
         smb_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        smb_parser.add_argument("--continue-until-admin", action='store_true', help="continues authentication attempts until success admin authentication")
+
         smb_parser.add_argument("--smb-timeout", help="SMB connection timeout, default 2 secondes", type=int, default=2)
         smb_parser.add_argument("--laps", dest='laps', metavar="LAPS", type=str, help="LAPS authentification", nargs='?', const='administrator')
         
@@ -396,7 +398,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
             elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
                 try:
@@ -463,7 +467,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
             elif self.signing: # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
                 try:
@@ -525,7 +531,9 @@ class smb(connection):
             self.logger.success(out)
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
             if self.signing:

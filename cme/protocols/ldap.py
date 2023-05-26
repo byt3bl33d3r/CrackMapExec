@@ -87,6 +87,8 @@ class ldap(connection):
         ldap_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
         ldap_parser.add_argument("--no-bruteforce", action='store_true', help='No spray when using file for username and password (user1 => password1, user2 => password2')
         ldap_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        ldap_parser.add_argument("--continue-until-admin", action='store_true', help="continues authentication attempts until success admin authentication")
+
         ldap_parser.add_argument("--port", type=int, choices={389, 636}, default=389, help="LDAP port (default: 389)")
         no_smb_arg = ldap_parser.add_argument("--no-smb", action=get_conditional_action(_StoreTrueAction), make_required=[], help='No smb connection')
 
@@ -305,7 +307,10 @@ class ldap(connection):
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+                
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except SessionKeyDecryptionError:
             # for PRE-AUTH account
@@ -369,7 +374,9 @@ class ldap(connection):
                 
                     if not self.args.local_auth:
                         add_user_bh(self.username, self.domain, self.logger, self.config)
-                    if not self.args.continue_on_success:
+                    if self.args.continue_until_admin and self.admin_privs:
+                        return True
+                    if not (self.args.continue_on_success or self.args.continue_until_admin):
                         return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
@@ -430,7 +437,9 @@ class ldap(connection):
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
 
         except ldap_impacket.LDAPSessionError as e:
@@ -453,7 +462,9 @@ class ldap(connection):
 
                     if not self.args.local_auth:
                         add_user_bh(self.username, self.domain, self.logger, self.config)
-                    if not self.args.continue_on_success:
+                    if self.args.continue_until_admin and self.admin_privs:
+                        return True
+                    if not (self.args.continue_on_success or self.args.continue_until_admin):
                         return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
@@ -524,7 +535,9 @@ class ldap(connection):
 
             if not self.args.local_auth:
                 add_user_bh(self.username, self.domain, self.logger, self.config)
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find('strongerAuthRequired') >= 0:
@@ -545,7 +558,9 @@ class ldap(connection):
             
                     if not self.args.local_auth:
                         add_user_bh(self.username, self.domain, self.logger, self.config)
-                    if not self.args.continue_on_success:
+                    if self.args.continue_until_admin and self.admin_privs:
+                        return True
+                    if not (self.args.continue_on_success or self.args.continue_until_admin):
                         return True
                 except ldap_impacket.LDAPSessionError as e:
                     errorCode = str(e).split()[-2][:-1]
