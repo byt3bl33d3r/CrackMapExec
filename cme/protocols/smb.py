@@ -594,15 +594,19 @@ class smb(connection):
         except:
             pass
         else:
-            dce.bind(scmr.MSRPC_UUID_SCMR)
             try:
-                # 0xF003F - SC_MANAGER_ALL_ACCESS
-                # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
-                ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
-                self.admin_privs = True
-            except scmr.DCERPCException as e:
-                self.admin_privs = False
+                dce.bind(scmr.MSRPC_UUID_SCMR)
+            except:
                 pass
+            else:
+                try:
+                    # 0xF003F - SC_MANAGER_ALL_ACCESS
+                    # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
+                    ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
+                    self.admin_privs = True
+                except scmr.DCERPCException as e:
+                    self.admin_privs = False
+                    pass
         return
 
     def gen_relay_list(self):
