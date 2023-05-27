@@ -34,7 +34,6 @@ except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     sys.exit(1)
 
-
 def create_db_engine(db_path):
     db_engine = sqlalchemy.create_engine(
         f"sqlite:///{db_path}",

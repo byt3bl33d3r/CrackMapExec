@@ -7,15 +7,13 @@ from argparse import RawTextHelpFormatter
 from cme.loaders.protocolloader import ProtocolLoader
 from cme.helpers.logger import highlight
 from termcolor import colored
+from cme.logger import cme_logger
 
 
 def gen_cli_args():
 
     VERSION = "5.4.6"
     CODENAME = "Bruce Wayne"
-
-    p_loader = ProtocolLoader()
-    protocols = p_loader.get_protocols()
 
     parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
@@ -75,9 +73,15 @@ def gen_cli_args():
     module_parser.add_argument("--server-port", metavar="PORT", type=int, help="start the server on the specified port")
     module_parser.add_argument("--connectback-host", type=str, metavar="CHOST", help="IP for the remote system to connect back to (default: same as server-host)")
 
+    p_loader = ProtocolLoader()
+    protocols = p_loader.get_protocols()
+
     for protocol in protocols.keys():
-        protocol_object = p_loader.load_protocol(protocols[protocol]["path"])
-        subparsers = getattr(protocol_object, protocol).proto_args(subparsers, std_parser, module_parser)
+        try:
+            protocol_object = p_loader.load_protocol(protocols[protocol]["argspath"])
+            subparsers = protocol_object.proto_args(subparsers, std_parser, module_parser)
+        except:
+            cme_logger.exception("Error loading proto_args from proto_args.py file in protocol folder: {}".format(protocol))
 
     if len(sys.argv) == 1:
         parser.print_help()
