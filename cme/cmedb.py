@@ -10,8 +10,7 @@ import sqlite3
 import sys
 from textwrap import dedent
 
-import requests
-from requests import ConnectionError
+from requests import get, post, ConnectionError
 from sqlalchemy import create_engine
 from terminaltables import AsciiTable
 
@@ -311,11 +310,11 @@ class DatabaseNavigator(cmd.Cmd):
             base_url = f"https://{self.config.get('Empire', 'api_host')}:{self.config.get('Empire', 'api_port')}"
 
             try:
-                r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+                r = post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
                 if r.status_code == 200:
                     token = r.json()['token']
                     url_params = {'token': token}
-                    r = requests.get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
+                    r = get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
                     creds = r.json()
 
                     for cred in creds['creds']:

@@ -169,8 +169,9 @@ def main():
     # with the new cme/config.py this can be eventually removed, as it can be imported anywhere
     setattr(protocol_object, "config", cme_config)
 
-    loader = ModuleLoader(args, db, cme_logger)
-    modules = loader.list_modules()
+    if args.module or args.list_modules:
+        loader = ModuleLoader(args, db, cme_logger)
+        modules = loader.list_modules()
 
     if args.list_modules:
         for name, props in sorted(modules.items()):
