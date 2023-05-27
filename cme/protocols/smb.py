@@ -7,7 +7,6 @@ import binascii
 from io import StringIO
 from Cryptodome.Hash import MD4
 
-from impacket.examples.ntlmrelayx.attacks.ldapattack import MSDS_MANAGEDPASSWORD_BLOB
 from impacket.smbconnection import SMBConnection, SessionError
 from impacket.smb import SMB_DIALECT
 from impacket.examples.secretsdump import RemoteOperations, SAMHashes, LSASecrets, NTDSHashes
@@ -1571,9 +1570,11 @@ class smb(connection):
 
     @requires_admin
     def lsa(self):
+        from impacket.examples.ntlmrelayx.attacks.ldapattack import MSDS_MANAGEDPASSWORD_BLOB
         self.enable_remoteops()
 
         def add_lsa_secret(secret):
+
             add_lsa_secret.secrets += 1
             self.logger.highlight(secret)
             if "_SC_GMSA_{84A78B8C" in secret:
