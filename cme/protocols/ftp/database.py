@@ -93,3 +93,56 @@ class database:
     def clear_database(self):
         for table in self.metadata.sorted_tables:
             self.sess.execute(table.delete())
+
+    def add_host(self, host, port, banner):
+        pass
+
+    def add_credential(self, username, password):
+        pass
+
+    def remove_credential(self):
+        pass
+
+    def is_credential_valid(self):
+        pass
+
+    def get_credentials(self):
+        pass
+
+    def get_credentials(self):
+        pass
+
+    def is_host_valid(self):
+        pass
+
+    def get_host(self):
+        pass
+
+    def is_user_valid(self):
+        pass
+
+    def get_user(self):
+        pass
+
+    def get_users(self):
+        pass
+
+    def add_loggedin_relation(self, credid, hostid):
+        pass
+
+    def get_loggedin_relations(self):
+        pass
+
+    def remove_loggedin_relations(self):
+        pass
+
+    def add_directory_listing(self, lir_id, data):
+        pass
+
+    def get_directory_listing(self):
+        pass
+
+    def remove_directory_listing(self):
+        pass
+
+
