@@ -189,9 +189,12 @@ crackmapexec mssql TARGET_HOST -u USERNAME -p PASSWORD KERBEROS -M web_delivery 
 # a bit janky, but we try to enable RDP before testing RDP
 crackmapexec smb TARGET_HOST -u USERNAME -p PASSWORD KERBEROS -M rdp -o ACTION=enable
 ##### RDP
-crackmapexec rdp TARGET_HOST -u USERNAME -p PASSWORD KERBEROS
+crackmapexec rdp TARGET_HOST -u USERNAME -p PASSWORD KERBEROS # need an extra space after this command due to regex
 crackmapexec rdp TARGET_HOST -u USERNAME -p PASSWORD KERBEROS --nla-screenshot
 ##### SSH - Uncomment these lines to test SSH; requires the private key "test_key" in the local directory
-#crackmapexec ssh TARGET_HOST -u USERNAME -p PASSWORD KERBEROS
+crackmapexec ssh TARGET_HOST -u USERNAME -p PASSWORD
 #crackmapexec ssh TARGET_HOST -u USERNAME -p PASSWORD --key-file test_key
 #crackmapexec ssh TARGET_HOST -u USERNAME --key-file test_key
+##### FTP
+crackmapexec ftp TARGET_HOST -u USERNAME -p PASSWORD
+#crackmapexec ftp TARGET_HOST -u USERNAME -p PASSWORD --ls
