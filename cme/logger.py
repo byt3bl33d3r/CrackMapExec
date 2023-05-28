@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import logging
+from logging import LogRecord
 from logging.handlers import RotatingFileHandler
 import os.path
 import sys
@@ -18,11 +19,13 @@ class CMEAdapter(logging.LoggerAdapter):
         logging.basicConfig(
             format="%(message)s",
             datefmt="[%X]",
-            handlers=[RichHandler(
-                console=cme_console,
-                rich_tracebacks=True,
-                tracebacks_show_locals=False
-            )]
+            handlers=[
+                RichHandler(
+                    console=cme_console,
+                    rich_tracebacks=True,
+                    tracebacks_show_locals=False,
+                )
+            ],
         )
         self.logger = logging.getLogger("cme")
         self.extra = extra
@@ -40,25 +43,34 @@ class CMEAdapter(logging.LoggerAdapter):
         if self.extra is None:
             return f"{msg}", kwargs
 
-        if 'module_name' in self.extra.keys():
+        if "module_name" in self.extra.keys():
             if len(self.extra["module_name"]) > 8:
                 self.extra["module_name"] = self.extra["module_name"][:8] + "..."
 
         # If the logger is being called when hooking the 'options' module function
         if len(self.extra) == 1 and ("module_name" in self.extra.keys()):
-            return f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<64} {msg}", kwargs
+            return (
+                f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<64} {msg}",
+                kwargs,
+            )
 
         # If the logger is being called from CMEServer
         if len(self.extra) == 2 and ("module_name" in self.extra.keys()) and ("host" in self.extra.keys()):
-            return f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<24} {self.extra['host']:<39} {msg}", kwargs
+            return (
+                f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<24} {self.extra['host']:<39} {msg}",
+                kwargs,
+            )
 
         # If the logger is being called from a protocol
         if "module_name" in self.extra.keys():
-            module_name = colored(self.extra["module_name"], 'cyan', attrs=["bold"])
+            module_name = colored(self.extra["module_name"], "cyan", attrs=["bold"])
         else:
-            module_name = colored(self.extra["protocol"], 'blue', attrs=["bold"])
+            module_name = colored(self.extra["protocol"], "blue", attrs=["bold"])
 
-        return f"{module_name:<24} {self.extra['host']:<15} {self.extra['port']:<6} {self.extra['hostname'] if self.extra['hostname'] else 'NONE':<16} {msg}", kwargs
+        return (
+            f"{module_name:<24} {self.extra['host']:<15} {self.extra['port']:<6} {self.extra['hostname'] if self.extra['hostname'] else 'NONE':<16} {msg}",
+            kwargs,
+        )
 
     def display(self, msg, *args, **kwargs):
         """
@@ -75,17 +87,17 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def success(self, msg, *args, **kwargs):
+    def success(self, msg, color='green', *args, **kwargs):
         """
         Print some sort of success to the user
         """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.format(f"{colored('[+]', 'green', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[+]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -95,7 +107,7 @@ class CMEAdapter(logging.LoggerAdapter):
         Prints a completely yellow highlighted message to the user
         """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
@@ -105,16 +117,16 @@ class CMEAdapter(logging.LoggerAdapter):
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
 
-    def fail(self, msg, *args, **kwargs):
+    def fail(self, msg, color='red', *args, **kwargs):
         """
         Prints a failure (may or may not be an error) - e.g. login creds didn't work
         """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
-        msg, kwargs = self.format(f"{colored('[-]', 'red', attrs=['bold'])} {msg}", kwargs)
+        msg, kwargs = self.format(f"{colored('[-]', color, attrs=['bold'])} {msg}", kwargs)
         text = Text.from_ansi(msg)
         cme_console.print(text, *args, **kwargs)
         self.log_console_to_file(text, *args, **kwargs)
@@ -127,10 +139,10 @@ class CMEAdapter(logging.LoggerAdapter):
         if self.logger.getEffectiveLevel() >= logging.INFO:
             # will be 0 if it's just the console output, so only do this if we actually have file loggers
             if len(self.logger.handlers):
-                for handler in self.logger.handlers:
-                    try:
+                try:
+                    for handler in self.logger.handlers:
                         handler.handle(
-                            logging.LogRecord(
+                            LogRecord(
                                 "cme",
                                 20,
                                 "",
@@ -140,8 +152,8 @@ class CMEAdapter(logging.LoggerAdapter):
                                 exc_info=None,
                             )
                         )
-                    except Exception as e:
-                        self.logger.fail(f"Issue while trying to custom print handler: {e}")
+                except Exception as e:
+                    self.logger.fail(f"Issue while trying to custom print handler: {e}")
         else:
             self.logger.info(text)
 
@@ -151,7 +163,7 @@ class CMEAdapter(logging.LoggerAdapter):
         file_creation = False
 
         if not os.path.isfile(output_file):
-            open(output_file, 'x')
+            open(output_file, "x")
             file_creation = True
 
         file_handler = RotatingFileHandler(output_file, maxBytes=100000)
@@ -168,18 +180,21 @@ class CMEAdapter(logging.LoggerAdapter):
 
     @staticmethod
     def init_log_file():
+        newpath = os.path.expanduser("~/.cme") + "/logs/" + datetime.now().strftime('%Y-%m-%d')
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
         log_filename = os.path.join(
-            os.path.expanduser(
-                "~/.cme"
-            ),
+            os.path.expanduser("~/.cme"),
             "logs",
-            f"full-log_{datetime.now().strftime('%Y-%m-%d')}.log"
+            datetime.now().strftime('%Y-%m-%d'),
+            f"log_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log",
         )
         return log_filename
 
 
 class TermEscapeCodeFormatter(logging.Formatter):
     """A class to strip the escape codes for logging to files"""
+
     def __init__(self, fmt=None, datefmt=None, style="%", validate=True):
         super().__init__(fmt, datefmt, style, validate)
 

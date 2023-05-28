@@ -23,20 +23,20 @@ class CMEModule:
         """
         ACTION       Enable/Disable RDP (choices: enable, disable)
         """
-        if not 'ACTION' in module_options:
-            context.log.fail('ACTION option not specified!')
+        if not "ACTION" in module_options:
+            context.log.fail("ACTION option not specified!")
             exit(1)
 
-        if module_options['ACTION'].lower() not in ['enable', 'disable']:
-            context.log.fail('Invalid value for ACTION option!')
+        if module_options["ACTION"].lower() not in ["enable", "disable"]:
+            context.log.fail("Invalid value for ACTION option!")
             exit(1)
 
-        self.action = module_options['ACTION'].lower()
+        self.action = module_options["ACTION"].lower()
 
     def on_admin_login(self, context, connection):
-        if self.action == 'enable':
+        if self.action == "enable":
             self.rdp_enable(context, connection.conn)
-        elif self.action == 'disable':
+        elif self.action == "disable":
             self.rdp_disable(context, connection.conn)
 
     def rdp_enable(self, context, smbconnection):
@@ -45,17 +45,27 @@ class CMEModule:
 
         if remoteOps._RemoteOperations__rrp:
             ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
-            regHandle = ans['phKey']
+            regHandle = ans["phKey"]
 
-            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\Terminal Server')
-            keyHandle = ans['phkResult']
+            ans = rrp.hBaseRegOpenKey(
+                remoteOps._RemoteOperations__rrp,
+                regHandle,
+                "SYSTEM\\CurrentControlSet\\Control\\Terminal Server",
+            )
+            keyHandle = ans["phkResult"]
 
-            rrp.hBaseRegSetValue(remoteOps._RemoteOperations__rrp, keyHandle, 'fDenyTSConnections\x00',  rrp.REG_DWORD, 0)
+            rrp.hBaseRegSetValue(
+                remoteOps._RemoteOperations__rrp,
+                keyHandle,
+                "fDenyTSConnections\x00",
+                rrp.REG_DWORD,
+                0,
+            )
 
-            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'fDenyTSConnections\x00')
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00")
 
             if int(data) == 0:
-                context.log.success('RDP enabled successfully')
+                context.log.success("RDP enabled successfully")
 
         try:
             remoteOps.finish()
@@ -68,17 +78,27 @@ class CMEModule:
 
         if remoteOps._RemoteOperations__rrp:
             ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
-            regHandle = ans['phKey']
+            regHandle = ans["phKey"]
 
-            ans = rrp.hBaseRegOpenKey(remoteOps._RemoteOperations__rrp, regHandle, 'SYSTEM\\CurrentControlSet\\Control\\Terminal Server')
-            keyHandle = ans['phkResult']
+            ans = rrp.hBaseRegOpenKey(
+                remoteOps._RemoteOperations__rrp,
+                regHandle,
+                "SYSTEM\\CurrentControlSet\\Control\\Terminal Server",
+            )
+            keyHandle = ans["phkResult"]
 
-            rrp.hBaseRegSetValue(remoteOps._RemoteOperations__rrp, keyHandle, 'fDenyTSConnections\x00',  rrp.REG_DWORD, 1)
+            rrp.hBaseRegSetValue(
+                remoteOps._RemoteOperations__rrp,
+                keyHandle,
+                "fDenyTSConnections\x00",
+                rrp.REG_DWORD,
+                1,
+            )
 
-            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, 'fDenyTSConnections\x00')
+            rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "fDenyTSConnections\x00")
 
             if int(data) == 1:
-                context.log.success('RDP disabled successfully')
+                context.log.success("RDP disabled successfully")
 
         try:
             remoteOps.finish()

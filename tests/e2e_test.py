@@ -5,15 +5,31 @@ from rich.console import Console
 
 
 def get_cli_args():
-    parser = argparse.ArgumentParser(
-        description=f"Script for running end to end tests for CME"
-    )
+    parser = argparse.ArgumentParser(description=f"Script for running end to end tests for CME")
     parser.add_argument("-t", "--target", dest="target", required=True)
     parser.add_argument("-u", "--user", "--username", dest="username", required=True)
     parser.add_argument("-p", "--pass", "--password", dest="password", required=True)
-    parser.add_argument("-k", "--kerberos", action="store_true", required=False, help="Use kerberos authentication")
-    parser.add_argument("-v", "--verbose", action="store_true", required=False, help="Display full command output")
-    parser.add_argument("-e", "--errors", action="store_true", required=False, help="Display errors from commands")
+    parser.add_argument(
+        "-k",
+        "--kerberos",
+        action="store_true",
+        required=False,
+        help="Use kerberos authentication",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Display full command output",
+    )
+    parser.add_argument(
+        "-e",
+        "--errors",
+        action="store_true",
+        required=False,
+        help="Display errors from commands",
+    )
 
     parsed_args = parser.parse_args()
     return parsed_args
@@ -35,10 +51,7 @@ def generate_commands(args):
             if line.startswith("#"):
                 continue
             line = line.strip()
-            line = line.replace("TARGET", args.target) \
-                .replace("USERNAME", f"\"{args.username}\"") \
-                .replace("PASSWORD", f"\"{args.password}\"") \
-                .replace("KERBEROS ", kerberos)
+            line = line.replace("TARGET_HOST", args.target).replace("USERNAME", f'"{args.username}"').replace("PASSWORD", f'"{args.password}"').replace("KERBEROS ", kerberos)
             lines.append(line)
     return lines
 
@@ -51,7 +64,7 @@ def run_e2e_tests(args):
         "crackmapexec --version",
         shell=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
+        stderr=subprocess.STDOUT,
     )
     version = result.communicate()[0].decode().strip()
 
@@ -66,7 +79,7 @@ def run_e2e_tests(args):
                 shell=True,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
             )
             # pass in a "y" for things that prompt for it (--ndts, etc)
             text = result.communicate(input=b"y")[0]

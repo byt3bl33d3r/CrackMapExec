@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 class CMEModule:
     """
     Example
     Module by @yomama
     """
+
     name = "example module"
     description = "I do something"
     supported_protocols = []

@@ -3,7 +3,8 @@
 
 import random
 import socket
-import sys
+from socket import AF_INET, AF_INET6, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME
+from socket import getaddrinfo
 from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
@@ -21,14 +22,12 @@ user_failed_logins = {}
 
 def gethost_addrinfo(hostname):
     try:
-        for res in socket.getaddrinfo(hostname, None, socket.AF_INET6,
-                                      socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+        for res in getaddrinfo( hostname, None, AF_INET6, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
     except socket.gaierror:
-        for res in socket.getaddrinfo(hostname, None, socket.AF_INET,
-                                      socket.SOCK_DGRAM, socket.IPPROTO_IP, socket.AI_CANONNAME):
+        for res in getaddrinfo( hostname, None, AF_INET, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-    if canonname == '':
+    if canonname == "":
         return sa[0]
     return canonname
 
@@ -38,6 +37,7 @@ def requires_admin(func):
         if self.admin_privs is False:
             return
         return func(self, *args, **kwargs)
+
     return wraps(func)(_decorator)
 
 
@@ -103,7 +103,16 @@ class connection(object):
     def check_if_admin(self):
         return
 
-    def kerberos_login(self, domain, username, password='', ntlm_hash='', aesKey='', kdcHost='', useCache=False):
+    def kerberos_login(
+        self,
+        domain,
+        username,
+        password="",
+        ntlm_hash="",
+        aesKey="",
+        kdcHost="",
+        useCache=False,
+    ):
         return
 
     def plaintext_login(self, domain, username, password):
@@ -140,7 +149,7 @@ class connection(object):
                     "module_name": module.name.upper(),
                     "host": self.host,
                     "port": self.args.port,
-                    "hostname": self.hostname
+                    "hostname": self.hostname,
                 },
             )
 

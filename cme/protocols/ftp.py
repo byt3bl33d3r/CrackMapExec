@@ -7,7 +7,6 @@ from ftplib import FTP, error_reply, error_temp, error_perm, error_proto
 
 
 class ftp(connection):
-
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
         ftp_parser = parser.add_parser('ftp', help="own stuff using FTP", parents=[std_parser, module_parser])
@@ -24,7 +23,7 @@ class ftp(connection):
                 "protocol": "FTP",
                 "host": self.host,
                 "port": self.args.port,
-                "hostname": self.hostname
+                "hostname": self.hostname,
             }
         )
 
@@ -66,15 +65,11 @@ class ftp(connection):
         try:
             self.conn.login(user=username, passwd=password)
 
-            self.logger.success(
-                f"{username}:{process_secret(password)}"
-            )
+            self.logger.success(f"{username}:{process_secret(password)}")
 
             self.conn.close()
             return True
         except Exception as e:
-            self.logger.fail(
-                f'{username}:{process_secret(password)} (Response:{e})'
-            )
+            self.logger.fail(f"{username}:{process_secret(password)} (Response:{e})")
             self.conn.close()
             return False

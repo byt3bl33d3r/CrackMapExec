@@ -59,23 +59,14 @@ class MSSQLEXEC:
         try:
             self.enable_ole()
             hexdata = data.hex()
-            self.mssql_conn.sql_query("DECLARE @ob INT;"
-                                        "EXEC sp_OACreate 'ADODB.Stream', @ob OUTPUT;"
-                                        "EXEC sp_OASetProperty @ob, 'Type', 1;"
-                                        "EXEC sp_OAMethod @ob, 'Open';"
-                                        "EXEC sp_OAMethod @ob, 'Write', NULL, 0x{};"
-                                        "EXEC sp_OAMethod @ob, 'SaveToFile', NULL, '{}', 2;"
-                                        "EXEC sp_OAMethod @ob, 'Close';"
-                                        "EXEC sp_OADestroy @ob;".format(hexdata, remote))
+            self.mssql_conn.sql_query("DECLARE @ob INT;" "EXEC sp_OACreate 'ADODB.Stream', @ob OUTPUT;" "EXEC sp_OASetProperty @ob, 'Type', 1;" "EXEC sp_OAMethod @ob, 'Open';" "EXEC sp_OAMethod @ob, 'Write', NULL, 0x{};" "EXEC sp_OAMethod @ob, 'SaveToFile', NULL, '{}', 2;" "EXEC sp_OAMethod @ob, 'Close';" "EXEC sp_OADestroy @ob;".format(hexdata, remote))
             self.disable_ole()
         except Exception as e:
             cme_logger.debug(f"Error uploading via mssqlexec: {e}")
 
     def file_exists(self, remote):
         try:
-            res = self.mssql_conn.batch(
-                f"DECLARE @r INT; EXEC master.dbo.xp_fileexist '{remote}', @r OUTPUT; SELECT @r as n"
-                )[0]['n']
+            res = self.mssql_conn.batch(f"DECLARE @r INT; EXEC master.dbo.xp_fileexist '{remote}', @r OUTPUT; SELECT @r as n")[0]["n"]
             return res == 1
         except:
             return False

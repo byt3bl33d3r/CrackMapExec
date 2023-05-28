@@ -13,8 +13,18 @@ from cme.helpers.powershell import create_ps_command
 from impacket import tds
 from impacket.krb5.ccache import CCache
 from impacket.smbconnection import SMBConnection, SessionError
-from impacket.tds import SQLErrorException, TDS_LOGINACK_TOKEN, TDS_ERROR_TOKEN, TDS_ENVCHANGE_TOKEN, TDS_INFO_TOKEN, \
-    TDS_ENVCHANGE_VARCHAR, TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE
+from impacket.tds import (
+    SQLErrorException,
+    TDS_LOGINACK_TOKEN,
+    TDS_ERROR_TOKEN,
+    TDS_ENVCHANGE_TOKEN,
+    TDS_INFO_TOKEN,
+    TDS_ENVCHANGE_VARCHAR,
+    TDS_ENVCHANGE_DATABASE,
+    TDS_ENVCHANGE_LANGUAGE,
+    TDS_ENVCHANGE_CHARSET,
+    TDS_ENVCHANGE_PACKETSIZE,
+)
 
 
 class mssql(connection):
@@ -24,13 +34,13 @@ class mssql(connection):
         self.server_os = None
         self.hash = None
         self.os_arch = None
-        self.nthash = ''
+        self.nthash = ""
 
         connection.__init__(self, args, db, host)
 
     @staticmethod
     def proto_args(parser, std_parser, module_parser):
-        mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL", parents=[std_parser, module_parser])
+        mssql_parser = parser.add_parser("mssql", help="own stuff using MSSQL", parents=[std_parser, module_parser])
         dgroup = mssql_parser.add_mutually_exclusive_group()
         dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
         dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
@@ -39,19 +49,47 @@ class mssql(connection):
         mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
 
         cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
-        cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
-        cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
+        cgroup.add_argument(
+            "--force-ps32",
+            action="store_true",
+            help="force the PowerShell command to run in a 32-bit process",
+        )
+        cgroup.add_argument("--no-output", action="store_true", help="do not retrieve command output")
         xgroup = cgroup.add_mutually_exclusive_group()
-        xgroup.add_argument("-x", metavar="COMMAND", dest='execute', help="execute the specified command")
-        xgroup.add_argument("-X", metavar="PS_COMMAND", dest='ps_execute', help='execute the specified PowerShell command')
+        xgroup.add_argument(
+            "-x",
+            metavar="COMMAND",
+            dest="execute",
+            help="execute the specified command",
+        )
+        xgroup.add_argument(
+            "-X",
+            metavar="PS_COMMAND",
+            dest="ps_execute",
+            help="execute the specified PowerShell command",
+        )
 
-        psgroup = mssql_parser.add_argument_group('Powershell Obfuscation', "Options for PowerShell script obfuscation")
-        psgroup.add_argument('--obfs', action='store_true', help='Obfuscate PowerShell scripts')
-        psgroup.add_argument('--clear-obfscripts', action='store_true', help='Clear all cached obfuscated PowerShell scripts')
+        psgroup = mssql_parser.add_argument_group("Powershell Obfuscation", "Options for PowerShell script obfuscation")
+        psgroup.add_argument("--obfs", action="store_true", help="Obfuscate PowerShell scripts")
+        psgroup.add_argument(
+            "--clear-obfscripts",
+            action="store_true",
+            help="Clear all cached obfuscated PowerShell scripts",
+        )
 
         tgroup = mssql_parser.add_argument_group("Files", "Options for put and get remote files")
-        tgroup.add_argument("--put-file", nargs=2, metavar="FILE", help='Put a local file into remote target, ex: whoami.txt C:\\Windows\\Temp\\whoami.txt')
-        tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: C:\\Windows\\Temp\\whoami.txt whoami.txt')
+        tgroup.add_argument(
+            "--put-file",
+            nargs=2,
+            metavar="FILE",
+            help="Put a local file into remote target, ex: whoami.txt C:\\Windows\\Temp\\whoami.txt",
+        )
+        tgroup.add_argument(
+            "--get-file",
+            nargs=2,
+            metavar="FILE",
+            help="Get a remote file, ex: C:\\Windows\\Temp\\whoami.txt whoami.txt",
+        )
 
         return parser
 
@@ -72,7 +110,7 @@ class mssql(connection):
                 "protocol": "MSSQL",
                 "host": self.host,
                 "port": self.args.port,
-                "hostname": "None"
+                "hostname": "None",
             }
         )
 
@@ -114,7 +152,13 @@ class mssql(connection):
                 self.logger.fail(f"Error retrieving host domain: {e} specify one manually with the '-d' flag")
 
         self.mssql_instances = self.conn.getInstances(0)
-        self.db.add_host(self.host, self.hostname, self.domain, self.server_os, len(self.mssql_instances))
+        self.db.add_host(
+            self.host,
+            self.hostname,
+            self.domain,
+            self.server_os,
+            len(self.mssql_instances),
+        )
 
         try:
             self.conn.disconnect()
@@ -122,9 +166,7 @@ class mssql(connection):
             pass
 
     def print_host_info(self):
-        self.logger.display(
-            f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})"
-        )
+        self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})")
         # if len(self.mssql_instances) > 0:
         #     self.logger.display("MSSQL DB Instances: {}".format(len(self.mssql_instances)))
         #     for i, instance in enumerate(self.mssql_instances):
@@ -156,7 +198,16 @@ class mssql(connection):
             return False
         return True
 
-    def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
+    def kerberos_login(
+        self,
+        domain,
+        username,
+        password="",
+        ntlm_hash="",
+        aesKey="",
+        kdcHost="",
+        useCache=False,
+    ):
         try:
             self.conn.disconnect()
         except:
@@ -175,18 +226,27 @@ class mssql(connection):
                 hashes = f":{ntlm_hash}"
                 nthash = ntlm_hash
 
-        if not all('' == s for s in [self.nthash, password, aesKey]):
+        if not all("" == s for s in [self.nthash, password, aesKey]):
             kerb_pass = next(s for s in [self.nthash, password, aesKey] if s)
         else:
-            kerb_pass = ''
+            kerb_pass = ""
         try:
-            res = self.conn.kerberosLogin(None, username, password, domain, hashes, aesKey, kdcHost=kdcHost, useCache=useCache)
+            res = self.conn.kerberosLogin(
+                None,
+                username,
+                password,
+                domain,
+                hashes,
+                aesKey,
+                kdcHost=kdcHost,
+                useCache=useCache,
+            )
             if res is not True:
                 self.conn.printReplies()
                 return False
 
             self.password = password
-            if username == '' and useCache:
+            if username == "" and useCache:
                 ccache = CCache.loadFile(os.getenv("KRB5CCNAME"))
                 principal = ccache.principal.toPrincipal()
                 self.username = principal.components[0]
@@ -196,12 +256,12 @@ class mssql(connection):
             self.domain = domain
             self.check_if_admin()
 
-            out = u"{}{}{} {}".format(
-                f'{domain}\\' if not self.args.local_auth else '',
+            out = "{}{}{} {}".format(
+                f"{domain}\\" if not self.args.local_auth else "",
                 username,
                 # Show what was used between cleartext, nthash, aesKey and ccache
-                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
+                " from ccache" if useCache else ":%s" % (kerb_pass if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8),
+                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
             )
             self.logger.success(out)
             if not self.args.local_auth:
@@ -209,11 +269,13 @@ class mssql(connection):
             return True
         except Exception as e:
             self.logger.fail(
-                u"{}\\{}{} {}".format(
-                f'{domain}\\' if not self.args.local_auth else '',
-                username,
-                " from ccache" if useCache else f":{kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}",
-                e))
+                "{}\\{}{} {}".format(
+                    f"{domain}\\" if not self.args.local_auth else "",
+                    username,
+                    " from ccache" if useCache else f":{kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8}",
+                    e,
+                )
+            )
             return False
 
     def plaintext_login(self, domain, username, password):
@@ -241,11 +303,11 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user("plaintext", domain, username, password, self.host)
 
-            out = u"{}{}:{} {}".format(
-                f'{domain}\\' if not self.args.local_auth else '',
+            out = "{}{}:{} {}".format(
+                f"{domain}\\" if not self.args.local_auth else "",
                 username,
                 process_secret(password),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
+                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
             )
             self.logger.success(out)
             if not self.args.local_auth:
@@ -254,9 +316,7 @@ class mssql(connection):
         except BrokenPipeError as e:
             self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.fail(
-                f"{domain}\\{username}:{process_secret(password)}"
-            )
+            self.logger.fail(f"{domain}\\{username}:{process_secret(password)}")
             self.logger.exception(e)
             return False
 
@@ -283,7 +343,7 @@ class mssql(connection):
                 "",
                 domain,
                 ":" + nthash if not lmhash else ntlm_hash,
-                not self.args.local_auth
+                not self.args.local_auth,
             )
             if res is not True:
                 self.conn.printReplies()
@@ -298,11 +358,11 @@ class mssql(connection):
             if self.admin_privs:
                 self.db.add_admin_user("hash", domain, username, ntlm_hash, self.host)
 
-            out = u"{}\\{} {} {}".format(
+            out = "{}\\{} {} {}".format(
                 domain,
                 username,
                 process_secret(ntlm_hash),
-                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else '')
+                highlight(f'({self.config.get("CME", "pwn3d_label")})' if self.admin_privs else ""),
             )
             self.logger.success(out)
             if not self.args.local_auth:
@@ -311,16 +371,14 @@ class mssql(connection):
         except BrokenPipeError as e:
             self.logger.fail(f"Broken Pipe Error while attempting to login")
         except Exception as e:
-            self.logger.fail(
-                f"{domain}\\{username}:{process_secret(ntlm_hash)} {e}"
-            )
+            self.logger.fail(f"{domain}\\{username}:{process_secret(ntlm_hash)} {e}")
             return False
 
     def mssql_query(self):
         result = self.conn.sql_query(self.args.mssql_query)
         self.logger.debug(f"SQL Query Result: {result}")
         for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
-            if line.strip() != '':
+            if line.strip() != "":
                 self.logger.highlight(line.strip())
         return self.conn._MSSQL__rowsPrinter.getMessage()
 
@@ -353,7 +411,14 @@ class mssql(connection):
         return raw_output
 
     @requires_admin
-    def ps_execute(self, payload=None, get_output=False, methods=None, force_ps32=False, dont_obfs=True):
+    def ps_execute(
+        self,
+        payload=None,
+        get_output=False,
+        methods=None,
+        force_ps32=False,
+        dont_obfs=True,
+    ):
         if not payload and self.args.ps_execute:
             payload = self.args.ps_execute
             if not self.args.no_output:
@@ -396,28 +461,27 @@ class mssql(connection):
             for i, key in enumerate(self.replies[keys]):
                 if key["TokenType"] == TDS_ERROR_TOKEN:
                     error = f"ERROR({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}"
-                    self.lastError = SQLErrorException(
-                        f"ERROR: Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}"
-                    )
+                    self.lastError = SQLErrorException(f"ERROR: Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
                     self._MSSQL__rowsPrinter.error(error)
 
                 elif key["TokenType"] == TDS_INFO_TOKEN:
-                    self._MSSQL__rowsPrinter.info(
-                        f"INFO({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}"
-                    )
+                    self._MSSQL__rowsPrinter.info(f"INFO({key['ServerName'].decode('utf-16le')}): Line {key['LineNumber']:d}: {key['MsgText'].decode('utf-16le')}")
 
                 elif key["TokenType"] == TDS_LOGINACK_TOKEN:
-                    self._MSSQL__rowsPrinter.info(
-                        f"ACK: Result: {key['Interface']} - {key['ProgName'].decode('utf-16le')} ({key['MajorVer']:d}{key['MinorVer']:d} {key['BuildNumHi']:d}{key['BuildNumLow']:d}) "
-                    )
+                    self._MSSQL__rowsPrinter.info(f"ACK: Result: {key['Interface']} - {key['ProgName'].decode('utf-16le')} ({key['MajorVer']:d}{key['MinorVer']:d} {key['BuildNumHi']:d}{key['BuildNumLow']:d}) ")
 
                 elif key["TokenType"] == TDS_ENVCHANGE_TOKEN:
-                    if key["Type"] in (TDS_ENVCHANGE_DATABASE, TDS_ENVCHANGE_LANGUAGE, TDS_ENVCHANGE_CHARSET, TDS_ENVCHANGE_PACKETSIZE):
+                    if key["Type"] in (
+                        TDS_ENVCHANGE_DATABASE,
+                        TDS_ENVCHANGE_LANGUAGE,
+                        TDS_ENVCHANGE_CHARSET,
+                        TDS_ENVCHANGE_PACKETSIZE,
+                    ):
                         record = TDS_ENVCHANGE_VARCHAR(key["Data"])
                         if record["OldValue"] == "":
-                            record["OldValue"] = "None".encode('utf-16le')
-                        elif record["NewValue"] == '':
-                            record["NewValue"] = "None".encode('utf-16le')
+                            record["OldValue"] = "None".encode("utf-16le")
+                        elif record["NewValue"] == "":
+                            record["NewValue"] = "None".encode("utf-16le")
                         if key["Type"] == TDS_ENVCHANGE_DATABASE:
                             _type = "DATABASE"
                         elif key["Type"] == TDS_ENVCHANGE_LANGUAGE:
@@ -428,8 +492,6 @@ class mssql(connection):
                             _type = "PACKETSIZE"
                         else:
                             _type = f"{key['Type']:d}"
-                        self._MSSQL__rowsPrinter.info(
-                            f"ENVCHANGE({_type}): Old Value: {record['OldValue'].decode('utf-16le')}, New Value: {record['NewValue'].decode('utf-16le')}"
-                        )
+                        self._MSSQL__rowsPrinter.info(f"ENVCHANGE({_type}): Old Value: {record['OldValue'].decode('utf-16le')}, New Value: {record['NewValue'].decode('utf-16le')}")
 
     tds.MSSQL.printReplies = printRepliesCME

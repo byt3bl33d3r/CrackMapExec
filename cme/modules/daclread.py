@@ -17,80 +17,80 @@ OBJECT_TYPES_GUID.update(EXTENDED_RIGHTS)
 
 # Universal SIDs
 WELL_KNOWN_SIDS = {
-    'S-1-0': 'Null Authority',
-    'S-1-0-0': 'Nobody',
-    'S-1-1': 'World Authority',
-    'S-1-1-0': 'Everyone',
-    'S-1-2': 'Local Authority',
-    'S-1-2-0': 'Local',
-    'S-1-2-1': 'Console Logon',
-    'S-1-3': 'Creator Authority',
-    'S-1-3-0': 'Creator Owner',
-    'S-1-3-1': 'Creator Group',
-    'S-1-3-2': 'Creator Owner Server',
-    'S-1-3-3': 'Creator Group Server',
-    'S-1-3-4': 'Owner Rights',
-    'S-1-5-80-0': 'All Services',
-    'S-1-4': 'Non-unique Authority',
-    'S-1-5': 'NT Authority',
-    'S-1-5-1': 'Dialup',
-    'S-1-5-2': 'Network',
-    'S-1-5-3': 'Batch',
-    'S-1-5-4': 'Interactive',
-    'S-1-5-6': 'Service',
-    'S-1-5-7': 'Anonymous',
-    'S-1-5-8': 'Proxy',
-    'S-1-5-9': 'Enterprise Domain Controllers',
-    'S-1-5-10': 'Principal Self',
-    'S-1-5-11': 'Authenticated Users',
-    'S-1-5-12': 'Restricted Code',
-    'S-1-5-13': 'Terminal Server Users',
-    'S-1-5-14': 'Remote Interactive Logon',
-    'S-1-5-15': 'This Organization',
-    'S-1-5-17': 'This Organization',
-    'S-1-5-18': 'Local System',
-    'S-1-5-19': 'NT Authority',
-    'S-1-5-20': 'NT Authority',
-    'S-1-5-32-544': 'Administrators',
-    'S-1-5-32-545': 'Users',
-    'S-1-5-32-546': 'Guests',
-    'S-1-5-32-547': 'Power Users',
-    'S-1-5-32-548': 'Account Operators',
-    'S-1-5-32-549': 'Server Operators',
-    'S-1-5-32-550': 'Print Operators',
-    'S-1-5-32-551': 'Backup Operators',
-    'S-1-5-32-552': 'Replicators',
-    'S-1-5-64-10': 'NTLM Authentication',
-    'S-1-5-64-14': 'SChannel Authentication',
-    'S-1-5-64-21': 'Digest Authority',
-    'S-1-5-80': 'NT Service',
-    'S-1-5-83-0': 'NT VIRTUAL MACHINE\Virtual Machines',
-    'S-1-16-0': 'Untrusted Mandatory Level',
-    'S-1-16-4096': 'Low Mandatory Level',
-    'S-1-16-8192': 'Medium Mandatory Level',
-    'S-1-16-8448': 'Medium Plus Mandatory Level',
-    'S-1-16-12288': 'High Mandatory Level',
-    'S-1-16-16384': 'System Mandatory Level',
-    'S-1-16-20480': 'Protected Process Mandatory Level',
-    'S-1-16-28672': 'Secure Process Mandatory Level',
-    'S-1-5-32-554': 'BUILTIN\Pre-Windows 2000 Compatible Access',
-    'S-1-5-32-555': 'BUILTIN\Remote Desktop Users',
-    'S-1-5-32-557': 'BUILTIN\Incoming Forest Trust Builders',
-    'S-1-5-32-556': 'BUILTIN\\Network Configuration Operators',
-    'S-1-5-32-558': 'BUILTIN\Performance Monitor Users',
-    'S-1-5-32-559': 'BUILTIN\Performance Log Users',
-    'S-1-5-32-560': 'BUILTIN\Windows Authorization Access Group',
-    'S-1-5-32-561': 'BUILTIN\Terminal Server License Servers',
-    'S-1-5-32-562': 'BUILTIN\Distributed COM Users',
-    'S-1-5-32-569': 'BUILTIN\Cryptographic Operators',
-    'S-1-5-32-573': 'BUILTIN\Event Log Readers',
-    'S-1-5-32-574': 'BUILTIN\Certificate Service DCOM Access',
-    'S-1-5-32-575': 'BUILTIN\RDS Remote Access Servers',
-    'S-1-5-32-576': 'BUILTIN\RDS Endpoint Servers',
-    'S-1-5-32-577': 'BUILTIN\RDS Management Servers',
-    'S-1-5-32-578': 'BUILTIN\Hyper-V Administrators',
-    'S-1-5-32-579': 'BUILTIN\Access Control Assistance Operators',
-    'S-1-5-32-580': 'BUILTIN\Remote Management Users',
+    "S-1-0": "Null Authority",
+    "S-1-0-0": "Nobody",
+    "S-1-1": "World Authority",
+    "S-1-1-0": "Everyone",
+    "S-1-2": "Local Authority",
+    "S-1-2-0": "Local",
+    "S-1-2-1": "Console Logon",
+    "S-1-3": "Creator Authority",
+    "S-1-3-0": "Creator Owner",
+    "S-1-3-1": "Creator Group",
+    "S-1-3-2": "Creator Owner Server",
+    "S-1-3-3": "Creator Group Server",
+    "S-1-3-4": "Owner Rights",
+    "S-1-5-80-0": "All Services",
+    "S-1-4": "Non-unique Authority",
+    "S-1-5": "NT Authority",
+    "S-1-5-1": "Dialup",
+    "S-1-5-2": "Network",
+    "S-1-5-3": "Batch",
+    "S-1-5-4": "Interactive",
+    "S-1-5-6": "Service",
+    "S-1-5-7": "Anonymous",
+    "S-1-5-8": "Proxy",
+    "S-1-5-9": "Enterprise Domain Controllers",
+    "S-1-5-10": "Principal Self",
+    "S-1-5-11": "Authenticated Users",
+    "S-1-5-12": "Restricted Code",
+    "S-1-5-13": "Terminal Server Users",
+    "S-1-5-14": "Remote Interactive Logon",
+    "S-1-5-15": "This Organization",
+    "S-1-5-17": "This Organization",
+    "S-1-5-18": "Local System",
+    "S-1-5-19": "NT Authority",
+    "S-1-5-20": "NT Authority",
+    "S-1-5-32-544": "Administrators",
+    "S-1-5-32-545": "Users",
+    "S-1-5-32-546": "Guests",
+    "S-1-5-32-547": "Power Users",
+    "S-1-5-32-548": "Account Operators",
+    "S-1-5-32-549": "Server Operators",
+    "S-1-5-32-550": "Print Operators",
+    "S-1-5-32-551": "Backup Operators",
+    "S-1-5-32-552": "Replicators",
+    "S-1-5-64-10": "NTLM Authentication",
+    "S-1-5-64-14": "SChannel Authentication",
+    "S-1-5-64-21": "Digest Authority",
+    "S-1-5-80": "NT Service",
+    "S-1-5-83-0": "NT VIRTUAL MACHINE\Virtual Machines",
+    "S-1-16-0": "Untrusted Mandatory Level",
+    "S-1-16-4096": "Low Mandatory Level",
+    "S-1-16-8192": "Medium Mandatory Level",
+    "S-1-16-8448": "Medium Plus Mandatory Level",
+    "S-1-16-12288": "High Mandatory Level",
+    "S-1-16-16384": "System Mandatory Level",
+    "S-1-16-20480": "Protected Process Mandatory Level",
+    "S-1-16-28672": "Secure Process Mandatory Level",
+    "S-1-5-32-554": "BUILTIN\Pre-Windows 2000 Compatible Access",
+    "S-1-5-32-555": "BUILTIN\Remote Desktop Users",
+    "S-1-5-32-557": "BUILTIN\Incoming Forest Trust Builders",
+    "S-1-5-32-556": "BUILTIN\\Network Configuration Operators",
+    "S-1-5-32-558": "BUILTIN\Performance Monitor Users",
+    "S-1-5-32-559": "BUILTIN\Performance Log Users",
+    "S-1-5-32-560": "BUILTIN\Windows Authorization Access Group",
+    "S-1-5-32-561": "BUILTIN\Terminal Server License Servers",
+    "S-1-5-32-562": "BUILTIN\Distributed COM Users",
+    "S-1-5-32-569": "BUILTIN\Cryptographic Operators",
+    "S-1-5-32-573": "BUILTIN\Event Log Readers",
+    "S-1-5-32-574": "BUILTIN\Certificate Service DCOM Access",
+    "S-1-5-32-575": "BUILTIN\RDS Remote Access Servers",
+    "S-1-5-32-576": "BUILTIN\RDS Endpoint Servers",
+    "S-1-5-32-577": "BUILTIN\RDS Management Servers",
+    "S-1-5-32-578": "BUILTIN\Hyper-V Administrators",
+    "S-1-5-32-579": "BUILTIN\Access Control Assistance Operators",
+    "S-1-5-32-580": "BUILTIN\Remote Management Users",
 }
 
 
@@ -166,12 +166,12 @@ class ACCESS_MASK(Enum):
 # Simple permissions are combinaisons of extended permissions
 # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc783530(v=ws.10)?redirectedfrom=MSDN
 class SIMPLE_PERMISSIONS(Enum):
-    FullControl = 0xf01ff
-    Modify = 0x0301bf
-    ReadAndExecute = 0x0200a9
-    ReadAndWrite = 0x02019f
+    FullControl = 0xF01FF
+    Modify = 0x0301BF
+    ReadAndExecute = 0x0200A9
+    ReadAndWrite = 0x02019F
     Read = 0x20094
-    Write = 0x200bc
+    Write = 0x200BC
 
 
 # Mask ObjectType field enum
@@ -194,9 +194,10 @@ class CMEModule:
     It has been converted to an LDAPConnection session, and improvements on the filtering and the ability to specify multiple targets have been added.
     It could be interesting to implement the write/remove functions here, but a ldap3 session instead of a LDAPConnection one is required to write.
     """
-    name = 'daclread'
-    description = 'Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_. Be carefull, this module cannot read the DACLS recursively, more explains in the  options.'
-    supported_protocols = ['ldap']
+
+    name = "daclread"
+    description = "Read and backup the Discretionary Access Control List of objects. Based on the work of @_nwodtuhs and @BlWasp_. Be carefull, this module cannot read the DACLS recursively, more explains in the  options."
+    supported_protocols = ["ldap"]
     opsec_safe = True
     multiple_hosts = False
 
@@ -221,43 +222,43 @@ class CMEModule:
             context.log.fail("Select an option, example: -M daclread -o TARGET=Administrator ACTION=read")
             exit(1)
 
-        if module_options and 'TARGET' in module_options:
-            if re.search(r'^(.+)\/([^\/]+)$', module_options['TARGET']) is not None:
+        if module_options and "TARGET" in module_options:
+            if re.search(r"^(.+)\/([^\/]+)$", module_options["TARGET"]) is not None:
                 try:
-                    self.target_file = open(module_options['TARGET'], "r")
+                    self.target_file = open(module_options["TARGET"], "r")
                     self.target_sAMAccountName = None
                 except Exception as e:
                     context.log.fail("The file doesn't exist or cannot be openned.")
             else:
-                self.target_sAMAccountName = module_options['TARGET']
+                self.target_sAMAccountName = module_options["TARGET"]
                 self.target_file = None
             self.target_DN = None
         self.target_SID = None
-        if module_options and 'TARGET_DN' in module_options:
-            self.target_DN = module_options['TARGET_DN']
+        if module_options and "TARGET_DN" in module_options:
+            self.target_DN = module_options["TARGET_DN"]
             self.target_sAMAccountName = None
             self.target_file = None
 
-        if module_options and 'PRINCIPAL' in module_options:
-            self.principal_sAMAccountName = module_options['PRINCIPAL']
+        if module_options and "PRINCIPAL" in module_options:
+            self.principal_sAMAccountName = module_options["PRINCIPAL"]
         else:
             self.principal_sAMAccountName = None
         self.principal_sid = None
 
-        if module_options and 'ACTION' in module_options:
-            self.action = module_options['ACTION']
+        if module_options and "ACTION" in module_options:
+            self.action = module_options["ACTION"]
         else:
-            self.action = 'read'
-        if module_options and 'ACE_TYPE' in module_options:
-            self.ace_type = module_options['ACE_TYPE']
+            self.action = "read"
+        if module_options and "ACE_TYPE" in module_options:
+            self.ace_type = module_options["ACE_TYPE"]
         else:
-            self.ace_type = 'allowed'
-        if module_options and 'RIGHTS' in module_options:
-            self.rights = module_options['RIGHTS']
+            self.ace_type = "allowed"
+        if module_options and "RIGHTS" in module_options:
+            self.rights = module_options["RIGHTS"]
         else:
             self.rights = None
-        if module_options and 'RIGHTS_GUID' in module_options:
-            self.rights_guid = module_options['RIGHTS_GUID']
+        if module_options and "RIGHTS_GUID" in module_options:
+            self.rights_guid = module_options["RIGHTS_GUID"]
         else:
             self.rights_guid = None
         self.filename = None
@@ -278,13 +279,17 @@ class CMEModule:
                 self.principal_sid = format_sid(
                     self.ldap_session.search(
                         searchBase=self.baseDN,
-                        searchFilter='(sAMAccountName=%s)' % escape_filter_chars(_lookedup_principal),
-                        attributes=['objectSid']
-                    )[0][1][0][1][0]
+                        searchFilter="(sAMAccountName=%s)" % escape_filter_chars(_lookedup_principal),
+                        attributes=["objectSid"],
+                    )[0][
+                        1
+                    ][0][
+                        1
+                    ][0]
                 )
                 context.log.highlight("Found principal SID to filter on: %s" % self.principal_sid)
             except Exception as e:
-                context.log.fail('Principal SID not found in LDAP (%s)' % _lookedup_principal)
+                context.log.fail("Principal SID not found in LDAP (%s)" % _lookedup_principal)
                 exit(1)
 
         # Searching for the targets SID and their Security Decriptors
@@ -295,17 +300,16 @@ class CMEModule:
                 self.search_target_principal_security_descriptor(context, connection)
                 # Extract security descriptor data
                 self.target_principal_dn = self.target_principal[0]
-                self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode('latin-1')
-                self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(
-                    data=self.principal_raw_security_descriptor)
-                context.log.highlight('Target principal found in LDAP (%s)' % self.target_principal[0])
+                self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode("latin-1")
+                self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(data=self.principal_raw_security_descriptor)
+                context.log.highlight("Target principal found in LDAP (%s)" % self.target_principal[0])
             except Exception as e:
-                context.log.fail('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
+                context.log.fail("Target SID not found in LDAP (%s)" % self.target_sAMAccountName)
                 exit(1)
 
-            if self.action == 'read':
+            if self.action == "read":
                 self.read(context)
-            if self.action == 'backup':
+            if self.action == "backup":
                 self.backup(context)
 
         # If there are multiple targets
@@ -318,23 +322,22 @@ class CMEModule:
                     self.search_target_principal_security_descriptor(context, connection)
                     # Extract security descriptor data
                     self.target_principal_dn = self.target_principal[0]
-                    self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode('latin-1')
-                    self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(
-                        data=self.principal_raw_security_descriptor)
-                    context.log.highlight('Target principal found in LDAP (%s)' % self.target_sAMAccountName)
+                    self.principal_raw_security_descriptor = str(self.target_principal[1][0][1][0]).encode("latin-1")
+                    self.principal_security_descriptor = ldaptypes.SR_SECURITY_DESCRIPTOR(data=self.principal_raw_security_descriptor)
+                    context.log.highlight("Target principal found in LDAP (%s)" % self.target_sAMAccountName)
                 except Exception as e:
-                    context.log.fail('Target SID not found in LDAP (%s)' % self.target_sAMAccountName)
+                    context.log.fail("Target SID not found in LDAP (%s)" % self.target_sAMAccountName)
                     continue
 
-                if self.action == 'read':
+                if self.action == "read":
                     self.read(context)
-                if self.action == 'backup':
+                if self.action == "backup":
                     self.backup(context)
 
     # Main read funtion
     # Prints the parsed DACL
     def read(self, context):
-        parsed_dacl = self.parse_dacl(context, self.principal_security_descriptor['Dacl'])
+        parsed_dacl = self.parse_dacl(context, self.principal_security_descriptor["Dacl"])
         self.print_parsed_dacl(context, parsed_dacl)
         return
 
@@ -342,14 +345,16 @@ class CMEModule:
     # This function is called before any writing action (write, remove or restore)
     def backup(self, context):
         backup = {}
-        backup["sd"] = binascii.hexlify(self.principal_raw_security_descriptor).decode('latin-1')
+        backup["sd"] = binascii.hexlify(self.principal_raw_security_descriptor).decode("latin-1")
         backup["dn"] = str(self.target_principal_dn)
         if not self.filename:
-            self.filename = 'dacledit-%s-%s.bak' % (
-                datetime.datetime.now().strftime("%Y%m%d-%H%M%S"), self.target_sAMAccountName)
-        with codecs.open(self.filename, 'w', 'latin-1') as outfile:
+            self.filename = "dacledit-%s-%s.bak" % (
+                datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+                self.target_sAMAccountName,
+            )
+        with codecs.open(self.filename, "w", "latin-1") as outfile:
             json.dump(backup, outfile)
-        context.log.highlight('DACL backed up to %s', self.filename)
+        context.log.highlight("DACL backed up to %s", self.filename)
         self.filename = None
 
     # Attempts to retrieve the DACL in the Security Descriptor of the specified target
@@ -361,22 +366,22 @@ class CMEModule:
             _lookedup_principal = self.target_sAMAccountName
             target = self.ldap_session.search(
                 searchBase=self.baseDN,
-                searchFilter='(sAMAccountName=%s)' % escape_filter_chars(_lookedup_principal),
-                attributes=['nTSecurityDescriptor'],
-                searchControls=controls
+                searchFilter="(sAMAccountName=%s)" % escape_filter_chars(_lookedup_principal),
+                attributes=["nTSecurityDescriptor"],
+                searchControls=controls,
             )
         if self.target_DN is not None:
             _lookedup_principal = self.target_DN
             target = self.ldap_session.search(
                 searchBase=self.baseDN,
-                searchFilter='(distinguishedName=%s)' % _lookedup_principal,
-                attributes=['nTSecurityDescriptor'],
-                searchControls=controls
+                searchFilter="(distinguishedName=%s)" % _lookedup_principal,
+                attributes=["nTSecurityDescriptor"],
+                searchControls=controls,
             )
         try:
             self.target_principal = target[0]
         except Exception as e:
-            context.log.fail('Principal not found in LDAP (%s), probably an LDAP session issue.' % _lookedup_principal)
+            context.log.fail("Principal not found in LDAP (%s), probably an LDAP session issue." % _lookedup_principal)
             exit(0)
 
     # Attempts to retieve the SID and Distinguisehd Name from the sAMAccountName
@@ -385,15 +390,15 @@ class CMEModule:
     def get_user_info(self, context, samname):
         self.ldap_session.search(
             searchBase=self.baseDN,
-            searchFilter='(sAMAccountName=%s)' % escape_filter_chars(samname),
-            attributes=['objectSid']
+            searchFilter="(sAMAccountName=%s)" % escape_filter_chars(samname),
+            attributes=["objectSid"],
         )
         try:
             dn = self.ldap_session.entries[0].entry_dn
-            sid = format_sid(self.ldap_session.entries[0]['objectSid'].raw_values[0])
+            sid = format_sid(self.ldap_session.entries[0]["objectSid"].raw_values[0])
             return dn, sid
         except Exception as e:
-            context.log.fail('User not found in LDAP: %s' % samname)
+            context.log.fail("User not found in LDAP: %s" % samname)
             return False
 
     # Attempts to resolve a SID and return the corresponding samaccountname
@@ -407,17 +412,23 @@ class CMEModule:
             try:
                 dn = self.ldap_session.search(
                     searchBase=self.baseDN,
-                    searchFilter='(objectSid=%s)' % sid,
-                    attributes=['sAMAccountName']
-                )[0][0]
+                    searchFilter="(objectSid=%s)" % sid,
+                    attributes=["sAMAccountName"],
+                )[
+                    0
+                ][0]
                 samname = self.ldap_session.search(
                     searchBase=self.baseDN,
-                    searchFilter='(objectSid=%s)' % sid,
-                    attributes=['sAMAccountName']
-                )[0][1][0][1][0]
+                    searchFilter="(objectSid=%s)" % sid,
+                    attributes=["sAMAccountName"],
+                )[0][
+                    1
+                ][0][
+                    1
+                ][0]
                 return samname
             except Exception as e:
-                context.log.debug('SID not found in LDAP: %s' % sid)
+                context.log.debug("SID not found in LDAP: %s" % sid)
                 return ""
 
     # Parses a full DACL
@@ -426,7 +437,7 @@ class CMEModule:
         parsed_dacl = []
         context.log.debug("Parsing DACL")
         i = 0
-        for ace in dacl['Data']:
+        for ace in dacl["Data"]:
             parsed_ace = self.parse_ace(context, ace)
             parsed_dacl.append(parsed_ace)
             i += 1
@@ -450,71 +461,87 @@ class CMEModule:
     #   - ace : the ACE to parse
     def parse_ace(self, context, ace):
         # For the moment, only the Allowed and Denied Access ACE are supported
-        if ace['TypeName'] in ["ACCESS_ALLOWED_ACE", "ACCESS_ALLOWED_OBJECT_ACE", "ACCESS_DENIED_ACE",
-                               "ACCESS_DENIED_OBJECT_ACE"]:
+        if ace["TypeName"] in [
+            "ACCESS_ALLOWED_ACE",
+            "ACCESS_ALLOWED_OBJECT_ACE",
+            "ACCESS_DENIED_ACE",
+            "ACCESS_DENIED_OBJECT_ACE",
+        ]:
             parsed_ace = {}
-            parsed_ace['ACE Type'] = ace['TypeName']
+            parsed_ace["ACE Type"] = ace["TypeName"]
             # Retrieves ACE's flags
             _ace_flags = []
             for FLAG in ACE_FLAGS:
                 if ace.hasFlag(FLAG.value):
                     _ace_flags.append(FLAG.name)
-            parsed_ace['ACE flags'] = ", ".join(_ace_flags) or "None"
+            parsed_ace["ACE flags"] = ", ".join(_ace_flags) or "None"
 
             # For standard ACE
             # Extracts the access mask (by parsing the simple permissions) and the principal's SID
-            if ace['TypeName'] in ["ACCESS_ALLOWED_ACE", "ACCESS_DENIED_ACE"]:
-                parsed_ace['Access mask'] = "%s (0x%x)" % (
-                    ", ".join(self.parse_perms(ace['Ace']['Mask']['Mask'])), ace['Ace']['Mask']['Mask'])
-                parsed_ace['Trustee (SID)'] = "%s (%s)" % (
-                    self.resolveSID(context, ace['Ace']['Sid'].formatCanonical()) or "UNKNOWN",
-                    ace['Ace']['Sid'].formatCanonical())
+            if ace["TypeName"] in ["ACCESS_ALLOWED_ACE", "ACCESS_DENIED_ACE"]:
+                parsed_ace["Access mask"] = "%s (0x%x)" % (
+                    ", ".join(self.parse_perms(ace["Ace"]["Mask"]["Mask"])),
+                    ace["Ace"]["Mask"]["Mask"],
+                )
+                parsed_ace["Trustee (SID)"] = "%s (%s)" % (
+                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical()) or "UNKNOWN",
+                    ace["Ace"]["Sid"].formatCanonical(),
+                )
 
             # For object-specific ACE
-            elif ace['TypeName'] in ["ACCESS_ALLOWED_OBJECT_ACE", "ACCESS_DENIED_OBJECT_ACE"]:
+            elif ace["TypeName"] in [
+                "ACCESS_ALLOWED_OBJECT_ACE",
+                "ACCESS_DENIED_OBJECT_ACE",
+            ]:
                 # Extracts the mask values. These values will indicate the ObjectType purpose
                 _access_mask_flags = []
                 for FLAG in ALLOWED_OBJECT_ACE_MASK_FLAGS:
-                    if ace['Ace']['Mask'].hasPriv(FLAG.value):
+                    if ace["Ace"]["Mask"].hasPriv(FLAG.value):
                         _access_mask_flags.append(FLAG.name)
-                parsed_ace['Access mask'] = ", ".join(_access_mask_flags)
+                parsed_ace["Access mask"] = ", ".join(_access_mask_flags)
                 # Extracts the ACE flag values and the trusted SID
                 _object_flags = []
                 for FLAG in OBJECT_ACE_FLAGS:
-                    if ace['Ace'].hasFlag(FLAG.value):
+                    if ace["Ace"].hasFlag(FLAG.value):
                         _object_flags.append(FLAG.name)
-                parsed_ace['Flags'] = ", ".join(_object_flags) or "None"
+                parsed_ace["Flags"] = ", ".join(_object_flags) or "None"
                 # Extracts the ObjectType GUID values
-                if ace['Ace']['ObjectTypeLen'] != 0:
-                    obj_type = bin_to_string(ace['Ace']['ObjectType']).lower()
+                if ace["Ace"]["ObjectTypeLen"] != 0:
+                    obj_type = bin_to_string(ace["Ace"]["ObjectType"]).lower()
                     try:
-                        parsed_ace['Object type (GUID)'] = "%s (%s)" % (OBJECT_TYPES_GUID[obj_type], obj_type)
+                        parsed_ace["Object type (GUID)"] = "%s (%s)" % (
+                            OBJECT_TYPES_GUID[obj_type],
+                            obj_type,
+                        )
                     except KeyError:
-                        parsed_ace['Object type (GUID)'] = "UNKNOWN (%s)" % obj_type
+                        parsed_ace["Object type (GUID)"] = "UNKNOWN (%s)" % obj_type
                 # Extracts the InheritedObjectType GUID values
-                if ace['Ace']['InheritedObjectTypeLen'] != 0:
-                    inh_obj_type = bin_to_string(ace['Ace']['InheritedObjectType']).lower()
+                if ace["Ace"]["InheritedObjectTypeLen"] != 0:
+                    inh_obj_type = bin_to_string(ace["Ace"]["InheritedObjectType"]).lower()
                     try:
-                        parsed_ace['Inherited type (GUID)'] = "%s (%s)" % (
-                            OBJECT_TYPES_GUID[inh_obj_type], inh_obj_type)
+                        parsed_ace["Inherited type (GUID)"] = "%s (%s)" % (
+                            OBJECT_TYPES_GUID[inh_obj_type],
+                            inh_obj_type,
+                        )
                     except KeyError:
-                        parsed_ace['Inherited type (GUID)'] = "UNKNOWN (%s)" % inh_obj_type
+                        parsed_ace["Inherited type (GUID)"] = "UNKNOWN (%s)" % inh_obj_type
                 # Extract the Trustee SID (the object that has the right over the DACL bearer)
-                parsed_ace['Trustee (SID)'] = "%s (%s)" % (
-                    self.resolveSID(context, ace['Ace']['Sid'].formatCanonical()) or "UNKNOWN",
-                    ace['Ace']['Sid'].formatCanonical())
+                parsed_ace["Trustee (SID)"] = "%s (%s)" % (
+                    self.resolveSID(context, ace["Ace"]["Sid"].formatCanonical()) or "UNKNOWN",
+                    ace["Ace"]["Sid"].formatCanonical(),
+                )
 
         else:
             # If the ACE is not an access allowed
-            context.log.debug("ACE Type (%s) unsupported for parsing yet, feel free to contribute" % ace['TypeName'])
+            context.log.debug("ACE Type (%s) unsupported for parsing yet, feel free to contribute" % ace["TypeName"])
             parsed_ace = {}
-            parsed_ace['ACE type'] = ace['TypeName']
+            parsed_ace["ACE type"] = ace["TypeName"]
             _ace_flags = []
             for FLAG in ACE_FLAGS:
                 if ace.hasFlag(FLAG.value):
                     _ace_flags.append(FLAG.name)
-            parsed_ace['ACE flags'] = ", ".join(_ace_flags) or "None"
-            parsed_ace['DEBUG'] = "ACE type not supported for parsing by dacleditor.py, feel free to contribute"
+            parsed_ace["ACE flags"] = ", ".join(_ace_flags) or "None"
+            parsed_ace["DEBUG"] = "ACE type not supported for parsing by dacleditor.py, feel free to contribute"
         return parsed_ace
 
     # Prints a full DACL by printing each parsed ACE
@@ -530,57 +557,46 @@ class CMEModule:
             # Filter on specific rights
             if self.rights is not None:
                 try:
-                    if (self.rights == 'FullControl') and (self.rights not in parsed_ace['Access mask']):
+                    if (self.rights == "FullControl") and (self.rights not in parsed_ace["Access mask"]):
                         print_ace = False
-                    if (self.rights == 'DCSync') and (('Object type (GUID)' not in parsed_ace) or (
-                            RIGHTS_GUID.DS_Replication_Get_Changes_All.value not in parsed_ace['Object type (GUID)'])):
+                    if (self.rights == "DCSync") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.DS_Replication_Get_Changes_All.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
-                    if (self.rights == 'WriteMembers') and (('Object type (GUID)' not in parsed_ace) or (
-                            RIGHTS_GUID.WriteMembers.value not in parsed_ace['Object type (GUID)'])):
+                    if (self.rights == "WriteMembers") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.WriteMembers.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
-                    if (self.rights == 'ResetPassword') and (('Object type (GUID)' not in parsed_ace) or (
-                            RIGHTS_GUID.ResetPassword.value not in parsed_ace['Object type (GUID)'])):
+                    if (self.rights == "ResetPassword") and (("Object type (GUID)" not in parsed_ace) or (RIGHTS_GUID.ResetPassword.value not in parsed_ace["Object type (GUID)"])):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on specific right GUID
             if self.rights_guid is not None:
                 try:
-                    if ('Object type (GUID)' not in parsed_ace) or (
-                            self.rights_guid not in parsed_ace['Object type (GUID)']):
+                    if ("Object type (GUID)" not in parsed_ace) or (self.rights_guid not in parsed_ace["Object type (GUID)"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on ACE type
-            if self.ace_type == 'allowed':
+            if self.ace_type == "allowed":
                 try:
-                    if ('ACCESS_ALLOWED_OBJECT_ACE' not in parsed_ace['ACE Type']) and (
-                            'ACCESS_ALLOWED_ACE' not in parsed_ace['ACE Type']):
+                    if ("ACCESS_ALLOWED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and ("ACCESS_ALLOWED_ACE" not in parsed_ace["ACE Type"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             else:
                 try:
-                    if ('ACCESS_DENIED_OBJECT_ACE' not in parsed_ace['ACE Type']) and (
-                            'ACCESS_DENIED_ACE' not in parsed_ace['ACE Type']):
+                    if ("ACCESS_DENIED_OBJECT_ACE" not in parsed_ace["ACE Type"]) and ("ACCESS_DENIED_ACE" not in parsed_ace["ACE Type"]):
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
 
             # Filter on trusted principal
             if self.principal_sid is not None:
                 try:
-                    if self.principal_sid not in parsed_ace['Trustee (SID)']:
+                    if self.principal_sid not in parsed_ace["Trustee (SID)"]:
                         print_ace = False
                 except Exception as e:
-                    context.log.fail(
-                        "Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
+                    context.log.fail("Error filtering ACE, probably because of ACE type unsupported for parsing yet (%s)" % e)
             if print_ace:
                 self.context.log.highlight("%-28s" % "ACE[%d] info" % i)
                 self.print_parsed_ace(parsed_ace)
@@ -603,7 +619,9 @@ class CMEModule:
         elif self.rights == "ResetPassword":
             _rights_guids = [RIGHTS_GUID.ResetPassword.value]
         elif self.rights == "DCSync":
-            _rights_guids = [RIGHTS_GUID.DS_Replication_Get_Changes.value,
-                             RIGHTS_GUID.DS_Replication_Get_Changes_All.value]
-        self.context.log.highlight('Built GUID: %s', _rights_guids)
+            _rights_guids = [
+                RIGHTS_GUID.DS_Replication_Get_Changes.value,
+                RIGHTS_GUID.DS_Replication_Get_Changes_All.value,
+            ]
+        self.context.log.highlight("Built GUID: %s", _rights_guids)
         return _rights_guids

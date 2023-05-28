@@ -11,6 +11,7 @@ class CMEModule:
     Detect if the target's LmCompatibilityLevel will allow NTLMv1 authentication
     Module by @Tw1sm
     """
+
     name = "ntlmv1"
     description = "Detect if lmcompatibilitylevel on the target is set to 0 or 1"
     supported_protocols = ["smb"]
@@ -31,16 +32,16 @@ class CMEModule:
                 ans = rrp.hBaseRegOpenKey(
                     remote_ops._RemoteOperations__rrp,
                     reg_handle,
-                    "SYSTEM\\CurrentControlSet\\Control\\Lsa"
+                    "SYSTEM\\CurrentControlSet\\Control\\Lsa",
                 )
-                key_handle = ans['phkResult']
+                key_handle = ans["phkResult"]
                 rtype = None
                 data = None
                 try:
                     rtype, data = rrp.hBaseRegQueryValue(
                         remote_ops._RemoteOperations__rrp,
                         key_handle,
-                        "lmcompatibilitylevel\x00"
+                        "lmcompatibilitylevel\x00",
                     )
                 except rrp.DCERPCSessionError as e:
                     context.log.debug(f"Unable to reference lmcompatabilitylevel, which probably means ntlmv1 is not set")

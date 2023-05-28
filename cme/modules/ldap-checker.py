@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import ldap3
+import socket
 import ssl
 import asyncio
 
@@ -10,7 +9,9 @@ from msldap.commons.target import MSLDAPTarget
 
 from asyauth.common.constants import asyauthSecret
 from asyauth.common.credentials.ntlm import NTLMCredential
+from asyauth.common.credentials.kerberos import KerberosCredential
 
+from asysocks.unicomm.common.target import UniTarget, UniProto
 
 class CMEModule:
     """
@@ -19,11 +20,12 @@ class CMEModule:
     Module by LuemmelSec (@theluemmel), updated by @zblurx
     Original work thankfully taken from @zyn3rgy's Ldap Relay Scan project: https://github.com/zyn3rgy/LdapRelayScan
     """
-    name = 'ldap-checker'
-    description = 'Checks whether LDAP signing and binding are required and / or enforced'
-    supported_protocols = ['ldap']
+
+    name = "ldap-checker"
+    description = "Checks whether LDAP signing and binding are required and / or enforced"
+    supported_protocols = ["ldap"]
     opsec_safe = True
-    multiple_hosts = True 
+    multiple_hosts = True
 
     def options(self, context, module_options):
         """
@@ -32,83 +34,68 @@ class CMEModule:
         pass
 
     def on_login(self, context, connection):
-        
-        #Grab the variables from the CME connection to fill our variables
-        
-        inputUser = connection.domain + '\\' + connection.username
-        inputPassword = connection.password
-        if connection.password == '' and connection.nthash is not None:
-            context.log.debug("Using NT(LM) hash for authentication")
-            inputPassword = "aad3b435b51404eeaad3b435b51404ee:" + connection.nthash
-        dcTarget = connection.conn.getRemoteHost()
-        
-        #Conduct a bind to LDAPS and determine if channel
-        #binding is enforced based on the contents of potential
-        #errors returned. This can be determined unauthenticated,
-        #because the error indicating channel binding enforcement
-        #will be returned regardless of a successful LDAPS bind.
-        def run_ldaps_noEPA(inputUser, inputPassword, dcTarget):
-            try:
-                tls = ldap3.Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
-                ldapServer = ldap3.Server(
-                    dcTarget, use_ssl=True, port=636, get_info=ldap3.ALL, tls=tls)
-                ldapConn = ldap3.Connection(
-                    ldapServer, user=inputUser, password=inputPassword, authentication=ldap3.NTLM)
-                if not ldapConn.bind():
-                    if "data 80090346" in str(ldapConn.result):
-                        return True #channel binding IS enforced
-                    elif "data 52e" in str(ldapConn.result):
-                        return False #channel binding not enforced
-                    else:
-                        context.log.fail("UNEXPECTED ERROR: " + str(ldapConn.result))
-                else:
-                    #LDAPS bind successful
-                    return False #because channel binding is not enforced
-                    exit()
-            except Exception as e:
-                context.log.fail("\n   [!] "+ dcTarget+" -", str(e))
-                context.log.fail("        * Ensure DNS is resolving properly, and that you can reach LDAPS on this host")
-
-        #Conduct a bind to LDAPS with channel binding supported
-        #but intentionally miscalculated. In the case that and
-        #LDAPS bind has without channel binding supported has occured,
-        #you can determine whether the policy is set to "never" or
-        #if it's set to "when supported" based on the potential
-        #error recieved from the bind attempt.
-        async def run_ldaps_withEPA(inputUser, inputPassword, dcTarget): 
-            target = MSLDAPTarget(ip=connection.host, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
-            stype = asyauthSecret.PASS if not connection.nthash else asyauthSecret.NT
-            secret = connection.password if not connection.nthash else connection.nthash
-            credential = NTLMCredential(secret=secret, username=connection.username, domain=connection.domain, stype=stype)
+        # Conduct a bind to LDAPS and determine if channel
+        # binding is enforced based on the contents of potential
+        # errors returned. This can be determined unauthenticated,
+        # because the error indicating channel binding enforcement
+        # will be returned regardless of a successful LDAPS bind.
+        async def run_ldaps_noEPA(target, credential):
             ldapsClientConn = MSLDAPClientConnection(target, credential)
             _, err = await ldapsClientConn.connect()
             if err is not None:
-                context.log.fail("ERROR while connecting to " + dcTarget + ": " + err)
-            #forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
-            ldapsClientConn.cb_data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                context.log.fail("ERROR while connecting to " + str(connection.domain) + ": " + str(err))
+                exit()
+            _, err = await ldapsClientConn.bind()
+            if "data 80090346" in str(err):
+                return True  # channel binding IS enforced
+            elif "data 52e" in str(err):
+                return False  # channel binding not enforced
+            elif err is None:
+                # LDAPS bind successful
+                # because channel binding is not enforced
+                return False
+
+        # Conduct a bind to LDAPS with channel binding supported
+        # but intentionally miscalculated. In the case that and
+        # LDAPS bind has without channel binding supported has occured,
+        # you can determine whether the policy is set to "never" or
+        # if it's set to "when supported" based on the potential
+        # error recieved from the bind attempt.
+        async def run_ldaps_withEPA(target, credential):
+            ldapsClientConn = MSLDAPClientConnection(target, credential)
+            _, err = await ldapsClientConn.connect()
+            if err is not None:
+                context.log.fail("ERROR while connecting to " + str(connection.domain) + ": " + str(err))
+                exit()
+            # forcing a miscalculation of the "Channel Bindings" av pair in Type 3 NTLM message
+            ldapsClientConn.cb_data = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             _, err = await ldapsClientConn.bind()
             if "data 80090346" in str(err):
                 return True
             elif "data 52e" in str(err):
                 return False
             elif err is not None:
-                context.log.fail("ERROR while connecting to " + dcTarget + ": " + err)
+                context.log.fail("ERROR while connecting to " + str(connection.domain) + ": " + str(err))
             elif err is None:
                 return False
 
-
-        #Domain Controllers do not have a certificate setup for
-        #LDAPS on port 636 by default. If this has not been setup,
-        #the TLS handshake will hang and you will not be able to 
-        #interact with LDAPS. The condition for the certificate
-        #existing as it should is either an error regarding 
-        #the fact that the certificate is self-signed, or
-        #no error at all. Any other "successful" edge cases
-        #not yet accounted for.
+        # Domain Controllers do not have a certificate setup for
+        # LDAPS on port 636 by default. If this has not been setup,
+        # the TLS handshake will hang and you will not be able to
+        # interact with LDAPS. The condition for the certificate
+        # existing as it should is either an error regarding
+        # the fact that the certificate is self-signed, or
+        # no error at all. Any other "successful" edge cases
+        # not yet accounted for.
         def DoesLdapsCompleteHandshake(dcIp):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
-            ssl_sock = ssl.wrap_socket(s,cert_reqs=ssl.CERT_OPTIONAL,suppress_ragged_eofs=False,do_handshake_on_connect=False)
+            ssl_sock = ssl.wrap_socket(
+                s,
+                cert_reqs=ssl.CERT_OPTIONAL,
+                suppress_ragged_eofs=False,
+                do_handshake_on_connect=False,
+            )
             ssl_sock.connect((dcIp, 636))
             try:
                 ssl_sock.do_handshake()
@@ -126,47 +113,76 @@ class CMEModule:
                     ssl_sock.close()
                     return False
 
-
-        #Conduct and LDAP bind and determine if server signing
-        #requirements are enforced based on potential errors
-        #during the bind attempt. 
-        def run_ldap(inputUser, inputPassword, dcTarget):
-            ldapServer = ldap3.Server(
-                dcTarget, use_ssl=False, port=389, get_info=ldap3.ALL)
-            ldapConn = ldap3.Connection(
-                ldapServer, user=inputUser, password=inputPassword, authentication=ldap3.NTLM)
-            if not ldapConn.bind():
-                if "stronger" in str(ldapConn.result):
-                    return True #because LDAP server signing requirements ARE enforced
-                elif "data 52e" or "data 532" in str(ldapConn.result):
-                    context.log.debug("Not connected")
-                    return 
-                else:
-                    context.log.debug("UNEXPECTED ERROR: " + str(ldapConn.result))
+        # Conduct and LDAP bind and determine if server signing
+        # requirements are enforced based on potential errors
+        # during the bind attempt.
+        async def run_ldap(target, credential):
+            ldapsClientConn = MSLDAPClientConnection(target, credential)
+            _, err = await ldapsClientConn.connect()
+            if err is None:
+                _, err = await ldapsClientConn.bind()
+                if "stronger" in str(err):
+                    return True  # because LDAP server signing requirements ARE enforced
+                elif ("data 52e" or "data 532") in str(err):
+                    context.log.fail("Not connected... exiting")
+                    exit()
+                elif err is None:
+                    return False
             else:
-                #LDAPS bind successful
-                return False #because LDAP server signing requirements are not enforced
-                exit()
+                context.log.fail(str(err))
 
-        #Run trough all our code blocks to determine LDAP signing and channel binding settings.
+        # Run trough all our code blocks to determine LDAP signing and channel binding settings.   
+        stype = asyauthSecret.PASS if not connection.nthash else asyauthSecret.NT
+        secret = connection.password if not connection.nthash else connection.nthash
+        if not connection.kerberos:
+            credential = NTLMCredential(
+                secret=secret,
+                username=connection.username,
+                domain=connection.domain,
+                stype=stype,
+            )
+        else:
+            kerberos_target = UniTarget(
+                connection.hostname + '.' + connection.domain,
+                88,
+                UniProto.CLIENT_TCP,
+                proxies=None,
+                dns=None,
+                dc_ip=connection.domain,
+                domain=connection.domain
+            )
+            credential = KerberosCredential(
+                target=kerberos_target,
+                secret=secret,
+                username=connection.username,
+                domain=connection.domain,
+                stype=stype,
+            )
 
-        ldapIsProtected = run_ldap(inputUser, inputPassword, dcTarget)
-        
+        target = MSLDAPTarget(connection.host, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
+        ldapIsProtected = asyncio.run(run_ldap(target, credential))
+
         if ldapIsProtected == False:
             context.log.highlight("LDAP Signing NOT Enforced!")
         elif ldapIsProtected == True:
             context.log.fail("LDAP Signing IS Enforced")
-        if DoesLdapsCompleteHandshake(dcTarget) == True:
-            ldapsChannelBindingAlwaysCheck = run_ldaps_noEPA(inputUser, inputPassword, dcTarget)
-            ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(inputUser, inputPassword, dcTarget))
+        else:
+            context.log.fail("Connection fail, exiting now")
+            exit()
+
+        if DoesLdapsCompleteHandshake(connection.domain) == True:
+            target = MSLDAPTarget(connection.host, 636, UniProto.CLIENT_SSL_TCP, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
+            ldapsChannelBindingAlwaysCheck = asyncio.run(run_ldaps_noEPA(target, credential))
+            target = MSLDAPTarget(connection.host, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
+            ldapsChannelBindingWhenSupportedCheck = asyncio.run(run_ldaps_withEPA(target, credential))
             if ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == True:
-                context.log.highlight('LDAPS Channel Binding is set to \"When Supported\"')
+                context.log.highlight('LDAPS Channel Binding is set to "When Supported"')
             elif ldapsChannelBindingAlwaysCheck == False and ldapsChannelBindingWhenSupportedCheck == False:
-                context.log.highlight('LDAPS Channel Binding is set to \"NEVER\"')
+                context.log.highlight('LDAPS Channel Binding is set to "NEVER"')
             elif ldapsChannelBindingAlwaysCheck == True:
-                context.log.fail('LDAPS Channel Binding is set to \"Required\"')
+                context.log.fail('LDAPS Channel Binding is set to "Required"')
             else:
                 context.log.fail("\nSomething went wrong...")
-                exit()          
+                exit()
         else:
-            context.log.fail(dcTarget + " - cannot complete TLS handshake, cert likely not configured")
+            context.log.fail(connection.domain + " - cannot complete TLS handshake, cert likely not configured")
