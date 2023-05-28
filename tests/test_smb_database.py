@@ -17,11 +17,7 @@ from sqlalchemy.dialects.sqlite import Insert
 @pytest.fixture(scope="session")
 def db_engine():
     db_path = os.path.join(WS_PATH, "test/smb.db")
-    db_engine = create_engine(
-        f"sqlite:///{db_path}",
-        isolation_level="AUTOCOMMIT",
-        future=True
-    )
+    db_engine = create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
     yield db_engine
     db_engine.dispose()
 
@@ -54,13 +50,8 @@ def db(db_setup):
 
 @pytest.fixture(scope="session")
 def sess(db_engine):
-    session_factory = sessionmaker(
-        bind=db_engine,
-        expire_on_commit=True
-    )
-    Session = scoped_session(
-        session_factory
-    )
+    session_factory = sessionmaker(bind=db_engine, expire_on_commit=True)
+    Session = scoped_session(session_factory)
     sess = Session()
     yield sess
     sess.close()
@@ -77,7 +68,7 @@ def test_add_host(db):
         True,
         True,
         False,
-        False
+        False,
     )
     inserted_host = db.get_hosts()
     assert len(inserted_host) == 1
@@ -105,7 +96,7 @@ def test_update_host(db, sess):
         "spooler": True,
         "zerologon": False,
         "petitpotam": False,
-        "dc": False
+        "dc": False,
     }
     iq = Insert(db.HostsTable)
     sess.execute(iq, [host])
@@ -119,7 +110,7 @@ def test_update_host(db, sess):
         False,
         False,
         False,
-        False
+        False,
     )
     inserted_host = db.get_hosts()
     assert len(inserted_host) == 1

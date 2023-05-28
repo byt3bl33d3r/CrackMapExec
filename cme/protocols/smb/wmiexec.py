@@ -12,42 +12,67 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class WMIEXEC:
-    def __init__(self, target, share_name, username, password, domain, smbconnection, doKerberos=False, aesKey=None, kdcHost=None, hashes=None, share=None):
+    def __init__(
+        self,
+        target,
+        share_name,
+        username,
+        password,
+        domain,
+        smbconnection,
+        doKerberos=False,
+        aesKey=None,
+        kdcHost=None,
+        hashes=None,
+        share=None,
+        logger=cme_logger
+    ):
         self.__target = target
         self.__username = username
         self.__password = password
         self.__domain = domain
-        self.__lmhash = ''
-        self.__nthash = ''
+        self.__lmhash = ""
+        self.__nthash = ""
         self.__share = share
         self.__smbconnection = smbconnection
         self.__output = None
-        self.__outputBuffer = b''
+        self.__outputBuffer = b""
         self.__share_name = share_name
-        self.__shell = 'cmd.exe /Q /c '
-        self.__pwd = 'C:\\'
+        self.__shell = "cmd.exe /Q /c "
+        self.__pwd = "C:\\"
         self.__aesKey = aesKey
         self.__kdcHost = kdcHost
         self.__doKerberos = doKerberos
         self.__retOutput = True
-        self.logger = cme_logger
+        self.logger = logger
 
         if hashes is not None:
-        #This checks to see if we didn't provide the LM Hash
-            if hashes.find(':') != -1:
-                self.__lmhash, self.__nthash = hashes.split(':')
+            # This checks to see if we didn't provide the LM Hash
+            if hashes.find(":") != -1:
+                self.__lmhash, self.__nthash = hashes.split(":")
             else:
                 self.__nthash = hashes
 
         if self.__password is None:
-            self.__password = ''
-        self.__dcom = DCOMConnection(self.__target, self.__username, self.__password, self.__domain, self.__lmhash, self.__nthash, self.__aesKey, oxidResolver=True, doKerberos=self.__doKerberos, kdcHost=self.__kdcHost)
-        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login,wmi.IID_IWbemLevel1Login)
+            self.__password = ""
+        self.__dcom = DCOMConnection(
+            self.__target,
+            self.__username,
+            self.__password,
+            self.__domain,
+            self.__lmhash,
+            self.__nthash,
+            self.__aesKey,
+            oxidResolver=True,
+            doKerberos=self.__doKerberos,
+            kdcHost=self.__kdcHost,
+        )
+        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
-        iWbemServices= iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
+        iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()
 
-        self.__win32Process,_ = iWbemServices.GetObject('Win32_Process')
+        self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
 
     def execute(self, command, output=False):
         self.__retOutput = output
@@ -63,14 +88,14 @@ class WMIEXEC:
         return self.__outputBuffer
 
     def cd(self, s):
-        self.execute_remote('cd ' + s)
-        if len(self.__outputBuffer.strip('\r\n')) > 0:
-            self.__outputBuffer = b''
+        self.execute_remote("cd " + s)
+        if len(self.__outputBuffer.strip("\r\n")) > 0:
+            self.__outputBuffer = b""
         else:
             self.__pwd = ntpath.normpath(ntpath.join(self.__pwd, s))
-            self.execute_remote('cd ')
-            self.__pwd = self.__outputBuffer.strip('\r\n')
-            self.__outputBuffer = b''
+            self.execute_remote("cd ")
+            self.__pwd = self.__outputBuffer.strip("\r\n")
+            self.__outputBuffer = b""
 
     def output_callback(self, data):
         self.__outputBuffer += data
@@ -118,7 +143,7 @@ class WMIEXEC:
 
     def get_output_remote(self):
         if self.__retOutput is False:
-            self.__outputBuffer = ''
+            self.__outputBuffer = ""
             return
 
         while True:
@@ -126,12 +151,12 @@ class WMIEXEC:
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                if str(e).find("STATUS_SHARING_VIOLATION") >=0:
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
                     # Output not finished, let's wait
                     sleep(2)
                     pass
                 else:
-                    #print str(e)
+                    # print str(e)
                     pass
 
         self.__smbconnection.deleteFile(self.__share, self.__output)

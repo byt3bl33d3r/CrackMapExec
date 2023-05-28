@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from sqlalchemy import MetaData, Table
-from sqlalchemy.exc import IllegalStateChangeError, NoInspectionAvailable, NoSuchTableError
+from sqlalchemy.exc import (
+    IllegalStateChangeError,
+    NoInspectionAvailable,
+    NoSuchTableError,
+)
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SAWarning
 import warnings
@@ -14,7 +18,6 @@ warnings.filterwarnings("ignore", category=SAWarning)
 
 
 class database:
-
     def __init__(self, db_engine):
         self.HostsTable = None
         self.CredentialsTable = None
@@ -22,10 +25,7 @@ class database:
         self.db_engine = db_engine
         self.metadata = MetaData()
         self.reflect_tables()
-        session_factory = sessionmaker(
-            bind=self.db_engine,
-            expire_on_commit=True
-        )
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
 
         Session = scoped_session(session_factory)
         # this is still named "conn" when it is the session object; TODO: rename
@@ -33,20 +33,24 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "credentials" (
+        db_conn.execute(
+            """CREATE TABLE "credentials" (
             "id" integer PRIMARY KEY,
             "username" text,
             "password" text,
             "pkey" text
-            )''')
+            )"""
+        )
 
-        db_conn.execute('''CREATE TABLE "hosts" (
+        db_conn.execute(
+            """CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
             "port" integer,
             "server_banner" text
-            )''')
+            )"""
+        )
 
     def reflect_tables(self):
         with self.db_engine.connect() as conn:
@@ -54,12 +58,7 @@ class database:
                 self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
                 self.CredentialsTable = Table("credentials", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print(
-                    "[-] Error reflecting tables - this means there is a DB schema mismatch \n"
-                    "[-] This is probably because a newer version of CME is being ran on an old DB schema\n"
-                    "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n"
-                    "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema"
-                )
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 exit()
 
     def shutdown_db(self):

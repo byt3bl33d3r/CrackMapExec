@@ -7,7 +7,7 @@ from cme.cmedb import DatabaseNavigator, print_table, print_help
 
 class navigator(DatabaseNavigator):
     def display_creds(self, creds):
-        data = [['CredID', 'Admin On', 'CredType', 'Domain', 'UserName', 'Password']]
+        data = [["CredID", "Admin On", "CredType", "Domain", "UserName", "Password"]]
 
         for cred in creds:
             cred_id = cred[0]
@@ -18,11 +18,30 @@ class navigator(DatabaseNavigator):
             # pillaged_from = cred[5]
 
             links = self.db.get_admin_relations(user_id=cred_id)
-            data.append([cred_id, str(len(links)) + ' Host(s)', credtype, domain, username, password])
-        print_table(data, title='Credentials')
+            data.append(
+                [
+                    cred_id,
+                    str(len(links)) + " Host(s)",
+                    credtype,
+                    domain,
+                    username,
+                    password,
+                ]
+            )
+        print_table(data, title="Credentials")
 
     def display_groups(self, groups):
-        data = [['GroupID', 'Domain', 'Name', 'RID', 'Enumerated Members', 'AD Members', 'Last Query Time']]
+        data = [
+            [
+                "GroupID",
+                "Domain",
+                "Name",
+                "RID",
+                "Enumerated Members",
+                "AD Members",
+                "Last Query Time",
+            ]
+        ]
 
         for group in groups:
             group_id = group[0]
@@ -33,24 +52,26 @@ class navigator(DatabaseNavigator):
             ad_members = group[4]
             last_query_time = group[5]
             data.append([group_id, domain, name, rid, members, ad_members, last_query_time])
-        print_table(data, title='Groups')
+        print_table(data, title="Groups")
 
     # pull/545
     def display_hosts(self, hosts):
-        data = [[
-            'HostID',
-            'Admins',
-            'IP',
-            'Hostname',
-            'Domain',
-            'OS',
-            'SMBv1',
-            'Signing',
-            'Spooler',
-            'Zerologon',
-            'PetitPotam'
-        ]]
-    
+        data = [
+            [
+                "HostID",
+                "Admins",
+                "IP",
+                "Hostname",
+                "Domain",
+                "OS",
+                "SMBv1",
+                "Signing",
+                "Spooler",
+                "Zerologon",
+                "PetitPotam",
+            ]
+        ]
+
         for host in hosts:
             host_id = host[0]
             ip = host[1]
@@ -65,33 +86,35 @@ class navigator(DatabaseNavigator):
                 smbv1 = host[6]
                 signing = host[7]
             except IndexError:
-                smbv1 = ''
-                signing = ''
+                smbv1 = ""
+                signing = ""
             try:
                 spooler = host[8]
                 zerologon = host[9]
                 petitpotam = host[10]
             except IndexError:
-                spooler = ''
-                zerologon = ''
-                petitpotam = ''
+                spooler = ""
+                zerologon = ""
+                petitpotam = ""
 
             links = self.db.get_admin_relations(host_id=host_id)
-            data.append([
-                host_id,
-                str(len(links)) + ' Cred(s)',
-                ip,
-                hostname,
-                domain,
-                os,
-                smbv1,
-                signing,
-                spooler,
-                zerologon,
-                petitpotam
-            ])
-        print_table(data, title='Hosts')
-    
+            data.append(
+                [
+                    host_id,
+                    str(len(links)) + " Cred(s)",
+                    ip,
+                    hostname,
+                    domain,
+                    os,
+                    smbv1,
+                    signing,
+                    spooler,
+                    zerologon,
+                    petitpotam,
+                ]
+            )
+        print_table(data, title="Hosts")
+
     def display_shares(self, shares):
         data = [["ShareID", "host", "Name", "Remark", "Read Access", "Write Access"]]
 
@@ -101,24 +124,18 @@ class navigator(DatabaseNavigator):
             name = share[3]
             remark = share[4]
 
-            users_r_access = self.db.get_users_with_share_access(
-                host_id=host_id,
-                share_name=name,
-                permissions='r'
+            users_r_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="r")
+            users_w_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="w")
+            data.append(
+                [
+                    share_id,
+                    host_id,
+                    name,
+                    remark,
+                    f"{len(users_r_access)} User(s)",
+                    f"{len(users_w_access)} Users",
+                ]
             )
-            users_w_access = self.db.get_users_with_share_access(
-                host_id=host_id,
-                share_name=name,
-                permissions='w'
-            )
-            data.append([
-                share_id,
-                host_id,
-                name,
-                remark,
-                f"{len(users_r_access)} User(s)",
-                f"{len(users_w_access)} Users"
-            ])
         print_table(data)
 
     def do_shares(self, line):
@@ -142,62 +159,38 @@ class navigator(DatabaseNavigator):
                 name = share[3]
                 remark = share[4]
 
-                users_r_access = self.db.get_users_with_share_access(
-                    host_id=host_id,
-                    share_name=name,
-                    permissions='r'
-                )
-                users_w_access = self.db.get_users_with_share_access(
-                    host_id=host_id,
-                    share_name=name,
-                    permissions='w'
-                )
+                users_r_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="r")
+                users_w_access = self.db.get_users_with_share_access(host_id=host_id, share_name=name, permissions="w")
 
                 data = [["ShareID", "Name", "Remark"], [share_id, name, remark]]
-                print_table(data, title='Share')
+                print_table(data, title="Share")
                 host = self.db.get_hosts(filter_term=host_id)[0]
-                data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS', 'DC']]
+                data = [
+                    ["HostID", "IP", "Hostname", "Domain", "OS", "DC"],
+                    [host[0], host[1], host[2], host[3], host[4], host[5]],
+                ]
 
-                host_id = host[0]
-                ip = host[1]
-                hostname = host[2]
-                domain = host[3]
-                os = host[4]
-                dc = host[5]
-
-                data.append([host_id, ip, hostname, domain, os, dc])
-                print_table(data, title='Share Location')
+                print_table(data, title="Share Location")
 
                 if users_r_access:
-                    data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
+                    data = [["CredID", "CredType", "Domain", "UserName", "Password"]]
                     for user in users_r_access:
                         userid = user[0]
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            data.append([cred_id, credtype, domain, username, password])
-                    print_table(data, title='Users(s) with Read Access')
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
+                    print_table(data, title="Users(s) with Read Access")
 
                 if users_w_access:
-                    data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
+                    data = [["CredID", "CredType", "Domain", "UserName", "Password"]]
                     for user in users_w_access:
                         userid = user[0]
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-
-                            data.append([cred_id, credtype, domain, username, password])
-                    print_table(data, title='Users(s) with Write Access')
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
+                    print_table(data, title="Users(s) with Write Access")
 
     def help_shares(self):
         help_string = """
@@ -219,20 +212,41 @@ class navigator(DatabaseNavigator):
             if len(groups) > 1:
                 self.display_groups(groups)
             elif len(groups) == 1:
-                data = [['GroupID', 'Domain', 'Name', 'RID', 'Enumerated Members', 'AD Members', 'Last Query Time']]
+                data = [
+                    [
+                        "GroupID",
+                        "Domain",
+                        "Name",
+                        "RID",
+                        "Enumerated Members",
+                        "AD Members",
+                        "Last Query Time",
+                    ]
+                ]
 
                 for group in groups:
-                    group_id = group[0]
-                    domain = group[1]
-                    name = group[2]
-                    rid = group[3]
-                    members = len(self.db.get_group_relations(group_id=group_id))
-                    ad_members = group[4]
-                    last_query_time = group[5]
-
-                    data.append([group_id, domain, name, rid, members, ad_members, last_query_time])
-                print_table(data, title='Group')
-                data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
+                    data.append(
+                        [
+                            group[0],
+                            group[1],
+                            group[2],
+                            group[3],
+                            len(self.db.get_group_relations(group_id=group[0])),
+                            group[4],
+                            group[5],
+                        ]
+                    )
+                print_table(data, title="Group")
+                data = [
+                    [
+                        "CredID",
+                        "CredType",
+                        "Pillaged From HostID",
+                        "Domain",
+                        "UserName",
+                        "Password",
+                    ]
+                ]
 
                 for group in groups:
                     members = self.db.get_group_relations(group_id=group[0])
@@ -242,15 +256,8 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=userid)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            pillaged_from = cred[5]
-
-                            data.append([cred_id, credtype, pillaged_from, domain, username, password])
-                print_table(data, title='Member(s)')
+                            data.append([cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]])
+                print_table(data, title="Member(s)")
 
     def help_groups(self):
         help_string = """
@@ -272,19 +279,21 @@ class navigator(DatabaseNavigator):
             if len(hosts) > 1:
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
-                data = [[
-                    'HostID',
-                    'IP',
-                    'Hostname',
-                    'Domain',
-                    'OS',
-                    'DC',
-                    'SMBv1',
-                    'Signing',
-                    'Spooler',
-                    'Zerologon',
-                    'PetitPotam'
-                ]]
+                data = [
+                    [
+                        "HostID",
+                        "IP",
+                        "Hostname",
+                        "Domain",
+                        "OS",
+                        "DC",
+                        "SMBv1",
+                        "Signing",
+                        "Spooler",
+                        "Zerologon",
+                        "PetitPotam",
+                    ]
+                ]
                 host_id_list = []
 
                 for host in hosts:
@@ -301,38 +310,40 @@ class navigator(DatabaseNavigator):
                     try:
                         dc = host[5]
                     except IndexError:
-                        dc = ''
+                        dc = ""
                     try:
                         smbv1 = host[6]
                         signing = host[7]
                     except IndexError:
-                        smbv1 = ''
-                        signing = ''
+                        smbv1 = ""
+                        signing = ""
                     try:
                         spooler = host[8]
                         zerologon = host[9]
                         petitpotam = host[10]
                     except IndexError:
-                        spooler = ''
-                        zerologon = ''
-                        petitpotam = ''
+                        spooler = ""
+                        zerologon = ""
+                        petitpotam = ""
 
-                    data.append([
-                        host_id,
-                        ip,
-                        hostname,
-                        domain,
-                        os,
-                        dc,
-                        smbv1,
-                        signing,
-                        spooler,
-                        zerologon,
-                        petitpotam,
-                    ])
-                print_table(data, title='Host')
+                    data.append(
+                        [
+                            host_id,
+                            ip,
+                            hostname,
+                            domain,
+                            os,
+                            dc,
+                            smbv1,
+                            signing,
+                            spooler,
+                            zerologon,
+                            petitpotam,
+                        ]
+                    )
+                print_table(data, title="Host")
 
-                data = [['CredID', 'CredType', 'Domain', 'UserName', 'Password']]
+                data = [["CredID", "CredType", "Domain", "UserName", "Password"]]
                 for host_id in host_id_list:
                     links = self.db.get_admin_relations(host_id=host_id)
 
@@ -341,14 +352,9 @@ class navigator(DatabaseNavigator):
                         creds = self.db.get_credentials(filter_term=cred_id)
 
                         for cred in creds:
-                            cred_id = cred[0]
-                            domain = cred[1]
-                            username = cred[2]
-                            password = cred[3]
-                            credtype = cred[4]
-                            # pillaged_from = cred[5]
-                            data.append([cred_id, credtype, domain, username, password])
-                print_table(data, title='Credential(s) with Admin Access')
+                            data.append([cred[0], cred[4], cred[1], cred[2], cred[3]])
+
+                print_table(data, title="Credential(s) with Admin Access")
 
     def help_hosts(self):
         help_string = """
@@ -374,46 +380,134 @@ class navigator(DatabaseNavigator):
 
         if filter_term == "":
             secrets = self.db.get_dpapi_secrets()
-            secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-            print_table(secrets, title='DPAPI Secrets')
+            secrets.insert(
+                0,
+                [
+                    "ID",
+                    "Host",
+                    "DPAPI Type",
+                    "Windows User",
+                    "Username",
+                    "Password",
+                    "URL",
+                ],
+            )
+            print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "browser":
             secrets = self.db.get_dpapi_secrets(dpapi_type="MSEDGE")
             secrets += self.db.get_dpapi_secrets(dpapi_type="GOOGLE CHROME")
             secrets += self.db.get_dpapi_secrets(dpapi_type="IEX")
             secrets += self.db.get_dpapi_secrets(dpapi_type="FIREFOX")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "chrome":
             secrets = self.db.get_dpapi_secrets(dpapi_type="GOOGLE CHROME")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "msedge":
             secrets = self.db.get_dpapi_secrets(dpapi_type="MSEDGE")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "credentials":
             secrets = self.db.get_dpapi_secrets(dpapi_type="CREDENTIAL")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "iex":
             secrets = self.db.get_dpapi_secrets(dpapi_type="IEX")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         elif filter_term.split()[0].lower() == "firefox":
             secrets = self.db.get_dpapi_secrets(dpapi_type="FIREFOX")
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
         else:
             secrets = self.db.get_dpapi_secrets(filter_term=filter_term)
             if len(secrets) > 0:
-                secrets.insert(0, ["ID", "Host", "DPAPI Type", "Windows User", "Username", "Password", "URL"])
-                print_table(secrets, title='DPAPI Secrets')
+                secrets.insert(
+                    0,
+                    [
+                        "ID",
+                        "Host",
+                        "DPAPI Type",
+                        "Windows User",
+                        "Username",
+                        "Password",
+                        "URL",
+                    ],
+                )
+                print_table(secrets, title="DPAPI Secrets")
 
     def help_dpapi(self):
         help_string = """
@@ -470,22 +564,25 @@ class navigator(DatabaseNavigator):
             if len(creds) != 1:
                 self.display_creds(creds)
             elif len(creds) == 1:
-                data = [['CredID', 'CredType', 'Pillaged From HostID', 'Domain', 'UserName', 'Password']]
+                data = [
+                    [
+                        "CredID",
+                        "CredType",
+                        "Pillaged From HostID",
+                        "Domain",
+                        "UserName",
+                        "Password",
+                    ]
+                ]
                 cred_id_list = []
 
                 for cred in creds:
-                    cred_id = cred[0]
-                    cred_id_list.append(cred_id)
-                    domain = cred[1]
-                    username = cred[2]
-                    password = cred[3]
-                    credtype = cred[4]
-                    pillaged_from = cred[5]
+                    cred_id_list.append(cred[0])
+                    data.append([cred[0], cred[4], cred[5], cred[1], cred[2], cred[3]])
 
-                    data.append([cred_id, credtype, pillaged_from, domain, username, password])
-                print_table(data, title='Credential(s)')
+                print_table(data, title="Credential(s)")
 
-                data = [['GroupID', 'Domain', 'Name']]
+                data = [["GroupID", "Domain", "Name"]]
                 for cred_id in cred_id_list:
                     links = self.db.get_group_relations(user_id=cred_id)
 
@@ -499,9 +596,9 @@ class navigator(DatabaseNavigator):
                             name = group[2]
                             data.append([group_id, domain, name])
 
-                print_table(data, title='Member of Group(s)')
+                print_table(data, title="Member of Group(s)")
 
-                data = [['HostID', 'IP', 'Hostname', 'Domain', 'OS']]
+                data = [["HostID", "IP", "Hostname", "Domain", "OS"]]
                 for cred_id in cred_id_list:
                     links = self.db.get_admin_relations(user_id=cred_id)
 
@@ -510,14 +607,9 @@ class navigator(DatabaseNavigator):
                         hosts = self.db.get_hosts(host_id)
 
                         for host in hosts:
-                            host_id = host[0]
-                            ip = host[1]
-                            hostname = host[2]
-                            domain = host[3]
-                            os = host[4]
+                            data.append([host[0], host[1], host[2], host[3], host[4]])
 
-                            data.append([host_id, ip, hostname, domain, os])
-                print_table(data, title='Admin Access to Host(s)')
+                print_table(data, title="Admin Access to Host(s)")
 
     def help_creds(self):
         help_string = """
@@ -540,7 +632,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        if input("This will destroy all data in the current database, are you SURE you want to run this? (y/n): ") == "y":
+        if input("This will destroy all data in the current database, are you SURE you" " want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):
@@ -555,9 +647,9 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'hosts' commands.
         """
-        commands = ["add", "remove", "dc"]
+        commands = ("add", "remove", "dc")
 
-        mline = line.partition(' ')[2]
+        mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
@@ -565,8 +657,8 @@ class navigator(DatabaseNavigator):
         """
         Tab-complete 'creds' commands.
         """
-        commands = ["add", "remove", "hash", "plaintext"]
+        commands = ("add", "remove", "hash", "plaintext")
 
-        mline = line.partition(' ')[2]
+        mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]

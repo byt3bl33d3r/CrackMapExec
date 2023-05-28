@@ -13,7 +13,7 @@ class ftp(connection):
                 "protocol": "FTP",
                 "host": self.host,
                 "port": self.args.port,
-                "hostname": self.hostname
+                "hostname": self.hostname,
             }
         )
 
@@ -55,15 +55,11 @@ class ftp(connection):
         try:
             self.conn.login(user=username, passwd=password)
 
-            self.logger.success(
-                f"{username}:{process_secret(password)}"
-            )
+            self.logger.success(f"{username}:{process_secret(password)}")
 
             self.conn.close()
             return True
         except Exception as e:
-            self.logger.fail(
-                f'{username}:{process_secret(password)} (Response:{e})'
-            )
+            self.logger.fail(f"{username}:{process_secret(password)} (Response:{e})")
             self.conn.close()
             return False

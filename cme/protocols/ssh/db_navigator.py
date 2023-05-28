@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from cme.helpers.misc import validate_ntlm
 from cme.cmedb import DatabaseNavigator, print_table, print_help
 
 
 class navigator(DatabaseNavigator):
     def display_creds(self, creds):
-        data = [["CredID", "Admin On", "Total Logins", "Total Shells", "Username", "Password", "CredType"]]
+        data = [
+            [
+                "CredID",
+                "Admin On",
+                "Total Logins",
+                "Total Shells",
+                "Username",
+                "Password",
+                "CredType",
+            ]
+        ]
 
         for cred in creds:
             cred_id = cred[0]
@@ -19,28 +28,22 @@ class navigator(DatabaseNavigator):
             total_users = self.db.get_loggedin_relations(cred_id=cred_id)
             total_shell = total_users = self.db.get_loggedin_relations(cred_id=cred_id, shell=True)
 
-            data.append([
-                cred_id,
-                str(len(admin_links)) + " Host(s)",
-                str(len(total_users)) + " Host(s)",
-                str(len(total_shell)) + " Shells(s)",
-                username,
-                password,
-                credtype
-            ])
+            data.append(
+                [
+                    cred_id,
+                    str(len(admin_links)) + " Host(s)",
+                    str(len(total_users)) + " Host(s)",
+                    str(len(total_shell)) + " Shells(s)",
+                    username,
+                    password,
+                    credtype,
+                ]
+            )
         print_table(data, title="Credentials")
 
     # pull/545
     def display_hosts(self, hosts):
-        data = [[
-            "HostID",
-            "Admins",
-            "Total Users",
-            "Host",
-            "Port",
-            'Banner',
-            'OS'
-        ]]
+        data = [["HostID", "Admins", "Total Users", "Host", "Port", "Banner", "OS"]]
 
         for h in hosts:
             host_id = h[0]
@@ -59,7 +62,7 @@ class navigator(DatabaseNavigator):
                     host,
                     port,
                     banner,
-                    os
+                    os,
                 ]
             )
         print_table(data, title="Hosts")
@@ -76,13 +79,7 @@ class navigator(DatabaseNavigator):
             if len(hosts) > 1:
                 self.display_hosts(hosts)
             elif len(hosts) == 1:
-                data = [[
-                    "HostID",
-                    "Host",
-                    "Port",
-                    "Banner",
-                    "OS"
-                ]]
+                data = [["HostID", "Host", "Port", "Banner", "OS"]]
                 host_id_list = []
 
                 for h in hosts:
@@ -93,15 +90,7 @@ class navigator(DatabaseNavigator):
                     banner = h[3]
                     os = h[4]
 
-                    data.append(
-                        [
-                            host_id,
-                            host,
-                            port,
-                            banner,
-                            os
-                        ]
-                    )
+                    data.append([host_id, host, port, banner, os])
                 print_table(data, title="Host")
 
                 admin_access_data = [["CredID", "CredType", "UserName", "Password", "Shell"]]
@@ -141,7 +130,10 @@ class navigator(DatabaseNavigator):
                                 nonadmin_access_data.append(cred_data)
 
                 if len(nonadmin_access_data) > 1:
-                    print_table(nonadmin_access_data, title="Credential(s) with Non Admin Access")
+                    print_table(
+                        nonadmin_access_data,
+                        title="Credential(s) with Non Admin Access",
+                    )
                 if len(admin_access_data) > 1:
                     print_table(admin_access_data, title="Credential(s) with Admin Access")
 
@@ -204,7 +196,7 @@ class navigator(DatabaseNavigator):
                     credtype = cred[3]
 
                     cred_data.append([cred_id, username, password, credtype])
-                print_table(cred_data, title='Credential(s)')
+                print_table(cred_data, title="Credential(s)")
 
                 admin_access_data = [["HostID", "Host", "Port", "Banner", "OS", "Shell"]]
                 nonadmin_access_data = [["HostID", "Host", "Port", "Banner", "OS", "Shell"]]
@@ -267,11 +259,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def display_keys(self, keys):
-        data = [[
-            "Key ID",
-            "Cred ID",
-            "Key Data"
-        ]]
+        data = [["Key ID", "Cred ID", "Key Data"]]
         for key in keys:
             data.append([key[0], key[1], key[2]])
         print_table(data, "Keys")
@@ -299,9 +287,7 @@ class navigator(DatabaseNavigator):
         print_help(help_string)
 
     def do_clear_database(self, line):
-        if input(
-                "This will destroy all data in the current database, are you SURE you want to run this? (y/n): "
-                ) == "y":
+        if input("This will destroy all data in the current database, are you SURE you" " want to run this? (y/n): ") == "y":
             self.db.clear_database()
 
     def help_clear_database(self):
@@ -319,7 +305,7 @@ class navigator(DatabaseNavigator):
         """
         commands = ["add", "remove"]
 
-        mline = line.partition(' ')[2]
+        mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]
 
@@ -329,6 +315,6 @@ class navigator(DatabaseNavigator):
         """
         commands = ["add", "remove", "key", "plaintext"]
 
-        mline = line.partition(' ')[2]
+        mline = line.partition(" ")[2]
         offs = len(mline) - len(text)
         return [s[offs:] for s in commands if s.startswith(mline)]

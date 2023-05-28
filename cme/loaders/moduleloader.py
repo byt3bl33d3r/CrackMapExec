@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import importlib
-import os
+from os import listdir
+from os.path import dirname
+from os.path import join as path_join
 import sys
 
 import cme
@@ -76,14 +78,14 @@ class ModuleLoader:
             self.logger.debug(f"Protocol: {self.args.protocol}")
             if self.args.protocol in module.supported_protocols:
                 try:
-                    module_logger = CMEAdapter(extra={'module_name': module.name.upper()})
+                    module_logger = CMEAdapter(extra={"module_name": module.name.upper()})
                 except Exception as e:
                     self.logger.fail(f"Error loading CMEAdaptor for module {module.name.upper()}: {e}")
                 context = Context(self.db, module_logger, self.args)
                 module_options = {}
 
                 for option in self.args.module_options:
-                    key, value = option.split('=', 1)
+                    key, value = option.split("=", 1)
                     module_options[str(key).upper()] = value
 
                 module.options(context, module_options)
@@ -101,15 +103,14 @@ class ModuleLoader:
             module_spec = spec.loader.load_module().CMEModule
 
             module = {
-                f"{module_spec.name.lower()}":
-                    {
-                        "path": module_path,
-                        "description": module_spec.description,
-                        "options": module_spec.options.__doc__,
-                        "supported_protocols": module_spec.supported_protocols,
-                        "opsec_safe": module_spec.opsec_safe,
-                        "multiple_hosts": module_spec.multiple_hosts,
-                    }
+                f"{module_spec.name.lower()}": {
+                    "path": module_path,
+                    "description": module_spec.description,
+                    "options": module_spec.options.__doc__,
+                    "supported_protocols": module_spec.supported_protocols,
+                    "opsec_safe": module_spec.opsec_safe,
+                    "multiple_hosts": module_spec.multiple_hosts,
+                }
             }
             if self.module_is_sane(module_spec, module_path):
                 return module
@@ -122,12 +123,15 @@ class ModuleLoader:
         List modules without initializing them
         """
         modules = {}
-        modules_paths = [os.path.join(os.path.dirname(cme.__file__), 'modules'), os.path.join(CME_PATH, 'modules')]
+        modules_paths = [
+            path_join(dirname(cme.__file__), "modules"),
+            path_join(CME_PATH, "modules"),
+        ]
 
         for path in modules_paths:
-            for module in os.listdir(path):
-                if module[-3:] == '.py' and module != 'example_module.py':
-                    module_path = os.path.join(path, module)
+            for module in listdir(path):
+                if module[-3:] == ".py" and module != "example_module.py":
+                    module_path = path_join(path, module)
                     module_data = self.get_module_info(module_path)
                     modules.update(module_data)
         return modules

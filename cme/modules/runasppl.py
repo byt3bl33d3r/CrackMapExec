@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 class CMEModule:
     name = "runasppl"
     description = "Check if the registry value RunAsPPL is set or not"

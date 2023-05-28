@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from shiv.bootstrap import Environment
+
 # from distutils.ccompiler import new_compiler
 from shiv.builder import create_archive
 from shiv.cli import __version__ as VERSION
@@ -28,23 +29,30 @@ def build_cme():
         os.mkdir("build")
         os.mkdir("bin")
         shutil.copytree("cme", "build/cme")
-        
+
     except Exception as e:
         print(e)
         return
 
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt" ,"-t", "build"],
-        check=True
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            "requirements.txt",
+            "-t",
+            "build",
+        ],
+        check=True,
     )
 
-    #[shutil.rmtree(p) for p in Path("build").glob("**/__pycache__")]
+    # [shutil.rmtree(p) for p in Path("build").glob("**/__pycache__")]
     [shutil.rmtree(p) for p in Path("build").glob("**/*.dist-info")]
 
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
         entry_point="cme.crackmapexec:main",
         script=None,
         compile_pyc=False,
@@ -60,12 +68,11 @@ def build_cme():
         True,
     )
 
+
 def build_cmedb():
     print("building CMEDB")
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
         entry_point="cme.cmedb:main",
         script=None,
         compile_pyc=False,
@@ -80,6 +87,7 @@ def build_cmedb():
         env,
         True,
     )
+
 
 if __name__ == "__main__":
     try:
