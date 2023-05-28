@@ -57,7 +57,7 @@ async def start_run(protocol_obj, args, db, targets):
                 )
                 cme_logger.debug(f"Creating thread for {protocol_obj}")
                 futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
-                for future in as_completed(futures):
+                for _ in as_completed(futures):
                     current += 1
                     progress.update(tasks, completed=current)
 
