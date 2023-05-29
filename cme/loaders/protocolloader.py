@@ -35,12 +35,12 @@ class ProtocolLoader:
 
                     db_file_path = path_join(path, protocol_name, "database.py")
                     db_nav_path = path_join(path, protocol_name, "db_navigator.py")
-                    protocol_args_path = path_join(path, protocol_name, 'proto_args.py')
+                    protocol_args_path = path_join(path, protocol_name, "proto_args.py")
                     if exists(db_file_path):
                         protocols[protocol_name]["dbpath"] = db_file_path
                     if exists(db_nav_path):
                         protocols[protocol_name]["nvpath"] = db_nav_path
                     if exists(protocol_args_path):
-                        protocols[protocol_name]['argspath'] = protocol_args_path
+                        protocols[protocol_name]["argspath"] = protocol_args_path
 
         return protocols

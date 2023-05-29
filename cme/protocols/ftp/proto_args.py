@@ -1,5 +1,5 @@
 def proto_args(parser, std_parser, module_parser):
-    ftp_parser = parser.add_parser('ftp', help="own stuff using FTP", parents=[std_parser, module_parser])
+    ftp_parser = parser.add_parser("ftp", help="own stuff using FTP", parents=[std_parser, module_parser])
     ftp_parser.add_argument("--port", type=int, default=21, help="FTP port (default: 21)")
 
     # TODO: Create more options for the protocol

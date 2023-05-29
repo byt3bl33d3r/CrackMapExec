@@ -190,7 +190,7 @@ def gen_cli_args():
             protocol_object = p_loader.load_protocol(protocols[protocol]["argspath"])
             subparsers = protocol_object.proto_args(subparsers, std_parser, module_parser)
         except:
-            cme_logger.exception("Error loading proto_args from proto_args.py file in protocol folder: {}".format(protocol))
+            cme_logger.exception(f"Error loading proto_args from proto_args.py file in protocol folder: {protocol}")
 
     if len(sys.argv) == 1:
         parser.print_help()
