@@ -14,7 +14,6 @@ from cme.helpers.powershell import get_ps_script
 class CMEModule:
     """
     Module by @NeffIsBack
-
     """
 
     name = "veeam"
@@ -30,6 +29,8 @@ class CMEModule:
     def options(self, context, module_options):
         """
         No options
+
+        Info: Currently only supports Databases hosted on MSSQL. PostgreSql is not supported yet.
         """
         pass
 
@@ -46,20 +47,66 @@ class CMEModule:
             ans = rrp.hOpenLocalMachine(remoteOps._RemoteOperations__rrp)
             regHandle = ans["phKey"]
 
-            ans = rrp.hBaseRegOpenKey(
-                remoteOps._RemoteOperations__rrp,
-                regHandle,
-                "SOFTWARE\\Veeam\\Veeam Backup and Replication",
-            )
-            keyHandle = ans["phkResult"]
+            # Veeam v12 added the possibility to use postgresql instead of mssql. Extracting from postgresql is not supported yet though.
+            try:
+                ans = rrp.hBaseRegOpenKey(
+                    remoteOps._RemoteOperations__rrp,
+                    regHandle,
+                    "SOFTWARE\\Veeam\\Veeam Backup and Replication\\DatabaseConfigurations",
+                )
+                keyHandle = ans["phkResult"]
 
-            SqlDatabase = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlDatabaseName")[1].split("\x00")[:-1][0]
-            SqlInstance = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlInstanceName")[1].split("\x00")[:-1][0]
-            SqlServer = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlServerName")[1].split("\x00")[:-1][0]
+                database_config = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlActiveConfiguration")[1].split("\x00")[:-1][0]
 
-        except DCERPCException as e:
-            if str(e).find("ERROR_FILE_NOT_FOUND"):
-                context.log.fail("No Veeam installation found")
+                if database_config == "PostgreSql":
+                    context.log.success("Veeam v12 installation found!")
+                    context.log.fail("Veeam is configured to use PostgreSql to store credentials. This is not supported yet.")
+                    raise NotImplementedError("PostgreSql is not supported yet")
+                elif database_config == "MsSql":
+                    context.log.success("Veeam v12 installation found!")
+
+                    ans = rrp.hBaseRegOpenKey(
+                        remoteOps._RemoteOperations__rrp,
+                        regHandle,
+                        "SOFTWARE\\Veeam\\Veeam Backup and Replication\\DatabaseConfigurations\\MsSql",
+                    )
+                    keyHandle = ans["phkResult"]
+
+                    SqlDatabase = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlDatabaseName")[1].split("\x00")[:-1][0]
+                    SqlInstance = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlInstanceName")[1].split("\x00")[:-1][0]
+                    SqlServer = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlServerName")[1].split("\x00")[:-1][0]
+            except NotImplementedError:
+                raise NotImplementedError("PostgreSql is not supported yet")
+            except DCERPCException as e:
+                if str(e).find("ERROR_FILE_NOT_FOUND"):
+                    context.log.debug("No Veeam v12 installation found")
+            except Exception as e:
+                context.log.fail(f"UNEXPECTED ERROR: {e}")
+                context.log.debug(traceback.format_exc())
+
+            # Veeam v11 check
+            try:
+                ans = rrp.hBaseRegOpenKey(
+                    remoteOps._RemoteOperations__rrp,
+                    regHandle,
+                    "SOFTWARE\\Veeam\\Veeam Backup and Replication",
+                )
+                keyHandle = ans["phkResult"]
+
+                SqlDatabase = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlDatabaseName")[1].split("\x00")[:-1][0]
+                SqlInstance = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlInstanceName")[1].split("\x00")[:-1][0]
+                SqlServer = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "SqlServerName")[1].split("\x00")[:-1][0]
+
+                context.log.success("Veeam v11 installation found!")
+            except DCERPCException as e:
+                if str(e).find("ERROR_FILE_NOT_FOUND"):
+                    context.log.debug("No Veeam v11 installation found")
+            except Exception as e:
+                context.log.fail(f"UNEXPECTED ERROR: {e}")
+                context.log.debug(traceback.format_exc())
+
+        except NotImplementedError as e:
+            pass
         except Exception as e:
             context.log.fail(f"UNEXPECTED ERROR: {e}")
             context.log.debug(traceback.format_exc())
@@ -97,5 +144,5 @@ class CMEModule:
         SqlDatabase, SqlInstance, SqlServer = self.checkVeeamInstalled(context, connection)
 
         if SqlDatabase and SqlInstance and SqlServer:
-            context.log.success('Found Veeam DB "{}" on SQL Server "{}\\{}"! Extracting stored credentials...'.format(SqlDatabase, SqlServer, SqlInstance))
+            context.log.success(f'Found Veeam DB "{SqlDatabase}" on SQL Server "{SqlServer}\\{SqlInstance}"! Extracting stored credentials...')
             self.extractCreds(context, connection, SqlDatabase, SqlInstance, SqlServer)
