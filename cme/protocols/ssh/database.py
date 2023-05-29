@@ -42,51 +42,41 @@ class database:
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute(
-            """CREATE TABLE "credentials" (
+        db_conn.execute("""CREATE TABLE "credentials" (
             "id" integer PRIMARY KEY,
             "username" text,
             "password" text,
             "credtype" text
-        )"""
-        )
-        db_conn.execute(
-            """CREATE TABLE "hosts" (
+        )""")
+        db_conn.execute("""CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "host" text,
             "port" integer,
             "banner" text,
             "os" text
-        )"""
-        )
-        db_conn.execute(
-            """CREATE TABLE "loggedin_relations" (
+        )""")
+        db_conn.execute("""CREATE TABLE "loggedin_relations" (
             "id" integer PRIMARY KEY,
             "credid" integer,
             "hostid" integer,
             "shell" boolean,
             FOREIGN KEY(credid) REFERENCES credentials(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
-        )"""
-        )
+        )""")
         # "admin" access with SSH means we have root access, which implies shell access since we run commands to check
-        db_conn.execute(
-            """CREATE TABLE "admin_relations" (
+        db_conn.execute("""CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
             "credid" integer,
             "hostid" integer,
             FOREIGN KEY(credid) REFERENCES credentials(id),
             FOREIGN KEY(hostid) REFERENCES hosts(id)
-        )"""
-        )
-        db_conn.execute(
-            """CREATE TABLE "keys" (
+        )""")
+        db_conn.execute("""CREATE TABLE "keys" (
             "id" integer PRIMARY KEY,
             "credid" integer,
             "data" text,
             FOREIGN KEY(credid) REFERENCES credentials(id)
-        )"""
-        )
+        )""")
 
     def reflect_tables(self):
         with self.db_engine.connect():
