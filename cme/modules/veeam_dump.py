@@ -60,9 +60,9 @@ class CMEModule:
         except DCERPCException as e:
             if str(e).find("ERROR_FILE_NOT_FOUND"):
                 context.log.fail("No Veeam installation found")
-        except:
-            context.log.fail("UNEXPECTED ERROR:")
-            traceback.print_exc()
+        except Exception as e:
+            context.log.fail(f"UNEXPECTED ERROR: {e}")
+            context.log.debug(traceback.format_exc())
         finally:
             remoteOps.finish()
         return [SqlDatabase, SqlInstance, SqlServer]
