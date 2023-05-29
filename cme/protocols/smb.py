@@ -414,7 +414,7 @@ class smb(connection):
                 add_user_bh(self.username, domain, self.logger, self.config)
 
             # check https://github.com/byt3bl33d3r/CrackMapExec/issues/321
-            if self.args.continue_on_succes and self.signing:
+            if self.args.continue_on_success and self.signing:
                 try:
                     self.conn.logoff()
                 except:
