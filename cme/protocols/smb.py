@@ -41,10 +41,12 @@ from cme.protocols.smb.passpol import PassPolDump
 from cme.protocols.smb.samruser import UserSamrDump
 from cme.protocols.smb.samrfunc import SamrFunc
 from cme.protocols.ldap.laps import LDAPConnect, LAPSv2Extract
+from cme.protocols.ldap.gmsa import MSDS_MANAGEDPASSWORD_BLOB
 from cme.helpers.logger import highlight
 from cme.helpers.misc import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.helpers.powershell import create_ps_command
+
 from dploot.triage.vaults import VaultsTriage
 from dploot.triage.browser import BrowserTriage
 from dploot.triage.credentials import CredentialsTriage
@@ -52,8 +54,10 @@ from dploot.triage.masterkeys import MasterkeysTriage, parse_masterkey_file
 from dploot.triage.backupkey import BackupkeyTriage
 from dploot.lib.target import Target
 from dploot.lib.smb import DPLootSMBConnection
+
 from pywerview.cli.helpers import *
 from pywerview.requester import RPCRequester
+
 from time import time
 from datetime import datetime
 from functools import wraps
@@ -1631,8 +1635,6 @@ class smb(connection):
 
     @requires_admin
     def lsa(self):
-        from impacket.examples.ntlmrelayx.attacks.ldapattack import MSDS_MANAGEDPASSWORD_BLOB
-
         try:
             self.enable_remoteops()
 
