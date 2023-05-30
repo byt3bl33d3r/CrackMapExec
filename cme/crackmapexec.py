@@ -35,7 +35,6 @@ except:
     print("Incompatible python version, try with another python version or another binary 3.8 / 3.9 / 3.10 / 3.11 that match your python version (python -V)")
     exit(1)
 
-
 def create_db_engine(db_path):
     db_engine = sqlalchemy.create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
     return db_engine
@@ -58,7 +57,7 @@ async def start_run(protocol_obj, args, db, targets):
                 )
                 cme_logger.debug(f"Creating thread for {protocol_obj}")
                 futures = [executor.submit(protocol_obj, args, db, target) for target in targets]
-                for future in as_completed(futures):
+                for _ in as_completed(futures):
                     current += 1
                     progress.update(tasks, completed=current)
 
@@ -168,8 +167,9 @@ def main():
     # with the new cme/config.py this can be eventually removed, as it can be imported anywhere
     setattr(protocol_object, "config", cme_config)
 
-    loader = ModuleLoader(args, db, cme_logger)
-    modules = loader.list_modules()
+    if args.module or args.list_modules:
+        loader = ModuleLoader(args, db, cme_logger)
+        modules = loader.list_modules()
 
     if args.list_modules:
         for name, props in sorted(modules.items()):

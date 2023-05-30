@@ -78,71 +78,6 @@ class rdp(connection):
 
         connection.__init__(self, args, db, host)
 
-    @staticmethod
-    def proto_args(parser, std_parser, module_parser):
-        rdp_parser = parser.add_parser("rdp", help="own stuff using RDP", parents=[std_parser, module_parser])
-        rdp_parser.add_argument(
-            "-H",
-            "--hash",
-            metavar="HASH",
-            dest="hash",
-            nargs="+",
-            default=[],
-            help="NTLM hash(es) or file(s) containing NTLM hashes",
-        )
-        rdp_parser.add_argument(
-            "--no-bruteforce",
-            action="store_true",
-            help=("No spray when using file for username and password (user1 =>" " password1, user2 => password2"),
-        )
-        rdp_parser.add_argument(
-            "--continue-on-success",
-            action="store_true",
-            help="continues authentication attempts even after successes",
-        )
-        rdp_parser.add_argument("--port", type=int, default=3389, help="Custom RDP port")
-        rdp_parser.add_argument(
-            "--rdp-timeout",
-            type=int,
-            default=1,
-            help="RDP timeout on socket connection",
-        )
-        rdp_parser.add_argument(
-            "--nla-screenshot",
-            action="store_true",
-            help="Screenshot RDP login prompt if NLA is disabled",
-        )
-
-        dgroup = rdp_parser.add_mutually_exclusive_group()
-        dgroup.add_argument(
-            "-d",
-            metavar="DOMAIN",
-            dest="domain",
-            type=str,
-            default=None,
-            help="domain to authenticate to",
-        )
-        dgroup.add_argument(
-            "--local-auth",
-            action="store_true",
-            help="authenticate locally to each target",
-        )
-
-        egroup = rdp_parser.add_argument_group("Screenshot", "Remote Desktop Screenshot")
-        egroup.add_argument(
-            "--screenshot",
-            action="store_true",
-            help="Screenshot RDP if connection success",
-        )
-        egroup.add_argument("--screentime", type=int, default=10, help="Time to wait for desktop image")
-        egroup.add_argument(
-            "--res",
-            default="1024x768",
-            help='Resolution in "WIDTHxHEIGHT" format. Default: "1024x768"',
-        )
-
-        return parser
-
     # def proto_flow(self):
     #     if self.create_conn_obj():
     #         self.proto_logger()
@@ -311,8 +246,7 @@ class rdp(connection):
             )
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
 
         except Exception as e:
             if "KDC_ERR" in str(e):
@@ -356,8 +290,7 @@ class rdp(connection):
             self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
@@ -389,8 +322,7 @@ class rdp(connection):
             self.logger.success(f"{self.domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
-            if not self.args.continue_on_success:
-                return True
+            return True
         except Exception as e:
             if "Authentication failed!" in str(e):
                 self.logger.success(f"{domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")

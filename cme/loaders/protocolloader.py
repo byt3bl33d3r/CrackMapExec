@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import types
+from types import ModuleType
 from importlib.machinery import SourceFileLoader
 from os import listdir
 from os.path import join as path_join
@@ -14,7 +14,7 @@ class ProtocolLoader:
 
     def load_protocol(self, protocol_path):
         loader = SourceFileLoader("protocol", protocol_path)
-        protocol = types.ModuleType(loader.name)
+        protocol = ModuleType(loader.name)
         loader.exec_module(protocol)
         return protocol
 
@@ -35,9 +35,12 @@ class ProtocolLoader:
 
                     db_file_path = path_join(path, protocol_name, "database.py")
                     db_nav_path = path_join(path, protocol_name, "db_navigator.py")
+                    protocol_args_path = path_join(path, protocol_name, "proto_args.py")
                     if exists(db_file_path):
                         protocols[protocol_name]["dbpath"] = db_file_path
                     if exists(db_nav_path):
                         protocols[protocol_name]["nvpath"] = db_nav_path
+                    if exists(protocol_args_path):
+                        protocols[protocol_name]["argspath"] = protocol_args_path
 
         return protocols

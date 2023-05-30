@@ -7,17 +7,14 @@ from argparse import RawTextHelpFormatter
 from cme.loaders.protocolloader import ProtocolLoader
 from cme.helpers.logger import highlight
 from termcolor import colored
+from cme.logger import cme_logger
 
 
 def gen_cli_args():
     VERSION = "5.4.7"
     CODENAME = "Bruce Wayne"
 
-    p_loader = ProtocolLoader()
-    protocols = p_loader.get_protocols()
-
-    parser = argparse.ArgumentParser(
-        description=f"""
+    parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
      /      ||   _  \         /   \      /      ||  |/  / |   \/   |     /   \     |   _  \  |   ____|\  \ /  / |   ____| /      |
     |  ,----'|  |_)  |       /  ^  \    |  ,----'|  '  /  |  \  /  |    /  ^  \    |  |_)  | |  |__    \  V  /  |  |__   |  ,----'
@@ -101,6 +98,8 @@ def gen_cli_args():
         help="password(s) or file(s) containing passwords",
     )
     std_parser.add_argument("-k", "--kerberos", action="store_true", help="Use Kerberos authentication")
+    std_parser.add_argument("--no-bruteforce", action="store_true", help="No spray when using file for username and password (user1 => password1, user2 => password2")
+    std_parser.add_argument("--continue-on-success", action="store_true", help="continues authentication attempts even after successes")
     std_parser.add_argument(
         "--use-kcache",
         action="store_true",
@@ -183,9 +182,15 @@ def gen_cli_args():
         help="IP for the remote system to connect back to (default: same as server-host)",
     )
 
+    p_loader = ProtocolLoader()
+    protocols = p_loader.get_protocols()
+
     for protocol in protocols.keys():
-        protocol_object = p_loader.load_protocol(protocols[protocol]["path"])
-        subparsers = getattr(protocol_object, protocol).proto_args(subparsers, std_parser, module_parser)
+        try:
+            protocol_object = p_loader.load_protocol(protocols[protocol]["argspath"])
+            subparsers = protocol_object.proto_args(subparsers, std_parser, module_parser)
+        except:
+            cme_logger.exception(f"Error loading proto_args from proto_args.py file in protocol folder: {protocol}")
 
     if len(sys.argv) == 1:
         parser.print_help()
