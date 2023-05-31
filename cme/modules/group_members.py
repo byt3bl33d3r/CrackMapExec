@@ -63,7 +63,7 @@ class CMEModule:
 
         # Else If the primaryGroupID belongs to another group use the normal lookup
         else:
-            searchFilter = "(&(objectCategory=user)(memberOf="+distinguishedName+"))"
+            searchFilter = "(&(|(objectCategory=user)(objectCategory=computer)(objectCategory=group))(memberOf="+distinguishedName+"))"
             attribute = "sAMAccountName"
             searchResult = doSearch(self, context, connection, searchFilter, attribute)
 
