@@ -13,7 +13,7 @@ from cme.helpers.powershell import get_ps_script
 
 class CMEModule:
     """
-    Module by @NeffIsBack
+    Module by @NeffIsBack, @Marshall-Hallenbeck
     """
 
     name = "veeam"
