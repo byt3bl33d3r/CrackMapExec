@@ -86,15 +86,6 @@ def main():
 
     cme_logger.debug(f"Passed args: {args}")
 
-    if args.darrell:
-        links = open(path_join(DATA_PATH, "videos_for_darrell.harambe")).read().splitlines()
-        try:
-            webbrowser.open(random.choice(links))
-            exit(1)
-        except Exception as e:
-            cme_logger.error(f"Error opening le dank meme: {e}")
-            exit(1)
-
     if args.protocol == "ssh":
         if args.key_file:
             if not args.password:
