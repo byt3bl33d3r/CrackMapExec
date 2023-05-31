@@ -182,10 +182,6 @@ def gen_cli_args():
         help="max number of failed login attempts per host",
     )
 
-    if parser.parse_known_args()[0].version:
-        print(f"{VERSION} - {CODENAME}")
-        sys.exit(1)
-
     p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
 
@@ -201,4 +197,9 @@ def gen_cli_args():
         sys.exit(1)
 
     args = parser.parse_args()
+
+    if args.version:
+        print(VERSION + " - " + CODENAME)
+        sys.exit(1)
+
     return args
