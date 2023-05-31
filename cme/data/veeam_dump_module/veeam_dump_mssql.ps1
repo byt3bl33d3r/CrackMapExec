@@ -3,7 +3,7 @@ $SqlServerName = "REPLACE_ME_SqlServer"
 $SqlInstanceName = "REPLACE_ME_SqlInstance"
 
 #Forming the connection string
-$SQL = "SELECT [user_name] AS 'User name',[password] AS 'Password' FROM [$SqlDatabaseName].[dbo].[Credentials] WHERE password <> ''" #Filter empty passwords
+$SQL = "SELECT [user_name] AS 'User',[password] AS 'Password' FROM [$SqlDatabaseName].[dbo].[Credentials] WHERE password <> ''" #Filter empty passwords
 $auth = "Integrated Security=SSPI;" #Local user
 $connectionString = "Provider=sqloledb; Data Source=$SqlServerName\$SqlInstanceName; Initial Catalog=$SqlDatabaseName; $auth;"
 $connection = New-Object System.Data.OleDb.OleDbConnection $connectionString
