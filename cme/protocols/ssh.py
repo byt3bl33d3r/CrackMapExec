@@ -23,42 +23,6 @@ class ssh(connection):
         self.server_os = None
         super().__init__(args, db, host)
 
-    @staticmethod
-    def proto_args(parser, std_parser, module_parser):
-        ssh_parser = parser.add_parser("ssh", help="own stuff using SSH", parents=[std_parser, module_parser])
-        ssh_parser.add_argument(
-            "--no-bruteforce",
-            action="store_true",
-            help=("No spray when using file for username and password (user1 =>" " password1, user2 => password2"),
-        )
-        ssh_parser.add_argument(
-            "--key-file",
-            type=str,
-            help=("Authenticate using the specified private key. Treats the password" " parameter as the key's passphrase."),
-        )
-        ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
-        ssh_parser.add_argument(
-            "--continue-on-success",
-            action="store_true",
-            help="continues authentication attempts even after successes",
-        )
-
-        cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
-        cgroup.add_argument("--no-output", action="store_true", help="do not retrieve command output")
-        cgroup.add_argument(
-            "-x",
-            metavar="COMMAND",
-            dest="execute",
-            help="execute the specified command",
-        )
-        cgroup.add_argument(
-            "--remote-enum",
-            action="store_true",
-            help="executes remote commands for enumeration",
-        )
-
-        return parser
-
     def proto_logger(self):
         self.logger = CMEAdapter(
             extra={
@@ -195,9 +159,7 @@ class ssh(connection):
             display_shell_access = f" - shell access!" if shell_access else ""
 
             self.logger.success(f"{username}:{process_secret(password)} {self.mark_pwned()}{highlight(display_shell_access)}")
-
-            if not self.args.continue_on_success:
-                return True
+            return True
         except (
             AuthenticationException,
             NoValidConnectionsError,
