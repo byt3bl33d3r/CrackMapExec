@@ -117,7 +117,7 @@ class CMEModule:
             credentials = self.executePsMssql(context, connection, SqlDatabase, SqlInstance, SqlServer)
             self.printCreds(context, credentials)
         elif PostgreSqlExec and PostgresUserForWindowsAuth and SqlDatabaseName:
-            context.log.success(f"Found Veeam DB {SqlDatabaseName} on an PostgreSQL Instance! Extracting stored credentials...")
+            context.log.success(f'Found Veeam DB "{SqlDatabaseName}" on an PostgreSQL Instance! Extracting stored credentials...')
             credentials = self.executePsPostgreSql(context, connection, PostgreSqlExec, PostgresUserForWindowsAuth, SqlDatabaseName)
             self.printCreds(context, credentials)
 
