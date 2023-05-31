@@ -199,7 +199,7 @@ def gen_cli_args():
     args = parser.parse_args()
 
     if args.version:
-        print(VERSION + " - " + CODENAME)
+        print(f"{VERSION} - {CODENAME}")
         sys.exit(1)
 
     return args
