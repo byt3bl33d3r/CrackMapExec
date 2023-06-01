@@ -144,16 +144,106 @@ class database:
             return updated_ids
 
     def add_credential(self, username, password):
-        pass
+        """
+        Check if this credential has already been added to the database, if not add it in.
+        """
+        credentials = []
 
-    def remove_credential(self):
-        pass
+        q = select(self.CredentialsTable).filter(
+            func.lower(self.CredentialsTable.c.username) == func.lower(username),
+            func.lower(self.CredentialsTable.c.password) == func.lower(password)
+        )
+        results = self.sess.execute(q).all()
 
-    def is_credential_valid(self):
-        pass
+        # add new credential
+        if not results:
+            new_cred = {
+                "username": username,
+                "password": password,
+            }
+            credentials = [new_cred]
+        # update existing cred data
+        else:
+            for creds in results:
+                # this will include the id, so we don't touch it
+                cred_data = creds._asdict()
+                # only update column if it is being passed in
+                if username is not None:
+                    cred_data["username"] = username
+                if password is not None:
+                    cred_data["password"] = password
+                # only add cred to be updated if it has changed
+                if cred_data not in credentials:
+                    credentials.append(cred_data)
 
-    def get_credentials(self):
-        pass
+        # TODO: find a way to abstract this away to a single Upsert call
+        q_users = Insert(self.CredentialsTable)  # .returning(self.CredentialsTable.c.id)
+        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in "id"}
+        q_users = q_users.on_conflict_do_update(
+            index_elements=self.CredentialsTable.primary_key,
+            set_=update_columns_users
+        )
+        cme_logger.debug(f"Adding credentials: {credentials}")
+
+        self.sess.execute(q_users, credentials)  # .scalar()
+        # return cred_ids
+
+        # hacky way to get cred_id since we can't use returning() yet
+        if len(credentials) == 1:
+            cred_id = self.get_credential(username, password)
+            return cred_id
+        else:
+            return credentials
+
+    def remove_credentials(self, creds_id):
+        """
+        Removes a credential ID from the database
+        """
+        del_hosts = []
+        for cred_id in creds_id:
+            q = delete(self.CredentialsTable).filter(self.CredentialsTable.c.id == cred_id)
+            del_hosts.append(q)
+        self.sess.execute(q)
+
+    def is_credential_valid(self, credential_id):
+        """
+        Check if this credential ID is valid.
+        """
+        q = select(self.CredentialsTable).filter(
+            self.CredentialsTable.c.id == credential_id,
+            self.CredentialsTable.c.password is not None,
+        )
+        results = self.sess.execute(q).all()
+        return len(results) > 0
+
+    def get_credential(self, cred_type, username, password):
+        q = select(self.CredentialsTable).filter(
+            self.CredentialsTable.c.username == username,
+            self.CredentialsTable.c.password == password,
+        )
+        results = self.sess.execute(q).first()
+        if results is None:
+            return None
+        else:
+            return results.id
+
+    def get_credentials(self, filter_term=None):
+        """
+        Return credentials from the database.
+        """
+        # if we're returning a single credential by ID
+        if self.is_credential_valid(filter_term):
+            q = select(self.CredentialsTable).filter(self.CredentialsTable.c.id == filter_term)
+        # if we're filtering by username
+        elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
+            q = select(self.CredentialsTable).filter(func.lower(self.CredentialsTable.c.username).like(like_term))
+        # otherwise return all credentials
+        else:
+            q = select(self.CredentialsTable)
+
+        results = self.sess.execute(q).all()
+        return results
 
     def is_host_valid(self, host_id):
         """
