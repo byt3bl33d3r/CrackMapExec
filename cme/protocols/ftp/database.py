@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from pathlib import Path
+from sqlalchemy.dialects.sqlite import Insert
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy import MetaData, Table
+from sqlalchemy import MetaData, Table, select, delete
 from sqlalchemy.exc import (
     IllegalStateChangeError,
     NoInspectionAvailable,
@@ -95,7 +96,52 @@ class database:
             self.sess.execute(table.delete())
 
     def add_host(self, host, port, banner):
-        pass
+        """
+        Check if this host is already in the DB, if not add it
+        """
+        hosts = []
+        updated_ids = []
+
+        q = select(self.HostsTable).filter(self.HostsTable.c.host == host)
+        results = self.sess.execute(q).all()
+
+        # create new host
+        if not results:
+            new_host = {
+                "host": host,
+                "port": port,
+                "banner": banner,
+            }
+            hosts = [new_host]
+        # update existing hosts data
+        else:
+            for host_result in results:
+                host_data = host_result._asdict()
+                cme_logger.debug(f"host: {host_result}")
+                cme_logger.debug(f"host_data: {host_data}")
+                # only update column if it is being passed in
+                if host is not None:
+                    host_data["host"] = host
+                if port is not None:
+                    host_data["port"] = port
+                if banner is not None:
+                    host_data["banner"] = banner
+                # only add host to be updated if it has changed
+                if host_data not in hosts:
+                    hosts.append(host_data)
+                    updated_ids.append(host_data["id"])
+        cme_logger.debug(f"Hosts: {hosts}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
+
+        self.sess.execute(q, hosts)  # .scalar()
+        # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
+        if updated_ids:
+            cme_logger.debug(f"add_host() - Host IDs Updated: {updated_ids}")
+            return updated_ids
 
     def add_credential(self, username, password):
         pass
@@ -104,9 +150,6 @@ class database:
         pass
 
     def is_credential_valid(self):
-        pass
-
-    def get_credentials(self):
         pass
 
     def get_credentials(self):
@@ -127,14 +170,46 @@ class database:
     def get_users(self):
         pass
 
-    def add_loggedin_relation(self, credid, hostid):
-        pass
+    def add_loggedin_relation(self, cred_id, host_id, shell=False):
+        relation_query = select(self.LoggedinRelationsTable).filter(
+            self.LoggedinRelationsTable.c.credid == cred_id,
+            self.LoggedinRelationsTable.c.hostid == host_id,
+        )
+        results = self.sess.execute(relation_query).all()
 
-    def get_loggedin_relations(self):
-        pass
+        # only add one if one doesn't already exist
+        if not results:
+            relation = {"credid": cred_id, "hostid": host_id, "shell": shell}
+            try:
+                cme_logger.debug(f"Inserting loggedin_relations: {relation}")
+                # TODO: find a way to abstract this away to a single Upsert call
+                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
 
-    def remove_loggedin_relations(self):
-        pass
+                self.sess.execute(q, [relation])  # .scalar()
+                inserted_id_results = self.get_loggedin_relations(cred_id, host_id)
+                cme_logger.debug(f"Checking if relation was added: {inserted_id_results}")
+                return inserted_id_results[0].id
+            except Exception as e:
+                cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
+
+    def get_loggedin_relations(self, cred_id=None, host_id=None, shell=None):
+        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+        if cred_id:
+            q = q.filter(self.LoggedinRelationsTable.c.credid == cred_id)
+        if host_id:
+            q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
+        if shell:
+            q = q.filter(self.LoggedinRelationsTable.c.shell == shell)
+        results = self.sess.execute(q).all()
+        return results
+
+    def remove_loggedin_relations(self, cred_id=None, host_id=None):
+        q = delete(self.LoggedinRelationsTable)
+        if cred_id:
+            q = q.filter(self.LoggedinRelationsTable.c.credid == cred_id)
+        elif host_id:
+            q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
+        self.sess.execute(q)
 
     def add_directory_listing(self, lir_id, data):
         pass
