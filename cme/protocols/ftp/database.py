@@ -155,11 +155,33 @@ class database:
     def get_credentials(self):
         pass
 
-    def is_host_valid(self):
-        pass
+    def is_host_valid(self, host_id):
+        """
+        Check if this host ID is valid.
+        """
+        q = select(self.HostsTable).filter(self.HostsTable.c.id == host_id)
+        results = self.sess.execute(q).all()
+        return len(results) > 0
 
-    def get_host(self):
-        pass
+    def get_hosts(self, filter_term=None):
+        """
+        Return hosts from the database.
+        """
+        q = select(self.HostsTable)
+
+        # if we're returning a single host by ID
+        if self.is_host_valid(filter_term):
+            q = q.filter(self.HostsTable.c.id == filter_term)
+            results = self.sess.execute(q).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
+        # if we're filtering by host
+        elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
+            q = q.filter(self.HostsTable.c.host.like(like_term))
+        results = self.sess.execute(q).all()
+        cme_logger.debug(f"FTP get_hosts() - results: {results}")
+        return results
 
     def is_user_valid(self, cred_id):
         """
@@ -235,5 +257,3 @@ class database:
 
     def remove_directory_listing(self):
         pass
-
-
