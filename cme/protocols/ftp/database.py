@@ -135,7 +135,10 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)  # .returning(self.HostsTable.c.id)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
+        q = q.on_conflict_do_update(
+            index_elements=self.HostsTable.primary_key,
+            set_=update_columns
+        )
 
         self.sess.execute(q, hosts)  # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
@@ -307,7 +310,10 @@ class database:
 
         # only add one if one doesn't already exist
         if not results:
-            relation = {"credid": cred_id, "hostid": host_id, "shell": shell}
+            relation = {
+                "credid": cred_id,
+                "hostid": host_id
+            }
             try:
                 cme_logger.debug(f"Inserting loggedin_relations: {relation}")
                 # TODO: find a way to abstract this away to a single Upsert call
@@ -320,14 +326,12 @@ class database:
             except Exception as e:
                 cme_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
-    def get_loggedin_relations(self, cred_id=None, host_id=None, shell=None):
+    def get_loggedin_relations(self, cred_id=None, host_id=None):
         q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
         if cred_id:
             q = q.filter(self.LoggedinRelationsTable.c.credid == cred_id)
         if host_id:
             q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
-        if shell:
-            q = q.filter(self.LoggedinRelationsTable.c.shell == shell)
         results = self.sess.execute(q).all()
         return results
 
