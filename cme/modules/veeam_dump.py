@@ -109,7 +109,10 @@ class CMEModule:
             context.log.fail(f"UNEXPECTED ERROR: {e}")
             context.log.debug(traceback.format_exc())
         finally:
-            remoteOps.finish()
+            try:
+                remoteOps.finish()
+            except Exception as e:
+                context.log.debug(f"Error shutting down remote registry service: {e}")
 
         # Check if we found an SQL Server of some kind
         if SqlDatabase and SqlInstance and SqlServer:
