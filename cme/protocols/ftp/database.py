@@ -4,7 +4,7 @@
 from pathlib import Path
 from sqlalchemy.dialects.sqlite import Insert
 from sqlalchemy.orm import sessionmaker, scoped_session
-from sqlalchemy import MetaData, Table, select, delete
+from sqlalchemy import MetaData, Table, select, delete, func
 from sqlalchemy.exc import (
     IllegalStateChangeError,
     NoInspectionAvailable,
@@ -161,14 +161,30 @@ class database:
     def get_host(self):
         pass
 
-    def is_user_valid(self):
-        pass
+    def is_user_valid(self, cred_id):
+        """
+        Check if this User ID is valid.
+        """
+        q = select(self.CredentialsTable).filter(self.CredentialsTable.c.id == cred_id)
+        results = self.sess.execute(q).all()
+        return len(results) > 0
 
-    def get_user(self):
-        pass
+    def get_user(self, username):
+        q = select(self.CredentialsTable).filter(func.lower(self.CredentialsTable.c.username) == func.lower(username))
+        results = self.sess.execute(q).all()
+        return results
 
-    def get_users(self):
-        pass
+    def get_users(self, filter_term=None):
+        q = select(self.CredentialsTable)
+
+        if self.is_user_valid(filter_term):
+            q = q.filter(self.CredentialsTable.c.id == filter_term)
+        # if we're filtering by username
+        elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
+            q = q.filter(func.lower(self.CredentialsTable.c.username).like(like_term))
+        results = self.sess.execute(q).all()
+        return results
 
     def add_loggedin_relation(self, cred_id, host_id, shell=False):
         relation_query = select(self.LoggedinRelationsTable).filter(
