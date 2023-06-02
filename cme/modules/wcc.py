@@ -13,10 +13,21 @@ from impacket.smbconnection import SessionError as SMBSessionError
 from impacket.examples.secretsdump import RemoteOperations
 from impacket.system_errors import *
 
+# Configuration variables
 OUTDATED_THRESHOLD = 30
 DEFAULT_OUTPUT_FILE = './config_checker.json'
 DEFAULT_OUTPUT_FORMAT = 'json'
 VALID_OUTPUT_FORMATS = ['json', 'csv']
+
+# Registry value types
+REG_VALUE_TYPE_UNDEFINED = 0
+REG_VALUE_TYPE_UNICODE_STRING = 1
+REG_VALUE_TYPE_UNICODE_STRING_WITH_ENV = 2
+REG_VALUE_TYPE_BINARY = 3
+REG_VALUE_TYPE_32BIT_LE = 4
+REG_VALUE_TYPE_32BIT_BE = 5
+REG_VALUE_TYPE_UNICODE_STRING_SEQUENCE = 7
+REG_VALUE_TYPE_64BIT_LE = 11
 
 # Setup file logger
 if 'cme_logger' not in globals():
@@ -540,10 +551,7 @@ class CMEModule:
 				subkeys.append(ans['lpNameOut'][:-1])
 				i += 1
 			except DCERPCSessionError as e:
-				if e.error_code == ERROR_NO_MORE_ITEMS:
-					break
-				else:
-					break
+				break
 		return subkeys
 
 	def reg_query_value(self, dce, keyName, valueName=None):
@@ -570,16 +578,21 @@ class CMEModule:
 			value_name = ans['lpValueNameOut']
 			value_data = ans['lpData']
 
-			if value_type in (1, 2, 7):
+			# Do any conversion necessary depending on the registry value type
+			if value_type in (
+				REG_VALUE_TYPE_UNICODE_STRING,
+				REG_VALUE_TYPE_UNICODE_STRING_WITH_ENV,
+				REG_VALUE_TYPE_UNICODE_STRING_SEQUENCE):
 				value_data = b''.join(value_data).decode('utf-16')
 			else:
 				value_data = b''.join(value_data)
-				if value_type == 4:
+				if value_type in (
+					REG_VALUE_TYPE_32BIT_LE,
+					REG_VALUE_TYPE_64BIT_LE):
 					value_data = int.from_bytes(value_data, 'little')
-				elif value_type == 5:
+				elif value_type == REG_VALUE_TYPE_32BIT_BE:
 					value_data = int.from_bytes(value_data, 'big')
-				elif value_type == 11:
-					value_data = int.from_bytes(value_data, 'little')
+
 			return value_type, value_name[:-1], value_data
 
 		root_key, subkey = keyName.split('\\', 1)
