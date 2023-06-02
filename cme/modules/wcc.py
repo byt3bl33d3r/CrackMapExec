@@ -15,7 +15,7 @@ from impacket.system_errors import *
 
 # Configuration variables
 OUTDATED_THRESHOLD = 30
-DEFAULT_OUTPUT_FILE = './config_checker.json'
+DEFAULT_OUTPUT_FILE = './wcc_results.json'
 DEFAULT_OUTPUT_FORMAT = 'json'
 VALID_OUTPUT_FORMATS = ['json', 'csv']
 
@@ -88,7 +88,7 @@ class CMEModule:
 								field = field.replace('"', '""')
 								field = f'"{field}"'
 							output.write(f',{field}')
-		print(f'Results written to {self.output}')
+		print(f'\n\x1b[32;1mResults written to {self.output}\x1b[0m')
 
 	def debug(self, msg, *args):
 		if self.verbose:
