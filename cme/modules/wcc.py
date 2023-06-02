@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# TODO: use CME logging in ls
-# TODO: review the return values for get_value and reg_get_subkeys
 
 import json
 import operator
 import time
 
+import cme.logger
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp, samr, scmr
 from impacket.dcerpc.v5.rrp import DCERPCSessionError
@@ -18,6 +17,15 @@ OUTDATED_THRESHOLD = 30
 DEFAULT_OUTPUT_FILE = './config_checker.json'
 DEFAULT_OUTPUT_FORMAT = 'json'
 VALID_OUTPUT_FORMATS = ['json', 'csv']
+
+# Setup file logger
+if 'cme_logger' not in globals():
+	cme_logger = cme.logger.setup_logger(log_to_file=True, log_prefix='wcc', logger_name='WCC')
+
+	for handler in cme_logger.handlers:
+		if type(handler) != cme.logger.logging.FileHandler:
+			cme_logger.removeHandler(handler)
+	cme_logger.handlers[0].setFormatter(cme.logger.logging.Formatter('%(asctime)s %(message)s'))
 
 class CMEModule:
 	'''
@@ -520,8 +528,9 @@ class CMEModule:
 		try:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
-			if e.error_code == ERROR_FILE_NOT_FOUND:
-				return subkeys
+			if e.error_code != ERROR_FILE_NOT_FOUND:
+				cme_logger.error(f'Could not retrieve subkey {subkey}: {e}\n')
+			return subkeys
 
 		subkey_handle = ans['phkResult']
 		i = 0
@@ -654,8 +663,7 @@ def ls(smb, path='\\', share='C$'):
 		if e.getErrorString()[0] == 'STATUS_NO_SUCH_FILE':
 			pass
 		else:
-			with open('./wcc_errors.log', 'a') as f:
-				f.write(f'{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}: C:\\{path} {e.getErrorString()}\n')
+			cme_logger.error(f'C:\\{path} {e.getErrorString()}\n')
 	return l
 
 # Comparison operators #

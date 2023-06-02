@@ -18,7 +18,10 @@ def antiansi_emit(self, record):
     if self.stream is None:
         self.stream = self._open()
 
-    record.msg = ansi_escape.sub('', record.message)
+    try:
+        record.msg = ansi_escape.sub('', record.message)
+    except AttributeError:
+        record.msg = ansi_escape.sub('', record.msg)
     logging.StreamHandler.emit(self, record)
 
 logging.FileHandler.emit = antiansi_emit
