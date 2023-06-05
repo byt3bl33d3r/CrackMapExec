@@ -72,12 +72,14 @@ class CMEModule:
         self.__aesKey = context.aesKey
         self.__hashes = context.hash
         self.__doKerberos = connection.kerberos
+        self.__nthash = ""
+        self.__lmhash = ""
 
-        if context.hash[0] is not None and ":" in context.hash[0]:
+        if context.hash and ":" in context.hash[0]:
             hashList = context.hash[0].split(":")
             self.__nthash = hashList[-1]
             self.__lmhash = hashList[0]
-        elif context.hash[0] is not None and ":" not in context.hash[0]:
+        elif context.hash and ":" not in context.hash[0]:
             self.__nthash = context.hash[0]
             self.__lmhash = "00000000000000000000000000000000"
 
