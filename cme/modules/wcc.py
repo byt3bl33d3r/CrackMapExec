@@ -80,7 +80,8 @@ class ConfigCheck:
 class CMEModule:
 	'''
 	Windows Configuration Checker
-	Module by @__fpr
+
+	Module written by @__fpr for Orange Cyberdefense
 	'''
 	name = 'wcc'
 	description = 'Check various security configuration items on Windows machines'
@@ -91,11 +92,11 @@ class CMEModule:
 	def options(self, context, module_options):
 		f'''
 		OUTPUT_FORMAT   Format for report (Default: '{DEFAULT_OUTPUT_FORMAT}')
-		OUTPUT          Path for report (Default: '{DEFAULT_OUTPUT_FILE}')
+		OUTPUT          Path for report
 		QUIET           Do not print results to stdout (Default: False)
 		VERBOSE         Produce verbose output (Default: False)
 		'''
-		self.output = module_options.get('OUTPUT',DEFAULT_OUTPUT_FILE)
+		self.output = module_options.get('OUTPUT')
 		self.output_format = module_options.get('OUTPUT_FORMAT', DEFAULT_OUTPUT_FORMAT)
 		if self.output_format not in VALID_OUTPUT_FORMATS:
 			self.output_format = DEFAULT_OUTPUT_FORMAT
@@ -121,7 +122,8 @@ class CMEModule:
 
 		self.check_config(dce, connection)
 		remoteOps.finish()
-		self.export_results()
+		if self.output is not None:
+			self.export_results()
 
 	def export_results(self):
 		with open(self.output, 'w') as output:
