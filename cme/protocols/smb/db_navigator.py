@@ -356,6 +356,52 @@ class navigator(DatabaseNavigator):
 
                 print_table(data, title="Credential(s) with Admin Access")
 
+    def do_wcc(self, line):
+        results = self.db.get_check_results()
+        self.display_wcc_results(results)
+
+    def display_wcc_results(self, results):
+        data = [
+            [
+                "IP",
+                "Hostname",
+                "Check",
+                "Status",
+                "Reasons",
+            ]
+        ]
+
+        checks = self.db.get_checks()
+        checks_dict = {}
+        for check in checks:
+            check = check._asdict()
+            checks_dict[check['id']] = check
+
+        for (result_id, host_id, check_id, secure, reasons)  in results:
+            status = 'OK' if secure else 'KO'
+            host = self.db.get_hosts(host_id)[0]._asdict()
+            check = checks_dict[check_id]
+
+            data.append(
+                [
+                    host['ip'],
+                    host['hostname'],
+                    check['name'],
+                    status,
+                    reasons
+                ]
+            )
+        print_table(data, title="Windows Configuration Checks")
+
+    def help_wcc(self):
+        help_string = """
+        wcc
+        Display Windows Configuration Checks results
+        Table format:
+        | 'IP', 'Hostname', 'Check', 'Status', 'Reasons' |
+        """
+        print_help(help_string)
+
     def help_hosts(self):
         help_string = """
         hosts [dc|spooler|zerologon|petitpotam|filter_term]
