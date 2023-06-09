@@ -29,6 +29,8 @@ class database:
         self.AdminRelationsTable = None
         self.GroupRelationsTable = None
         self.LoggedinRelationsTable = None
+        self.ConfChecksTable = None
+        self.ConfChecksResultsTable = None
         self.DpapiBackupkey = None
         self.DpapiSecrets = None
 
@@ -57,6 +59,26 @@ class database:
             "zerologon" boolean,
             "petitpotam" boolean
             )"""
+        )
+        db_conn.execute(
+            """CREATE TABLE "conf_checks" (
+            "id" integer PRIMARY KEY,
+            "name" text,
+            "description" text
+            )"""
+        )
+
+        db_conn.execute(
+            """CREATE TABLE "conf_checks_results" (
+            "id" integer PRIMARY KEY,
+            "host_id" integer,
+            "check_id" integer,
+            "secure" boolean,
+            "reasons" text,
+            FOREIGN KEY(host_id) REFERENCES hosts(id),
+            FOREIGN KEY(check_id) REFERENCES conf_checks(id)
+            )
+            """
         )
 
         # type = hash, plaintext
@@ -163,6 +185,8 @@ class database:
                 self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
                 self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
                 self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
+                self.ConfChecksTable = Table("conf_checks", self.metadata, autoload_with=self.db_engine)
+                self.ConfChecksResultsTable = Table("conf_checks_results", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError) as e:
                 print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
                 print(type(e), e)
