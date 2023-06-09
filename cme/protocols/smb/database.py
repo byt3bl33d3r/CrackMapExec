@@ -887,3 +887,91 @@ class database:
         elif host_id:
             q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
         self.conn.execute(q)
+
+    def get_checks(self):
+        q = select(self.ConfChecksTable)
+        results = self.conn.execute(q).all()
+        return results
+        
+    def get_check_results(self):
+        q = select(self.ConfChecksResultsTable)
+        results = self.conn.execute(q).all()
+        return results
+
+    def add_check(self, name, description):
+        """
+        Check if this check has already been added to the database, if not, add it in.
+        """
+        checks = []
+        updated_ids = []
+
+        q = select(self.ConfChecksTable).filter(self.ConfChecksTable.c.name == name)
+        results = self.conn.execute(q).all()
+
+        # create new check
+        if not results:
+            context = locals()
+            new_check = dict(((column, context[column]) for column in ('name', 'description')))
+            checks = [new_check]
+        # update existing check results data
+        else:
+            for check in results:
+                check_data = check._asdict()
+                for column in ('name', 'description'):
+                    check_data[column] = locals()[column]
+
+                # only add check result to be updated if it has changed
+                if check_data not in check:
+                    checks.append(check_data)
+                    updated_ids.append(check_data["id"])
+        cme_logger.debug(f"Update Check: {checks}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.ConfChecksTable)  # .returning(self.HostsTable.c.id)
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
+        q = q.on_conflict_do_update(index_elements=self.ConfChecksTable.primary_key, set_=update_columns)
+
+        self.conn.execute(q, checks)  # .scalar()
+        # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
+        if updated_ids:
+            cme_logger.debug(f"add_check_result() - Checks IDs Updated: {updated_ids}")
+            return updated_ids
+        
+    def add_check_result(self, host_id, check_id, secure, reasons):
+        """
+        Check if this check result has already been added to the database, if not, add it in.
+        """
+        check_results = []
+        updated_ids = []
+
+        q = select(self.ConfChecksResultsTable).filter(self.ConfChecksResultsTable.c.host_id == host_id, self.ConfChecksResultsTable.c.check_id == check_id)
+        results = self.conn.execute(q).all()
+
+        # create new check result
+        if not results:
+            context = locals()
+            new_check_result = dict(((column, context[column]) for column in ('host_id', 'check_id', 'secure', 'reasons')))
+            check_results = [new_check_result]
+        # update existing check results data
+        else:
+            for check_result in results:
+                check_result_data = check_result._asdict()
+                for column in ('host_id', 'check_id', 'secure', 'reasons'):
+                    check_result_data[column] = locals()[column]
+
+                # only add check result to be updated if it has changed
+                if check_result_data not in check_results:
+                    check_results.append(check_result_data)
+                    updated_ids.append(check_result_data["id"])
+        cme_logger.debug(f"Update Check Results: {check_results}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.ConfChecksResultsTable)  # .returning(self.HostsTable.c.id)
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
+        q = q.on_conflict_do_update(index_elements=self.ConfChecksResultsTable.primary_key, set_=update_columns)
+
+        self.conn.execute(q, check_results)  # .scalar()
+        # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
+        if updated_ids:
+            cme_logger.debug(f"add_check_result() - Check Results IDs Updated: {updated_ids}")
+            return updated_ids
