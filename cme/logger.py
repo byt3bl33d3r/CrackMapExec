@@ -1,151 +1,208 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import logging
+from logging import LogRecord
+from logging.handlers import RotatingFileHandler
+import os.path
 import sys
 import re
 from cme.helpers.misc import called_from_cmd_args
+from cme.console import cme_console
 from termcolor import colored
 from datetime import datetime
+from rich.text import Text
+from rich.logging import RichHandler
 
-#The following hooks the FileHandler.emit function to remove ansi chars before logging to a file
-#There must be a better way of doing this, but this way we might save some penguins!
-
-ansi_escape = re.compile(r'\x1b[^m]*m')
-
-def antiansi_emit(self, record):
-
-    if self.stream is None:
-        self.stream = self._open()
-
-    try:
-        record.msg = ansi_escape.sub('', record.message)
-    except AttributeError:
-        record.msg = ansi_escape.sub('', record.msg)
-    logging.StreamHandler.emit(self, record)
-
-logging.FileHandler.emit = antiansi_emit
-
-####################################################################
 
 class CMEAdapter(logging.LoggerAdapter):
-
-    # For Impacket's TDS library
-    message = ''
-
-    def __init__(self, logger_name='CME', extra=None):
-        self.logger = logging.getLogger(logger_name)
+    def __init__(self, extra=None):
+        logging.basicConfig(
+            format="%(message)s",
+            datefmt="[%X]",
+            handlers=[
+                RichHandler(
+                    console=cme_console,
+                    rich_tracebacks=True,
+                    tracebacks_show_locals=False,
+                )
+            ],
+        )
+        self.logger = logging.getLogger("cme")
         self.extra = extra
+        self.output_file = None
 
-    def process(self, msg, kwargs):
+        logging.getLogger("pypykatz").disabled = True
+        logging.getLogger("minidump").disabled = True
+        logging.getLogger("lsassy").disabled = True
+
+    def format(self, msg, *args, **kwargs):
+        """
+        Format msg for output if needed
+        This is used instead of process() since process() applies to _all_ messages, including debug calls
+        """
         if self.extra is None:
-            return u'{}'.format(msg), kwargs
+            return f"{msg}", kwargs
 
-        if 'module' in self.extra.keys():
-            if len(self.extra['module']) > 8:
-                self.extra['module'] = self.extra['module'][:8] + '...'
+        if "module_name" in self.extra.keys():
+            if len(self.extra["module_name"]) > 8:
+                self.extra["module_name"] = self.extra["module_name"][:8] + "..."
 
-        #If the logger is being called when hooking the 'options' module function
-        if len(self.extra) == 1 and ('module' in self.extra.keys()):
-            return u'{:<64} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), msg), kwargs
+        # If the logger is being called when hooking the 'options' module function
+        if len(self.extra) == 1 and ("module_name" in self.extra.keys()):
+            return (
+                f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<64} {msg}",
+                kwargs,
+            )
 
-        #If the logger is being called from CMEServer
-        if len(self.extra) == 2 and ('module' in self.extra.keys()) and ('host' in self.extra.keys()):
-            return u'{:<24} {:<39} {}'.format(colored(self.extra['module'], 'cyan', attrs=['bold']), self.extra['host'], msg), kwargs
+        # If the logger is being called from CMEServer
+        if len(self.extra) == 2 and ("module_name" in self.extra.keys()) and ("host" in self.extra.keys()):
+            return (
+                f"{colored(self.extra['module_name'], 'cyan', attrs=['bold']):<24} {self.extra['host']:<39} {msg}",
+                kwargs,
+            )
 
-        #If the logger is being called from a protocol
-        if 'module' in self.extra.keys():
-            module_name = colored(self.extra['module'], 'cyan', attrs=['bold'])
+        # If the logger is being called from a protocol
+        if "module_name" in self.extra.keys():
+            module_name = colored(self.extra["module_name"], "cyan", attrs=["bold"])
         else:
-            module_name = colored(self.extra['protocol'], 'blue', attrs=['bold'])
+            module_name = colored(self.extra["protocol"], "blue", attrs=["bold"])
 
-        return u'{:<24} {:<15} {:<6} {:<16} {}'.format(module_name,
-                                                    self.extra['host'],
-                                                    self.extra['port'],
-                                                    self.extra['hostname'] if self.extra['hostname'] else 'NONE',
-                                                    msg), kwargs
+        return (
+            f"{module_name:<24} {self.extra['host']:<15} {self.extra['port']:<6} {self.extra['hostname'] if self.extra['hostname'] else 'NONE':<16} {msg}",
+            kwargs,
+        )
 
-    def info(self, msg, *args, **kwargs):
+    def display(self, msg, *args, **kwargs):
+        """
+        Display text to console, formatted for CME
+        """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{} {}'.format(colored("[*]", 'blue', attrs=['bold']), msg), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        msg, kwargs = self.format(f"{colored('[*]', 'blue', attrs=['bold'])} {msg}", kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
-    def error(self, msg, color='red', *args, **kwargs):
-        msg, kwargs = self.process(u'{} {}'.format(colored("[-]", color, attrs=['bold']), msg), kwargs)
-        self.logger.error(msg, *args, **kwargs)
-
-    def debug(self, msg, *args, **kwargs):
-        pass
-
-    def success(self, msg, *args, **kwargs):
+    def success(self, msg, color='green', *args, **kwargs):
+        """
+        Print some sort of success to the user
+        """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{} {}'.format(colored("[+]", 'green', attrs=['bold']), msg), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        msg, kwargs = self.format(f"{colored('[+]', color, attrs=['bold'])} {msg}", kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
     def highlight(self, msg, *args, **kwargs):
+        """
+        Prints a completely yellow highlighted message to the user
+        """
         try:
-            if 'protocol' in self.extra.keys() and not called_from_cmd_args():
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
                 return
         except AttributeError:
             pass
 
-        msg, kwargs = self.process(u'{}'.format(colored(msg, 'yellow', attrs=['bold'])), kwargs)
-        self.logger.info(msg, *args, **kwargs)
+        msg, kwargs = self.format(f"{colored(msg, 'yellow', attrs=['bold'])}", kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
-    # For Impacket's TDS library
-    def logMessage(self,message):
-        CMEAdapter.message += message.strip().replace('NULL', '') + '\n'
+    def fail(self, msg, color='red', *args, **kwargs):
+        """
+        Prints a failure (may or may not be an error) - e.g. login creds didn't work
+        """
+        try:
+            if "protocol" in self.extra.keys() and not called_from_cmd_args():
+                return
+        except AttributeError:
+            pass
+        msg, kwargs = self.format(f"{colored('[-]', color, attrs=['bold'])} {msg}", kwargs)
+        text = Text.from_ansi(msg)
+        cme_console.print(text, *args, **kwargs)
+        self.log_console_to_file(text, *args, **kwargs)
 
-    def getMessage(self):
-        out = CMEAdapter.message
-        CMEAdapter.message = ''
-        return out
+    def log_console_to_file(self, text, *args, **kwargs):
+        """
+        If debug or info logging is not enabled, we still want display/success/fail logged to the file specified,
+        so we create a custom LogRecord and pass it to all the additional handlers (which will be all the file handlers
+        """
+        if self.logger.getEffectiveLevel() >= logging.INFO:
+            # will be 0 if it's just the console output, so only do this if we actually have file loggers
+            if len(self.logger.handlers):
+                try:
+                    for handler in self.logger.handlers:
+                        handler.handle(
+                            LogRecord(
+                                "cme",
+                                20,
+                                "",
+                                kwargs,
+                                msg=text,
+                                args=args,
+                                exc_info=None,
+                            )
+                        )
+                except Exception as e:
+                    self.logger.fail(f"Issue while trying to custom print handler: {e}")
+        else:
+            self.logger.info(text)
 
-def setup_debug_logger():
-    debug_output_string = "{} %(message)s".format(colored('DEBUG', 'magenta', attrs=['bold']))
-    formatter = logging.Formatter(debug_output_string)
-    streamHandler = logging.StreamHandler(sys.stdout)
-    streamHandler.setFormatter(formatter)
+    def add_file_log(self, log_file=None):
+        file_formatter = TermEscapeCodeFormatter("%(asctime)s - %(levelname)s - %(message)s")
+        output_file = self.init_log_file() if log_file is None else log_file
+        file_creation = False
 
-    root_logger = logging.getLogger()
-    root_logger.propagate = False
-    root_logger.addHandler(streamHandler)
-    #root_logger.addHandler(fileHandler)
-    root_logger.setLevel(logging.DEBUG)
-    return root_logger
+        if not os.path.isfile(output_file):
+            open(output_file, "x")
+            file_creation = True
 
-def setup_logger(level=logging.INFO, log_to_file=False, log_prefix=None, logger_name='CME'):
+        file_handler = RotatingFileHandler(output_file, maxBytes=100000)
 
-    formatter = logging.Formatter("%(message)s")
+        with file_handler._open() as f:
+            if file_creation:
+                f.write("[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
+            else:
+                f.write("\n[%s]> %s\n\n" % (datetime.now().strftime("%d-%m-%Y %H:%M:%S"), " ".join(sys.argv)))
 
-    if log_to_file:
-        if not log_prefix:
-            log_prefix = 'log'
+        file_handler.setFormatter(file_formatter)
+        self.logger.addHandler(file_handler)
+        self.logger.debug(f"Added file handler: {file_handler}")
 
-        log_filename = '{}_{}.log'.format(log_prefix.replace('/', '_'), datetime.now().strftime('%Y-%m-%d'))
-        fileHandler = logging.FileHandler('./logs/{}'.format(log_filename))
-        fileHandler.setFormatter(formatter)
+    @staticmethod
+    def init_log_file():
+        newpath = os.path.expanduser("~/.cme") + "/logs/" + datetime.now().strftime('%Y-%m-%d')
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
+        log_filename = os.path.join(
+            os.path.expanduser("~/.cme"),
+            "logs",
+            datetime.now().strftime('%Y-%m-%d'),
+            f"log_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.log",
+        )
+        return log_filename
 
-    streamHandler = logging.StreamHandler(sys.stdout)
-    streamHandler.setFormatter(formatter)
 
-    cme_logger = logging.getLogger(logger_name)
-    cme_logger.propagate = False
-    cme_logger.addHandler(streamHandler)
+class TermEscapeCodeFormatter(logging.Formatter):
+    """A class to strip the escape codes for logging to files"""
 
-    if log_to_file:
-        cme_logger.addHandler(fileHandler)
+    def __init__(self, fmt=None, datefmt=None, style="%", validate=True):
+        super().__init__(fmt, datefmt, style, validate)
 
-    cme_logger.setLevel(level)
+    def format(self, record):
+        escape_re = re.compile(r"\x1b\[[0-9;]*m")
+        record.msg = re.sub(escape_re, "", str(record.msg))
+        return super().format(record)
 
-    return cme_logger
+
+# initialize the logger for all of CME - this is imported everywhere
+cme_logger = CMEAdapter()

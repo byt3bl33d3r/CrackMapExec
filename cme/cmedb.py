@@ -2,402 +2,560 @@
 # -*- coding: utf-8 -*-
 
 import cmd
-import sqlite3
-import sys
-import os
-import requests
-from time import sleep
-from terminaltables import AsciiTable
 import configparser
-from cme.loaders.protocol_loader import protocol_loader
-from requests import ConnectionError
 import csv
+import os
+from os import listdir
+from os.path import exists
+from os.path import join as path_join
+import shutil
+from sqlite3 import connect
+import sys
+from textwrap import dedent
 
-# The following disables the InsecureRequests warning and the 'Starting new HTTPS connection' log message
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+from requests import get, post, ConnectionError
+from sqlalchemy import create_engine
+from terminaltables import AsciiTable
+
+from cme.loaders.protocolloader import ProtocolLoader
+from cme.paths import CONFIG_PATH, WS_PATH, WORKSPACE_DIR
 
 
 class UserExitedProto(Exception):
     pass
 
 
-class DatabaseNavigator(cmd.Cmd):
+def create_db_engine(db_path):
+    db_engine = create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
+    return db_engine
 
+
+def print_table(data, title=None):
+    print("")
+    table = AsciiTable(data)
+    if title:
+        table.title = title
+    print(table.table)
+    print("")
+
+
+def write_csv(filename, headers, entries):
+    """
+    Writes a CSV file with the provided parameters.
+    """
+    with open(os.path.expanduser(filename), "w") as export_file:
+        csv_file = csv.writer(
+            export_file,
+            delimiter=";",
+            quoting=csv.QUOTE_ALL,
+            lineterminator="\n",
+            escapechar="\\",
+        )
+        csv_file.writerow(headers)
+        for entry in entries:
+            csv_file.writerow(entry)
+
+
+def write_list(filename, entries):
+    """
+    Writes a file with a simple list
+    """
+    with open(os.path.expanduser(filename), "w") as export_file:
+        for line in entries:
+            export_file.write(line + "\n")
+    return
+
+
+def complete_import(text, line):
+    """
+    Tab-complete 'import' commands
+    """
+    commands = ("empire", "metasploit")
+    mline = line.partition(" ")[2]
+    offs = len(mline) - len(text)
+    return [s[offs:] for s in commands if s.startswith(mline)]
+
+
+def complete_export(text, line):
+    """
+    Tab-complete 'creds' commands.
+    """
+    commands = (
+        "creds",
+        "plaintext",
+        "hashes",
+        "shares",
+        "local_admins",
+        "signing",
+        "keys",
+    )
+    mline = line.partition(" ")[2]
+    offs = len(mline) - len(text)
+    return [s[offs:] for s in commands if s.startswith(mline)]
+
+
+def print_help(help_string):
+    print(dedent(help_string))
+
+
+class DatabaseNavigator(cmd.Cmd):
     def __init__(self, main_menu, database, proto):
         cmd.Cmd.__init__(self)
-
         self.main_menu = main_menu
         self.config = main_menu.config
         self.proto = proto
         self.db = database
-        self.prompt = 'cmedb ({})({}) > '.format(main_menu.workspace, proto)
+        self.prompt = f"cmedb ({main_menu.workspace})({proto}) > "
+
+    def do_exit(self, line):
+        self.db.shutdown_db()
+        sys.exit()
+
+    @staticmethod
+    def help_exit():
+        help_string = """
+        Exits
+        """
+        print_help(help_string)
 
     def do_back(self, line):
         raise UserExitedProto
-
-    def do_exit(self, line):
-        sys.exit(0)
-
-    def print_table(self, data, title=None):
-        print("")
-        table = AsciiTable(data)
-        if title:
-            table.title = title
-        print(table.table)
-        print("")
 
     def do_export(self, line):
         if not line:
             print("[-] not enough arguments")
             return
-
         line = line.split()
-
+        command = line[0].lower()
         # Need to use if/elif/else to keep compatibility with py3.8/3.9
         # Reference DB Function cme/protocols/smb/database.py
         # Users
-        if line[0].lower() == 'creds':
+        if command == "creds":
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <simple/detailed> <filename>")
+                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
                 return
-            
+
             filename = line[2]
             creds = self.db.get_credentials()
-            csv_header = ["id","domain","username","password","credtype","pillaged_from"]
-            
+            csv_header = (
+                "id",
+                "domain",
+                "username",
+                "password",
+                "credtype",
+                "pillaged_from",
+            )
+
             if line[1].lower() == "simple":
-                self.write_csv(filename,csv_header,creds)
-                
+                write_csv(filename, csv_header, creds)
             elif line[1].lower() == "detailed":
-                formattedCreds = []
-               
+                formatted_creds = []
+
                 for cred in creds:
-                    entry = []
-                    
-                    entry.append(cred[0]) # ID
-                    entry.append(cred[1]) # Domain
-                    entry.append(cred[2]) # Username
-                    entry.append(cred[3]) # Password/Hash
-                    entry.append(cred[4]) # Cred Type
-                    
-                    
-                    if cred[5] == None:
+                    entry = [
+                        cred[0],  # ID
+                        cred[1],  # Domain
+                        cred[2],  # Username
+                        cred[3],  # Password/Hash
+                        cred[4],  # Cred Type
+                    ]
+                    if cred[5] is None:
                         entry.append("")
                     else:
-                        entry.append(self.db.get_computers(cred[5])[0][2])
-                    formattedCreds.append(entry)
-                self.write_csv(filename,csv_header,formattedCreds)
-            print('[+] creds exported')
-
-        #Hosts
-        elif line[0].lower() == 'hosts':
-            if len(line) < 3:
-                print("[-] invalid arguments, export hosts <simple/detailed> <filename>")
+                        entry.append(self.db.get_hosts(cred[5])[0][2])
+                    formatted_creds.append(entry)
+                write_csv(filename, csv_header, formatted_creds)
+            else:
+                print(f"[-] No such export option: {line[1]}")
                 return
-            hosts = self.db.get_computers()
-            csv_header = ["id","ip","hostname","domain","os","dc","smbv1","signing"]
-            filename = line[2]
-            
-            if line[1].lower() == 'simple':
-                self.write_csv(filename,csv_header,hosts)
-            
-            #TODO, maybe add more detail like who is an admin on it, shares discovered, ect
-            elif line[1].lower() == 'detailed':
-                self.write_csv(filename,csv_header,hosts)
-            
-            
-            print('[+] hosts exported')
+            print("[+] Creds exported")
+        # Hosts
+        elif command == "hosts":
+            if len(line) < 3:
+                print("[-] invalid arguments, export hosts <simple|detailed|signing> <filename>")
+                return
 
-        #Shares
-        elif line[0].lower() == 'shares':
+            csv_header_simple = (
+                "id",
+                "ip",
+                "hostname",
+                "domain",
+                "os",
+                "dc",
+                "smbv1",
+                "signing",
+            )
+            csv_header_detailed = (
+                "id",
+                "ip",
+                "hostname",
+                "domain",
+                "os",
+                "dc",
+                "smbv1",
+                "signing",
+                "spooler",
+                "zerologon",
+                "petitpotam",
+            )
+            filename = line[2]
+
+            if line[1].lower() == "simple":
+                hosts = self.db.get_hosts()
+                simple_hosts = [host[:8] for host in hosts]
+                write_csv(filename, csv_header_simple, simple_hosts)
+            # TODO: maybe add more detail like who is an admin on it, shares discovered, etc
+            elif line[1].lower() == "detailed":
+                hosts = self.db.get_hosts()
+                write_csv(filename, csv_header_detailed, hosts)
+            elif line[1].lower() == "signing":
+                hosts = self.db.get_hosts("signing")
+                signing_hosts = [host[1] for host in hosts]
+                write_list(filename, signing_hosts)
+            else:
+                print(f"[-] No such export option: {line[1]}")
+                return
+            print("[+] Hosts exported")
+        # Shares
+        elif command == "shares":
             if len(line) < 3:
                 print("[-] invalid arguments, export shares <simple|detailed> <filename>")
                 return
-            
+
             shares = self.db.get_shares()
-            csv_header = ["id","computer","userid","name","remark","read","write"]
+            csv_header = ("id", "host", "userid", "name", "remark", "read", "write")
             filename = line[2]
-            
-            if line[1].lower() == 'simple':
 
-                self.write_csv(filename,csv_header,shares)
-                
-                
-                print('[+] shares exported')  
-                    
-            elif line[1].lower() == 'detailed': #Detailed view gets hostsname, and usernames, and true false statement
-                formattedShares = []
+            if line[1].lower() == "simple":
+                write_csv(filename, csv_header, shares)
+                print("[+] shares exported")
+            # Detailed view gets hostname, usernames, and true false statement
+            elif line[1].lower() == "detailed":
+                formatted_shares = []
                 for share in shares:
-                    entry = []
-                    #shareID
-                    entry.append(share[0])
-                    
-                    #computer
-                    entry.append(self.db.get_computers(share[1])[0][2])
-                    
-                    #userID
                     user = self.db.get_users(share[2])[0]
-                    entry.append(f"{user[1]}\{user[2]}")
-                    
-                    #name
-                    entry.append(share[3])
-                    
-                    #remark
-                    entry.append(share[4])
-                    
-                    #read
-                    entry.append(bool(share[5]))
-                    
-                    #write
-                    entry.append(bool(share[6]))
-                    
-                    formattedShares.append(entry)
-                
-                self.write_csv(filename,csv_header,formattedShares)
+                    if self.db.get_hosts(share[1]): 
+                        share_host = self.db.get_hosts(share[1])[0][2] 
+                    else: 
+                        share_host = "ERROR"
 
-
-                        #Format is domain\user
-                        #prettyuser = f"{self.db.get_users(userid)[0][1]}\{self.db.get_users(userid)[0][2]}"
-
-
-                        #Format is hostname
-                        #prettyhost = f"{}"
-
-                        
-                print('[+] shares exported')
-            
-        #Local Admin
-        elif line[0].lower() == 'local_admins':
+                    entry = (
+                        share[0],  # shareID
+                        share_host,  # hosts
+                        f"{user[1]}\{user[2]}",  # userID
+                        share[3],  # name
+                        share[4],  # remark
+                        bool(share[5]),  # read
+                        bool(share[6]),  # write
+                    )
+                    formatted_shares.append(entry)
+                write_csv(filename, csv_header, formatted_shares)
+                print("[+] Shares exported")
+            else:
+                print(f"[-] No such export option: {line[1]}")
+                return
+        # Local Admin
+        elif command == "local_admins":
             if len(line) < 3:
                 print("[-] invalid arguments, export local_admins <simple|detailed> <filename>")
-
                 return
 
-            # These Values don't change between simple and detailed
+            # These values don't change between simple and detailed
             local_admins = self.db.get_admin_relations()
-            csv_header = ["id","userid","computer"]
+            csv_header = ("id", "userid", "host")
             filename = line[2]
-            
-            if line[1].lower() == 'simple':
-                self.write_csv(filename,csv_header,local_admins)
-            
-            elif line[1].lower() == 'detailed':
-                
-                formattedLocalAdmins = []
-                
+
+            if line[1].lower() == "simple":
+                write_csv(filename, csv_header, local_admins)
+            elif line[1].lower() == "detailed":
+                formatted_local_admins = []
                 for entry in local_admins:
-                    formattedEntry = [] # Can't modify a tuple which is what self.db.get_admin_relations() returns.
-                    
-                    #Entry ID
-                    formattedEntry.append(entry[0])
-                    
-                    #DOMAIN/Username
-                    user = self.db.get_users(filterTerm=entry[1])[0]
-                    formattedEntry.append(f"{user[1]}/{user[2]}")
-                    
-                    #Hostname
-                    formattedEntry.append(self.db.get_computers(filterTerm=entry[2])[0][2]) 
-                    
-                    
-                    formattedLocalAdmins.append(formattedEntry)
-                    
-                self.write_csv(filename,csv_header,formattedLocalAdmins)
-                print('[+] Local Admins exported')
-                     
+                    user = self.db.get_users(filter_term=entry[1])[0]
+
+                    formatted_entry = (
+                        entry[0],  # Entry ID
+                        f"{user[1]}/{user[2]}",  # DOMAIN/Username
+                        self.db.get_hosts(filter_term=entry[2])[0][2],  # Hostname
+                    )
+                    # Can't modify a tuple which is what self.db.get_admin_relations() returns
+                    formatted_local_admins.append(formatted_entry)
+                write_csv(filename, csv_header, formatted_local_admins)
+            else:
+                print(f"[-] No such export option: {line[1]}")
+                return
+            print("[+] Local Admins exported")
+        elif command == "dpapi":
+            if len(line) < 3:
+                print("[-] invalid arguments, export dpapi <simple|detailed> <filename>")
+                return
+
+            # These values don't change between simple and detailed
+            dpapi_secrets = self.db.get_dpapi_secrets()
+            csv_header = (
+                "id",
+                "host",
+                "dpapi_type",
+                "windows_user",
+                "username",
+                "password",
+                "url",
+            )
+            filename = line[2]
+
+            if line[1].lower() == "simple":
+                write_csv(filename, csv_header, dpapi_secrets)
+            elif line[1].lower() == "detailed":
+                formatted_dpapi_secret = []
+                for entry in dpapi_secrets:
+                    formatted_entry = (
+                        entry[0],  # Entry ID
+                        self.db.get_hosts(filter_term=entry[1])[0][2],  # Hostname
+                        entry[2],  # DPAPI type
+                        entry[3],  # Windows User
+                        entry[4],  # Username
+                        entry[5],  # Password
+                        entry[6],  # URL
+                    )
+                    # Can't modify a tuple which is what self.db.get_admin_relations() returns
+                    formatted_dpapi_secret.append(formatted_entry)
+                write_csv(filename, csv_header, formatted_dpapi_secret)
+            else:
+                print(f"[-] No such export option: {line[1]}")
+                return
+            print("[+] DPAPI secrets exported")
+        elif command == "keys":
+            if line[1].lower() == "all":
+                keys = self.db.get_keys()
+            else:
+                keys = self.db.get_keys(key_id=int(line[1]))
+            writable_keys = [key[2] for key in keys]
+            filename = line[2]
+            write_list(filename, writable_keys)
         else:
-            print('[-] invalid argument, specify creds, hosts, local_admins or shares')
-            
-    def write_csv(self,filename,headers,entries):
-        """
-        Writes a CSV file with the provided parameters.
-        """
-        with open(os.path.expanduser(filename), 'w') as export_file:
-            csvFile = csv.writer(export_file,delimiter=";", quoting=csv.QUOTE_ALL, lineterminator='\n',escapechar="\\")
-            csvFile.writerow(headers)
-            for entry in entries:
-                csvFile.writerow(entry)
+            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
+
+    @staticmethod
+    def help_export():
+        help_string = """
+        export [creds|hosts|local_admins|shares|signing|keys] [simple|detailed|*] [filename]
+        Exports information to a specified file
         
+        * hosts has an additional third option from simple and detailed: signing - this simply writes a list of ips of
+        hosts where signing is enabled
+        * keys' third option is either "all" or an id of a key to export
+            export keys [all|id] [filename]
+        """
+        print_help(help_string)
+
     def do_import(self, line):
         if not line:
             return
 
-        if line == 'empire':
-            headers = {'Content-Type': 'application/json'}
-
+        if line == "empire":
+            headers = {"Content-Type": "application/json"}
             # Pull the username and password from the config file
-            payload = {'username': self.config.get('Empire', 'username'),
-                       'password': self.config.get('Empire', 'password')}
-
+            payload = {
+                "username": self.config.get("Empire", "username"),
+                "password": self.config.get("Empire", "password"),
+            }
             # Pull the host and port from the config file
-            base_url = 'https://{}:{}'.format(self.config.get('Empire', 'api_host'), self.config.get('Empire', 'api_port'))
+            base_url = f"https://{self.config.get('Empire', 'api_host')}:{self.config.get('Empire', 'api_port')}"
 
             try:
-                r = requests.post(base_url + '/api/admin/login', json=payload, headers=headers, verify=False)
+                r = post(
+                    base_url + "/api/admin/login",
+                    json=payload,
+                    headers=headers,
+                    verify=False,
+                )
                 if r.status_code == 200:
-                    token = r.json()['token']
-
-                    url_params = {'token': token}
-                    r = requests.get(base_url + '/api/creds', headers=headers, params=url_params, verify=False)
+                    token = r.json()["token"]
+                    url_params = {"token": token}
+                    r = get(
+                        base_url + "/api/creds",
+                        headers=headers,
+                        params=url_params,
+                        verify=False,
+                    )
                     creds = r.json()
 
-                    for cred in creds['creds']:
-                        if cred['credtype'] == 'token' or cred['credtype'] == 'krbtgt' or cred['username'].endswith('$'):
+                    for cred in creds["creds"]:
+                        if cred["credtype"] == "token" or cred["credtype"] == "krbtgt" or cred["username"].endswith("$"):
                             continue
-
-                        self.db.add_credential(cred['credtype'], cred['domain'], cred['username'], cred['password'])
-
+                        self.db.add_credential(
+                            cred["credtype"],
+                            cred["domain"],
+                            cred["username"],
+                            cred["password"],
+                        )
                     print("[+] Empire credential import successful")
                 else:
                     print("[-] Error authenticating to Empire's RESTful API server!")
-
             except ConnectionError as e:
-                print("[-] Unable to connect to Empire's RESTful API server: {}".format(e))
-
-    def complete_import(self, text, line, begidx, endidx):
-        "Tab-complete 'import' commands."
-
-        commands = ["empire", "metasploit"]
-
-        mline = line.partition(' ')[2]
-        offs = len(mline) - len(text)
-        return [s[offs:] for s in commands if s.startswith(mline)]
-
-    def complete_export(self, text, line, begidx, endidx):
-        "Tab-complete 'creds' commands."
-
-        commands = ["creds", "plaintext", "hashes"]
-
-        mline = line.partition(' ')[2]
-        offs = len(mline) - len(text)
-        return [s[offs:] for s in commands if s.startswith(mline)]
+                print(f"[-] Unable to connect to Empire's RESTful API server: {e}")
 
 
 class CMEDBMenu(cmd.Cmd):
-
     def __init__(self, config_path):
         cmd.Cmd.__init__(self)
-
         self.config_path = config_path
 
         try:
             self.config = configparser.ConfigParser()
             self.config.read(self.config_path)
         except Exception as e:
-            print("[-] Error reading cme.conf: {}".format(e))
+            print(f"[-] Error reading cme.conf: {e}")
             sys.exit(1)
 
-        self.workspace_dir = os.path.expanduser('~/.cme/workspaces')
         self.conn = None
-        self.p_loader = protocol_loader()
+        self.p_loader = ProtocolLoader()
         self.protocols = self.p_loader.get_protocols()
 
-        self.workspace = self.config.get('CME', 'workspace')
+        self.workspace = self.config.get("CME", "workspace")
         self.do_workspace(self.workspace)
 
-        self.db = self.config.get('CME', 'last_used_db')
+        self.db = self.config.get("CME", "last_used_db")
         if self.db:
             self.do_proto(self.db)
 
-    def open_proto_db(self, db_path):
-        # Set the database connection to autocommit w/ isolation level
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.text_factory = str
-        self.conn.isolation_level = None
-
     def write_configfile(self):
-        with open(self.config_path, 'w') as configfile:
+        with open(self.config_path, "w") as configfile:
             self.config.write(configfile)
 
     def do_proto(self, proto):
         if not proto:
             return
 
-        proto_db_path = os.path.join(self.workspace_dir, self.workspace, proto + '.db')
-        if os.path.exists(proto_db_path):
-            self.open_proto_db(proto_db_path)
-            db_nav_object = self.p_loader.load_protocol(self.protocols[proto]['nvpath'])
-            db_object = self.p_loader.load_protocol(self.protocols[proto]['dbpath'])
-            self.config.set('CME', 'last_used_db', proto)
+        proto_db_path = path_join(WORKSPACE_DIR, self.workspace, f"{proto}.db")
+        if exists(proto_db_path):
+            self.conn = create_db_engine(proto_db_path)
+            db_nav_object = self.p_loader.load_protocol(self.protocols[proto]["nvpath"])
+            db_object = self.p_loader.load_protocol(self.protocols[proto]["dbpath"])
+            self.config.set("CME", "last_used_db", proto)
             self.write_configfile()
-
             try:
-                proto_menu = getattr(db_nav_object, 'navigator')(self, getattr(db_object, 'database')(self.conn), proto)
+                proto_menu = getattr(db_nav_object, "navigator")(self, getattr(db_object, "database")(self.conn), proto)
                 proto_menu.cmdloop()
             except UserExitedProto:
                 pass
 
+    @staticmethod
+    def help_proto():
+        help_string = """
+        proto [smb|mssql|winrm]
+            *unimplemented protocols: ftp, rdp, ldap, ssh
+        Changes cmedb to the specified protocol
+        """
+        print_help(help_string)
+
     def do_workspace(self, line):
-        helpString = "[-] wordkspace create <targetName> | workspace list | workspace <targetName>"
-        if not line:
-            print(helpString)
-            return
-
         line = line.strip()
-
-        if line.split()[0] == 'create':
-            new_workspace = line.split()[1].strip()
-
-            print("[*] Creating workspace '{}'".format(new_workspace))
-            os.mkdir(os.path.join(self.workspace_dir, new_workspace))
-
-            for protocol in self.protocols.keys():
-                try:
-                    protocol_object = self.p_loader.load_protocol(self.protocols[protocol]['dbpath'])
-                except KeyError:
-                    continue
-
-                proto_db_path = os.path.join(self.workspace_dir, new_workspace, protocol + '.db')
-
-                if not os.path.exists(proto_db_path):
-                    print('[*] Initializing {} protocol database'.format(protocol.upper()))
-                    conn = sqlite3.connect(proto_db_path)
-                    c = conn.cursor()
-
-                    # try to prevent some of the weird sqlite I/O errors
-                    c.execute('PRAGMA journal_mode = OFF')
-                    c.execute('PRAGMA foreign_keys = 1')
-
-                    getattr(protocol_object, 'database').db_schema(c)
-
-                    # commit the changes and close everything off
-                    conn.commit()
-                    conn.close()
-
-            self.do_workspace(new_workspace)
-
-        elif line.split()[0] == 'list':
-            print("[*] Enumerating Workspaces")
-            for workspace in os.listdir(os.path.join(self.workspace_dir)):
-                if(workspace==self.workspace):
-                    print("==> "+workspace)
-                else:
-                    print(workspace)        
-
-        elif os.path.exists(os.path.join(self.workspace_dir, line)):
-            self.config.set('CME', 'workspace', line)
-            self.write_configfile()
-
-            self.workspace = line
-            self.prompt = 'cmedb ({}) > '.format(line)
-        
+        if not line:
+            subcommand = ""
+            self.help_workspace()
         else:
-            print(helpString)
+            subcommand = line.split()[0]
+
+        if subcommand == "create":
+            new_workspace = line.split()[1].strip()
+            print(f"[*] Creating workspace '{new_workspace}'")
+            self.create_workspace(new_workspace, self.p_loader, self.protocols)
+            self.do_workspace(new_workspace)
+        elif subcommand == "list":
+            print("[*] Enumerating Workspaces")
+            for workspace in listdir(path_join(WORKSPACE_DIR)):
+                if workspace == self.workspace:
+                    print("==> " + workspace)
+                else:
+                    print(workspace)
+        elif exists(path_join(WORKSPACE_DIR, line)):
+            self.config.set("CME", "workspace", line)
+            self.write_configfile()
+            self.workspace = line
+            self.prompt = f"cmedb ({line}) > "
+
+    @staticmethod
+    def help_workspace():
+        help_string = """
+        workspace [create <targetName> | workspace list | workspace <targetName>]
+        """
+        print_help(help_string)
+
+    @staticmethod
+    def do_exit(line):
+        sys.exit()
+
+    @staticmethod
+    def help_exit():
+        help_string = """
+        Exits
+        """
+        print_help(help_string)
 
 
-    def do_exit(self, line):
-        sys.exit(0)
+def create_workspace(workspace_name, p_loader, protocols):
+    os.mkdir(path_join(WORKSPACE_DIR, workspace_name))
+
+    for protocol in protocols.keys():
+        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
+        proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{protocol}.db")
+
+        if not exists(proto_db_path):
+            print(f"[*] Initializing {protocol.upper()} protocol database")
+            conn = connect(proto_db_path)
+            c = conn.cursor()
+
+            # try to prevent some weird sqlite I/O errors
+            c.execute("PRAGMA journal_mode = OFF")
+            c.execute("PRAGMA foreign_keys = 1")
+
+            getattr(protocol_object, "database").db_schema(c)
+
+            # commit the changes and close everything off
+            conn.commit()
+            conn.close()
+
+
+def delete_workspace(workspace_name):
+    shutil.rmtree(path_join(WORKSPACE_DIR, workspace_name))
+
+
+def initialize_db(logger):
+    if not exists(path_join(WS_PATH, "default")):
+        logger.debug("Creating default workspace")
+        os.mkdir(path_join(WS_PATH, "default"))
+
+    p_loader = ProtocolLoader()
+    protocols = p_loader.get_protocols()
+    for protocol in protocols.keys():
+        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
+        proto_db_path = path_join(WS_PATH, "default", f"{protocol}.db")
+
+        if not exists(proto_db_path):
+            logger.debug(f"Initializing {protocol.upper()} protocol database")
+            conn = connect(proto_db_path)
+            c = conn.cursor()
+            # try to prevent some weird sqlite I/O errors
+            c.execute("PRAGMA journal_mode = OFF")  # could try setting to PERSIST if DB corruption starts occurring
+            c.execute("PRAGMA foreign_keys = 1")
+            # set a small timeout (5s) so if another thread is writing to the database, the entire program doesn't crash
+            c.execute("PRAGMA busy_timeout = 5000")
+            getattr(protocol_object, "database").db_schema(c)
+            # commit the changes and close everything off
+            conn.commit()
+            conn.close()
 
 
 def main():
-    config_path = os.path.expanduser('~/.cme/cme.conf')
-
-    if not os.path.exists(config_path):
+    if not exists(CONFIG_PATH):
         print("[-] Unable to find config file")
         sys.exit(1)
-
     try:
-        cmedbnav = CMEDBMenu(config_path)
+        cmedbnav = CMEDBMenu(CONFIG_PATH)
         cmedbnav.cmdloop()
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()

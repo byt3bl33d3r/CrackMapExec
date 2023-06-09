@@ -9,19 +9,19 @@ import os
 
 
 def identify_target_file(target_file):
-    with open(target_file, 'r') as target_file_handle:
+    with open(target_file, "r") as target_file_handle:
         for i, line in enumerate(target_file_handle):
             if i == 1:
-                if line.startswith('<NessusClientData'):
-                    return 'nessus'
-                elif line.endswith('nmaprun>\n'):
-                    return 'nmap'
+                if line.startswith("<NessusClientData"):
+                    return "nessus"
+                elif line.endswith("nmaprun>\n"):
+                    return "nmap"
 
-    return 'unknown'
+    return "unknown"
 
 
 def gen_random_string(length=10):
-    return ''.join(random.sample(string.ascii_letters, int(length)))
+    return "".join(random.sample(string.ascii_letters, int(length)))
 
 
 def validate_ntlm(data):
@@ -34,11 +34,11 @@ def validate_ntlm(data):
 
 def called_from_cmd_args():
     for stack in inspect.stack():
-        if stack[3] == 'print_host_info':
+        if stack[3] == "print_host_info":
             return True
-        if stack[3] == 'plaintext_login' or stack[3] == 'hash_login' or stack[3] == 'kerberos_login':
+        if stack[3] == "plaintext_login" or stack[3] == "hash_login" or stack[3] == "kerberos_login":
             return True
-        if stack[3] == 'call_cmd_args':
+        if stack[3] == "call_cmd_args":
             return True
     return False
 
@@ -53,12 +53,12 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
     path.
     Note: This function was backported from the Python 3 source code.
     """
+
     # Check that a given file can be accessed with the correct mode.
     # Additionally check that `file` is not a directory, as on Windows
     # directories pass the os.access check.
     def _access_check(fn, mode):
-        return (os.path.exists(fn) and os.access(fn, mode) and
-                not os.path.isdir(fn))
+        return os.path.exists(fn) and os.access(fn, mode) and not os.path.isdir(fn)
 
     # If we're given a path with a directory part, look it up directly
     # rather than referring to PATH directories. This includes checking

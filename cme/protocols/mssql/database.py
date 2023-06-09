@@ -1,222 +1,315 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-class database:
+from sqlalchemy import MetaData, func, Table, select, insert, update, delete
+from sqlalchemy.dialects.sqlite import Insert  # used for upsert
+from sqlalchemy.exc import (
+    IllegalStateChangeError,
+    NoInspectionAvailable,
+    NoSuchTableError,
+)
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.exc import SAWarning
+import warnings
+from cme.logger import cme_logger
 
-    def __init__(self, conn):
-        self.conn = conn
+# if there is an issue with SQLAlchemy and a connection cannot be cleaned up properly it spews out annoying warnings
+warnings.filterwarnings("ignore", category=SAWarning)
+
+
+class database:
+    def __init__(self, db_engine):
+        self.HostsTable = None
+        self.UsersTable = None
+        self.AdminRelationsTable = None
+
+        self.db_engine = db_engine
+        self.metadata = MetaData()
+        self.reflect_tables()
+        session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
+
+        Session = scoped_session(session_factory)
+        # this is still named "conn" when it is the session object; TODO: rename
+        self.conn = Session()
 
     @staticmethod
     def db_schema(db_conn):
-        db_conn.execute('''CREATE TABLE "computers" (
+        db_conn.execute(
+            """CREATE TABLE "hosts" (
             "id" integer PRIMARY KEY,
             "ip" text,
             "hostname" text,
             "domain" text,
             "os" text,
             "instances" integer
-            )''')
-
+            )"""
+        )
         # This table keeps track of which credential has admin access over which machine and vice-versa
-        db_conn.execute('''CREATE TABLE "admin_relations" (
+        db_conn.execute(
+            """CREATE TABLE "admin_relations" (
             "id" integer PRIMARY KEY,
             "userid" integer,
-            "computerid" integer,
+            "hostid" integer,
             FOREIGN KEY(userid) REFERENCES users(id),
-            FOREIGN KEY(computerid) REFERENCES computers(id)
-            )''')
-
+            FOREIGN KEY(hostid) REFERENCES hosts(id)
+            )"""
+        )
         # type = hash, plaintext
-        db_conn.execute('''CREATE TABLE "users" (
+        db_conn.execute(
+            """CREATE TABLE "users" (
             "id" integer PRIMARY KEY,
             "credtype" text,
             "domain" text,
             "username" text,
             "password" text,
-            "pillaged_from_computerid" integer,
-            FOREIGN KEY(pillaged_from_computerid) REFERENCES computers(id)
-            )''')
+            "pillaged_from_hostid" integer,
+            FOREIGN KEY(pillaged_from_hostid) REFERENCES hosts(id)
+            )"""
+        )
 
-    def add_computer(self, ip, hostname, domain, os, instances):
+    def reflect_tables(self):
+        with self.db_engine.connect() as conn:
+            try:
+                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
+                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
+                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
+            except (NoInspectionAvailable, NoSuchTableError):
+                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
+                exit()
+
+    def shutdown_db(self):
+        try:
+            self.conn.close()
+        # due to the async nature of CME, sometimes session state is a bit messy and this will throw:
+        # Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and
+        # this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5>
+        except IllegalStateChangeError as e:
+            cme_logger.debug(f"Error while closing session db object: {e}")
+
+    def clear_database(self):
+        for table in self.metadata.sorted_tables:
+            self.conn.execute(table.delete())
+
+    def add_host(self, ip, hostname, domain, os, instances):
         """
-        Check if this host has already been added to the database, if not add it in.
+        Check if this host has already been added to the database, if not, add it in.
+        TODO: return inserted or updated row ids as a list
         """
-        cur = self.conn.cursor()
+        cme_logger.debug(f"{domain} {ip} {os} {instances}")
+        if not domain:
+            domain = ""
+        hosts = []
 
-        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [ip])
-        results = cur.fetchall()
+        q = select(self.HostsTable).filter(self.HostsTable.c.ip == ip)
+        results = self.conn.execute(q).all()
+        cme_logger.debug(f"mssql add_host() - hosts returned: {results}")
 
-        if not len(results):
-            cur.execute("INSERT INTO computers (ip, hostname, domain, os, instances) VALUES (?,?,?,?,?)", [ip, hostname, domain, os, instances])
+        host_data = {
+            "ip": ip,
+            "hostname": hostname,
+            "domain": domain,
+            "os": os,
+            "instances": instances,
+        }
 
-        cur.close()
+        if not results:
+            hosts = [host_data]
+        else:
+            for host in results:
+                host_data = host._asdict()
+                if ip is not None:
+                    host_data["ip"] = ip
+                if hostname is not None:
+                    host_data["hostname"] = hostname
+                if domain is not None:
+                    host_data["domain"] = domain
+                if os is not None:
+                    host_data["os"] = os
+                if instances is not None:
+                    host_data["instances"] = instances
+                if host_data not in hosts:
+                    hosts.append(host_data)
 
-    def add_credential(self, credtype, domain, username, password, groupid=None, pillaged_from=None):
+        cme_logger.debug(f"Update Hosts: {hosts}")
+
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(self.HostsTable)
+        update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
+        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
+        self.conn.execute(q, hosts)
+
+    def add_credential(self, credtype, domain, username, password, pillaged_from=None):
         """
         Check if this credential has already been added to the database, if not add it in.
         """
-
-        domain = domain.split('.')[0].upper()
         user_rowid = None
-        cur = self.conn.cursor()
 
-        if groupid and not self.is_group_valid(groupid):
-            cur.close()
-            return
+        credential_data = {}
+        if credtype is not None:
+            credential_data["credtype"] = credtype
+        if domain is not None:
+            credential_data["domain"] = domain
+        if username is not None:
+            credential_data["username"] = username
+        if password is not None:
+            credential_data["password"] = password
+        if pillaged_from is not None:
+            credential_data["pillaged_from"] = pillaged_from
 
-        if pillaged_from and not self.is_computer_valid(pillaged_from):
-            cur.close()
-            return
+        q = select(self.UsersTable).filter(
+            func.lower(self.UsersTable.c.domain) == func.lower(domain),
+            func.lower(self.UsersTable.c.username) == func.lower(username),
+            func.lower(self.UsersTable.c.credtype) == func.lower(credtype),
+        )
+        results = self.conn.execute(q).all()
 
-        cur.execute("SELECT * FROM users WHERE LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND LOWER(credtype)=LOWER(?)", [domain, username, credtype])
-        results = cur.fetchall()
-
-        if not len(results):
-            cur.execute("INSERT INTO users (domain, username, password, credtype, pillaged_from_computerid) VALUES (?,?,?,?,?)", [domain, username, password, credtype, pillaged_from])
-            user_rowid = cur.lastrowid
-            if groupid:
-                cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+        if not results:
+            user_data = {
+                "domain": domain,
+                "username": username,
+                "password": password,
+                "credtype": credtype,
+                "pillaged_from_hostid": pillaged_from,
+            }
+            q = insert(self.UsersTable).values(user_data)  # .returning(self.UsersTable.c.id)
+            self.conn.execute(q)  # .first()
         else:
             for user in results:
+                # might be able to just remove this if check, but leaving it in for now
                 if not user[3] and not user[4] and not user[5]:
-                    cur.execute('UPDATE users SET password=?, credtype=?, pillaged_from_computerid=? WHERE id=?', [password, credtype, pillaged_from, user[0]])
-                    user_rowid = cur.lastrowid
-                    if groupid and not len(self.get_group_relations(user_rowid, groupid)):
-                        cur.execute("INSERT INTO group_relations (userid, groupid) VALUES (?,?)", [user_rowid, groupid])
+                    q = update(self.UsersTable).values(credential_data)  # .returning(self.UsersTable.c.id)
+                    results = self.conn.execute(q)  # .first()
+                    # user_rowid = results.id
 
-        cur.close()
-
-        logging.debug('add_credential(credtype={}, domain={}, username={}, password={}, groupid={}, pillaged_from={}) => {}'.format(credtype, domain, username, password, groupid, pillaged_from, user_rowid))
-
+        cme_logger.debug(f"add_credential(credtype={credtype}, domain={domain}, username={username}, password={password}, pillaged_from={pillaged_from})")
         return user_rowid
 
-    def remove_credentials(self, credIDs):
+    def remove_credentials(self, creds_id):
         """
         Removes a credential ID from the database
         """
-        for credID in credIDs:
-            cur = self.conn.cursor()
-            cur.execute("DELETE FROM users WHERE id=?", [credID])
-            cur.close()
+        del_hosts = []
+        for cred_id in creds_id:
+            q = delete(self.UsersTable).filter(self.UsersTable.c.id == cred_id)
+            del_hosts.append(q)
+        self.conn.execute(q)
 
-    def add_admin_user(self, credtype, domain, username, password, host):
+    def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
 
-        cur = self.conn.cursor()
+        if user_id:
+            q = select(self.UsersTable).filter(self.UsersTable.c.id == user_id)
+            users = self.conn.execute(q).all()
+        else:
+            q = select(self.UsersTable).filter(
+                self.UsersTable.c.credtype == credtype,
+                func.lower(self.UsersTable.c.domain) == func.lower(domain),
+                func.lower(self.UsersTable.c.username) == func.lower(username),
+                self.UsersTable.c.password == password,
+            )
+            users = self.conn.execute(q).all()
+        cme_logger.debug(f"Users: {users}")
 
-        cur.execute("SELECT * FROM users WHERE credtype=? AND LOWER(domain)=LOWER(?) AND LOWER(username)=LOWER(?) AND password=?", [credtype, domain, username, password])
-        creds = cur.fetchall()
+        like_term = func.lower(f"%{host}%")
+        q = q.filter(self.HostsTable.c.ip.like(like_term))
+        hosts = self.conn.execute(q).all()
+        cme_logger.debug(f"Hosts: {hosts}")
 
-        cur.execute('SELECT * FROM computers WHERE ip LIKE ?', [host])
-        hosts = cur.fetchall()
+        if users is not None and hosts is not None:
+            for user, host in zip(users, hosts):
+                user_id = user[0]
+                host_id = host[0]
+                link = {"userid": user_id, "hostid": host_id}
 
-        if len(creds) and len(hosts):
-            for cred, host in zip(creds, hosts):
-                userid = cred[0]
-                computerid = host[0]
+                q = select(self.AdminRelationsTable).filter(
+                    self.AdminRelationsTable.c.userid == user_id,
+                    self.AdminRelationsTable.c.hostid == host_id,
+                )
+                links = self.conn.execute(q).all()
 
-                # Check to see if we already added this link
-                cur.execute("SELECT * FROM admin_relations WHERE userid=? AND computerid=?", [userid, computerid])
-                links = cur.fetchall()
+                if not links:
+                    self.conn.execute(insert(self.AdminRelationsTable).values(link))
 
-                if not len(links):
-                    cur.execute("INSERT INTO admin_relations (userid, computerid) VALUES (?,?)", [userid, computerid])
+    def get_admin_relations(self, user_id=None, host_id=None):
+        if user_id:
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.userid == user_id)
+        elif host_id:
+            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
+        else:
+            q = select(self.AdminRelationsTable)
 
-        cur.close()
-
-    def get_admin_relations(self, userID=None, hostID=None):
-
-        cur = self.conn.cursor()
-
-        if userID:
-            cur.execute("SELECT * from admin_relations WHERE userid=?", [userID])
-
-        elif hostID:
-            cur.execute("SELECT * from admin_relations WHERE computerid=?", [hostID])
-
-        results = cur.fetchall()
-        cur.close()
+        results = self.conn.execute(q).all()
         return results
 
-    def remove_admin_relation(self, userIDs=None, hostIDs=None):
+    def remove_admin_relation(self, user_ids=None, host_ids=None):
+        q = delete(self.AdminRelationsTable)
+        if user_ids:
+            for user_id in user_ids:
+                q = q.filter(self.AdminRelationsTable.c.userid == user_id)
+        elif host_ids:
+            for host_id in host_ids:
+                q = q.filter(self.AdminRelationsTable.c.hostid == host_id)
+        self.conn.execute(q)
 
-        cur = self.conn.cursor()
-
-        if userIDs:
-            for userID in userIDs:
-                cur.execute("DELETE FROM admin_relations WHERE userid=?", [userID])
-
-        elif hostIDs:
-            for hostID in hostIDs:
-                cur.execute("DELETE FROM admin_relations WHERE computerid=?", [hostID])
-
-        cur.close()
-
-    def is_credential_valid(self, credentialID):
+    def is_credential_valid(self, credential_id):
         """
         Check if this credential ID is valid.
         """
-        cur = self.conn.cursor()
-        cur.execute('SELECT * FROM users WHERE id=? LIMIT 1', [credentialID])
-        results = cur.fetchall()
-        cur.close()
+        q = select(self.UsersTable).filter(
+            self.UsersTable.c.id == credential_id,
+            self.UsersTable.c.password is not None,
+        )
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
-    def get_credentials(self, filterTerm=None, credtype=None):
+    def get_credentials(self, filter_term=None, cred_type=None):
         """
         Return credentials from the database.
         """
-
-        cur = self.conn.cursor()
-
         # if we're returning a single credential by ID
-        if self.is_credential_valid(filterTerm):
-            cur.execute("SELECT * FROM users WHERE id=? LIMIT 1", [filterTerm])
-
-        # if we're filtering by credtype
-        elif credtype:
-            cur.execute("SELECT * FROM users WHERE credtype=?", [credtype])
-
+        if self.is_credential_valid(filter_term):
+            q = select(self.UsersTable).filter(self.UsersTable.c.id == filter_term)
+        elif cred_type:
+            q = select(self.UsersTable).filter(self.UsersTable.c.credtype == cred_type)
         # if we're filtering by username
-        elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM users WHERE LOWER(username) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower())])
-
+        elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
+            q = select(self.UsersTable).filter(func.lower(self.UsersTable.c.username).like(like_term))
         # otherwise return all credentials
         else:
-            cur.execute("SELECT * FROM users")
+            q = select(self.UsersTable)
 
-        results = cur.fetchall()
-        cur.close()
+        results = self.conn.execute(q).all()
         return results
 
-    def is_computer_valid(self, hostID):
+    def is_host_valid(self, host_id):
         """
-        Check if this computer ID is valid.
+        Check if this host ID is valid.
         """
-        cur = self.conn.cursor()
-        cur.execute('SELECT * FROM computers WHERE id=? LIMIT 1', [hostID])
-        results = cur.fetchall()
-        cur.close()
+        q = select(self.HostsTable).filter(self.HostsTable.c.id == host_id)
+        results = self.conn.execute(q).all()
         return len(results) > 0
 
-    def get_computers(self, filterTerm=None):
+    def get_hosts(self, filter_term=None, domain=None):
         """
-        Return computers from the database.
+        Return hosts from the database.
         """
-
-        cur = self.conn.cursor()
+        q = select(self.HostsTable)
 
         # if we're returning a single host by ID
-        if self.is_computer_valid(filterTerm):
-            cur.execute("SELECT * FROM computers WHERE id=? LIMIT 1", [filterTerm])
-
+        if self.is_host_valid(filter_term):
+            q = q.filter(self.HostsTable.c.id == filter_term)
+            results = self.conn.execute(q).first()
+            # all() returns a list, so we keep the return format the same so consumers don't have to guess
+            return [results]
+        # if we're filtering by domain controllers
+        elif filter_term == "dc":
+            q = q.filter(self.HostsTable.c.dc == True)
+            if domain:
+                q = q.filter(func.lower(self.HostsTable.c.domain) == func.lower(domain))
         # if we're filtering by ip/hostname
-        elif filterTerm and filterTerm != "":
-            cur.execute("SELECT * FROM computers WHERE ip LIKE ? OR LOWER(hostname) LIKE LOWER(?)", ['%{}%'.format(filterTerm.lower()), '%{}%'.format(filterTerm.lower())])
+        elif filter_term and filter_term != "":
+            like_term = func.lower(f"%{filter_term}%")
+            q = select(self.HostsTable).filter(self.HostsTable.c.ip.like(like_term) | func.lower(self.HostsTable.c.hostname).like(like_term))
 
-        # otherwise return all credentials
-        else:
-            cur.execute("SELECT * FROM computers")
-
-        results = cur.fetchall()
-        cur.close()
+        results = self.conn.execute(q).all()
         return results

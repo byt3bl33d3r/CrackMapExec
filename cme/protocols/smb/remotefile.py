@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 from impacket.smb3structs import FILE_READ_DATA, FILE_WRITE_DATA
 
+
 class RemoteFile:
-    def __init__(self, smbConnection, fileName, share='ADMIN$', access = FILE_READ_DATA | FILE_WRITE_DATA ):
+    def __init__(
+        self,
+        smbConnection,
+        fileName,
+        share="ADMIN$",
+        access=FILE_READ_DATA | FILE_WRITE_DATA,
+    ):
         self.__smbConnection = smbConnection
         self.__share = share
         self.__access = access
@@ -13,7 +20,7 @@ class RemoteFile:
         self.__currentOffset = 0
 
     def open(self):
-        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName, desiredAccess= self.__access)
+        self.__fid = self.__smbConnection.openFile(self.__tid, self.__fileName, desiredAccess=self.__access)
 
     def seek(self, offset, whence):
         # Implement whence, for now it's always from the beginning of the file
@@ -22,10 +29,10 @@ class RemoteFile:
 
     def read(self, bytesToRead):
         if bytesToRead > 0:
-            data =  self.__smbConnection.readFile(self.__tid, self.__fid, self.__currentOffset, bytesToRead)
+            data = self.__smbConnection.readFile(self.__tid, self.__fid, self.__currentOffset, bytesToRead)
             self.__currentOffset += len(data)
             return data
-        return ''
+        return ""
 
     def close(self):
         if self.__fid is not None:
@@ -39,4 +46,4 @@ class RemoteFile:
         return self.__currentOffset
 
     def __str__(self):
-        return "\\\\{}\\{}\\{}".format(self.__smbConnection.getRemoteHost(), self.__share, self.__fileName)
+        return f"\\\\{self.__smbConnection.getRemoteHost()}\\{self.__share}\\{self.__fileName}"
