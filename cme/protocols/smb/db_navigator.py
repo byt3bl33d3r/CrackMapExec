@@ -3,7 +3,11 @@
 
 from cme.helpers.misc import validate_ntlm
 from cme.cmedb import DatabaseNavigator, print_table, print_help
+from termcolor import colored
+import functools
 
+help_header = functools.partial(colored, color='cyan', attrs=['bold'])
+help_kw = functools.partial(colored, color='green', attrs=['bold'])
 
 class navigator(DatabaseNavigator):
     def display_creds(self, creds):
@@ -367,12 +371,12 @@ class navigator(DatabaseNavigator):
         }
 
         line = line.strip()
-        requested_columns = line.split(' ')
-        columns_to_display = []
-        for column in requested_columns:
-            if column.lower() in valid_columns and valid_columns[column.lower()] not in columns_to_display:
-                columns_to_display.append(valid_columns[column.lower()])
 
+        if line.lower() == 'full':
+            columns_to_display = list(valid_columns.values())
+        else:
+            requested_columns = line.split(' ')
+            columns_to_display = list(valid_columns[column.lower()] for column in requested_columns if column.lower() in valid_columns)
 
         results = self.db.get_check_results()
         self.display_wcc_results(results, columns_to_display)
@@ -418,12 +422,20 @@ class navigator(DatabaseNavigator):
         print_table(data, title="Windows Configuration Checks")
 
     def help_wcc(self):
-        help_string = """
-        wcc [ip|hostname|check|description|status|reasons]...
+        help_string = f"""
+        {help_header('USAGE')}
+            {help_header('wcc')} [{help_kw('full')}]
+            {help_header('wcc')} <{help_kw('ip')}|{help_kw('hostname')}|{help_kw('check')}|{help_kw('description')}|{help_kw('status')}|{help_kw('reasons')}>...
 
-        Display Windows Configuration Checks results
-        Select the columns you want to be displayed by giving them as arguments. By default: IP, Hostname, Check, and Status
-        """
+        {help_header('DESCRIPTION')}
+            Display Windows Configuration Checks results
+
+            {help_header('wcc')} [{help_kw('full')}]
+                If full is provided, display all columns. Otherwise, display IP, Hostname, Check and Status
+
+            {help_header('wcc')} <{help_kw('ip')}|{help_kw('hostname')}|{help_kw('check')}|{help_kw('description')}|{help_kw('status')}|{help_kw('reasons')}>...
+                Display only the requested columns (case-insensitive)
+            """
         print_help(help_string)
 
     def help_hosts(self):
