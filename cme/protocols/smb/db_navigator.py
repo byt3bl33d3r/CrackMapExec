@@ -357,19 +357,37 @@ class navigator(DatabaseNavigator):
                 print_table(data, title="Credential(s) with Admin Access")
 
     def do_wcc(self, line):
-        results = self.db.get_check_results()
-        self.display_wcc_results(results)
+        valid_columns = {
+            'ip':'IP',
+            'hostname':'Hostname',
+            'check':'Check',
+            'description':'Description',
+            'status':'Status',
+            'reasons':'Reasons'
+        }
 
-    def display_wcc_results(self, results):
+        line = line.strip()
+        requested_columns = line.split(' ')
+        columns_to_display = []
+        for column in requested_columns:
+            if column.lower() in valid_columns and valid_columns[column.lower()] not in columns_to_display:
+                columns_to_display.append(valid_columns[column.lower()])
+
+
+        results = self.db.get_check_results()
+        self.display_wcc_results(results, columns_to_display)
+
+    def display_wcc_results(self, results, columns_to_display=None):
         data = [
             [
                 "IP",
                 "Hostname",
                 "Check",
-                "Status",
-                "Reasons",
+                "Status"
             ]
         ]
+        if columns_to_display:
+            data = [columns_to_display]
 
         checks = self.db.get_checks()
         checks_dict = {}
@@ -381,24 +399,30 @@ class navigator(DatabaseNavigator):
             status = 'OK' if secure else 'KO'
             host = self.db.get_hosts(host_id)[0]._asdict()
             check = checks_dict[check_id]
+            row = []
+            for column in data[0]:
+                if column == 'IP':
+                    row.append(host['ip'])
+                if column == 'Hostname':
+                    row.append(host['hostname'])
+                if column == 'Check':
+                    row.append(check['name'])
+                if column == 'Description':
+                    row.append(check['description'])
+                if column == 'Status':
+                    row.append(status)
+                if column == 'Reasons':
+                    row.append(reasons)
+            data.append(row)
 
-            data.append(
-                [
-                    host['ip'],
-                    host['hostname'],
-                    check['name'],
-                    status,
-                    reasons
-                ]
-            )
         print_table(data, title="Windows Configuration Checks")
 
     def help_wcc(self):
         help_string = """
-        wcc
+        wcc [ip|hostname|check|description|status|reasons]...
+
         Display Windows Configuration Checks results
-        Table format:
-        | 'IP', 'Hostname', 'Check', 'Status', 'Reasons' |
+        Select the columns you want to be displayed by giving them as arguments. By default: IP, Hostname, Check, and Status
         """
         print_help(help_string)
 
