@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import functools
 import json
 import operator
 import time
@@ -38,6 +39,44 @@ if 'cme_logger' not in globals():
 			cme_logger.removeHandler(handler)
 	cme_logger.handlers[0].setFormatter(cme.logger.logging.Formatter('%(asctime)s %(message)s'))
 
+class ConfigCheck:
+	"""
+	Class for performing the checks and holding the results
+	"""
+
+	module = None
+
+	def __init__(self, name, description="", checkers=[None], checker_args=[[]], checker_kwargs=[{}]):
+		self.check_id = None
+		self.name = name
+		self.description = description
+		assert len(checkers) == len(checker_args) and len(checkers) == len(checker_kwargs)
+		self.checkers = checkers
+		self.checker_args = checker_args
+		self.checker_kwargs = checker_kwargs
+		self.ok = True
+		self.reasons = []
+
+	def run(self):
+		for checker, args, kwargs in zip(self.checkers, self.checker_args, self.checker_kwargs):
+			if checker is None:
+				checker = self.module.check_registry
+			ok, reasons = checker(*args, **kwargs)
+			self.ok = self.ok and ok
+			self.reasons.extend(reasons)
+
+	def log(self):
+		if self.module.quiet:
+			return
+
+		status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
+		reasons = ": " + ', '.join(self.reasons) if self.module.verbose else ''
+		msg = f'{status} {self.name}{reasons}'
+		kwargs = {'extra':self.module.log.extra}
+		msg, kwargs = self.module.log.format(msg, kwargs)
+		text = cme.logger.Text.from_ansi(msg)
+		cme.logger.cme_console.print(text, **kwargs)
+
 class CMEModule:
 	'''
 	Windows Configuration Checker
@@ -62,7 +101,10 @@ class CMEModule:
 			self.output_format = DEFAULT_OUTPUT_FORMAT
 		self.verbose = module_options.get('VERBOSE', 'false').lower() in ('true', '1')
 		self.quiet = module_options.get('QUIET', 'false').lower() in ('true', '1')
+
 		self.results = {}
+		ConfigCheck.module = self
+		self.checks_initialized = False
 
 	def on_admin_login(self, context, connection):
 		self.log = connection.logger
@@ -70,6 +112,13 @@ class CMEModule:
 		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
 		remoteOps.enableRegistry()
 		dce = remoteOps._RemoteOperations__rrp
+		self.check_registry = functools.partial(self.check_registry, dce)
+
+		# Prepare checks
+		if not self.checks_initialized:
+			self.init_checks(dce, connection)
+			self.checks_initialized = True
+
 		self.check_config(dce, connection)
 		remoteOps.finish()
 		self.export_results()
@@ -110,277 +159,287 @@ class CMEModule:
 	# Check methods #
 	#################
 
-	def check_config(self, dce, connection):
-		host = connection.host
-		module = self # to access the module object from the ConfigCheck class
-
-		class ConfigCheck:
-			"""
-			Class for performing the checks and holding the results
-			"""
-			def __init__(self, name, description="", options={}):
-				self.name = name
-				self.description = description
-				self.ok = False
-				self.reasons = []
-				self.options = {
-					'lastWins':False,
-					'stopOnOK':False,
-					'stopOnKO':False,
-					'KOIfMissing':True
-				}
-				self.options.update(options)
-
-			def check(self, *specs, missing_ok=True):
-				"""
-				Perform checks that only require to compare values in the registry with expected values, according to the specs
-				a spec may be either a 3-tuple: (key name, value name, expected value), or a 4-tuple (key name, value name, expected value, operation), where operation is a function that implements a comparison operator
-				"""
-				op = operator.eq
-				self.ok = True
-
-				for spec in specs:
-					if len(spec) == 3:
-						(key, value_name, expected_value) = spec
-					elif len(spec) == 4:
-						(key, value_name, expected_value, op) = spec
-					else:
-						self.ok = False
-						self.reasons = ['Check could not be performed (invalid specification provided)']
-						return self
-
-					if op == operator.eq:
-						opstring = '{left} == {right}'
-						nopstring = '{left} != {right}'
-					elif op == operator.contains:
-						opstring = '{left} in {right}'
-						nopstring = '{left} not in {right}'
-					elif op == operator.gt:
-						opstring = '{left} > {right}'
-						nopstring = '{left} <= {right}'
-					elif op == operator.ge:
-						opstring = '{left} >= {right}'
-						nopstring = '{left} < {right}'
-					elif op == operator.lt:
-						opstring = '{left} < {right}'
-						nopstring = '{left} >= {right}'
-					elif op == operator.le:
-						opstring = '{left} <= {right}'
-						nopstring = '{left} > {right}'
-					elif op == operator.ne:
-						opstring = '{left} != {right}'
-						nopstring = '{left} == {right}'
-					else:
-						opstring = f'{op.__name__}({{left}}, {{right}}) == True'
-						nopstring = f'{op.__name__}({{left}}, {{right}}) == True'
-
-					value = module.reg_query_value(dce, key, value_name)
-
-					if type(value) == DCERPCSessionError:
-						if missing_ok == False or self.options['KOIfMissing']:
-							self.ok = False
-						if value.error_code in (ERROR_NO_MORE_ITEMS, ERROR_FILE_NOT_FOUND):
-							self.reasons.append(f'{key}: Key not found')
-						elif value.error_code == ERROR_OBJECT_NOT_FOUND:
-							self.reasons.append(f'{value_name}: Value not found')
-						else:
-							self.ok = False
-							self.reasons.append(f'Error while retrieving value of {key}\\{value_name}: {value}')
-						continue
-
-					if op(value, expected_value):
-						if self.options['lastWins']:
-							self.ok = True
-						self.reasons.append(opstring.format(left=f'{key}\\{value_name} ({value})', right=expected_value))
-					else:
-						self.reasons.append(nopstring.format(left=f'{key}\\{value_name} ({value})', right=expected_value))
-						self.ok = False
-					if self.ok and self.options['stopOnOK']:
-						break
-					if not self.ok and self.options['stopOnKO']:
-						break
-
-				return self
-
-			def wrap_check(self, check_function, *args, **kwargs):
-				"""
-				Execute the given check function with the given arguments, and update internal attributes according to the results.
-				The check function MUST return a boolean and a list of strings
-				"""
-				self.ok, self.reasons = check_function(*args, **kwargs)
-				return self
-
-			def log(self):
-				if module.quiet:
-					return
-
-				status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
-				reasons = ": " + ', '.join(self.reasons) if module.verbose else ''
-				module.log.warning(f'{status} {self.name}{reasons}')
-
-		# Perform all the checks and store the results for all of them
-		for result in (
-			ConfigCheck('Last successful update', 'Checks how old is the last successful update').wrap_check(self.check_last_successful_update, connection),
-			ConfigCheck('LAPS', 'Checks if LAPS is installed').wrap_check(self.check_laps, dce, connection),
-			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed').wrap_check(self.check_administrator_name, connection),
-			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure').check((
+	def init_checks(self, dce, connection):
+		# Declare the checks to do and how to do them
+		self.checks = [
+			ConfigCheck('Last successful update', 'Checks how old is the last successful update', checkers=[self.check_last_successful_update], checker_args=[[connection]]),
+			ConfigCheck('LAPS', 'Checks if LAPS is installed', checkers=[self.check_laps], checker_args=[[dce, connection]]),
+			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed', checkers=[self.check_administrator_name], checker_args=[[connection]]),
+			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure', checker_args=[[(
 					'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'EnableLUA', 1
 				),(
 					'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'LocalAccountTokenFilterPolicy', 0
-				)
-			),
-			ConfigCheck('Hash storage format', 'Checks if storing  hashes in LM format is disabled').check((
+				)]]),
+			ConfigCheck('Hash storage format', 'Checks if storing  hashes in LM format is disabled', checker_args=[[(
 					'HKLM\\System\\CurrentControlSet\\Control\\Lsa',
 					'NoLMHash', 1
-				)
-			),
-			ConfigCheck('Always install elevated', 'Checks if AlwaysInstallElevated is disabled').check((
+				)]]),
+			ConfigCheck('Always install elevated', 'Checks if AlwaysInstallElevated is disabled', checker_args=[[(
 					'HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer',
 					'AlwaysInstallElevated', 0
 				)
-			),
-			ConfigCheck('IPv6 preference', 'Checks if IPv6 is preferred over IPv4').check((
+			]]),
+			ConfigCheck('IPv6 preference', 'Checks if IPv6 is preferred over IPv4', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters',
 					'DisabledComponents', (32, 255), in_
 				)
-			),
-			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled').wrap_check(self.check_spooler_service, connection),
-			ConfigCheck('WDigest authentication', 'Checks if WDigest authentication is disabled').check((
+			]]),
+			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled', checkers=[self.check_spooler_service], checker_args=[[connection]]),
+			ConfigCheck('WDigest authentication', 'Checks if WDigest authentication is disabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest',
 					'UseLogonCredential', 0
 				)
-			),
-			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS')\
-				.wrap_check(self.check_wsus_running, connection)\
-				.check((
+			]]),
+			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS', checkers=[self.check_wsus_running, None], checker_args=[[connection], [(
 						'HKLM\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate',
 						'WUServer', 'https://', startswith
-					)
-				)\
-				.check((
+					),(
 						'HKLM\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate',
 						'UseWUServer', 0, operator.eq
-					)
-				),
-			ConfigCheck('LSA cache', 'Checks how many logons are kept in the LSA cache').check((
+					)]], checker_kwargs=[{},{'options':{'lastWins':True}}]),
+			ConfigCheck('LSA cache', 'Checks how many logons are kept in the LSA cache', checker_args=[[(
 					'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon',
 					'CachedLogonsCount', 2, le
 				)
-			),
-			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined').wrap_check(self.check_applocker, dce),
-			ConfigCheck('RDP expiration time', 'Checks RDP session timeout').check((
+			]]),
+			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined', checkers=[self.check_applocker], checker_args=[[dce]]),
+			ConfigCheck('RDP expiration time', 'Checks RDP session timeout', checker_args=[[(
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services',
 					'MaxDisconnectionTime', 0, operator.gt
 				),(
 					'HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services',
 					'MaxDisconnectionTime', 0, operator.gt
 				)
-			),
-			ConfigCheck('CredentialGuard', 'Checks if CredentialGuard is enabled').check((
+			]]),
+			ConfigCheck('CredentialGuard', 'Checks if CredentialGuard is enabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard',
 					'EnableVirtualizationBasedSecurity', 1
 				),(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LsaCfgFlags', 1
 				)
-			),
-			ConfigCheck('PPL', 'Checks if lsass runs as a protected process').check((
+			]]),
+			ConfigCheck('PPL', 'Checks if lsass runs as a protected process', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'RunAsPPL', 1
 				)
-			),
-			ConfigCheck('PEAP certificate validation', 'Checks if PEAP certificate validation is enabled').check((
+			]]),
+			ConfigCheck('PEAP certificate validation', 'Checks if PEAP certificate validation is enabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Rasman\\PPP\\EAP\\13',
 					'ValidateServerCert', 1
 				)
-			),
-			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available').check((
+			]]),
+			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available', checker_args=[[(
 					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine',
 					'PSCompatibleVersion', '2.0', not_(operator.contains)
 				)
-			),
-			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled').check((
+			]]),
+			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LmCompatibilityLevel', 5, operator.ge
 				)
-			),
-			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces').wrap_check(self.check_nbtns, dce),
-			ConfigCheck('mDNS', 'Checks if mDNS is disabled').check((
+			]]),
+			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns], checker_args=[[dce]]),
+			ConfigCheck('mDNS', 'Checks if mDNS is disabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNScache\\Parameters',
 					'EnableMDNS', 0
 				)
-			),
-			ConfigCheck('SMB signing', 'Checks if SMB signing is enabled').check((
+			]]),
+			ConfigCheck('SMB signing', 'Checks if SMB signing is enabled', checker_args=[[(
 					'HKLM\\System\\CurrentControlSet\\Services\\LanmanServer\\Parameters',
 					'requiresecuritysignature', 1
 				)
-			),
-			ConfigCheck('LDAP signing', 'Checks if LDAP signing is enabled').check((
+			]]),
+			ConfigCheck('LDAP signing', 'Checks if LDAP signing is enabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Parameters',
 					'LDAPServerIntegrity', 2
 				),(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS',
 					'LdapEnforceChannelBinding', 2
 				)
-			),
-			ConfigCheck('SMB encryption', 'Checks if SMB encryption is enabled').check((
+			]]),
+			ConfigCheck('SMB encryption', 'Checks if SMB encryption is enabled', checker_args=[[(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters',
 					'EncryptData', 1
 				)
-			),
-			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled').check((
+			]]),
+			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled', checker_args=[[(
 					'HKLM\\Software\\Policies\\Microsoft\\Windows\\System',
 					'DontDisplayNetworkSelectionUi', 1
 				)
-			),
-			ConfigCheck('Last logged-on user displayed', 'Checks if display of last logged on user is disabled').check((
+			]]),
+			ConfigCheck('Last logged-on user displayed', 'Checks if display of last logged on user is disabled', checker_args=[[(
 					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'dontdisplaylastusername', 1
 				)
-			),
-			ConfigCheck('RDP authentication', 'Checks RDP authentication configuration (NLA auth and restricted admin mode)').check((
+			]]),
+			ConfigCheck('RDP authentication', 'Checks RDP authentication configuration (NLA auth and restricted admin mode)', checker_args=[[(
 					'HKLM\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\\',
 					'UserAuthentication', 1
 				),(
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\LSA',
 					'RestrictedAdminMode', 1
 				)
-			),
-			ConfigCheck('BitLocker configuration', 'Checks the BitLocker configuration (based on https://www.stigviewer.com/stig/windows_10/2020-06-15/finding/V-94859)').check((
+			]]),
+			ConfigCheck('BitLocker configuration', 'Checks the BitLocker configuration (based on https://www.stigviewer.com/stig/windows_10/2020-06-15/finding/V-94859)', checker_args=[[(
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\FVE',
 					'UseAdvancedStartup', 1
 				),(
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\FVE',
 					'UseTPMPIN', 1
 				)
-			),
-			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled').wrap_check(self.check_guest_account_disabled, connection),
-			ConfigCheck('Automatic session lock', 'Checks if the session is automatically locked on after a period of inactivity').check((
+			]]),
+			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled', checkers=[self.check_guest_account_disabled], checker_args=[[connection]]),
+			ConfigCheck('Automatic session lock', 'Checks if the session is automatically locked on after a period of inactivity', checker_args=[[(
 					'HKCU\\Control Panel\\Desktop',
 					'ScreenSaverIsSecure', 1
 				),(
 					'HKCU\\Control Panel\\Desktop',
 					'ScreenSaveTimeOut', 300, le
 				)
-			),
-			ConfigCheck('Powershell Execution Policy', 'Checks if the Powershell execution policy is set to "Restricted"', options={'KOIfMissing':False, 'lastWins':True}).check((
+			]]),
+			ConfigCheck('Powershell Execution Policy', 'Checks if the Powershell execution policy is set to "Restricted"', checker_args=[[(
 					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\1\ShellIds\Microsoft.Powershell',
 					'ExecutionPolicy', 'Restricted\x00'
 				),(
 					'HKCU\\SOFTWARE\\Microsoft\\PowerShell\\1\ShellIds\Microsoft.Powershell',
 					'ExecutionPolicy', 'Restricted\x00'
 				)
-			),
-			ConfigCheck('Legal notice banner', 'Checks if there is a legal notice banner set').check((
+			]], checker_kwargs=[{'options':{'KOIfMissing':False, 'lastWins':True}}]),
+			ConfigCheck('Legal notice banner', 'Checks if there is a legal notice banner set', checker_args=[[(
 					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'legalnoticecaption', "", operator.ne
 				)
-			)
-		):
-			result.log()
-			self.add_result(host, result)
+			]])
+		]
+
+		# Add check to conf_checks table if missing
+		db_checks = connection.db.get_checks()
+		db_check_names = [ check._asdict()['name'].strip().lower() for check in db_checks ]
+		added = []
+		for i,check in enumerate(self.checks):
+			missing = True
+			for db_check in db_checks:
+				db_check = db_check._asdict()
+				if check.name.strip().lower() == db_check['name'].strip().lower():
+					missing = False
+					self.checks[i].check_id = db_check['id']
+					break
+
+			if missing:
+				connection.db.add_check(check.name, check.description)
+				added.append(check)
+
+		# Update check_id for checks added to the db
+		db_checks = connection.db.get_checks()
+		for i,check in enumerate(added):
+			check_id = None
+			for db_check in db_checks:
+				db_check = db_check._asdict()
+				if db_check['name'].strip().lower() == check.name.strip().lower():
+					check_id = db_check['id']
+					break
+			added[i].check_id = check_id
+
+	def check_config(self, dce, connection):
+		# Get host ID from db
+		host_id = None
+		hosts = connection.db.get_hosts(connection.host)
+		for host in hosts:
+			host = host._asdict()
+			if host['ip'] == connection.host and host['hostname'] == connection.hostname and host['domain'] == connection.domain:
+				host_id = host['id']
+				break
+
+		# Perform all the checks and store the results
+		for check in self.checks:
+			check.run()
+			check.log()
+			self.add_result(connection.host, check)
+			if host_id is not None:
+				connection.db.add_check_result(host_id, check.check_id, check.ok, ', '.join(check.reasons).replace('\x00',''))
+
+	def check_registry(self, dce, *specs, options={}):
+		"""
+		Perform checks that only require to compare values in the registry with expected values, according to the specs
+		a spec may be either a 3-tuple: (key name, value name, expected value), or a 4-tuple (key name, value name, expected value, operation), where operation is a function that implements a comparison operator
+		"""
+		default_options = {
+			'lastWins':False,
+			'stopOnOK':False,
+			'stopOnKO':False,
+			'KOIfMissing':True
+		}
+		default_options.update(options)
+		options = default_options
+		op = operator.eq
+		ok = True
+		reasons = []
+
+		for spec in specs:
+			if len(spec) == 3:
+				(key, value_name, expected_value) = spec
+			elif len(spec) == 4:
+				(key, value_name, expected_value, op) = spec
+			else:
+				ok = False
+				reasons = ['Check could not be performed (invalid specification provided)']
+				return ok, reasons
+
+			if op == operator.eq:
+				opstring = '{left} == {right}'
+				nopstring = '{left} != {right}'
+			elif op == operator.contains:
+				opstring = '{left} in {right}'
+				nopstring = '{left} not in {right}'
+			elif op == operator.gt:
+				opstring = '{left} > {right}'
+				nopstring = '{left} <= {right}'
+			elif op == operator.ge:
+				opstring = '{left} >= {right}'
+				nopstring = '{left} < {right}'
+			elif op == operator.lt:
+				opstring = '{left} < {right}'
+				nopstring = '{left} >= {right}'
+			elif op == operator.le:
+				opstring = '{left} <= {right}'
+				nopstring = '{left} > {right}'
+			elif op == operator.ne:
+				opstring = '{left} != {right}'
+				nopstring = '{left} == {right}'
+			else:
+				opstring = f'{op.__name__}({{left}}, {{right}}) == True'
+				nopstring = f'{op.__name__}({{left}}, {{right}}) == True'
+
+			value = self.reg_query_value(dce, key, value_name)
+
+			if type(value) == DCERPCSessionError:
+				if options['KOIfMissing']:
+					ok = False
+				if value.error_code in (ERROR_NO_MORE_ITEMS, ERROR_FILE_NOT_FOUND):
+					reasons.append(f'{key}: Key not found')
+				elif value.error_code == ERROR_OBJECT_NOT_FOUND:
+					reasons.append(f'{value_name}: Value not found')
+				else:
+					ok = False
+					reasons.append(f'Error while retrieving value of {key}\\{value_name}: {value}')
+				continue
+
+			if op(value, expected_value):
+				if options['lastWins']:
+					ok = True
+				reasons.append(opstring.format(left=f'{key}\\{value_name} ({value})', right=expected_value))
+			else:
+				reasons.append(nopstring.format(left=f'{key}\\{value_name} ({value})', right=expected_value))
+				ok = False
+			if ok and options['stopOnOK']:
+				break
+			if not ok and options['stopOnKO']:
+				break
+
+		return ok, reasons
 
 	def check_laps(self, dce, smb):
 		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
