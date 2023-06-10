@@ -69,7 +69,7 @@ class database:
                 self.LoggedinRelationsTable = Table(
                     "loggedin_relations", self.metadata, autoload_with=self.db_engine
                 )
-                self.LoggedinRelationsTable = Table(
+                self.DirectoryListingsTable = Table(
                     "directory_listings", self.metadata, autoload_with=self.db_engine
                 )
             except (NoInspectionAvailable, NoSuchTableError):
