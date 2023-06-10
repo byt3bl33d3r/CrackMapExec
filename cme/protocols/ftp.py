@@ -64,6 +64,8 @@ class ftp(connection):
             self.logger.debug(f"Response: {resp}")
             # 230 is "User logged in, proceed" response, ftplib raises an exception on failed login
             if "230" in resp:
+                self.logger.debug(f"Host: {self.host} Port: {self.args.port}")
+                self.db.add_host(self.host, self.args.port, self.remote_version)
                 if username in ["anonymous", ""] and password in ["", "-"]:
                     self.logger.success(f"{username}:{process_secret(password)} {highlight('- Anonymous Login!')}")
                 else:
