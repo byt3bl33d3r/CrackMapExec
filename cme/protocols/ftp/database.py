@@ -219,7 +219,7 @@ class database:
         results = self.sess.execute(q).all()
         return len(results) > 0
 
-    def get_credential(self, cred_type, username, password):
+    def get_credential(self, username, password):
         q = select(self.CredentialsTable).filter(
             self.CredentialsTable.c.username == username,
             self.CredentialsTable.c.password == password,
@@ -301,7 +301,7 @@ class database:
         results = self.sess.execute(q).all()
         return results
 
-    def add_loggedin_relation(self, cred_id, host_id, shell=False):
+    def add_loggedin_relation(self, cred_id, host_id):
         relation_query = select(self.LoggedinRelationsTable).filter(
             self.LoggedinRelationsTable.c.credid == cred_id,
             self.LoggedinRelationsTable.c.hostid == host_id,
