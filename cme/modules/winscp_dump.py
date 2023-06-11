@@ -161,8 +161,9 @@ class CMEModule:
                 decPassword = "NO_PASSWORD_FOUND"
             sectionName = unquote(sessionName)
             return [sectionName, hostName, userName, decPassword]
-        except:
-            traceback.print_exc()
+        except Exception as e:
+            context.log.fail(f"Error in Session Extraction: {e}")
+            context.log.debug(traceback.format_exc())
         finally:
             remoteOps.finish()
         return "ERROR IN SESSION EXTRACTION"
@@ -197,9 +198,9 @@ class CMEModule:
             userNames.remove(".DEFAULT")
             regex = re.compile(r"^.*_Classes$")
             userObjects = [i for i in userNames if not regex.match(i)]
-        except:
-            context.log.fail("Error handling Users in registry")
-            traceback.print_exc()
+        except Exception as e:
+            context.log.fail(f"Error handling Users in registry: {e}")
+            context.log.debug(traceback.format_exc())
         finally:
             remoteOps.finish()
         return userObjects
@@ -232,9 +233,9 @@ class CMEModule:
             for i in range(users):
                 userObjects.append(rrp.hBaseRegEnumKey(remoteOps._RemoteOperations__rrp, keyHandle, i)["lpNameOut"].split("\x00")[:-1][0])
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
-        except:
-            context.log.fail("Error handling Users in registry")
-            traceback.print_exc()
+        except Exception as e:
+            context.log.fail(f"Error handling Users in registry: {e}")
+            context.log.debug(traceback.format_exc())
         finally:
             remoteOps.finish()
         return userObjects
@@ -299,8 +300,9 @@ class CMEModule:
                 context.log.debug("UNLOAD USER FROM REGISTRY: " + userObject)
                 try:
                     rrp.hBaseRegUnLoadKey(remoteOps._RemoteOperations__rrp, keyHandle, userObject)
-                except:
-                    traceback.print_exc()
+                except Exception as e:
+                    context.log.fail(f"Error unloading user {userObject} in registry: {e}")
+                    context.log.debug(traceback.format_exc())
             rrp.hBaseRegCloseKey(remoteOps._RemoteOperations__rrp, keyHandle)
         finally:
             remoteOps.finish()
@@ -376,17 +378,17 @@ class CMEModule:
                 except DCERPCException as e:
                     if str(e).find("ERROR_FILE_NOT_FOUND"):
                         context.log.debug("No WinSCP config found in registry for user {}".format(userObject))
-                except Exception:
-                    context.log.fail("Unexpected error:")
-                    traceback.print_exc()
+                except Exception as e:
+                    context.log.fail(f"Unexpected error: {e}")
+                    context.log.debug(traceback.format_exc())
             self.unloadMissingUsers(context, connection, unloadedUserObjects)
         except DCERPCException as e:
             # Error during registry query
             if str(e).find("rpc_s_access_denied"):
                 context.log.fail("Error: rpc_s_access_denied. Seems like you don't have enough privileges to read the registry.")
-        except:
-            context.log.fail("UNEXPECTED ERROR:")
-            traceback.print_exc()
+        except Exception as e:
+            context.log.fail(f"UNEXPECTED ERROR: {e}")
+            context.log.debug(traceback.format_exc())
         finally:
             remoteOps.finish()
 
@@ -425,7 +427,7 @@ class CMEModule:
                 self.decodeConfigFile(context, confFile)
             except:
                 context.log.fail("Error! No config file found at {}".format(self.filepath))
-                traceback.print_exc()
+                context.log.debug(traceback.format_exc())
         else:
             context.log.display("Looking for WinSCP creds in User documents and AppData...")
             output = connection.execute('powershell.exe "Get-LocalUser | Select name"', True)

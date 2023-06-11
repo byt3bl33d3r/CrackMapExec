@@ -1534,7 +1534,7 @@ class smb(connection):
             self.logger.debug(f"Could not get masterkeys: {e}")
 
         if len(masterkeys) == 0:
-            logging.fail("No masterkeys looted")
+            self.logger.fail("No masterkeys looted")
             return
 
         self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
