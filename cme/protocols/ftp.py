@@ -66,6 +66,12 @@ class ftp(connection):
             if "230" in resp:
                 self.logger.debug(f"Host: {self.host} Port: {self.args.port}")
                 self.db.add_host(self.host, self.args.port, self.remote_version)
+
+                cred_id = self.db.add_credential(username, password)
+
+                host_id = self.db.get_hosts(self.host)[0].id
+                self.db.add_loggedin_relation(cred_id, host_id)
+
                 if username in ["anonymous", ""] and password in ["", "-"]:
                     self.logger.success(f"{username}:{process_secret(password)} {highlight('- Anonymous Login!')}")
                 else:
