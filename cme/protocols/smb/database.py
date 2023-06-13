@@ -3,6 +3,7 @@
 import base64
 import warnings
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import MetaData, func, Table, select, delete
 from sqlalchemy.dialects.sqlite import Insert  # used for upsert
@@ -33,6 +34,8 @@ class database:
         self.DpapiSecrets = None
 
         self.db_engine = db_engine
+        self.db_path = self.db_engine.url.database
+        self.protocol = Path(self.db_path).stem.upper()
         self.metadata = MetaData()
         self.reflect_tables()
         session_factory = sessionmaker(bind=self.db_engine, expire_on_commit=True)
@@ -163,7 +166,13 @@ class database:
                 self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
                 self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
-                print("[-] Error reflecting tables - this means there is a DB schema mismatch \n" "[-] This is probably because a newer version of CME is being ran on an old DB schema\n" "[-] If you wish to save the old DB data, copy it to a new location (`cp -r ~/.cme/workspaces/ ~/old_cme_workspaces/`)\n" "[-] Then remove the CME DB folders (`rm -rf ~/.cme/workspaces/`) and rerun CME to initialize the new DB schema")
+                print(
+                    f"""
+                    [-] Error reflecting tables for the {self.protocol} protocol - this means there is a DB schema mismatch
+                    [-] This is probably because a newer version of CME is being ran on an old DB schema
+                    [-] Optionally save the old DB data (`cp {self.db_path} ~/cme_{self.protocol.lower()}.bak`)
+                    [-] Then remove the {self.protocol} DB (`rm -f {self.db_path}`) and run CME to initialize the new DB"""
+                )
                 exit()
 
     def shutdown_db(self):

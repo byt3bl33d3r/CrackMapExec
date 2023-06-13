@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-from cme.cmedb import create_workspace, delete_workspace
+from cme.cmedb import delete_workspace, CMEDBMenu
 from cme.first_run import first_run_setup
 from cme.loaders.protocolloader import ProtocolLoader
 from cme.logger import CMEAdapter
@@ -30,7 +30,7 @@ def db_setup(db_engine):
     first_run_setup(logger)
     p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
-    create_workspace("test", p_loader, protocols)
+    CMEDBMenu.create_workspace("test", p_loader, protocols)
 
     protocol_db_path = p_loader.get_protocols()[proto]["dbpath"]
     protocol_db_object = getattr(p_loader.load_protocol(protocol_db_path), "database")

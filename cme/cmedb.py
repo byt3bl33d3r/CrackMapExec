@@ -492,28 +492,28 @@ class CMEDBMenu(cmd.Cmd):
         """
         print_help(help_string)
 
+    @staticmethod
+    def create_workspace(workspace_name, p_loader, protocols):
+        os.mkdir(path_join(WORKSPACE_DIR, workspace_name))
 
-def create_workspace(workspace_name, p_loader, protocols):
-    os.mkdir(path_join(WORKSPACE_DIR, workspace_name))
+        for protocol in protocols.keys():
+            protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
+            proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{protocol}.db")
 
-    for protocol in protocols.keys():
-        protocol_object = p_loader.load_protocol(protocols[protocol]["dbpath"])
-        proto_db_path = path_join(WORKSPACE_DIR, workspace_name, f"{protocol}.db")
+            if not exists(proto_db_path):
+                print(f"[*] Initializing {protocol.upper()} protocol database")
+                conn = connect(proto_db_path)
+                c = conn.cursor()
 
-        if not exists(proto_db_path):
-            print(f"[*] Initializing {protocol.upper()} protocol database")
-            conn = connect(proto_db_path)
-            c = conn.cursor()
+                # try to prevent some weird sqlite I/O errors
+                c.execute("PRAGMA journal_mode = OFF")
+                c.execute("PRAGMA foreign_keys = 1")
 
-            # try to prevent some weird sqlite I/O errors
-            c.execute("PRAGMA journal_mode = OFF")
-            c.execute("PRAGMA foreign_keys = 1")
+                getattr(protocol_object, "database").db_schema(c)
 
-            getattr(protocol_object, "database").db_schema(c)
-
-            # commit the changes and close everything off
-            conn.commit()
-            conn.close()
+                # commit the changes and close everything off
+                conn.commit()
+                conn.close()
 
 
 def delete_workspace(workspace_name):
