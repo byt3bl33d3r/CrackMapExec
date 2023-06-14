@@ -758,7 +758,7 @@ class ldap(connection):
 
     def users(self):
         # Building the search filter
-        search_filter = "(sAMAccountType=805306368)"
+        search_filter = "(sAMAccountType=805306368)" if self.username != "" else "(objectclass=*)"
         attributes = [
             "sAMAccountName",
             "description",
@@ -766,6 +766,7 @@ class ldap(connection):
             "badPwdCount",
             "pwdLastSet",
         ]
+
         resp = self.search(search_filter, attributes, sizeLimit=0)
         if resp:
             answers = []
@@ -779,12 +780,15 @@ class ldap(connection):
                 description = ""
                 pwdLastSet = ""
                 try:
-                    for attribute in item["attributes"]:
-                        if str(attribute["type"]) == "sAMAccountName":
-                            sAMAccountName = str(attribute["vals"][0])
-                        elif str(attribute["type"]) == "description":
-                            description = str(attribute["vals"][0])
-                    self.logger.highlight(f"{sAMAccountName:<30} {description}")
+                    if self.username == "":
+                        self.logger.highlight(f"{item['objectName']}")
+                    else:
+                        for attribute in item["attributes"]:
+                            if str(attribute["type"]) == "sAMAccountName":
+                                sAMAccountName = str(attribute["vals"][0])
+                            elif str(attribute["type"]) == "description":
+                                description = str(attribute["vals"][0])
+                        self.logger.highlight(f"{sAMAccountName:<30} {description}")
                 except Exception as e:
                     self.logger.debug(f"Skipping item, cannot process due to error {e}")
                     pass
