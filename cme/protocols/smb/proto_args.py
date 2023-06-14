@@ -15,12 +15,11 @@ def proto_args(parser, std_parser, module_parser):
                                 nargs="?", const="administrator")
 
         cgroup = smb_parser.add_argument_group("Credential Gathering", "Options for gathering credentials")
-        cegroup = cgroup.add_mutually_exclusive_group()
-        cegroup.add_argument("--sam", action="store_true", help="dump SAM hashes from target systems")
-        cegroup.add_argument("--lsa", action="store_true", help="dump LSA secrets from target systems")
-        cegroup.add_argument("--ntds", choices={"vss", "drsuapi"}, nargs="?", const="drsuapi",
+        cgroup.add_argument("--sam", action="store_true", help="dump SAM hashes from target systems")
+        cgroup.add_argument("--lsa", action="store_true", help="dump LSA secrets from target systems")
+        cgroup.add_argument("--ntds", choices={"vss", "drsuapi"}, nargs="?", const="drsuapi",
                              help="dump the NTDS.dit from target DCs using the specifed method\n(default: drsuapi)")
-        cegroup.add_argument("--dpapi", choices={"password", "cookies"}, nargs="?", const="password",
+        cgroup.add_argument("--dpapi", choices={"password", "cookies"}, nargs="?", const="password",
                              help="dump DPAPI secrets from target systems, can dump cookies if you add \"cookies\"\n(default: password)")
         # cgroup.add_argument("--ntds-history", action='store_true', help='Dump NTDS.dit password history')
         # cgroup.add_argument("--ntds-pwdLastSet", action='store_true', help='Shows the pwdLastSet attribute for each NTDS.dit account')
