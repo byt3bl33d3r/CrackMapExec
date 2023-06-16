@@ -86,6 +86,10 @@ def main():
 
     cme_logger.debug(f"Passed args: {args}")
 
+    # FROM HERE ON A PROTOCOL IS REQUIRED
+    if not args.protocol:
+        exit(1)
+
     if args.protocol == "ssh":
         if args.key_file:
             if not args.password:
