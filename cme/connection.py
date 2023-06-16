@@ -260,7 +260,7 @@ class connection(object):
                         if "\\" in line:
                             domain_single, username_single = line.split("\\")
                         else:
-                            domain_single = self.args.domain if self.args.domain else self.domain
+                            domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                             username_single = line
                         domain.append(domain_single)
                         username.append(username_single.strip())
