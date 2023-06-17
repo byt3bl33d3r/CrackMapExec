@@ -21,14 +21,14 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        ADD-COMPUTER: Specify ADD-COMPUTER to call the module
+        ADD-COMPUTER: Specify ADD-COMPUTER to call the module using smb or ldap
         NAME: Specify the NAME option to name the Computer to be added
         PASSWORD: Specify the PASSWORD option to supply a password for the Computer to be added
         DELETE: Specify DELETE to remove a Computer
         CHANGEPW: Specify CHANGEPW to modify a Computer password
-        Usage: cme ldap $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" PASSWORD="Password1"
-               cme ldap $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" DELETE=True
-               cme ldap $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" CHANGEPW=True
+        Usage: cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" PASSWORD="Password1"
+               cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" DELETE=True
+               cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" PASSWORD="Password2" CHANGEPW=True
         '''
 
         self.__baseDN = None
