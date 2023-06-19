@@ -59,39 +59,43 @@ class ftp(connection):
         return True
 
     def plaintext_login(self, username, password):
+        if not self.conn.sock:
+            self.create_conn_obj()
         try:
+            self.logger.debug(self.conn.sock)
             resp = self.conn.login(user=username, passwd=password)
             self.logger.debug(f"Response: {resp}")
-            # 230 is "User logged in, proceed" response, ftplib raises an exception on failed login
-            if "230" in resp:
-                self.logger.debug(f"Host: {self.host} Port: {self.args.port}")
-                self.db.add_host(self.host, self.args.port, self.remote_version)
-
-                cred_id = self.db.add_credential(username, password)
-
-                host_id = self.db.get_hosts(self.host)[0].id
-                self.db.add_loggedin_relation(cred_id, host_id)
-
-                if username in ["anonymous", ""] and password in ["", "-"]:
-                    self.logger.success(f"{username}:{process_secret(password)} {highlight('- Anonymous Login!')}")
-                else:
-                    self.logger.success(f"{username}:{process_secret(password)}")
-
-            if self.args.ls:
-                files = self.list_directory_full()
-                self.logger.display(f"Directory Listing")
-                for file in files:
-                    self.logger.highlight(file)
-
-            if not self.args.continue_on_success:
-                self.conn.close()
-                return True
-
-            self.conn.close()
         except Exception as e:
             self.logger.fail(f"{username}:{process_secret(password)} (Response:{e})")
             self.conn.close()
             return False
+
+        # 230 is "User logged in, proceed" response, ftplib raises an exception on failed login
+        if "230" in resp:
+            self.logger.debug(f"Host: {self.host} Port: {self.args.port}")
+            self.db.add_host(self.host, self.args.port, self.remote_version)
+
+            cred_id = self.db.add_credential(username, password)
+
+            host_id = self.db.get_hosts(self.host)[0].id
+            self.db.add_loggedin_relation(cred_id, host_id)
+
+            if username in ["anonymous", ""] and password in ["", "-"]:
+                self.logger.success(f"{username}:{process_secret(password)} {highlight('- Anonymous Login!')}")
+            else:
+                self.logger.success(f"{username}:{process_secret(password)}")
+
+        if self.args.ls:
+            files = self.list_directory_full()
+            self.logger.display(f"Directory Listing")
+            for file in files:
+                self.logger.highlight(file)
+
+        if not self.args.continue_on_success:
+            self.conn.close()
+            return True
+        self.conn.close()
+
 
     def list_directory_full(self):
         # in the future we can use mlsd/nlst if we want, but this gives a full output like `ls -la`
