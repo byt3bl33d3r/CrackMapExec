@@ -60,7 +60,8 @@ class ConfigCheck:
 	def run(self):
 		for checker, args, kwargs in zip(self.checkers, self.checker_args, self.checker_kwargs):
 			if checker is None:
-				checker = self.module.check_registry
+				checker = HostChecker.check_registry
+
 			ok, reasons = checker(*args, **kwargs)
 			self.ok = self.ok and ok
 			self.reasons.extend(reasons)
@@ -72,8 +73,8 @@ class ConfigCheck:
 		status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
 		reasons = ": " + ', '.join(self.reasons) if self.module.verbose else ''
 		msg = f'{status} {self.name}{reasons}'
-		kwargs = {'extra':self.module.log.extra}
-		msg, kwargs = self.module.log.format(msg, kwargs)
+		kwargs = {'extra':self.logger.extra}
+		msg, kwargs = self.logger.format(msg, kwargs)
 		text = cme.logger.Text.from_ansi(msg)
 		cme.logger.cme_console.print(text, **kwargs)
 
@@ -105,25 +106,24 @@ class CMEModule:
 
 		self.results = {}
 		ConfigCheck.module = self
-		self.checks_initialized = False
+		HostChecker.module = self
 
 	def on_admin_login(self, context, connection):
 		self.log = connection.logger
 		self.results.setdefault(connection.host, {'checks':[]})
-		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
-		remoteOps.enableRegistry()
-		dce = remoteOps._RemoteOperations__rrp
-		self.check_registry = functools.partial(self.check_registry, dce)
+		HostChecker(connection).run()
 
-		# Prepare checks
-		if not self.checks_initialized:
-			self.init_checks(dce, connection)
-			self.checks_initialized = True
-
-		self.check_config(dce, connection)
-		remoteOps.finish()
+	def on_shutdown(self, context, connection):
 		if self.output is not None:
 			self.export_results()
+
+	def add_result(self, host, result):
+		self.results[host]['checks'].append({
+			"Check":result.name,
+			"Description":result.description,
+			"Status":'OK' if result.ok else 'KO',
+			"Reasons":result.reasons
+		})
 
 	def export_results(self):
 		with open(self.output, 'w') as output:
@@ -141,6 +141,24 @@ class CMEModule:
 							output.write(f',{field}')
 		print(f'\n\x1b[32;1mResults written to {self.output}\x1b[0m')
 
+class HostChecker:
+	module = None
+
+	def __init__(self, connection):
+		self.connection = connection
+		self.log = self.connection.logger
+		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
+		remoteOps.enableRegistry()
+		self.dce = remoteOps._RemoteOperations__rrp
+
+	def run(self):
+		# Prepare checks
+		self.init_checks()
+
+		# Perform checks
+		self.check_config()
+
+
 	def debug(self, msg, *args):
 		if self.verbose:
 			try:
@@ -150,64 +168,58 @@ class CMEModule:
 			except Exception as e:
 				print(e)
 
-	def add_result(self, host, result):
-		self.results[host]['checks'].append({
-			"Check":result.name,
-			"Description":result.description,
-			"Status":'OK' if result.ok else 'KO',
-			"Reasons":result.reasons
-		})
-
 	# Check methods #
 	#################
 
-	def init_checks(self, dce, connection):
+	def init_checks(self):
 		# Declare the checks to do and how to do them
 		self.checks = [
-			ConfigCheck('Last successful update', 'Checks how old is the last successful update', checkers=[self.check_last_successful_update], checker_args=[[connection]]),
-			ConfigCheck('LAPS', 'Checks if LAPS is installed', checkers=[self.check_laps], checker_args=[[dce, connection]]),
-			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed', checkers=[self.check_administrator_name], checker_args=[[connection]]),
-			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure', checker_args=[[(
+			ConfigCheck('Last successful update', 'Checks how old is the last successful update', checkers=[self.check_last_successful_update], checker_args=[[self.connection]]),
+			ConfigCheck('LAPS', 'Checks if LAPS is installed', checkers=[self.check_laps], checker_args=[[self.dce, self.connection]]),
+			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed', checkers=[self.check_administrator_name], checker_args=[[self.connection]]),
+			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure', checker_args=[[
+				self,
+				(
 					'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'EnableLUA', 1
 				),(
 					'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'LocalAccountTokenFilterPolicy', 0
 				)]]),
-			ConfigCheck('Hash storage format', 'Checks if storing  hashes in LM format is disabled', checker_args=[[(
+			ConfigCheck('Hash storage format', 'Checks if storing  hashes in LM format is disabled', checker_args=[[self, (
 					'HKLM\\System\\CurrentControlSet\\Control\\Lsa',
 					'NoLMHash', 1
 				)]]),
-			ConfigCheck('Always install elevated', 'Checks if AlwaysInstallElevated is disabled', checker_args=[[(
+			ConfigCheck('Always install elevated', 'Checks if AlwaysInstallElevated is disabled', checker_args=[[self, (
 					'HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer',
 					'AlwaysInstallElevated', 0
 				)
 			]]),
-			ConfigCheck('IPv6 preference', 'Checks if IPv6 is preferred over IPv4', checker_args=[[(
+			ConfigCheck('IPv6 preference', 'Checks if IPv6 is preferred over IPv4', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters',
 					'DisabledComponents', (32, 255), in_
 				)
 			]]),
-			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled', checkers=[self.check_spooler_service], checker_args=[[connection]]),
-			ConfigCheck('WDigest authentication', 'Checks if WDigest authentication is disabled', checker_args=[[(
+			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled', checkers=[self.check_spooler_service], checker_args=[[self.connection]]),
+			ConfigCheck('WDigest authentication', 'Checks if WDigest authentication is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest',
 					'UseLogonCredential', 0
 				)
 			]]),
-			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS', checkers=[self.check_wsus_running, None], checker_args=[[connection], [(
+			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS', checkers=[self.check_wsus_running, None], checker_args=[[self.connection], [self, (
 						'HKLM\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate',
 						'WUServer', 'https://', startswith
 					),(
 						'HKLM\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate',
 						'UseWUServer', 0, operator.eq
 					)]], checker_kwargs=[{},{'options':{'lastWins':True}}]),
-			ConfigCheck('LSA cache', 'Checks how many logons are kept in the LSA cache', checker_args=[[(
+			ConfigCheck('LSA cache', 'Checks how many logons are kept in the LSA cache', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon',
 					'CachedLogonsCount', 2, le
 				)
 			]]),
-			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined', checkers=[self.check_applocker], checker_args=[[dce]]),
-			ConfigCheck('RDP expiration time', 'Checks RDP session timeout', checker_args=[[(
+			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined', checkers=[self.check_applocker], checker_args=[[self.dce, self.connection]]),
+			ConfigCheck('RDP expiration time', 'Checks RDP session timeout', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services',
 					'MaxDisconnectionTime', 0, operator.gt
 				),(
@@ -215,7 +227,7 @@ class CMEModule:
 					'MaxDisconnectionTime', 0, operator.gt
 				)
 			]]),
-			ConfigCheck('CredentialGuard', 'Checks if CredentialGuard is enabled', checker_args=[[(
+			ConfigCheck('CredentialGuard', 'Checks if CredentialGuard is enabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard',
 					'EnableVirtualizationBasedSecurity', 1
 				),(
@@ -223,38 +235,38 @@ class CMEModule:
 					'LsaCfgFlags', 1
 				)
 			]]),
-			ConfigCheck('PPL', 'Checks if lsass runs as a protected process', checker_args=[[(
+			ConfigCheck('PPL', 'Checks if lsass runs as a protected process', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'RunAsPPL', 1
 				)
 			]]),
-			ConfigCheck('PEAP certificate validation', 'Checks if PEAP certificate validation is enabled', checker_args=[[(
+			ConfigCheck('PEAP certificate validation', 'Checks if PEAP certificate validation is enabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Rasman\\PPP\\EAP\\13',
 					'ValidateServerCert', 1
 				)
 			]]),
-			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available', checker_args=[[(
+			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine',
 					'PSCompatibleVersion', '2.0', not_(operator.contains)
 				)
 			]]),
-			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled', checker_args=[[(
+			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LmCompatibilityLevel', 5, operator.ge
 				)
 			]]),
-			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns], checker_args=[[dce]]),
-			ConfigCheck('mDNS', 'Checks if mDNS is disabled', checker_args=[[(
+			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns], checker_args=[[self.dce, self.connection]]),
+			ConfigCheck('mDNS', 'Checks if mDNS is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNScache\\Parameters',
 					'EnableMDNS', 0
 				)
 			]]),
-			ConfigCheck('SMB signing', 'Checks if SMB signing is enabled', checker_args=[[(
+			ConfigCheck('SMB signing', 'Checks if SMB signing is enabled', checker_args=[[self, (
 					'HKLM\\System\\CurrentControlSet\\Services\\LanmanServer\\Parameters',
 					'requiresecuritysignature', 1
 				)
 			]]),
-			ConfigCheck('LDAP signing', 'Checks if LDAP signing is enabled', checker_args=[[(
+			ConfigCheck('LDAP signing', 'Checks if LDAP signing is enabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Parameters',
 					'LDAPServerIntegrity', 2
 				),(
@@ -262,22 +274,22 @@ class CMEModule:
 					'LdapEnforceChannelBinding', 2
 				)
 			]]),
-			ConfigCheck('SMB encryption', 'Checks if SMB encryption is enabled', checker_args=[[(
+			ConfigCheck('SMB encryption', 'Checks if SMB encryption is enabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters',
 					'EncryptData', 1
 				)
 			]]),
-			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled', checker_args=[[(
+			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled', checker_args=[[self, (
 					'HKLM\\Software\\Policies\\Microsoft\\Windows\\System',
 					'DontDisplayNetworkSelectionUi', 1
 				)
 			]]),
-			ConfigCheck('Last logged-on user displayed', 'Checks if display of last logged on user is disabled', checker_args=[[(
+			ConfigCheck('Last logged-on user displayed', 'Checks if display of last logged on user is disabled', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'dontdisplaylastusername', 1
 				)
 			]]),
-			ConfigCheck('RDP authentication', 'Checks RDP authentication configuration (NLA auth and restricted admin mode)', checker_args=[[(
+			ConfigCheck('RDP authentication', 'Checks RDP authentication configuration (NLA auth and restricted admin mode)', checker_args=[[self, (
 					'HKLM\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\\',
 					'UserAuthentication', 1
 				),(
@@ -285,7 +297,7 @@ class CMEModule:
 					'RestrictedAdminMode', 1
 				)
 			]]),
-			ConfigCheck('BitLocker configuration', 'Checks the BitLocker configuration (based on https://www.stigviewer.com/stig/windows_10/2020-06-15/finding/V-94859)', checker_args=[[(
+			ConfigCheck('BitLocker configuration', 'Checks the BitLocker configuration (based on https://www.stigviewer.com/stig/windows_10/2020-06-15/finding/V-94859)', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\FVE',
 					'UseAdvancedStartup', 1
 				),(
@@ -293,8 +305,8 @@ class CMEModule:
 					'UseTPMPIN', 1
 				)
 			]]),
-			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled', checkers=[self.check_guest_account_disabled], checker_args=[[connection]]),
-			ConfigCheck('Automatic session lock', 'Checks if the session is automatically locked on after a period of inactivity', checker_args=[[(
+			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled', checkers=[self.check_guest_account_disabled], checker_args=[[self.connection]]),
+			ConfigCheck('Automatic session lock', 'Checks if the session is automatically locked on after a period of inactivity', checker_args=[[self, (
 					'HKCU\\Control Panel\\Desktop',
 					'ScreenSaverIsSecure', 1
 				),(
@@ -302,7 +314,7 @@ class CMEModule:
 					'ScreenSaveTimeOut', 300, le
 				)
 			]]),
-			ConfigCheck('Powershell Execution Policy', 'Checks if the Powershell execution policy is set to "Restricted"', checker_args=[[(
+			ConfigCheck('Powershell Execution Policy', 'Checks if the Powershell execution policy is set to "Restricted"', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\1\ShellIds\Microsoft.Powershell',
 					'ExecutionPolicy', 'Restricted\x00'
 				),(
@@ -310,7 +322,7 @@ class CMEModule:
 					'ExecutionPolicy', 'Restricted\x00'
 				)
 			]], checker_kwargs=[{'options':{'KOIfMissing':False, 'lastWins':True}}]),
-			ConfigCheck('Legal notice banner', 'Checks if there is a legal notice banner set', checker_args=[[(
+			ConfigCheck('Legal notice banner', 'Checks if there is a legal notice banner set', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
 					'legalnoticecaption', "", operator.ne
 				)
@@ -318,10 +330,11 @@ class CMEModule:
 		]
 
 		# Add check to conf_checks table if missing
-		db_checks = connection.db.get_checks()
+		db_checks = self.connection.db.get_checks()
 		db_check_names = [ check._asdict()['name'].strip().lower() for check in db_checks ]
 		added = []
 		for i,check in enumerate(self.checks):
+			check.logger = self.log
 			missing = True
 			for db_check in db_checks:
 				db_check = db_check._asdict()
@@ -331,11 +344,11 @@ class CMEModule:
 					break
 
 			if missing:
-				connection.db.add_check(check.name, check.description)
+				self.connection.db.add_check(check.name, check.description)
 				added.append(check)
 
 		# Update check_id for checks added to the db
-		db_checks = connection.db.get_checks()
+		db_checks = self.connection.db.get_checks()
 		for i,check in enumerate(added):
 			check_id = None
 			for db_check in db_checks:
@@ -358,6 +371,7 @@ class CMEModule:
 		# Perform all the checks and store the results
 		for check in self.checks:
 			check.run()
+				self.log.error(f'Error while performing check {check.name}: {e}')
 			check.log()
 			self.add_result(connection.host, check)
 			if host_id is not None:
@@ -381,13 +395,17 @@ class CMEModule:
 		reasons = []
 
 		for spec in specs:
-			if len(spec) == 3:
-				(key, value_name, expected_value) = spec
-			elif len(spec) == 4:
-				(key, value_name, expected_value, op) = spec
-			else:
-				ok = False
-				reasons = ['Check could not be performed (invalid specification provided)']
+			try:
+				if len(spec) == 3:
+					(key, value_name, expected_value) = spec
+				elif len(spec) == 4:
+					(key, value_name, expected_value, op) = spec
+				else:
+					ok = False
+					reasons = ['Check could not be performed (invalid specification provided)']
+					return ok, reasons
+			except Exception as e:
+				self.module.log.error(f'Check could not be performed. Details: specs={specs}, dce={self.dce}, error: {e}')
 				return ok, reasons
 
 			if op == operator.eq:
@@ -445,13 +463,13 @@ class CMEModule:
 
 	def check_laps(self, dce, smb):
 		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
-		subkeys =  self.reg_get_subkeys(dce, key_name)
+		subkeys =  self.reg_get_subkeys(self.dce, self.connection, key_name)
 		reasons = []
 		success = False
 		laps_path = '\\Program Files\\LAPS\\CSE'
 
 		for subkey in subkeys:
-			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'DllName')
+			value = self.reg_query_value(self.dce, self.connection, key_name + '\\' + subkey, 'DllName')
 			if type(value) == str and 'laps\\cse\\admpwd.dll' in value.lower():
 				reasons.append(f'{key_name}\\...\\DllName matches AdmPwd.dll')
 				success = True
@@ -460,7 +478,7 @@ class CMEModule:
 		if not success:
 			reasons.append(f'No match found in {key_name}\\...\\DllName')
 
-		l = ls(smb, laps_path)
+		l = ls(self.connection, laps_path)
 		if l:
 			reasons.append('Found LAPS folder at ' + laps_path)
 		else:
@@ -469,7 +487,7 @@ class CMEModule:
 			return success, reasons
 
 
-		l = ls(smb, laps_path + '\\AdmPwd.dll')
+		l = ls(self.connection, laps_path + '\\AdmPwd.dll')
 		if l:
 			reasons.append(f'Found {laps_path}\\AdmPwd.dll')
 		else:
@@ -533,15 +551,15 @@ class CMEModule:
 			reasons = ['WSUS service not running']
 		return ok, reasons
 
-	def check_nbtns(self, dce):
+	def check_nbtns(self, dce, connection):
 		key_name = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces'
-		subkeys = self.reg_get_subkeys(dce, key_name)
+		subkeys = self.reg_get_subkeys(dce, connection, key_name)
 		success = False
 		reasons = []
 		missing = 0
 		nbtns_enabled = 0
 		for subkey in subkeys:
-			value = self.reg_query_value(dce, key_name + '\\' + subkey, 'NetbiosOptions')
+			value = self.reg_query_value(dce, connection, key_name + '\\' + subkey, 'NetbiosOptions')
 			if type(value) == DCERPCSessionError:
 				if value.error_code == ERROR_OBJECT_NOT_FOUND:
 					missing += 1
@@ -557,13 +575,13 @@ class CMEModule:
 			reasons.append('NBTNS disabled on all interfaces')
 		return success, reasons
 
-	def check_applocker(self, dce):
+	def check_applocker(self, dce, connection):
 		key_name = 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\SrpV2'
-		subkeys = self.reg_get_subkeys(dce, key_name)
+		subkeys = self.reg_get_subkeys(dce, connection, key_name)
 		rule_count = 0
 		for collection in subkeys:
 			collection_key_name = key_name + '\\' + collection
-			rules = self.reg_get_subkeys(dce, collection_key_name)
+			rules = self.reg_get_subkeys(dce, connection, collection_key_name)
 			rule_count += len(rules)
 		success = rule_count > 0
 		reasons = [f'Found {rule_count} AppLocker rules defined']
@@ -573,28 +591,37 @@ class CMEModule:
 	# Methods for getting values from the remote registry #
 	#######################################################
 
-	def _open_root_key(self, dce, root_key):
+	def _open_root_key(self, dce, connection, root_key):
 		ans = None
-		if root_key.upper() == 'HKLM':
-			ans = rrp.hOpenLocalMachine(dce)
-		elif root_key.upper() == 'HKCR':
-			ans = rrp.hOpenClassesRoot(dce)
-		elif root_key.upper() == 'HKU':
-			ans = rrp.hOpenUsers(dce)
-		elif root_key.upper() == 'HKCU':
-			ans = rrp.hOpenCurrentUser(dce)
-		elif root_key.upper() == 'HKCC':
-			ans = rrp.hOpenCurrentConfig(dce)
-		else:
-			self.log.error('Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
+		retries = 1
+		opener = {
+			'HKLM':rrp.hOpenLocalMachine,
+			'HKCR':rrp.hOpenClassesRoot,
+			'HKU':rrp.hOpenUsers,
+			'HKCU':rrp.hOpenCurrentUser,
+			'HKCC':rrp.hOpenCurrentConfig
+		}
+
+		while retries > 0:
+			try:
+				ans = opener[root_key.upper()](dce)
+				break
+			except KeyError:
+				self.log.error(f'SMB    {connection.host}    Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
+				break
+			except Exception as e:
+				self.log.error(f'SMB    {connection.host}    Error while trying to open {root_key.upper()}: {e}')
+				if 'Broken pipe' in e.args:
+					self.log.error('Retrying')
+					retries -= 1
 		return ans
 
-	def reg_get_subkeys(self, dce, key_name):
+	def reg_get_subkeys(self, dce, connection, key_name):
 		root_key, subkey = key_name.split('\\', 1)
-		ans = self._open_root_key(dce, root_key)
+		ans = self._open_root_key(dce, connection, root_key)
 		subkeys = []
 		if ans is None:
-			return ans
+			return subkeys
 
 		root_key_handle = ans['phKey']
 		try:
@@ -602,6 +629,9 @@ class CMEModule:
 		except DCERPCSessionError as e:
 			if e.error_code != ERROR_FILE_NOT_FOUND:
 				cme_logger.error(f'Could not retrieve subkey {subkey}: {e}\n')
+			return subkeys
+		except Exception as e:
+			cme_logger.error(f'Error while trying to retrieve subkey {subkey}: {e}\n')
 			return subkeys
 
 		subkey_handle = ans['phkResult']
@@ -615,7 +645,7 @@ class CMEModule:
 				break
 		return subkeys
 
-	def reg_query_value(self, dce, keyName, valueName=None):
+	def reg_query_value(self, dce, connection, keyName, valueName=None):
 		"""
 		Query remote registry data for a given registry value
 		"""
@@ -657,7 +687,7 @@ class CMEModule:
 			return value_type, value_name[:-1], value_data
 
 		root_key, subkey = keyName.split('\\', 1)
-		ans = self._open_root_key(dce, root_key)
+		ans = self._open_root_key(dce, connection, root_key)
 		if ans is None:
 			return ans
 
@@ -680,10 +710,6 @@ class CMEModule:
 					break
 			if not found:
 				return DCERPCSessionError(error_code=ERROR_OBJECT_NOT_FOUND)
-
-		for handle in (root_key_handle, subkey_handle):
-			rrp.hBaseRegCloseKey(dce, handle)
-
 		return data
 
 	# Methods for getting values from SAMR and SCM #
@@ -734,10 +760,10 @@ def ls(smb, path='\\', share='C$'):
 	try:
 		l = smb.conn.listPath(share, path)
 	except SMBSessionError as e:
-		if e.getErrorString()[0] == 'STATUS_NO_SUCH_FILE':
-			pass
-		else:
-			cme_logger.error(f'C:\\{path} {e.getErrorString()}\n')
+		if e.getErrorString()[0] not in ('STATUS_NO_SUCH_FILE', 'STATUS_OBJECT_NAME_NOT_FOUND'):
+			cme_logger.error(f'{smb.host}    C:\\{path} {e.getErrorString()}\n')
+	except Exception as e:
+			cme_logger.error(f'{smb.host}    C:\\{path} {e}\n')
 	return l
 
 # Comparison operators #
