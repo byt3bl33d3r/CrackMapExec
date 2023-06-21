@@ -331,8 +331,74 @@ class DatabaseNavigator(cmd.Cmd):
             writable_keys = [key[2] for key in keys]
             filename = line[2]
             write_list(filename, writable_keys)
+        elif command == "wcc":
+            if len(line) < 3:
+                print("[-] invalid arguments, export wcc <simple|detailed> <filename>")
+                return
+
+            csv_header_simple = (
+                "id",
+                "ip",
+                "hostname",
+                "check",
+                "status",
+            )
+            csv_header_detailed = (
+                "id",
+                "ip",
+                "hostname",
+                "check",
+                "description",
+                "status",
+                "reasons"
+            )
+            filename = line[2]
+            host_mapping = {}
+            check_mapping = {}
+
+            hosts = self.db.get_hosts()
+            checks = self.db.get_checks()
+            check_results = self.db.get_check_results()
+            rows = []
+
+            for result_id,hostid,checkid,secure,reasons in check_results:
+                row = [result_id]
+                if hostid in host_mapping:
+                    row.extend(host_mapping[hostid])
+                else:
+                    for host_id,ip,hostname,_,_,_,_,_,_,_,_ in hosts:
+                        if host_id == hostid:
+                            row.extend([ip, hostname])
+                            host_mapping[hostid] = [ip, hostname]
+                            break
+                if checkid in check_mapping:
+                    row.append(check_mapping[checkid])
+                else:
+                    for check in checks:
+                        check_id, name, description = check
+                        if check_id == checkid:
+                            row.extend([name, description])
+                            check_mapping[checkid] = [name, description]
+                            break
+                row.append('OK' if secure else 'KO')
+                row.append(reasons)
+                rows.append(row)
+
+            if line[1].lower() == "simple":
+                simple_rows = list((row[0], row[1], row[2], row[3], row[5]) for row in rows)
+                write_csv(filename, csv_header_simple, simple_rows)
+            elif line[1].lower() == "detailed":
+                write_csv(filename, csv_header_detailed, rows)
+            elif line[1].lower() == "signing":
+                hosts = self.db.get_hosts("signing")
+                signing_hosts = [host[1] for host in hosts]
+                write_list(filename, signing_hosts)
+            else:
+                print(f"[-] No such export option: {line[1]}")
+                return
+            print("[+] WCC exported")
         else:
-            print("[-] Invalid argument, specify creds, hosts, local_admins, shares or dpapi")
+            print("[-] Invalid argument, specify creds, hosts, local_admins, shares, wcc or dpapi")
 
     @staticmethod
     def help_export():
@@ -459,7 +525,7 @@ class CMEDBMenu(cmd.Cmd):
         if subcommand == "create":
             new_workspace = line.split()[1].strip()
             print(f"[*] Creating workspace '{new_workspace}'")
-            self.create_workspace(new_workspace, self.p_loader, self.protocols)
+            create_workspace(new_workspace, self.p_loader, self.protocols)
             self.do_workspace(new_workspace)
         elif subcommand == "list":
             print("[*] Enumerating Workspaces")
