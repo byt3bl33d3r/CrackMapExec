@@ -15,13 +15,13 @@ class CMEModule:
 
     name = 'ADD-COMPUTER'
     description = 'Adds or deletes a domain computer'
-    supported_protocols = ['smb','ldap']
+    supported_protocols = ['smb']
     opsec_safe = True
     multiple_hosts = False
 
     def options(self, context, module_options):
         '''
-        ADD-COMPUTER: Specify ADD-COMPUTER to call the module using smb or ldap
+        ADD-COMPUTER: Specify ADD-COMPUTER to call the module using smb
         NAME: Specify the NAME option to name the Computer to be added
         PASSWORD: Specify the PASSWORD option to supply a password for the Computer to be added
         DELETE: Specify DELETE to remove a Computer
@@ -157,6 +157,7 @@ class CMEModule:
                     if e.error_code == 0xc0000073:
                         context.log.highlight(u'{}'.format(
                             self.__computerName + ' not found in domain ' + selectedDomain))
+                        self.noLDAPRequired = True
                         raise Exception()
                     else:
                         raise
