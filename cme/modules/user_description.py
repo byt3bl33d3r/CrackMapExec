@@ -86,7 +86,7 @@ class CMEModule:
         try:
             sc = ldap.SimplePagedResultsControl()
             connection.ldapConnection.search(searchFilter=self.search_filter,
-                                             attributes=['sAMAccountName', 'description'],
+                                             attributes=['sAMAccountName', 'description', 'info'],
                                              sizeLimit=0, searchControls=[sc],
                                              perRecordCallback=self.process_record)
 
@@ -128,6 +128,7 @@ class CMEModule:
 
         sAMAccountName = ''
         description = ''
+        info = ''
 
         try:
 
@@ -137,6 +138,8 @@ class CMEModule:
                     sAMAccountName = attribute['vals'][0].asOctets().decode('utf-8')
 
                 elif str(attribute['type']) == 'description':
+                    description = attribute['vals'][0].asOctets().decode('utf-8')
+                elif str(attribute['type']) == 'info':
                     description = attribute['vals'][0].asOctets().decode('utf-8')
 
         except Exception as e:
@@ -153,6 +156,16 @@ class CMEModule:
                 self.context.log.highlight('User: {} - Description: {}'.format(sAMAccountName, description))
 
             self.account_names.add(sAMAccountName)
+        if info and sAMAccountName not in self.account_names:
+
+            self.desc_count += 1
+            self.append_to_log(sAMAccountName, info)
+
+            if self.highlight(info):
+                self.context.log.highlight('User: {} - Description: {}'.format(sAMAccountName, info))
+
+            self.account_names.add(sAMAccountName)
+
 
     def highlight(self, description):
         '''
@@ -173,3 +186,4 @@ class CMEModule:
                 return True
 
         return False
+
