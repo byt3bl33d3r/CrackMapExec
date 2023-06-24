@@ -569,8 +569,9 @@ class smb(connection):
             self.conn = SMBConnection(self.host if not kdc else kdc, self.host if not kdc else kdc, None, self.args.port, timeout=self.args.smb_timeout)
             self.smbv1 = False
         except socket.error as e:
-            if str(e).find('Too many open files') != -1:
-                self.logger.error('SMBv3 connection error on {}: {}'.format(self.host if not kdc else kdc, e))
+            if str(e).find('Too many open files') != -1: #OSError: [Errno 24] Too many open files
+                if not logger is None: 
+                    self.logger.error('SMBv3 connection error on {}: {}'.format(self.host if not kdc else kdc, e))                    
             return False
         except (Exception, NetBIOSTimeout) as e:
             logging.debug('Error creating SMBv3 connection to {}: {}'.format(self.host if not kdc else kdc, e))
@@ -594,15 +595,19 @@ class smb(connection):
         except:
             pass
         else:
-            dce.bind(scmr.MSRPC_UUID_SCMR)
             try:
-                # 0xF003F - SC_MANAGER_ALL_ACCESS
-                # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
-                ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
-                self.admin_privs = True
-            except scmr.DCERPCException as e:
-                self.admin_privs = False
+                dce.bind(scmr.MSRPC_UUID_SCMR)
+            except:
                 pass
+            else:
+                try:
+                    # 0xF003F - SC_MANAGER_ALL_ACCESS
+                    # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
+                    ans = scmr.hROpenSCManagerW(dce,'{}\x00'.format(self.host),'ServicesActive\x00', 0xF003F)
+                    self.admin_privs = True
+                except scmr.DCERPCException as e:
+                    self.admin_privs = False
+                    pass
         return
 
     def gen_relay_list(self):

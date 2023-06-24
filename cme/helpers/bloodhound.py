@@ -28,12 +28,12 @@ def add_user_bh(user, domain, logger, config):
                             account_type = 'User'
 
                         result = tx.run(
-                            "MATCH (c:{} {{name:\"{}\"}}) RETURN c".format(account_type, user_owned))
+                            "MATCH (c:{}) where c.name =~ \"{}.*\" RETURN c".format(account_type, user_owned))
 
                         if result.data()[0]['c'].get('owned') in (False, None):
-                            logger.debug("MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
+                            logger.debug("MATCH (c:{}) where c.name =~ \"{}.*\" SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
                             result = tx.run(
-                                "MATCH (c:{} {{name:\"{}\"}}) SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
+                                "MATCH (c:{}) where c.name =~ \"{}.*\" SET c.owned=True RETURN c.name AS name".format(account_type, user_owned))
                             logger.highlight("Node {} successfully set as owned in BloodHound".format(user_owned))
         except AuthError as e:
             logger.error(
