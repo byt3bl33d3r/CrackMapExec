@@ -48,6 +48,8 @@ class CMEModule:
 
         if 'NAME' in module_options:
             self.__computerName = module_options['NAME']
+            if self.__computerName[-1] != '$':
+                self.__computerName += '$'
         else:
             context.log.error('NAME option is required!')
             exit(1)
