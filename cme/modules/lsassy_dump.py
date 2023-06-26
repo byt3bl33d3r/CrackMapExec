@@ -6,8 +6,6 @@
 #  https://beta.hackndo.com [FR]
 #  https://en.hackndo.com [EN]
 
-
-from lsassy import logger
 from lsassy.dumper import Dumper
 from lsassy.parser import Parser
 from lsassy.session import Session
@@ -30,7 +28,6 @@ class CMEModule:
             self.method = module_options['METHOD']
 
     def on_admin_login(self, context, connection):
-        logger.init(quiet=True)
         host = connection.host
         domain_name = connection.domain
         username = connection.username
