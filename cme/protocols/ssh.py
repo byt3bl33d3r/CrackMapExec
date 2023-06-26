@@ -19,6 +19,7 @@ class ssh(connection):
         ssh_parser.add_argument("--key-file", type=str, help="Authenticate using the specified private key. Treats the password parameter as the key's passphrase.")
         ssh_parser.add_argument("--port", type=int, default=22, help="SSH port (default: 22)")
         ssh_parser.add_argument("--continue-on-success", action='store_true', help="continues authentication attempts even after successes")
+        ssh_parser.add_argument("--continue-until-admin", action='store_true', help="continues authentication attempts until success admin authentication")
 
         cgroup = ssh_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument('--no-output', action='store_true', help='do not retrieve command output')
@@ -75,7 +76,9 @@ class ssh(connection):
             self.logger.success(u'{}:{} {}'.format(username,
                                                    password if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode')*8,
                                                    highlight('({})'.format(self.config.get('CME', 'pwn3d_label')) if self.admin_privs else '')))
-            if not self.args.continue_on_success:
+            if self.args.continue_until_admin and self.admin_privs:
+                return True
+            if not (self.args.continue_on_success or self.args.continue_until_admin):
                 return True
         except Exception as e:
             self.logger.error(u'{}:{} {}'.format(username,
