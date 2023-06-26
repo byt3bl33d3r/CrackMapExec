@@ -1,39 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import xmltodict
+from libnmap.parser import NmapParser
+from cme.logger import cme_logger
 
-# Ideally i'd like to be able to pull this info out dynamically from each protocol object but i'm a lazy bastard
+# right now we are only referencing the port numbers, not the service name, but this should be sufficient for 99% cases
 protocol_dict = {
-    "smb": {"ports": [445, 139], "services": ["netbios-ssn", "microsoft-ds"]},
-    "mssql": {"ports": [1433], "services": ["ms-sql-s"]},
-    "ssh": {"ports": [22], "services": ["ssh"]},
-    "winrm": {"ports": [5986, 5985], "services": ["wsman"]},
-    "http": {
-        "ports": [80, 443, 8443, 8008, 8080, 8081],
-        "services": ["http", "ssl/https"],
+    "ftp": {
+        "ports": [21],
+        "services": ["ftp"]
+    },
+    "ssh": {
+        "ports": [22, 2222],
+        "services": ["ssh"]
+    },
+    "smb": {
+        "ports": [139, 445],
+        "services": ["netbios-ssn", "microsoft-ds"]
+    },
+    "ldap": {
+        "ports": [389, 636],
+        "services": ["ldap", "ldaps"]
+    },
+    "mssql": {
+        "ports": [1433],
+        "services": ["ms-sql-s"]
+    },
+    "rdp": {
+        "ports": [3389],
+        "services": ["ms-wbt-server"]
+    },
+    "winrm": {
+        "ports": [5985, 5986],
+        "services": ["wsman"]
+    },
+    "vnc": {
+        "ports": [5900, 5901, 5902, 5903, 5904, 5905, 5906],
+        "services": ["vnc"]
     },
 }
 
 
 def parse_nmap_xml(nmap_output_file, protocol):
+    nmap_report = NmapParser.parse_fromfile(nmap_output_file)
     targets = []
 
-    with open(nmap_output_file, "r") as file_handle:
-        scan_output = xmltodict.parse(file_handle.read())
-
-    for host in scan_output["nmaprun"]["host"]:
-        if host["address"][0]["@addrtype"] != "ipv4":
-            continue
-
-        ip = host["address"][0]["@addr"]
-        for port in host["ports"]["port"]:
-            if port["state"]["@state"] == "open":
-                if "service" in port and (port["service"]["@name"] in protocol_dict[protocol]["services"]):
-                    if ip not in targets:
-                        targets.append(ip)
-                elif port["@portid"] in protocol_dict[protocol]["ports"]:
-                    if ip not in targets:
-                        targets.append(ip)
+    for host in nmap_report.hosts:
+        for port, proto in host.get_open_ports():
+            if port in protocol_dict[protocol]["ports"]:
+                targets.append(host.ipv4)
+                break
+    cme_logger.debug(f"Targets parsed from Nmap scan: {targets}")
 
     return targets
