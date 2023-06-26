@@ -11,8 +11,8 @@ from cme.logger import cme_logger
 
 
 def gen_cli_args():
-    VERSION = "5.4.7"
-    CODENAME = "Bruce Wayne"
+    VERSION = "6.0.0"
+    CODENAME = "Bane"
 
     parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
