@@ -51,5 +51,16 @@ See the project's [wiki](https://wiki.porchetta.industries/) for documentation a
 # Installation
 Please see the installation on the [GitBook](https://wiki.porchetta.industries/getting-started/installation)
 
+# Code Contributors
+
+Awesome code contributors of CME:
+
+[![](https://github.com/Marshall-Hallenbeck.png?size=50)](https://github.com/Marshall-Hallenbeck)
+[![](https://github.com/zblurx.png?size=50)](https://github.com/zblurx)
+[![](https://github.com/NeffIsBack.png?size=50)](https://github.com/NeffIsBack)
+[![](https://github.com/Hackndo.png?size=50)](https://github.com/Hackndo)
+[![](https://github.com/nurfed1?size=50)](https://github.com/nurfed1)
+
+
 # To do
 - ~~0wn everything~~
