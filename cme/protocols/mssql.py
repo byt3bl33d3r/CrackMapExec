@@ -27,6 +27,12 @@ class mssql(connection):
         self.os_arch = None
         self.nthash = ''
 
+        if ":" in host:
+            self.specific_port = host.split(":")[1]
+            host = host.split(":")[0]
+        else:
+            self.specific_port = None
+
         connection.__init__(self, args, db, host)
 
     @staticmethod
@@ -70,10 +76,11 @@ class mssql(connection):
                 self.call_cmd_args()
 
     def proto_logger(self):
+        port = self.specific_port if self.specific_port else self.args.port
         self.logger = CMEAdapter(extra={
                                         'protocol': 'MSSQL',
                                         'host': self.host,
-                                        'port': self.args.port,
+                                        'port': port,
                                         'hostname': 'None'
                                         })
 
@@ -136,7 +143,8 @@ class mssql(connection):
 
     def create_conn_obj(self):
         try:
-            self.conn = tds.MSSQL(self.host, self.args.port, rowsPrinter=self.logger)
+            port = self.specific_port if self.specific_port else self.args.port
+            self.conn = tds.MSSQL(self.host, port, rowsPrinter=self.logger)
             self.conn.connect()
         except socket.error:
             return False
