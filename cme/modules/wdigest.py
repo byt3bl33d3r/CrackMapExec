@@ -16,7 +16,7 @@ class CMEModule:
 
     def options(self, context, module_options):
         """
-        ACTION  Create/Delete the registry key (choices: enable, disable)
+        ACTION  Create/Delete the registry key (choices: enable, disable, check)
         """
 
         if not "ACTION" in module_options:
@@ -132,12 +132,12 @@ class CMEModule:
                 if int(data) == 1:
                     context.log.success("UseLogonCredential registry key is enabled")
                 else:
-                    context.log.error("Unexpected registry value for UseLogonCredential: %s" % data)
+                    context.log.fail("Unexpected registry value for UseLogonCredential: %s" % data)
             except DCERPCException as d:
                 if "winreg.HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest" in str(d):
-                    context.log.error("UseLogonCredential registry key is disabled (registry key not found)")
+                    context.log.fail("UseLogonCredential registry key is disabled (registry key not found)")
                 else:
-                    context.log.error("UseLogonCredential registry key not present")
+                    context.log.fail("UseLogonCredential registry key not present")
             try:
                 remoteOps.finish()
             except:
