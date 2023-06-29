@@ -11,8 +11,8 @@ from cme.logger import cme_logger
 
 
 def gen_cli_args():
-    VERSION = "5.4.7"
-    CODENAME = "Bruce Wayne"
+    VERSION = "6.0.0"
+    CODENAME = "Bane"
 
     parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
@@ -58,17 +58,61 @@ def gen_cli_args():
         action="store_true",
         help="Not displaying progress bar during scan",
     )
-    parser.add_argument("--darrell", action="store_true", help="give Darrell a hand")
     parser.add_argument("--verbose", action="store_true", help="enable verbose output")
     parser.add_argument("--debug", action="store_true", help="enable debug level information")
     parser.add_argument("--version", action="store_true", help="Display CME version")
+
+    # we do module arg parsing here so we can reference the module_list attribute below
+    module_parser = argparse.ArgumentParser(add_help=False)
+    mgroup = module_parser.add_mutually_exclusive_group()
+    mgroup.add_argument("-M", "--module", action="append", metavar="MODULE", help="module to use")
+    module_parser.add_argument(
+        "-o",
+        metavar="MODULE_OPTION",
+        nargs="+",
+        default=[],
+        dest="module_options",
+        help="module options",
+    )
+    module_parser.add_argument("-L", "--list-modules", action="store_true", help="list available modules")
+    module_parser.add_argument(
+        "--options",
+        dest="show_module_options",
+        action="store_true",
+        help="display module options",
+    )
+    module_parser.add_argument(
+        "--server",
+        choices={"http", "https"},
+        default="https",
+        help="use the selected server (default: https)",
+    )
+    module_parser.add_argument(
+        "--server-host",
+        type=str,
+        default="0.0.0.0",
+        metavar="HOST",
+        help="IP to bind the server to (default: 0.0.0.0)",
+    )
+    module_parser.add_argument(
+        "--server-port",
+        metavar="PORT",
+        type=int,
+        help="start the server on the specified port",
+    )
+    module_parser.add_argument(
+        "--connectback-host",
+        type=str,
+        metavar="CHOST",
+        help="IP for the remote system to connect back to (default: same as server-host)",
+    )
 
     subparsers = parser.add_subparsers(title="protocols", dest="protocol", description="available protocols")
 
     std_parser = argparse.ArgumentParser(add_help=False)
     std_parser.add_argument(
         "target",
-        nargs="+",
+        nargs="+" if not module_parser.parse_known_args()[0].list_modules else "*",
         type=str,
         help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s), file(s) containing a list of targets, NMap XML or .Nessus file(s)",
     )
@@ -138,50 +182,6 @@ def gen_cli_args():
         help="max number of failed login attempts per host",
     )
 
-    module_parser = argparse.ArgumentParser(add_help=False)
-    mgroup = module_parser.add_mutually_exclusive_group()
-    mgroup.add_argument("-M", "--module", action="append", metavar="MODULE", help="module to use")
-    module_parser.add_argument(
-        "-o",
-        metavar="MODULE_OPTION",
-        nargs="+",
-        default=[],
-        dest="module_options",
-        help="module options",
-    )
-    module_parser.add_argument("-L", "--list-modules", action="store_true", help="list available modules")
-    module_parser.add_argument(
-        "--options",
-        dest="show_module_options",
-        action="store_true",
-        help="display module options",
-    )
-    module_parser.add_argument(
-        "--server",
-        choices={"http", "https"},
-        default="https",
-        help="use the selected server (default: https)",
-    )
-    module_parser.add_argument(
-        "--server-host",
-        type=str,
-        default="0.0.0.0",
-        metavar="HOST",
-        help="IP to bind the server to (default: 0.0.0.0)",
-    )
-    module_parser.add_argument(
-        "--server-port",
-        metavar="PORT",
-        type=int,
-        help="start the server on the specified port",
-    )
-    module_parser.add_argument(
-        "--connectback-host",
-        type=str,
-        metavar="CHOST",
-        help="IP for the remote system to connect back to (default: same as server-host)",
-    )
-
     p_loader = ProtocolLoader()
     protocols = p_loader.get_protocols()
 
@@ -199,7 +199,7 @@ def gen_cli_args():
     args = parser.parse_args()
 
     if args.version:
-        print(VERSION + " - " + CODENAME)
+        print(f"{VERSION} - {CODENAME}")
         sys.exit(1)
 
     return args

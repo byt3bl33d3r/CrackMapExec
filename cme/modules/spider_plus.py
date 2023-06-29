@@ -310,14 +310,14 @@ class CMEModule:
         """
         READ_ONLY           Only list files and put the name into a JSON (default: True)
         EXCLUDE_EXTS        Extension file to exclude (Default: ico,lnk)
-        EXCLUDE_DIR         Directory to exclude (Default: print$)
+        EXCLUDE_DIR         Directory to exclude (Default: print$,IPC$)
         MAX_FILE_SIZE       Max file size allowed to dump (Default: 51200)
         OUTPUT              Path of the remote folder where the dump will occur (Default: /tmp/cme_spider_plus)
         """
 
         self.read_only = module_options.get("READ_ONLY", True)
         self.exclude_exts = get_list_from_option(module_options.get("EXCLUDE_EXTS", "ico,lnk"))
-        self.exlude_dirs = get_list_from_option(module_options.get("EXCLUDE_DIR", "print$"))
+        self.exlude_dirs = get_list_from_option(module_options.get("EXCLUDE_DIR", "print$,IPC$"))
         self.max_file_size = int(module_options.get("SIZE", 50 * 1024))
         self.output_folder = module_options.get("OUTPUT", os.path.join("/tmp", "cme_spider_plus"))
 

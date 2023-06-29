@@ -882,8 +882,7 @@ class smb(connection):
             name = share["name"]
             remark = share["remark"]
             perms = share["access"]
-
-            if self.args.filter_shares and self.args.filter_shares != perms:
+            if self.args.filter_shares and not any(x in perms for x in self.args.filter_shares):
                 continue
             self.logger.highlight(f"{name:<15} {','.join(perms):<15} {remark}")
         return permissions
@@ -1534,7 +1533,7 @@ class smb(connection):
             self.logger.debug(f"Could not get masterkeys: {e}")
 
         if len(masterkeys) == 0:
-            logging.fail("No masterkeys looted")
+            self.logger.fail("No masterkeys looted")
             return
 
         self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
