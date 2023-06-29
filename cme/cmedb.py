@@ -372,7 +372,7 @@ class DatabaseNavigator(cmd.Cmd):
                             host_mapping[hostid] = [ip, hostname]
                             break
                 if checkid in check_mapping:
-                    row.append(check_mapping[checkid])
+                    row.extend(check_mapping[checkid])
                 else:
                     for check in checks:
                         check_id, name, description = check
