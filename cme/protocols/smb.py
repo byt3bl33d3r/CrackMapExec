@@ -322,7 +322,11 @@ class smb(connection):
                         self.args.kerberos,
                         self.args.kdcHost,
                         339)
-                    data = d.run()
+                    try:
+                        data = d.run()
+                    except Exception as e:
+                        self.logger.fail(str(e))
+                        return
                     r = loads(data)
                     msMCSAdmPwd = r["p"]
                     username_laps = r["n"]
