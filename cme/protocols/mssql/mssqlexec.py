@@ -29,7 +29,7 @@ class MSSQLEXEC:
         if output:
             cme_logger.debug(f"Output is enabled")
             for row in command_output:
-                cme_logger.display(row)
+                cme_logger.debug(row)
             # self.mssql_conn.printReplies()
             # self.mssql_conn.colMeta[0]["TypeData"] = 80 * 2
             # self.mssql_conn.printRows()
