@@ -133,8 +133,7 @@ class rdp(connection):
                     self.server_os = info_domain["os_guess"] + " Build " + str(info_domain["os_build"])
                     self.logger.extra["hostname"] = self.hostname
 
-                    self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}")
-                    self.output_filename = self.output_filename.replace(":", "-")
+                    self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
                     break
 
         if self.args.domain:
