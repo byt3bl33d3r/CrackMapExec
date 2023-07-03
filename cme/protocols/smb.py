@@ -408,8 +408,8 @@ class smb(connection):
 
                 used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             else:
-                self.plaintext_login(username, password, self.host)
-                return
+                self.plaintext_login(self.hostname, username, password)
+                return True
 
             out = f"{self.domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
             self.logger.success(out)
