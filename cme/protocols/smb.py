@@ -629,7 +629,10 @@ class smb(connection):
         except:
             pass
         else:
-            dce.bind(scmr.MSRPC_UUID_SCMR)
+            try:
+                dce.bind(scmr.MSRPC_UUID_SCMR)
+            except:
+                pass
             try:
                 # 0xF003F - SC_MANAGER_ALL_ACCESS
                 # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
