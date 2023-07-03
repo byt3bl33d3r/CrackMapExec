@@ -931,7 +931,7 @@ class database:
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(table) # .returning(table.c.id)
         update_column = {col.name: col for col in q.excluded if col.name not in 'id'}
-        q = q.on_conflict_do_update(index_elements=table.primary_key, set_=update_columns)
+        q = q.on_conflict_do_update(index_elements=table.primary_key, set_=update_column)
         self.conn.execute(q, results) # .scalar()
         # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
         return updated_ids

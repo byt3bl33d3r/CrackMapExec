@@ -174,9 +174,9 @@ class HostChecker:
 	def init_checks(self):
 		# Declare the checks to do and how to do them
 		self.checks = [
-			ConfigCheck('Last successful update', 'Checks how old is the last successful update', checkers=[self.check_last_successful_update], checker_args=[[self.connection]]),
-			ConfigCheck('LAPS', 'Checks if LAPS is installed', checkers=[self.check_laps], checker_args=[[self.dce, self.connection]]),
-			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed', checkers=[self.check_administrator_name], checker_args=[[self.connection]]),
+			ConfigCheck('Last successful update', 'Checks how old is the last successful update', checkers=[self.check_last_successful_update]),
+			ConfigCheck('LAPS', 'Checks if LAPS is installed', checkers=[self.check_laps]),
+			ConfigCheck("Administrator's name", 'Checks if Administror user name has been changed', checkers=[self.check_administrator_name]),
 			ConfigCheck('UAC configuration', 'Checks if UAC configuration is secure', checker_args=[[
 				self,
 				(
@@ -200,13 +200,13 @@ class HostChecker:
 					'DisabledComponents', (32, 255), in_
 				)
 			]]),
-			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled', checkers=[self.check_spooler_service], checker_args=[[self.connection]]),
+			ConfigCheck('Spooler service', 'Checks if the spooler service is disabled', checkers=[self.check_spooler_service]),
 			ConfigCheck('WDigest authentication', 'Checks if WDigest authentication is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest',
 					'UseLogonCredential', 0
 				)
 			]]),
-			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS', checkers=[self.check_wsus_running, None], checker_args=[[self.connection], [self, (
+			ConfigCheck('WSUS configuration', 'Checks if WSUS configuration uses HTTPS', checkers=[self.check_wsus_running, None], checker_args=[[], [self, (
 						'HKLM\\Software\\Policies\\Microsoft\\Windows\\WindowsUpdate',
 						'WUServer', 'https://', startswith
 					),(
@@ -218,7 +218,7 @@ class HostChecker:
 					'CachedLogonsCount', 2, le
 				)
 			]]),
-			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined', checkers=[self.check_applocker], checker_args=[[self.dce, self.connection]]),
+			ConfigCheck('AppLocker', 'Checks if there are AppLocker rules defined', checkers=[self.check_applocker]),
 			ConfigCheck('RDP expiration time', 'Checks RDP session timeout', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services',
 					'MaxDisconnectionTime', 0, operator.gt
@@ -255,7 +255,7 @@ class HostChecker:
 					'LmCompatibilityLevel', 5, operator.ge
 				)
 			]]),
-			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns], checker_args=[[self.dce, self.connection]]),
+			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns]),
 			ConfigCheck('mDNS', 'Checks if mDNS is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNScache\\Parameters',
 					'EnableMDNS', 0
@@ -305,7 +305,7 @@ class HostChecker:
 					'UseTPMPIN', 1
 				)
 			]]),
-			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled', checkers=[self.check_guest_account_disabled], checker_args=[[self.connection]]),
+			ConfigCheck('Guest account disabled', 'Checks if the guest account is disabled', checkers=[self.check_guest_account_disabled]),
 			ConfigCheck('Automatic session lock', 'Checks if the session is automatically locked on after a period of inactivity', checker_args=[[self, (
 					'HKCU\\Control Panel\\Desktop',
 					'ScreenSaverIsSecure', 1
@@ -358,26 +358,28 @@ class HostChecker:
 					break
 			added[i].check_id = check_id
 
-	def check_config(self, dce, connection):
+	def check_config(self):
 		# Get host ID from db
 		host_id = None
-		hosts = connection.db.get_hosts(connection.host)
+		hosts = self.connection.db.get_hosts(self.connection.host)
 		for host in hosts:
 			host = host._asdict()
-			if host['ip'] == connection.host and host['hostname'] == connection.hostname and host['domain'] == connection.domain:
+			if host['ip'] == self.connection.host and host['hostname'] == self.connection.hostname and host['domain'] == self.connection.domain:
 				host_id = host['id']
 				break
 
 		# Perform all the checks and store the results
 		for check in self.checks:
-			check.run()
+			try:
+				check.run()
+			except Exception as e:
 				self.log.error(f'Error while performing check {check.name}: {e}')
 			check.log()
-			self.add_result(connection.host, check)
+			self.module.add_result(self.connection.host, check)
 			if host_id is not None:
-				connection.db.add_check_result(host_id, check.check_id, check.ok, ', '.join(check.reasons).replace('\x00',''))
+				self.connection.db.add_check_result(host_id, check.check_id, check.ok, ', '.join(check.reasons).replace('\x00',''))
 
-	def check_registry(self, dce, *specs, options={}):
+	def check_registry(self, *specs, options={}):
 		"""
 		Perform checks that only require to compare values in the registry with expected values, according to the specs
 		a spec may be either a 3-tuple: (key name, value name, expected value), or a 4-tuple (key name, value name, expected value, operation), where operation is a function that implements a comparison operator
@@ -433,7 +435,7 @@ class HostChecker:
 				opstring = f'{op.__name__}({{left}}, {{right}}) == True'
 				nopstring = f'{op.__name__}({{left}}, {{right}}) == True'
 
-			value = self.reg_query_value(dce, key, value_name)
+			value = self.reg_query_value(self.dce, self.connection, key, value_name)
 
 			if type(value) == DCERPCSessionError:
 				if options['KOIfMissing']:
@@ -461,7 +463,7 @@ class HostChecker:
 
 		return ok, reasons
 
-	def check_laps(self, dce, smb):
+	def check_laps(self):
 		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
 		subkeys =  self.reg_get_subkeys(self.dce, self.connection, key_name)
 		reasons = []
@@ -496,8 +498,8 @@ class HostChecker:
 
 		return success, reasons
 
-	def check_last_successful_update(self, connection):
-		records = connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
+	def check_last_successful_update(self):
+		records = self.connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
 		if len(records) == 0:
 			return False, ['No update found']
 		most_recent_update_date = records[0]['TimeGenerated']['value']
@@ -511,23 +513,23 @@ class HostChecker:
 		else:
 			return False, [f'Last update was {days_since_last_update} > {OUTDATED_THRESHOLD} days ago']
 
-	def check_administrator_name(self, connection):
-		user_info = self.get_user_info(connection, rid=500)
+	def check_administrator_name(self):
+		user_info = self.get_user_info(self.connection, rid=500)
 		name = user_info['UserName']
 		ok = name not in ('Administrator', 'Administrateur')
 		reasons = [f'Administrator name changed to {name}' if ok else 'Administrator name unchanged']
 		return ok, reasons
 
-	def check_guest_account_disabled(self, connection):
-		user_info = self.get_user_info(connection, rid=501)
+	def check_guest_account_disabled(self):
+		user_info = self.get_user_info(self.connection, rid=501)
 		uac = user_info['UserAccountControl']
 		disabled = bool(uac & samr.USER_ACCOUNT_DISABLED)
 		reasons = ['Guest account disabled' if disabled else 'Guest account enabled']
 		return disabled, reasons
 
-	def check_spooler_service(self, connection):
+	def check_spooler_service(self):
 		ok = False
-		service_config, service_status = self.get_service('Spooler', connection)
+		service_config, service_status = self.get_service('Spooler', self.connection)
 		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
 			ok = True
 			reasons = ['Spooler service disabled']
@@ -541,25 +543,25 @@ class HostChecker:
 
 		return ok, reasons
 
-	def check_wsus_running(self, connection):
+	def check_wsus_running(self):
 		ok = True
 		reasons = []
-		service_config, service_status = self.get_service('wuauserv', connection)
+		service_config, service_status = self.get_service('wuauserv', self.connection)
 		if service_config['dwStartType'] == scmr.SERVICE_DISABLED:
 			reasons = ['WSUS service disabled']
 		elif service_status != scmr.SERVICE_RUNNING:
 			reasons = ['WSUS service not running']
 		return ok, reasons
 
-	def check_nbtns(self, dce, connection):
+	def check_nbtns(self):
 		key_name = 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters\\Interfaces'
-		subkeys = self.reg_get_subkeys(dce, connection, key_name)
+		subkeys = self.reg_get_subkeys(self.dce, self.connection, key_name)
 		success = False
 		reasons = []
 		missing = 0
 		nbtns_enabled = 0
 		for subkey in subkeys:
-			value = self.reg_query_value(dce, connection, key_name + '\\' + subkey, 'NetbiosOptions')
+			value = self.reg_query_value(self.dce, self.connection, key_name + '\\' + subkey, 'NetbiosOptions')
 			if type(value) == DCERPCSessionError:
 				if value.error_code == ERROR_OBJECT_NOT_FOUND:
 					missing += 1
@@ -575,13 +577,13 @@ class HostChecker:
 			reasons.append('NBTNS disabled on all interfaces')
 		return success, reasons
 
-	def check_applocker(self, dce, connection):
+	def check_applocker(self):
 		key_name = 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\SrpV2'
-		subkeys = self.reg_get_subkeys(dce, connection, key_name)
+		subkeys = self.reg_get_subkeys(self.dce, self.connection, key_name)
 		rule_count = 0
 		for collection in subkeys:
 			collection_key_name = key_name + '\\' + collection
-			rules = self.reg_get_subkeys(dce, connection, collection_key_name)
+			rules = self.reg_get_subkeys(self.dce, self.connection, collection_key_name)
 			rule_count += len(rules)
 		success = rule_count > 0
 		reasons = [f'Found {rule_count} AppLocker rules defined']
@@ -686,7 +688,10 @@ class HostChecker:
 
 			return value_type, value_name[:-1], value_data
 
-		root_key, subkey = keyName.split('\\', 1)
+		try:
+			root_key, subkey = keyName.split('\\', 1)
+		except ValueError:
+			print(keyName)
 		ans = self._open_root_key(dce, connection, root_key)
 		if ans is None:
 			return ans
