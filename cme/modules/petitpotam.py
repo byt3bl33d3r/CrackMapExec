@@ -45,6 +45,7 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
+            aesKey=connection.aesKey,
             target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe=self.pipe,
             do_kerberos=connection.kerberos,
@@ -195,6 +196,7 @@ def coerce(
     domain,
     lmhash,
     nthash,
+    aesKey,
     target,
     pipe,
     do_kerberos,
@@ -232,6 +234,7 @@ def coerce(
             domain=domain,
             lmhash=lmhash,
             nthash=nthash,
+            aesKey=aesKey,
         )
 
     if target_ip:

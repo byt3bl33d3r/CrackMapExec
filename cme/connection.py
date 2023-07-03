@@ -51,8 +51,8 @@ class connection(object):
         self.admin_privs = False
         self.password = ""
         self.username = ""
-        self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
-        self.aesKey = None if not self.args.aesKey else self.args.aesKey
+        self.kerberos = True if self.args.kerberos or self.args.use_kcache or self.args.aesKey else False
+        self.aesKey = None if not self.args.aesKey else self.args.aesKey[0]
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0

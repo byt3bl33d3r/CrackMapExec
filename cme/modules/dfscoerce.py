@@ -41,6 +41,7 @@ class CMEModule:
             target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             doKerberos=connection.kerberos,
             dcHost=connection.kdcHost,
+            aesKey=connection.aesKey,
         )
 
         if dce is not None:
@@ -103,7 +104,7 @@ class NetrDfsAddRootResponse(NDRCALL):
 
 
 class TriggerAuth:
-    def connect(self, username, password, domain, lmhash, nthash, target, doKerberos, dcHost):
+    def connect(self, username, password, domain, lmhash, nthash, aesKey, target, doKerberos, dcHost):
         rpctransport = transport.DCERPCTransportFactory(r"ncacn_np:%s[\PIPE\netdfs]" % target)
         if hasattr(rpctransport, "set_credentials"):
             rpctransport.set_credentials(
@@ -112,6 +113,7 @@ class TriggerAuth:
                 domain=domain,
                 lmhash=lmhash,
                 nthash=nthash,
+                aesKey=aesKey,
             )
 
         if doKerberos:
