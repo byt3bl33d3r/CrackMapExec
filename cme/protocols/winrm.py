@@ -91,8 +91,7 @@ class winrm(connection):
 
             self.db.add_host(self.host, self.port, self.hostname, self.domain, self.server_os)
 
-        self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}")
-        self.output_filename = self.output_filename.replace(":", "-")
+        self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
 
     def laps_search(self, username, password, ntlm_hash, domain):
         ldapco = LDAPConnect(self.domain, "389", self.domain)
