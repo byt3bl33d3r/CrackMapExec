@@ -1004,7 +1004,7 @@ class smb(connection):
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
                     self.logger.success("Enumerated local groups")
-                    self.logger.display(f"Local groups: {groups}")
+                    self.logger.debug(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
                     self.logger.highlight(f"rid => {group_rid} => {group_name}")
