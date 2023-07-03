@@ -27,6 +27,7 @@ class CMEModule:
         """
 
         self.showservers = True
+        self.base_dn = None
 
         if module_options and "SHOWSERVERS" in module_options:
             if module_options["SHOWSERVERS"].lower() == "true" or module_options["SHOWSERVERS"] == "1":
@@ -35,6 +36,8 @@ class CMEModule:
                 self.showservers = False
             else:
                 print("Could not parse showservers option.")
+        if module_options and "BASE_DN" in module_options:
+            self.base_dn = module_options["BASE_DN"]
 
     name = "subnets"
     description = "Retrieves the different Sites and Subnets of an Active Directory"
@@ -43,16 +46,20 @@ class CMEModule:
     multiple_hosts = False
 
     def on_login(self, context, connection):
-        dn = ",".join(["DC=%s" % part for part in connection.domain.split(".")][-2:])
+        dn = connection.ldapConnection._baseDN if self.base_dn is None else self.base_dn
 
         context.log.display("Getting the Sites and Subnets from domain")
 
-        list_sites = connection.ldapConnection.search(
-            searchBase="CN=Configuration,%s" % dn,
-            searchFilter="(objectClass=site)",
-            attributes=["distinguishedName", "name", "description"],
-            sizeLimit=999,
-        )
+        try:
+            list_sites = connection.ldapConnection.search(
+                searchBase="CN=Configuration,%s" % dn,
+                searchFilter="(objectClass=site)",
+                attributes=["distinguishedName", "name", "description"],
+                sizeLimit=999,
+            )
+        except LDAPSearchError as e:
+            context.log.fail(str(e))
+            exit()
         for site in list_sites:
             if isinstance(site, ldapasn1_impacket.SearchResultEntry) is not True:
                 continue
