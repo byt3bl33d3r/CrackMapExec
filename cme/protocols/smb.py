@@ -1004,7 +1004,7 @@ class smb(connection):
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
                     self.logger.success("Enumerated local groups")
-                    self.logger.display(f"Local groups: {groups}")
+                    self.logger.debug(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
                     self.logger.highlight(f"rid => {group_rid} => {group_name}")
@@ -1277,7 +1277,7 @@ class smb(connection):
 
             if hasattr(rpc_transport, "set_credentials"):
                 # This method exists only for selected protocol sequences.
-                rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash, self.aesKey)
 
             if self.kerberos:
                 rpc_transport.set_kerberos(self.kerberos, self.kdcHost)

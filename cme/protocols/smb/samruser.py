@@ -24,7 +24,7 @@ class UserSamrDump:
         self.hash = connection.hash
         self.lmhash = ""
         self.nthash = ""
-        self.aesKey = None
+        self.aesKey = connection.aesKey
         self.doKerberos = connection.kerberos
         self.protocols = UserSamrDump.KNOWN_PROTOCOLS.keys()
         self.users = []

@@ -45,6 +45,7 @@ class CMEModule:
             domain=connection.domain,
             lmhash=connection.lmhash,
             nthash=connection.nthash,
+            aesKey=connection.aesKey,
             target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
             pipe="FssagentRpc",
             doKerberos=connection.kerberos,
@@ -62,6 +63,7 @@ class CMEModule:
                 domain=connection.domain,
                 lmhash=connection.lmhash,
                 nthash=connection.nthash,
+                aesKey=connection.aesKey,
                 target=connection.host if not connection.kerberos else connection.hostname + "." + connection.domain,
                 pipe="FssagentRpc",
             )
@@ -194,6 +196,7 @@ class CoerceAuth:
         domain,
         lmhash,
         nthash,
+        aesKey,
         target,
         pipe,
         doKerberos,
@@ -215,6 +218,7 @@ class CoerceAuth:
                 domain=domain,
                 lmhash=lmhash,
                 nthash=nthash,
+                aesKey=aesKey,
             )
 
         dce.set_credentials(*rpctransport.get_credentials())
