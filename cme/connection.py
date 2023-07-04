@@ -325,7 +325,7 @@ class connection(object):
         if self.args.continue_on_success and owned:
             return False
         # Enforcing FQDN for SMB if not using local authentication. Related issues/PRs: #26, #28, #24
-        if self.args.protocol == 'smb' and not self.args.local_auth and "." not in domain:
+        if self.args.protocol == 'smb' and not self.args.local_auth and "." not in domain and not self.args.laps:
             self.logger.error(f"Domain {domain} for user {username.rstrip()} need to be FQDN ex:domain.local, not domain")
             return False
 
