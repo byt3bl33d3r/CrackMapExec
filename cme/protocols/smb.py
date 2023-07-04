@@ -607,7 +607,10 @@ class smb(connection):
             self.smbv1 = False
         except socket.error as e:
             if str(e).find("Too many open files") != -1:
-                self.logger.error(f"SMBv3 connection error on {self.host if not kdc else kdc}: {e}")
+                if not self.logger:
+                    print("DEBUG: logger not set, please open an issue on github: " + str(self) + str(self.logger))
+                    self.proto_logger()
+                self.logger.fail(f"SMBv3 connection error on {self.host if not kdc else kdc}: {e}")
             return False
         except (Exception, NetBIOSTimeout) as e:
             self.logger.info(f"Error creating SMBv3 connection to {self.host if not kdc else kdc}: {e}")
