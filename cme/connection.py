@@ -262,24 +262,18 @@ class connection(object):
                         else:
                             domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                             username_single = line
-                        if "." not in domain_single:
-                            self.logger.error(f"Domain {domain_single} for user {username_single.rstrip()} need to be FQDN ex:domain.local, not domain")
-                        else:
-                            domain.append(domain_single)
-                            username.append(username_single.strip())
-                            owned.append(False)
+                        domain.append(domain_single)
+                        username.append(username_single.strip())
+                        owned.append(False)
             else:
                 if "\\" in user:
                     domain_single, username_single = user.split("\\")
                 else:
                     domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                     username_single = user
-                if "." not in domain_single:
-                    self.logger.error(f"Domain {domain_single} for user {username_single} need to be FQDN ex:domain.local, not domain")
-                else:
-                    domain.append(domain_single)
-                    username.append(username_single)
-                    owned.append(False)
+                domain.append(domain_single)
+                username.append(username_single)
+                owned.append(False)
 
         # Parse passwords
         for password in self.args.password:
@@ -329,6 +323,10 @@ class connection(object):
         if self.over_fail_limit(username):
             return False
         if self.args.continue_on_success and owned:
+            return False
+        # Enforcing FQDN for SMB if not using local authentication. Related issues/PRs: #26, #28, #24
+        if self.args.protocol == 'smb' and not self.args.local_auth and "." not in domain:
+            self.logger.error(f"Domain {domain} for user {username.rstrip()} need to be FQDN ex:domain.local, not domain")
             return False
 
         with sem:
