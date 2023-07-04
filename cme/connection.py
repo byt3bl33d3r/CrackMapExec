@@ -262,18 +262,24 @@ class connection(object):
                         else:
                             domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                             username_single = line
-                        domain.append(domain_single)
-                        username.append(username_single.strip())
-                        owned.append(False)
+                        if "." not in domain_single:
+                            self.logger.error(f"Domain {domain_single} for user {username_single.rstrip()} need to be FQDN ex:domain.local, not domain")
+                        else:
+                            domain.append(domain_single)
+                            username.append(username_single.strip())
+                            owned.append(False)
             else:
                 if "\\" in user:
                     domain_single, username_single = user.split("\\")
                 else:
                     domain_single = self.args.domain if hasattr(self.args, "domain") and self.args.domain else self.domain
                     username_single = user
-                domain.append(domain_single)
-                username.append(username_single)
-                owned.append(False)
+                if "." not in domain_single:
+                    self.logger.error(f"Domain {domain_single} for user {username_single} need to be FQDN ex:domain.local, not domain")
+                else:
+                    domain.append(domain_single)
+                    username.append(username_single)
+                    owned.append(False)
 
         # Parse passwords
         for password in self.args.password:
