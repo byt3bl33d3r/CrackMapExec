@@ -28,6 +28,16 @@ from sys import exit
 import logging
 import sqlalchemy
 from rich.progress import Progress
+import resource
+
+# Increase file_limit to prevent error "Too many open files"
+file_limit = list(resource.getrlimit(resource.RLIMIT_NOFILE))
+if file_limit[1] > 10000:
+    file_limit[0] = 10000
+else:
+    file_limit[0] = file_limit[1]
+file_limit = tuple(file_limit)
+resource.setrlimit(resource.RLIMIT_NOFILE, file_limit)
 
 try:
     import librlers
