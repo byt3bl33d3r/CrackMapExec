@@ -50,17 +50,17 @@ asyauth = "~0.0.13"
 masky = "^0.2.0"
 sqlalchemy = "^2.0.4"
 aiosqlite = "^0.18.0"
-pytest = "^7.2.2"
 pyasn1-modules = "^0.3.0"
 rich = "^13.3.5"
 python-libnmap = "^0.7.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 flake8 = "*"
 pylint = "*"
 shiv = "*"
 black = "^20.8b1"
+pytest = "^7.2.2"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"
