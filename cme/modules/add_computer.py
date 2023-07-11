@@ -13,7 +13,7 @@ class CMEModule:
     Thanks to the guys at impacket for the original code
     '''
 
-    name = 'ADD-COMPUTER'
+    name = 'add-computer'
     description = 'Adds or deletes a domain computer'
     supported_protocols = ['smb']
     opsec_safe = True
