@@ -12,7 +12,7 @@ class CMEModule:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
     '''
     
-    name = 'COMP-DESC'
+    name = 'comp-desc'
     description = 'Retrieves computers containing the specified description'
     supported_protocols = ['ldap']
     opsec_safe = True
