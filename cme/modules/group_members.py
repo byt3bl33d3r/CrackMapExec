@@ -11,7 +11,7 @@ class CMEModule:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
     '''
 
-    name = 'GROUP-MEM'
+    name = 'group-mem'
     description = 'Retrieves all the members within a Group'
     supported_protocols = ['ldap']
     opsec_safe = True
