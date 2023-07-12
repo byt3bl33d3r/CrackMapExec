@@ -5,7 +5,7 @@ import sys
 
 class CMEModule:
     '''
-      Module by CyberCelt
+      Module by CyberCelt: @Cyb3rC3lt
 
       Initial module:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
@@ -19,10 +19,10 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        COMP-DESC: Specify COMP-DESC to call the module
+        comp-desc: Specify comp-desc to call the module
         DESC: Specify the DESC option to enter your description text to search for
-        Usage: cme ldap $DC-IP -u Username -p Password -M COMP-DESC -o DESC="server"
-               cme ldap $DC-IP -u Username -p Password -M COMP-DESC -o DESC="XP"
+        Usage: cme ldap $DC-IP -u Username -p Password -M comp-desc -o DESC="server"
+               cme ldap $DC-IP -u Username -p Password -M comp-desc -o DESC="XP"
         '''
 
         self.DESC = ''
