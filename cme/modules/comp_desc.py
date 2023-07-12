@@ -75,11 +75,11 @@ class CMEModule:
             context.log.success('Found the following computers: ')
             for answer in answers:
                 try:
-                  IP = socket.gethostbyname(answer[0])
-                  context.log.highlight(u'{} ({}) ({})'.format(answer[0],answer[1],IP))
-                  context.log.debug('IP found')
+                    IP = socket.gethostbyname(answer[0])
+                    context.log.highlight(u'{} ({}) ({})'.format(answer[0],answer[1],IP))
+                    context.log.debug('IP found')
                 except socket.gaierror as e:
-                  context.log.debug('Missing IP')
-                  context.log.highlight(u'{} ({}) ({})'.format(answer[0],answer[1],"No IP Found"))
+                    context.log.debug('Missing IP')
+                    context.log.highlight(u'{} ({}) ({})'.format(answer[0],answer[1],"No IP Found"))
         else:
             context.log.success('Unable to find any computers with the description "' + self.DESC + '"')
