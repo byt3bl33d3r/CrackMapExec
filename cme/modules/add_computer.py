@@ -7,7 +7,7 @@ from impacket.dcerpc.v5 import samr, epm, transport
 
 class CMEModule:
     '''
-    Module by CyberCelt
+    Module by CyberCelt: @Cyb3rC3lt
      Initial module:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
     Thanks to the guys at impacket for the original code
@@ -21,14 +21,14 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        ADD-COMPUTER: Specify ADD-COMPUTER to call the module using smb
+        add-computer: Specify add-computer to call the module using smb
         NAME: Specify the NAME option to name the Computer to be added
         PASSWORD: Specify the PASSWORD option to supply a password for the Computer to be added
         DELETE: Specify DELETE to remove a Computer
         CHANGEPW: Specify CHANGEPW to modify a Computer password
-        Usage: cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" PASSWORD="Password1"
-               cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" DELETE=True
-               cme smb $DC-IP -u Username -p Password -M ADD-COMPUTER -o NAME="BADPC" PASSWORD="Password2" CHANGEPW=True
+        Usage: cme smb $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" PASSWORD="Password1"
+               cme smb $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" DELETE=True
+               cme smb $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" PASSWORD="Password2" CHANGEPW=True
         '''
 
         self.__baseDN = None
@@ -298,7 +298,7 @@ class CMEModule:
                 context.log.highlight('Successfully added the machine account: "' + self.__computerName + '" with Password: "' + self.__computerPassword + '"')
                 context.log.highlight(u'{}'.format('You can try to verify this with the CME command:'))
                 context.log.highlight(u'{}'.format(
-                    'cme ldap ' + connection.host + ' -u ' + connection.username + ' -p ' + connection.password + ' -M GROUP-MEM -o GROUP="Domain Computers"'))
+                    'cme ldap ' + connection.host + ' -u ' + connection.username + ' -p ' + connection.password + ' -M group-mem -o GROUP="Domain Computers"'))
             elif result == False and c.last_error == "entryAlreadyExists":
                 context.log.highlight(u'{}'.format('The Computer account "' + self.__computerName + '" already exists'))
             elif not result:
