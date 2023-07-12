@@ -5,7 +5,7 @@ from impacket.ldap import ldapasn1 as ldapasn1_impacket
 
 class CMEModule:
     '''
-      Module by CyberCelt: @Cyb3rCelt
+      Module by CyberCelt: @Cyb3rC3lt
 
       Initial module:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
@@ -21,10 +21,10 @@ class CMEModule:
 
     def options(self, context, module_options):
         '''
-        GROUP-MEM: Specify GROUP-MEM to call the module
+        group-mem: Specify group-mem to call the module
         GROUP: Specify the GROUP option to query for that group's members
-        Usage: cme ldap $DC-IP -u Username -p Password -M GROUP-MEM -o GROUP="domain admins"
-               cme ldap $DC-IP -u Username -p Password -M GROUP-MEM -o GROUP="domain controllers"
+        Usage: cme ldap $DC-IP -u Username -p Password -M group-mem -o GROUP="domain admins"
+               cme ldap $DC-IP -u Username -p Password -M group-mem -o GROUP="domain controllers"
         '''
 
         self.GROUP = ''
