@@ -8,10 +8,11 @@ from cme.loaders.protocolloader import ProtocolLoader
 from cme.helpers.logger import highlight
 from termcolor import colored
 from cme.logger import cme_logger
+import importlib.metadata
 
 
 def gen_cli_args():
-    VERSION = "6.0.0"
+    VERSION = importlib.metadata.version("crackmapexec")
     CODENAME = "Bane"
 
     parser = argparse.ArgumentParser(description=f"""
