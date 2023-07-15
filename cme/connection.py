@@ -236,6 +236,7 @@ class connection(object):
             secret.append(secret_single)
             cred_type.append(cred_type_single)
 
+        if len(secret) != len(data): data = [None] * len(secret)
         return domain, username, owned, secret, cred_type, data
 
     def parse_credentials(self):
