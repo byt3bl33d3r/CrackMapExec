@@ -24,7 +24,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install poetry
       run: |
-        pipx install poetry --python ${{ matrix.python-version }}
+        pipx install poetry --python python${{ matrix.python-version }}
         poetry --version
         poetry env info
     - name: Install librairies with dev group
