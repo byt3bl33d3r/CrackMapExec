@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: CrackMapExec Tests on ${{ matrix.os }}
+    name: CrackMapExec Tests for Py${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 4
@@ -24,8 +24,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install poetry
       run: |
-        pipx install poetry
+        pipx install poetry --python python${{ matrix.python-version }}
         poetry --version
+        poetry env info
     - name: Install librairies with dev group
       run: |
         poetry install --with dev
