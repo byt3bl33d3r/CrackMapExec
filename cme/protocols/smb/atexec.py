@@ -5,7 +5,7 @@ import os
 import logging
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
-from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from cme.helpers.misc import gen_random_string
 from cme.logger import cme_logger
 from time import sleep
@@ -149,6 +149,7 @@ class TSCH_EXEC:
         dce.set_credentials(*self.__rpctransport.get_credentials())
         dce.connect()
         # dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
+        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
         dce.bind(tsch.MSRPC_UUID_TSCHS)
         tmpName = gen_random_string(8)
         tmpFileName = tmpName + ".tmp"
