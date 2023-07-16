@@ -741,6 +741,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
+                        self.args.port,
                         self.logger
                     )
                     self.logger.info("Executed command via smbexec")
