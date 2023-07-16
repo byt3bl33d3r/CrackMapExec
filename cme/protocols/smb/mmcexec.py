@@ -60,7 +60,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class MMCEXEC:
-    def __init__(self, host, share_name, username, password, domain, smbconnection, hashes=None):
+    def __init__(self, host, share_name, username, password, domain, smbconnection, share, hashes=None):
         self.__host = host
         self.__username = username
         self.__password = password
@@ -76,10 +76,12 @@ class MMCEXEC:
         self.__quit = None
         self.__executeShellCommand = None
         self.__retOutput = True
+        self.__share = share
+        self.__dcom = None
         if hashes is not None:
             self.__lmhash, self.__nthash = hashes.split(":")
 
-        dcom = DCOMConnection(
+        self.__dcom = DCOMConnection(
             self.__host,
             self.__username,
             self.__password,
@@ -90,7 +92,7 @@ class MMCEXEC:
             oxidResolver=True,
         )
         try:
-            iInterface = dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
+            iInterface = self.__dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
             iMMC = IDispatch(iInterface)
 
             resp = iMMC.GetIDsOfNames(("Document",))
@@ -117,20 +119,20 @@ class MMCEXEC:
         except Exception as e:
             self.exit()
             logging.error(str(e))
-            dcom.disconnect()
+            self.__dcom.disconnect()
 
     def getInterface(self, interface, resp):
         # Now let's parse the answer and build an Interface instance
-        objRefType = OBJREF("".join(resp))["flags"]
+        objRefType = OBJREF(b"".join(resp))["flags"]
         objRef = None
         if objRefType == FLAGS_OBJREF_CUSTOM:
-            objRef = OBJREF_CUSTOM("".join(resp))
+            objRef = OBJREF_CUSTOM(b"".join(resp))
         elif objRefType == FLAGS_OBJREF_HANDLER:
-            objRef = OBJREF_HANDLER("".join(resp))
+            objRef = OBJREF_HANDLER(b"".join(resp))
         elif objRefType == FLAGS_OBJREF_STANDARD:
-            objRef = OBJREF_STANDARD("".join(resp))
+            objRef = OBJREF_STANDARD(b"".join(resp))
         elif objRefType == FLAGS_OBJREF_EXTENDED:
-            objRef = OBJREF_EXTENDED("".join(resp))
+            objRef = OBJREF_EXTENDED(b"".join(resp))
         else:
             logging.error("Unknown OBJREF Type! 0x%x" % objRefType)
 
@@ -150,6 +152,7 @@ class MMCEXEC:
         self.__retOutput = output
         self.execute_remote(command)
         self.exit()
+        self.__dcom.disconnect()
         return self.__outputBuffer
 
     def exit(self):
@@ -163,12 +166,11 @@ class MMCEXEC:
         return True
 
     def execute_remote(self, data):
-        self.__output = gen_random_string(6)
-        local_ip = self.__smbconnection.getSMBServer().get_socket().getsockname()[0]
+        self.__output = "\\Windows\\Temp\\" + gen_random_string(6)
 
-        command = "/Q /c " + data
+        command = self.__shell + " /Q /c " + data
         if self.__retOutput is True:
-            command += " 1> " + f"\\\\{local_ip}\\{self.__share_name}\\{self.__output}" + " 2>&1"
+            command += " 1> " + f"{self.__output}" + " 2>&1"
 
         dispParams = DISPPARAMS(None, False)
         dispParams["rgdispidNamedArgs"] = NULL
@@ -203,7 +205,7 @@ class MMCEXEC:
         dispParams["rgvarg"].append(arg0)
 
         self.__executeShellCommand[0].Invoke(self.__executeShellCommand[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
-        self.get_output_fileless()
+        self.get_output_remote()
 
     def output_callback(self, data):
         self.__outputBuffer += data
@@ -219,3 +221,22 @@ class MMCEXEC:
                 break
             except IOError:
                 sleep(2)
+
+    def get_output_remote(self):
+        if self.__retOutput is False:
+            self.__outputBuffer = ""
+            return
+
+        while True:
+            try:
+                self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
+                break
+            except Exception as e:
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
+                    # Output not finished, let's wait
+                    sleep(2)
+                    pass
+                else:
+                    pass
+
+        self.__smbconnection.deleteFile(self.__share, self.__output)
