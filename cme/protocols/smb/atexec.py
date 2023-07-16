@@ -23,6 +23,7 @@ class TSCH_EXEC:
         aesKey=None,
         kdcHost=None,
         hashes=None,
+        logger=cme_logger
     ):
         self.__target = target
         self.__username = username
@@ -36,6 +37,7 @@ class TSCH_EXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash
@@ -156,7 +158,11 @@ class TSCH_EXEC:
         logging.info(f"Task XML: {xml}")
         taskCreated = False
         logging.info(f"Creating task \\{tmpName}")
-        tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        try:
+            tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        except Exception as e:
+            self.logger.fail(str(e))
+            return
         taskCreated = True
 
         logging.info(f"Running task \\{tmpName}")
