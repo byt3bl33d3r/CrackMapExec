@@ -699,7 +699,8 @@ class smb(connection):
                         self.password,
                         self.domain,
                         self.conn,
-                        self.hash,
+                        self.args.share,
+                        self.hash
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
@@ -719,6 +720,7 @@ class smb(connection):
                         self.aesKey,
                         self.kdcHost,
                         self.hash,
+                        self.logger
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -741,6 +743,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
+                        self.args.port,
                         self.logger
                     )
                     self.logger.info("Executed command via smbexec")
