@@ -372,13 +372,18 @@ class mssql(connection):
 
     @requires_admin
     def get_file(self):
-        self.logger.display(f"Copy {self.args.get_file[0]} to {self.args.get_file[1]}")
+        remote_path = self.args.get_file[0]
+        download_path = self.args.get_file[1]
+        self.logger.display(f'Copying "{remote_path}" to "{download_path}"')
+        
         try:
             exec_method = MSSQLEXEC(self.conn)
             exec_method.get_file(self.args.get_file[0], self.args.get_file[1])
-            self.logger.success(f"File {self.args.get_file[0]} was transferred to {self.args.get_file[1]}")
+            self.logger.success(f'File "{remote_path}" was downloaded to "{download_path}"')
         except Exception as e:
-            self.logger.fail(f"Error reading file {self.args.get_file[0]}: {e}")
+            self.logger.fail(f'Error reading file "{remote_path}": {e}')
+            if os.path.getsize(download_path) == 0:
+                os.remove(download_path)
 
     # We hook these functions in the tds library to use CME's logger instead of printing the output to stdout
     # The whole tds library in impacket needs a good overhaul to preserve my sanity
