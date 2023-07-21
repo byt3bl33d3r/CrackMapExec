@@ -82,7 +82,7 @@ class CMEModule:
 	'''
 	Windows Configuration Checker
 
-	Module written by @__fpr for Orange Cyberdefense
+	Module author: @__fpr (Orange Cyberdefense)
 	'''
 	name = 'wcc'
 	description = 'Check various security configuration items on Windows machines'
@@ -240,11 +240,6 @@ class HostChecker:
 					'RunAsPPL', 1
 				)
 			]]),
-			ConfigCheck('PEAP certificate validation', 'Checks if PEAP certificate validation is enabled', checker_args=[[self, (
-					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Rasman\\PPP\\EAP\\13',
-					'ValidateServerCert', 1
-				)
-			]]),
 			ConfigCheck('Powershell v2 availability', 'Checks if powershell v2 is available', checker_args=[[self, (
 					'HKLM\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine',
 					'PSCompatibleVersion', '2.0', not_(operator.contains)
@@ -279,16 +274,6 @@ class HostChecker:
 					'EncryptData', 1
 				)
 			]]),
-			ConfigCheck('Network selection on lock screen', 'Checks if network selection on lock screen is disabled', checker_args=[[self, (
-					'HKLM\\Software\\Policies\\Microsoft\\Windows\\System',
-					'DontDisplayNetworkSelectionUi', 1
-				)
-			]]),
-			ConfigCheck('Last logged-on user displayed', 'Checks if display of last logged on user is disabled', checker_args=[[self, (
-					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
-					'dontdisplaylastusername', 1
-				)
-			]]),
 			ConfigCheck('RDP authentication', 'Checks RDP authentication configuration (NLA auth and restricted admin mode)', checker_args=[[self, (
 					'HKLM\\System\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\\',
 					'UserAuthentication', 1
@@ -321,12 +306,7 @@ class HostChecker:
 					'HKCU\\SOFTWARE\\Microsoft\\PowerShell\\1\ShellIds\Microsoft.Powershell',
 					'ExecutionPolicy', 'Restricted\x00'
 				)
-			]], checker_kwargs=[{'options':{'KOIfMissing':False, 'lastWins':True}}]),
-			ConfigCheck('Legal notice banner', 'Checks if there is a legal notice banner set', checker_args=[[self, (
-					'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System',
-					'legalnoticecaption', "", operator.ne
-				)
-			]])
+			]], checker_kwargs=[{'options':{'KOIfMissing':False, 'lastWins':True}}])
 		]
 
 		# Add check to conf_checks table if missing
