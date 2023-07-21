@@ -46,6 +46,7 @@ class CMEModule:
                 connection.domain,
                 connection.lmhash,
                 connection.nthash,
+                connection.aesKey,
             )
             dce, rpctransport = lsa.connect()
             policyHandle = lsa.open_policy(dce)
@@ -54,7 +55,7 @@ class CMEModule:
                 for service in product["services"]:
                     try:
                         lsa.LsarLookupNames(dce, policyHandle, service["name"])
-                        context.log.display(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
+                        context.log.info(f"Detected installed service on {connection.host}: {product['name']} {service['description']}")
                         if product["name"] not in results:
                             results[product["name"]] = {"services": []}
                         results[product["name"]]["services"].append(service)
@@ -64,7 +65,7 @@ class CMEModule:
         except Exception as e:
             context.log.fail(str(e))
 
-        context.log.display(f"Detecting running processes on {connection.host} by enumerating pipes...")
+        context.log.info(f"Detecting running processes on {connection.host} by enumerating pipes...")
         try:
             for f in connection.conn.listPath("IPC$", "\\*"):
                 fl = f.get_longname()
@@ -124,6 +125,7 @@ class LsaLookupNames:
         kdcHost="",
         lmhash="",
         nthash="",
+        aesKey="",
     ):
         self.domain = domain
         self.username = username
@@ -133,6 +135,7 @@ class LsaLookupNames:
         self.doKerberos = k
         self.lmhash = lmhash
         self.nthash = nthash
+        self.aesKey = aesKey
         self.dcHost = kdcHost
 
     def connect(self, string_binding=None, iface_uuid=None):
@@ -154,7 +157,7 @@ class LsaLookupNames:
         # Authenticate if specified
         if self.authn and hasattr(rpc_transport, "set_credentials"):
             # This method exists only for selected protocol sequences.
-            rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
+            rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash, self.aesKey)
 
         if self.doKerberos:
             rpc_transport.set_kerberos(self.doKerberos, kdcHost=self.dcHost)

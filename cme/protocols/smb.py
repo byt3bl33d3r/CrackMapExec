@@ -234,8 +234,7 @@ class smb(connection):
             pass
 
         self.os_arch = self.get_os_arch()
-        self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}")
-        self.output_filename = self.output_filename.replace(":", "-")
+        self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
 
         if not self.domain:
             self.domain = self.hostname
@@ -322,7 +321,11 @@ class smb(connection):
                         self.args.kerberos,
                         self.args.kdcHost,
                         339)
-                    data = d.run()
+                    try:
+                        data = d.run()
+                    except Exception as e:
+                        self.logger.fail(str(e))
+                        return
                     r = loads(data)
                     msMCSAdmPwd = r["p"]
                     username_laps = r["n"]
@@ -405,8 +408,8 @@ class smb(connection):
 
                 used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
             else:
-                self.plaintext_login(username, password, self.host)
-                return
+                self.plaintext_login(self.hostname, username, password)
+                return True
 
             out = f"{self.domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
             self.logger.success(out)
@@ -603,7 +606,11 @@ class smb(connection):
             )
             self.smbv1 = False
         except socket.error as e:
+            # This should not happen anymore!!!
             if str(e).find("Too many open files") != -1:
+                if not self.logger:
+                    print("DEBUG ERROR: logger not set, please open an issue on github: " + str(self) + str(self.logger))
+                    self.proto_logger()
                 self.logger.fail(f"SMBv3 connection error on {self.host if not kdc else kdc}: {e}")
             return False
         except (Exception, NetBIOSTimeout) as e:
@@ -626,7 +633,10 @@ class smb(connection):
         except:
             pass
         else:
-            dce.bind(scmr.MSRPC_UUID_SCMR)
+            try:
+                dce.bind(scmr.MSRPC_UUID_SCMR)
+            except:
+                pass
             try:
                 # 0xF003F - SC_MANAGER_ALL_ACCESS
                 # http://msdn.microsoft.com/en-us/library/windows/desktop/ms685981(v=vs.85).aspx
@@ -689,7 +699,8 @@ class smb(connection):
                         self.password,
                         self.domain,
                         self.conn,
-                        self.hash,
+                        self.args.share,
+                        self.hash
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
@@ -709,6 +720,7 @@ class smb(connection):
                         self.aesKey,
                         self.kdcHost,
                         self.hash,
+                        self.logger
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -731,6 +743,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
+                        self.args.port,
                         self.logger
                     )
                     self.logger.info("Executed command via smbexec")
@@ -1001,7 +1014,7 @@ class smb(connection):
                 groups = SamrFunc(self).get_local_groups()
                 if groups:
                     self.logger.success("Enumerated local groups")
-                    self.logger.display(f"Local groups: {groups}")
+                    self.logger.debug(f"Local groups: {groups}")
 
                 for group_name, group_rid in groups.items():
                     self.logger.highlight(f"rid => {group_rid} => {group_name}")
@@ -1274,7 +1287,7 @@ class smb(connection):
 
             if hasattr(rpc_transport, "set_credentials"):
                 # This method exists only for selected protocol sequences.
-                rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash)
+                rpc_transport.set_credentials(self.username, self.password, self.domain, self.lmhash, self.nthash, self.aesKey)
 
             if self.kerberos:
                 rpc_transport.set_kerberos(self.kerberos, self.kdcHost)

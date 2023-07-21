@@ -25,7 +25,7 @@ class SamrFunc:
         self.hash = connection.hash
         self.lmhash = ""
         self.nthash = ""
-        self.aesKey = (None,)
+        self.aesKey = connection.aesKey
         self.doKerberos = connection.kerberos
 
         if self.hash is not None:
@@ -40,16 +40,20 @@ class SamrFunc:
         self.samr_query = SAMRQuery(
             username=self.username,
             password=self.password,
+            domain=self.domain,
             remote_name=self.addr,
             remote_host=self.addr,
             kerberos=self.doKerberos,
+            aesKey=self.aesKey,
         )
         self.lsa_query = LSAQuery(
             username=self.username,
             password=self.password,
+            domain=self.domain,
             remote_name=self.addr,
             remote_host=self.addr,
             kerberos=self.doKerberos,
+            aesKey=self.aesKey,
             logger=self.logger
         )
 
@@ -107,13 +111,14 @@ class SAMRQuery:
         remote_name="",
         remote_host="",
         kerberos=None,
+        aesKey="",
     ):
         self.__username = username
         self.__password = password
         self.__domain = domain
         self.__lmhash = ""
         self.__nthash = ""
-        self.__aesKey = None
+        self.__aesKey = aesKey
         self.__port = port
         self.__remote_name = remote_name
         self.__remote_host = remote_host
@@ -207,6 +212,7 @@ class LSAQuery:
         port=445,
         remote_name="",
         remote_host="",
+        aesKey="",
         kerberos=None,
         logger=None
     ):
@@ -215,7 +221,7 @@ class LSAQuery:
         self.__domain = domain
         self.__lmhash = ""
         self.__nthash = ""
-        self.__aesKey = None
+        self.__aesKey = aesKey
         self.__port = port
         self.__remote_name = remote_name
         self.__remote_host = remote_host

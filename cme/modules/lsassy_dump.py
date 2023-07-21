@@ -128,6 +128,8 @@ class CMEModule:
         credz_bh = []
         domain = None
         for cred in credentials:
+            if cred["domain"] == None:
+                cred["domain"] = ""
             domain = cred["domain"]
             if "." not in cred["domain"] and cred["domain"].upper() in connection.domain.upper():
                 domain = connection.domain  # slim shady

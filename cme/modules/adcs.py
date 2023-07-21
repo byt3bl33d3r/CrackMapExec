@@ -27,13 +27,17 @@ class CMEModule:
     def options(self, context, module_options):
         """
         SERVER             PKI Enrollment Server to enumerate templates for. Default is None, use CN name
+        BASE_DN            The base domain name for the LDAP query
         """
         self.context = context
         self.regex = re.compile("(https?://.+)")
 
         self.server = None
+        self.base_dn = None
         if module_options and "SERVER" in module_options:
             self.server = module_options["SERVER"]
+        if module_options and "BASE_DN" in module_options:
+            self.base_dn = module_options["BASE_DN"]
 
     def on_login(self, context, connection):
         """
@@ -49,7 +53,7 @@ class CMEModule:
 
         try:
             sc = ldap.SimplePagedResultsControl()
-            base_dn_root = ",".join(connection.ldapConnection._baseDN.split(",")[-2:])
+            base_dn_root = connection.ldapConnection._baseDN if self.base_dn is None else self.base_dn
 
             if self.server is None:
                 resp = connection.ldapConnection.search(

@@ -8,10 +8,11 @@ from cme.loaders.protocolloader import ProtocolLoader
 from cme.helpers.logger import highlight
 from termcolor import colored
 from cme.logger import cme_logger
+import importlib.metadata
 
 
 def gen_cli_args():
-    VERSION = "6.0.0"
+    VERSION = importlib.metadata.version("crackmapexec")
     CODENAME = "Bane"
 
     parser = argparse.ArgumentParser(description=f"""
@@ -112,7 +113,7 @@ def gen_cli_args():
     std_parser = argparse.ArgumentParser(add_help=False)
     std_parser.add_argument(
         "target",
-        nargs="+" if not module_parser.parse_known_args()[0].list_modules else "*",
+        nargs="+" if not (module_parser.parse_known_args()[0].list_modules or module_parser.parse_known_args()[0].show_module_options) else "*",
         type=str,
         help="the target IP(s), range(s), CIDR(s), hostname(s), FQDN(s), file(s) containing a list of targets, NMap XML or .Nessus file(s)",
     )

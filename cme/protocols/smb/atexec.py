@@ -5,7 +5,7 @@ import os
 import logging
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
-from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
+from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from cme.helpers.misc import gen_random_string
 from cme.logger import cme_logger
 from time import sleep
@@ -23,6 +23,7 @@ class TSCH_EXEC:
         aesKey=None,
         kdcHost=None,
         hashes=None,
+        logger=cme_logger
     ):
         self.__target = target
         self.__username = username
@@ -36,6 +37,7 @@ class TSCH_EXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
+        self.logger = logger
 
         if hashes is not None:
             # This checks to see if we didn't provide the LM Hash
@@ -147,6 +149,7 @@ class TSCH_EXEC:
         dce.set_credentials(*self.__rpctransport.get_credentials())
         dce.connect()
         # dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
+        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
         dce.bind(tsch.MSRPC_UUID_TSCHS)
         tmpName = gen_random_string(8)
         tmpFileName = tmpName + ".tmp"
@@ -156,7 +159,11 @@ class TSCH_EXEC:
         logging.info(f"Task XML: {xml}")
         taskCreated = False
         logging.info(f"Creating task \\{tmpName}")
-        tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        try:
+            tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
+        except Exception as e:
+            self.logger.fail(str(e))
+            return
         taskCreated = True
 
         logging.info(f"Running task \\{tmpName}")

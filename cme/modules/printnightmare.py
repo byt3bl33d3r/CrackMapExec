@@ -56,6 +56,7 @@ class CMEModule:
             connection.domain,
             connection.lmhash,
             connection.nthash,
+            connection.aesKey,
         )
 
         rpctransport.set_kerberos(connection.kerberos, kdcHost=connection.kdcHost)

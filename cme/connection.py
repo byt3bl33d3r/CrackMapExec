@@ -51,8 +51,8 @@ class connection(object):
         self.admin_privs = False
         self.password = ""
         self.username = ""
-        self.kerberos = True if self.args.kerberos or self.args.use_kcache else False
-        self.aesKey = None if not self.args.aesKey else self.args.aesKey
+        self.kerberos = True if self.args.kerberos or self.args.use_kcache or self.args.aesKey else False
+        self.aesKey = None if not self.args.aesKey else self.args.aesKey[0]
         self.kdcHost = None if not self.args.kdcHost else self.args.kdcHost
         self.use_kcache = None if not self.args.use_kcache else self.args.use_kcache
         self.failed_logins = 0
@@ -236,6 +236,7 @@ class connection(object):
             secret.append(secret_single)
             cred_type.append(cred_type_single)
 
+        if len(secret) != len(data): data = [None] * len(secret)
         return domain, username, owned, secret, cred_type, data
 
     def parse_credentials(self):
@@ -323,6 +324,10 @@ class connection(object):
         if self.over_fail_limit(username):
             return False
         if self.args.continue_on_success and owned:
+            return False
+        # Enforcing FQDN for SMB if not using local authentication. Related issues/PRs: #26, #28, #24, #38
+        if self.args.protocol == 'smb' and not self.args.local_auth and "." not in domain and not self.args.laps and secret != "":
+            self.logger.error(f"Domain {domain} for user {username.rstrip()} need to be FQDN ex:domain.local, not domain")
             return False
 
         with sem:
