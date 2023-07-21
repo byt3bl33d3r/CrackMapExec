@@ -1,10 +1,5 @@
 ![Supported Python versions](https://img.shields.io/badge/python-3.7+-blue.svg) [![Twitter](https://img.shields.io/twitter/follow/byt3bl33d3r?label=byt3bl33d3r&style=social)](https://twitter.com/intent/follow?screen_name=byt3bl33d3r) [![Twitter](https://img.shields.io/twitter/follow/mpgn_x64?label=mpgn_x64&style=social)](https://twitter.com/intent/follow?screen_name=mpgn_x64)
 
----
-⛔ [DEPRECATED] This repository is deprecated, follow this link to find the active repository [https://github.com/mpgn/CrackMapExec](https://github.com/mpgn/CrackMapExec)
-
----
-
 :triangular_flag_on_post: This is the public repository of CrackMapExec, for latest version and updates please consider supporting us through https://porchetta.industries/
 
 # CrackMapExec
