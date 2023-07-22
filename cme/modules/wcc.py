@@ -91,8 +91,8 @@ class CMEModule:
 	multiple_hosts = True
 
 	def options(self, context, module_options):
-		f'''
-		OUTPUT_FORMAT   Format for report (Default: '{DEFAULT_OUTPUT_FORMAT}')
+		'''
+		OUTPUT_FORMAT   Format for report (Default: 'json')
 		OUTPUT          Path for report
 		QUIET           Do not print results to stdout (Default: False)
 		VERBOSE         Produce verbose output (Default: False)
@@ -444,21 +444,50 @@ class HostChecker:
 		return ok, reasons
 
 	def check_laps(self):
-		key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
-		subkeys =  self.reg_get_subkeys(self.dce, self.connection, key_name)
 		reasons = []
 		success = False
+		lapsv2_ad_key_name = 'Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\LAPS'
+		lapsv2_aad_key_name = 'Software\\Microsoft\\Policies\\LAPS'
+
+		# Checking LAPSv2
+		ans = self._open_root_key(self.dce, self.connection, 'HKLM')
+
+		if ans is None:
+			return False, ['Could not query remote registry']
+
+		root_key_handle = ans['phKey']
+		try:
+			ans = rrp.hBaseRegOpenKey(self.dce, root_key_handle, lapsv2_ad_key_name)
+			reasons.append(f"HKLM\\{lapsv2_ad_key_name} found, LAPSv2 AD installed")
+			success = True
+			return success, reasons
+		except DCERPCSessionError as e:
+			if e.error_code != ERROR_FILE_NOT_FOUND:
+				reasons.append(f"HKLM\\{lapsv2_ad_key_name} not found")
+		
+		try:
+			ans = rrp.hBaseRegOpenKey(self.dce, root_key_handle, lapsv2_aad_key_name)
+			reasons.append(f"HKLM\\{lapsv2_aad_key_name} found, LAPSv2 AAD installed")
+			success = True
+			return success, reasons
+		except DCERPCSessionError as e:
+			if e.error_code != ERROR_FILE_NOT_FOUND:
+				reasons.append(f"HKLM\\{lapsv2_aad_key_name} not found")
+
+		# LAPSv2 does not seems to be installed, checking LAPSv1
+		lapsv1_key_name = 'HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPextensions'
+		subkeys =  self.reg_get_subkeys(self.dce, self.connection, lapsv1_key_name)
 		laps_path = '\\Program Files\\LAPS\\CSE'
 
 		for subkey in subkeys:
-			value = self.reg_query_value(self.dce, self.connection, key_name + '\\' + subkey, 'DllName')
+			value = self.reg_query_value(self.dce, self.connection, lapsv1_key_name + '\\' + subkey, 'DllName')
 			if type(value) == str and 'laps\\cse\\admpwd.dll' in value.lower():
-				reasons.append(f'{key_name}\\...\\DllName matches AdmPwd.dll')
+				reasons.append(f'{lapsv1_key_name}\\...\\DllName matches AdmPwd.dll')
 				success = True
 				laps_path = '\\'.join(value.split('\\')[1:-1])
 				break
 		if not success:
-			reasons.append(f'No match found in {key_name}\\...\\DllName')
+			reasons.append(f'No match found in {lapsv1_key_name}\\...\\DllName')
 
 		l = ls(self.connection, laps_path)
 		if l:
