@@ -249,7 +249,7 @@ class HostChecker:
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LmCompatibilityLevel', 5, operator.ge
 				)
-			]], checker_kwargs=[{'options':{'KOIfMissing':False, 'lastWins':True}}]),
+			]]),
 			ConfigCheck('NBTNS', 'Checks if NBTNS is disabled on all interfaces', checkers=[self.check_nbtns]),
 			ConfigCheck('mDNS', 'Checks if mDNS is disabled', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNScache\\Parameters',
@@ -451,8 +451,9 @@ class HostChecker:
 
 		# Checking LAPSv2
 		ans = self._open_root_key(self.dce, self.connection, 'HKLM')
+
 		if ans is None:
-			return subkeys
+			return False, ['Could not query remote registry']
 
 		root_key_handle = ans['phKey']
 		try:
