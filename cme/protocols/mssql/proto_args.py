@@ -1,3 +1,5 @@
+from argparse import _StoreTrueAction
+
 def proto_args(parser, std_parser, module_parser):
     mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL", parents=[std_parser, module_parser])
     mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
@@ -6,7 +8,7 @@ def proto_args(parser, std_parser, module_parser):
     no_smb_arg = mssql_parser.add_argument("--no-smb", action=get_conditional_action(_StoreTrueAction), make_required=[], help='No smb connection')
 
     dgroup = mssql_parser.add_mutually_exclusive_group()
-    dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
+    domain_arg = dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
     dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
     no_smb_arg.make_required = [domain_arg]
 
@@ -26,3 +28,17 @@ def proto_args(parser, std_parser, module_parser):
     tgroup.add_argument("--get-file", nargs=2, metavar="FILE", help='Get a remote file, ex: C:\\Windows\\Temp\\whoami.txt whoami.txt')
 
     return parser
+
+def get_conditional_action(baseAction):
+    class ConditionalAction(baseAction):
+        def __init__(self, option_strings, dest, **kwargs):
+            x = kwargs.pop('make_required', [])
+            super(ConditionalAction, self).__init__(option_strings, dest, **kwargs)
+            self.make_required = x
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            for x in self.make_required:
+                x.required = True
+            super(ConditionalAction, self).__call__(parser, namespace, values, option_string)
+
+    return ConditionalAction
