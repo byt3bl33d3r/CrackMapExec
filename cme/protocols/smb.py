@@ -1378,16 +1378,20 @@ class smb(connection):
                 self.logger.fail(f"Error writing file to share {self.args.share}: {e}")
 
     def get_file(self):
-        self.logger.display(f"Copying {self.args.get_file[0]} to {self.args.get_file[1]}")
-        file_handle = self.args.get_file[1]
+        share_name = self.args.share
+        remote_path = self.args.get_file[0]
+        download_path = self.args.get_file[1]
+        self.logger.display(f'Copying "{remote_path}" to "{download_path}"')
         if self.args.append_host:
-            file_handle = f"{self.hostname}-{self.args.get_file[1]}"
-        with open(file_handle, "wb+") as file:
+            download_path = f"{self.hostname}-{remote_path}"
+        with open(download_path, "wb+") as file:
             try:
-                self.conn.getFile(self.args.share, self.args.get_file[0], file.write)
-                self.logger.success(f"File {self.args.get_file[0]} was transferred to {file_handle}")
+                self.conn.getFile(share_name, remote_path, file.write)
+                self.logger.success(f'File "{remote_path}" was downloaded to "{download_path}"')
             except Exception as e:
-                self.logger.fail(f"Error reading file {self.args.share}: {e}")
+                self.logger.fail(f'Error writing file "{remote_path}" from share "{share_name}": {e}')
+                if os.path.getsize(download_path) == 0:
+                    os.remove(download_path)
 
     def enable_remoteops(self):
         if self.remote_ops is not None and self.bootkey is not None:
