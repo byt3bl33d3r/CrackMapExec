@@ -1,11 +1,14 @@
 def proto_args(parser, std_parser, module_parser):
     mssql_parser = parser.add_parser('mssql', help="own stuff using MSSQL", parents=[std_parser, module_parser])
-    dgroup = mssql_parser.add_mutually_exclusive_group()
-    dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
-    dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
     mssql_parser.add_argument("-H", '--hash', metavar="HASH", dest='hash', nargs='+', default=[], help='NTLM hash(es) or file(s) containing NTLM hashes')
     mssql_parser.add_argument("--port", default=1433, type=int, metavar='PORT', help='MSSQL port (default: 1433)')
     mssql_parser.add_argument("-q", "--query", dest='mssql_query', metavar='QUERY', type=str, help='execute the specified query against the MSSQL DB')
+    no_smb_arg = mssql_parser.add_argument("--no-smb", action=get_conditional_action(_StoreTrueAction), make_required=[], help='No smb connection')
+
+    dgroup = mssql_parser.add_mutually_exclusive_group()
+    dgroup.add_argument("-d", metavar="DOMAIN", dest='domain', type=str, help="domain name")
+    dgroup.add_argument("--local-auth", action='store_true', help='authenticate locally to each target')
+    no_smb_arg.make_required = [domain_arg]
 
     cgroup = mssql_parser.add_argument_group("Command Execution", "options for executing commands")
     cgroup.add_argument('--force-ps32', action='store_true', help='force the PowerShell command to run in a 32-bit process')
