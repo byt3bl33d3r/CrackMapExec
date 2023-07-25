@@ -3,10 +3,12 @@
 
 import functools
 import json
+import logging
 import operator
+import sys
 import time
+from termcolor import colored
 
-import cme.logger
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp, samr, scmr
 from impacket.dcerpc.v5.rrp import DCERPCSessionError
@@ -31,13 +33,19 @@ REG_VALUE_TYPE_UNICODE_STRING_SEQUENCE = 7
 REG_VALUE_TYPE_64BIT_LE = 11
 
 # Setup file logger
-if 'cme_logger' not in globals():
-	cme_logger = cme.logger.setup_logger(log_to_file=True, log_prefix='wcc', logger_name='WCC')
-
-	for handler in cme_logger.handlers:
-		if type(handler) != cme.logger.logging.FileHandler:
-			cme_logger.removeHandler(handler)
-	cme_logger.handlers[0].setFormatter(cme.logger.logging.Formatter('%(asctime)s %(message)s'))
+if 'wcc_logger' not in globals():
+	wcc_logger = logging.getLogger('WCC')
+	wcc_logger.propagate = False
+	log_filename = cme_logger.init_log_file()
+	log_filename = log_filename.replace('log_', 'wcc_')
+	wcc_file_handler = logging.FileHandler(log_filename)
+	wcc_err_handler = logging.StreamHandler(sys.stderr)
+	wcc_logger.setLevel(logging.DEBUG)
+	wcc_file_handler.setLevel(logging.DEBUG)
+	wcc_err_handler.setLevel(logging.WARNING)
+	wcc_file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+	wcc_logger.addHandler(wcc_file_handler)
+	wcc_logger.addHandler(wcc_err_handler)
 
 class ConfigCheck:
 	"""
@@ -67,16 +75,16 @@ class ConfigCheck:
 			self.reasons.extend(reasons)
 
 	def log(self):
+		result = 'passed' if self.ok else 'did not pass'
+		reasons = ', '.join(self.reasons)
+		wcc_logger.info(f'{self.connection.host}: Check "{self.name}" {result} because: {reasons}')
 		if self.module.quiet:
 			return
 
-		status = '\x1b[1;32mOK\x1b[0m' if self.ok else '\x1b[1;31mKO\x1b[0m'
+		status = colored('OK', 'green', attrs=['bold']) if self.ok else colored('KO', 'red', attrs=['bold'])
 		reasons = ": " + ', '.join(self.reasons) if self.module.verbose else ''
 		msg = f'{status} {self.name}{reasons}'
-		kwargs = {'extra':self.logger.extra}
-		msg, kwargs = self.logger.format(msg, kwargs)
-		text = cme.logger.Text.from_ansi(msg)
-		cme.logger.cme_console.print(text, **kwargs)
+		self.module.context.log.highlight(msg)
 
 class CMEModule:
 	'''
@@ -109,8 +117,8 @@ class CMEModule:
 		HostChecker.module = self
 
 	def on_admin_login(self, context, connection):
-		self.log = connection.logger
 		self.results.setdefault(connection.host, {'checks':[]})
+		self.context = context
 		HostChecker(connection).run()
 
 	def on_shutdown(self, context, connection):
@@ -146,7 +154,6 @@ class HostChecker:
 
 	def __init__(self, connection):
 		self.connection = connection
-		self.log = self.connection.logger
 		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
 		remoteOps.enableRegistry()
 		self.dce = remoteOps._RemoteOperations__rrp
@@ -157,16 +164,6 @@ class HostChecker:
 
 		# Perform checks
 		self.check_config()
-
-
-	def debug(self, msg, *args):
-		if self.verbose:
-			try:
-				print(f'\x1b[33m{msg}', *args, '\x1b[0m')
-			except TypeError:
-				print('\x1b[33m', repr(msg), *args, '\x1b[0m')
-			except Exception as e:
-				print(e)
 
 	# Check methods #
 	#################
@@ -314,7 +311,7 @@ class HostChecker:
 		db_check_names = [ check._asdict()['name'].strip().lower() for check in db_checks ]
 		added = []
 		for i,check in enumerate(self.checks):
-			check.logger = self.log
+			check.connection = self.connection
 			missing = True
 			for db_check in db_checks:
 				db_check = db_check._asdict()
@@ -353,7 +350,7 @@ class HostChecker:
 			try:
 				check.run()
 			except Exception as e:
-				self.log.error(f'Error while performing check {check.name}: {e}')
+				wcc_logger.error(f'HostChecker.check_config(): Error while performing check {check.name}: {e}')
 			check.log()
 			self.module.add_result(self.connection.host, check)
 			if host_id is not None:
@@ -618,12 +615,12 @@ class HostChecker:
 				ans = opener[root_key.upper()](dce)
 				break
 			except KeyError:
-				self.log.error(f'SMB    {connection.host}    Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
+				wcc_logger.error(f'HostChecker._open_root_key():{connection.host}: Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
 				break
 			except Exception as e:
-				self.log.error(f'SMB    {connection.host}    Error while trying to open {root_key.upper()}: {e}')
+				wcc_logger.error(f'HostChecker._open_root_key():{connection.host}: Error while trying to open {root_key.upper()}: {e}')
 				if 'Broken pipe' in e.args:
-					self.log.error('Retrying')
+					wcc_logger.error('Retrying')
 					retries -= 1
 		return ans
 
@@ -639,10 +636,10 @@ class HostChecker:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
 			if e.error_code != ERROR_FILE_NOT_FOUND:
-				cme_logger.error(f'Could not retrieve subkey {subkey}: {e}\n')
+				wcc_logger.error(f'HostChecker.reg_get_subkeys(): Could not retrieve subkey {subkey}: {e}\n')
 			return subkeys
 		except Exception as e:
-			cme_logger.error(f'Error while trying to retrieve subkey {subkey}: {e}\n')
+			wcc_logger.error(f'HostChecker.reg_get_subkeys(): Error while trying to retrieve subkey {subkey}: {e}\n')
 			return subkeys
 
 		subkey_handle = ans['phkResult']
@@ -671,7 +668,7 @@ class HostChecker:
 					if e.error_code == ERROR_NO_MORE_ITEMS:
 						break
 					else:
-						self.log.error(f'Received error code {e.error_code}')
+						wcc_logger.error(f'HostChecker.reg_query_value()->sub_key_values(): Received error code {e.error_code}')
 						return
 
 		def get_value(subkey_handle, dwIndex=0):
@@ -700,7 +697,9 @@ class HostChecker:
 		try:
 			root_key, subkey = keyName.split('\\', 1)
 		except ValueError:
-			print(keyName)
+			wcc_logger.error(f'HostChecker.reg_query_value(): Could not split keyname {keyName}')
+			return
+
 		ans = self._open_root_key(dce, connection, root_key)
 		if ans is None:
 			return ans
@@ -775,9 +774,9 @@ def ls(smb, path='\\', share='C$'):
 		l = smb.conn.listPath(share, path)
 	except SMBSessionError as e:
 		if e.getErrorString()[0] not in ('STATUS_NO_SUCH_FILE', 'STATUS_OBJECT_NAME_NOT_FOUND'):
-			cme_logger.error(f'{smb.host}    C:\\{path} {e.getErrorString()}\n')
+			wcc_logger.error(f'ls(): C:\\{path} {e.getErrorString()}')
 	except Exception as e:
-			cme_logger.error(f'{smb.host}    C:\\{path} {e}\n')
+			wcc_logger.error(f'ls(): C:\\{path} {e}\n')
 	return l
 
 # Comparison operators #
