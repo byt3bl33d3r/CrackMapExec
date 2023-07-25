@@ -9,6 +9,7 @@ import sys
 import time
 from termcolor import colored
 
+from cme.logger import cme_logger
 from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5 import rrp, samr, scmr
 from impacket.dcerpc.v5.rrp import DCERPCSessionError
@@ -74,7 +75,7 @@ class ConfigCheck:
 			self.ok = self.ok and ok
 			self.reasons.extend(reasons)
 
-	def log(self):
+	def log(self, context):
 		result = 'passed' if self.ok else 'did not pass'
 		reasons = ', '.join(self.reasons)
 		wcc_logger.info(f'{self.connection.host}: Check "{self.name}" {result} because: {reasons}')
@@ -84,7 +85,7 @@ class ConfigCheck:
 		status = colored('OK', 'green', attrs=['bold']) if self.ok else colored('KO', 'red', attrs=['bold'])
 		reasons = ": " + ', '.join(self.reasons) if self.module.verbose else ''
 		msg = f'{status} {self.name}{reasons}'
-		self.module.context.log.highlight(msg)
+		context.log.highlight(msg)
 
 class CMEModule:
 	'''
@@ -119,7 +120,7 @@ class CMEModule:
 	def on_admin_login(self, context, connection):
 		self.results.setdefault(connection.host, {'checks':[]})
 		self.context = context
-		HostChecker(connection).run()
+		HostChecker(context, connection).run()
 
 	def on_shutdown(self, context, connection):
 		if self.output is not None:
@@ -152,7 +153,8 @@ class CMEModule:
 class HostChecker:
 	module = None
 
-	def __init__(self, connection):
+	def __init__(self, context, connection):
+		self.context = context
 		self.connection = connection
 		remoteOps = RemoteOperations(smbConnection=connection.conn, doKerberos=False)
 		remoteOps.enableRegistry()
@@ -351,7 +353,7 @@ class HostChecker:
 				check.run()
 			except Exception as e:
 				wcc_logger.error(f'HostChecker.check_config(): Error while performing check {check.name}: {e}')
-			check.log()
+			check.log(self.context)
 			self.module.add_result(self.connection.host, check)
 			if host_id is not None:
 				self.connection.db.add_check_result(host_id, check.check_id, check.ok, ', '.join(check.reasons).replace('\x00',''))
