@@ -67,7 +67,7 @@ class mssql(connection):
         except:
             pass
 
-        if self.args.domain:
+        if self.args.no_smb:
             self.domain = self.args.domain
         else:
             try:
