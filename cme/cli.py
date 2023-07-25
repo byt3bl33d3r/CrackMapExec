@@ -144,6 +144,7 @@ def gen_cli_args():
     )
     std_parser.add_argument("-k", "--kerberos", action="store_true", help="Use Kerberos authentication")
     std_parser.add_argument("--no-bruteforce", action="store_true", help="No spray when using file for username and password (user1 => password1, user2 => password2")
+    std_parser.add_argument("--no-write-check", action="store_true", help="Skip write check on shares (avoid leaving traces when missing delete permissions)")
     std_parser.add_argument("--continue-on-success", action="store_true", help="continues authentication attempts even after successes")
     std_parser.add_argument(
         "--use-kcache",
