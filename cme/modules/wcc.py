@@ -244,7 +244,7 @@ class HostChecker:
 					'PSCompatibleVersion', '2.0', not_(operator.contains)
 				)
 			]]),
-			ConfigCheck('NTLMv1', 'Checks if NTLMv1 authentication is disabled', checker_args=[[self, (
+			ConfigCheck('LmCompatibilityLevel', 'Checks if LmCompatibilityLevel is set to 5', checker_args=[[self, (
 					'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa',
 					'LmCompatibilityLevel', 5, operator.ge
 				)
