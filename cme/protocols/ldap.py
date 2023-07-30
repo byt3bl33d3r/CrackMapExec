@@ -5,6 +5,7 @@
 import hashlib
 import hmac
 import os
+import socket
 from binascii import hexlify
 from datetime import datetime
 from re import sub, I
@@ -819,6 +820,37 @@ class ldap(connection):
                     self.logger.debug(f"Skipping item, cannot process due to error {e}")
                     pass
             return
+    
+    def dc_list(self):
+        
+        # Building the search filter
+        search_filter = "(objectClass=computer)"
+        attributes = ["dNSHostName"]
+        resp = self.search(search_filter, attributes, 0)
+        if resp:
+            answers = []
+            self.logger.debug(f"Total of records returned {len(resp):d}")
+            for item in resp:              
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                name = ""
+                try:
+                	if "OU=Domain Controllers" in str(item):               	    
+                	    for attribute in item["attributes"]:     
+                	        if str(attribute["type"]) == "dNSHostName":
+                	            name = str(attribute["vals"][0])
+                	try:
+                	    ip_address = socket.gethostbyname(name.split(".")[0])
+                	    if ip_address != True and name != "":
+                	        self.logger.highlight(f"{name} =", ip_address) 	    
+                	except socket.gaierror:
+                	    self.logger.highlight(f"{name} = Connection timeout")
+                except Exception as e:
+                    self.logger.debug("Exception:", exc_info=True)
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    pass
+            return
+        
 
     def asreproast(self):
         if self.password == "" and self.nthash == "" and self.kerberos is False:
