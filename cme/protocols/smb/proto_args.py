@@ -33,6 +33,8 @@ def proto_args(parser, std_parser, module_parser):
 
         egroup = smb_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
         egroup.add_argument("--shares", action="store_true", help="enumerate shares and access")
+        egroup.add_argument("--no-write-check", action="store_true", help="Skip write check on shares (avoid leaving traces when missing delete permissions)")
+
         egroup.add_argument("--filter-shares", nargs="+",
                             help="Filter share by access, option 'read' 'write' or 'read,write'")
         egroup.add_argument("--sessions", action="store_true", help="enumerate active sessions")
