@@ -16,7 +16,7 @@ $output | ForEach-Object -Process {
     $EnryptedPWD = [Convert]::FromBase64String($_.password)
 	$ClearPWD = [System.Security.Cryptography.ProtectedData]::Unprotect( $EnryptedPWD, $null, [System.Security.Cryptography.DataProtectionScope]::LocalMachine )
 	$enc = [system.text.encoding]::Default
-	$_.password = $enc.GetString($ClearPWD)
+	$_.password = $enc.GetString($ClearPWD) -replace '\s', 'WHITESPACE_ERROR'
 }
 
 Write-Output $output | Format-Table -HideTableHeaders | Out-String
