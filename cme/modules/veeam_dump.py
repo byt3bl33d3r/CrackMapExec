@@ -158,7 +158,10 @@ class CMEModule:
 
         for account in output_stripped:
             user, password = account.split(" ", 1)
-            context.log.highlight(user + ":" + password)
+            password = password.replace("WHITESPACE_ERROR", " ")
+            context.log.highlight(user + ":" + f"{password}")
+            if ' ' in password:
+                context.log.fail(f"Password contains whitespaces! The password for user \"{user}\" is: \"{password}\"")
 
     def on_admin_login(self, context, connection):
         self.checkVeeamInstalled(context, connection)
