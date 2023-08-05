@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import functools
 import json
 import logging
 import operator
@@ -39,15 +38,11 @@ if 'wcc_logger' not in globals():
 	wcc_logger.propagate = False
 	log_filename = cme_logger.init_log_file()
 	log_filename = log_filename.replace('log_', 'wcc_')
+	wcc_logger.setLevel(logging.INFO)
 	wcc_file_handler = logging.FileHandler(log_filename)
-	wcc_err_handler = logging.StreamHandler(sys.stderr)
-	wcc_logger.setLevel(logging.DEBUG)
-	wcc_file_handler.setLevel(logging.DEBUG)
-	wcc_err_handler.setLevel(logging.WARNING)
 	wcc_file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
 	wcc_logger.addHandler(wcc_file_handler)
-	wcc_logger.addHandler(wcc_err_handler)
-
+	
 class ConfigCheck:
 	"""
 	Class for performing the checks and holding the results
@@ -148,7 +143,7 @@ class CMEModule:
 								field = field.replace('"', '""')
 								field = f'"{field}"'
 							output.write(f',{field}')
-		print(f'\n\x1b[32;1mResults written to {self.output}\x1b[0m')
+		self.context.log.success(f'Results written to {self.output}')
 
 class HostChecker:
 	module = None
@@ -352,7 +347,7 @@ class HostChecker:
 			try:
 				check.run()
 			except Exception as e:
-				wcc_logger.error(f'HostChecker.check_config(): Error while performing check {check.name}: {e}')
+				self.context.log.error(f'HostChecker.check_config(): Error while performing check {check.name}: {e}')
 			check.log(self.context)
 			self.module.add_result(self.connection.host, check)
 			if host_id is not None:
@@ -488,7 +483,7 @@ class HostChecker:
 		if not success:
 			reasons.append(f'No match found in {lapsv1_key_name}\\...\\DllName')
 
-		l = ls(self.connection, laps_path)
+		l = self.ls(self.connection, laps_path)
 		if l:
 			reasons.append('Found LAPS folder at ' + laps_path)
 		else:
@@ -497,7 +492,7 @@ class HostChecker:
 			return success, reasons
 
 
-		l = ls(self.connection, laps_path + '\\AdmPwd.dll')
+		l = self.ls(self.connection, laps_path + '\\AdmPwd.dll')
 		if l:
 			reasons.append(f'Found {laps_path}\\AdmPwd.dll')
 		else:
@@ -617,12 +612,12 @@ class HostChecker:
 				ans = opener[root_key.upper()](dce)
 				break
 			except KeyError:
-				wcc_logger.error(f'HostChecker._open_root_key():{connection.host}: Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
+				self.context.log.error(f'HostChecker._open_root_key():{connection.host}: Invalid root key. Must be one of HKCR, HKCC, HKCU, HKLM or HKU')
 				break
 			except Exception as e:
-				wcc_logger.error(f'HostChecker._open_root_key():{connection.host}: Error while trying to open {root_key.upper()}: {e}')
+				self.context.log.error(f'HostChecker._open_root_key():{connection.host}: Error while trying to open {root_key.upper()}: {e}')
 				if 'Broken pipe' in e.args:
-					wcc_logger.error('Retrying')
+					self.context.log.error('Retrying')
 					retries -= 1
 		return ans
 
@@ -638,10 +633,10 @@ class HostChecker:
 			ans = rrp.hBaseRegOpenKey(dce, root_key_handle, subkey)
 		except DCERPCSessionError as e:
 			if e.error_code != ERROR_FILE_NOT_FOUND:
-				wcc_logger.error(f'HostChecker.reg_get_subkeys(): Could not retrieve subkey {subkey}: {e}\n')
+				self.context.log.error(f'HostChecker.reg_get_subkeys(): Could not retrieve subkey {subkey}: {e}\n')
 			return subkeys
 		except Exception as e:
-			wcc_logger.error(f'HostChecker.reg_get_subkeys(): Error while trying to retrieve subkey {subkey}: {e}\n')
+			self.context.log.error(f'HostChecker.reg_get_subkeys(): Error while trying to retrieve subkey {subkey}: {e}\n')
 			return subkeys
 
 		subkey_handle = ans['phkResult']
@@ -670,7 +665,7 @@ class HostChecker:
 					if e.error_code == ERROR_NO_MORE_ITEMS:
 						break
 					else:
-						wcc_logger.error(f'HostChecker.reg_query_value()->sub_key_values(): Received error code {e.error_code}')
+						self.context.log.error(f'HostChecker.reg_query_value()->sub_key_values(): Received error code {e.error_code}')
 						return
 
 		def get_value(subkey_handle, dwIndex=0):
@@ -699,7 +694,7 @@ class HostChecker:
 		try:
 			root_key, subkey = keyName.split('\\', 1)
 		except ValueError:
-			wcc_logger.error(f'HostChecker.reg_query_value(): Could not split keyname {keyName}')
+			self.context.log.error(f'HostChecker.reg_query_value(): Could not split keyname {keyName}')
 			return
 
 		ans = self._open_root_key(dce, connection, root_key)
@@ -770,16 +765,16 @@ class HostChecker:
 		remoteOps.finish()
 		return user_info
 
-def ls(smb, path='\\', share='C$'):
-	l = []
-	try:
-		l = smb.conn.listPath(share, path)
-	except SMBSessionError as e:
-		if e.getErrorString()[0] not in ('STATUS_NO_SUCH_FILE', 'STATUS_OBJECT_NAME_NOT_FOUND'):
-			wcc_logger.error(f'ls(): C:\\{path} {e.getErrorString()}')
-	except Exception as e:
-			wcc_logger.error(f'ls(): C:\\{path} {e}\n')
-	return l
+	def ls(self, smb, path='\\', share='C$'):
+		l = []
+		try:
+			l = smb.conn.listPath(share, path)
+		except SMBSessionError as e:
+			if e.getErrorString()[0] not in ('STATUS_NO_SUCH_FILE', 'STATUS_OBJECT_NAME_NOT_FOUND'):
+				self.context.log.error(f'ls(): C:\\{path} {e.getErrorString()}')
+		except Exception as e:
+				self.context.log.error(f'ls(): C:\\{path} {e}\n')
+		return l
 
 # Comparison operators #
 ########################
