@@ -1,4 +1,4 @@
-import os, struct
+import os, struct, logging
 
 from six import indexbytes
 from datetime import datetime
@@ -9,7 +9,7 @@ from cme.protocols.wmi.wmiexec_regout import WMIEXEC_REGOUT
 
 from impacket import ntlm
 from impacket.uuid import uuidtup_to_bin
-from impacket.smbconnection import SMBConnection
+from impacket.krb5.ccache import CCache
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5 import transport, epm
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_GSS_NEGOTIATE, RPC_C_AUTHN_LEVEL_PKT_INTEGRITY, MSRPC_BIND, MSRPCBind, CtxItem, MSRPCHeader, SEC_TRAILER, MSRPCBindAck
@@ -25,7 +25,26 @@ class wmi(connection):
         self.hash = ''
         self.lmhash = ''
         self.nthash = ''
+        self.fqdn = ''
+        self.remoteName = ''
         self.server_os = None
+        self.doKerberos = False
+        # From: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/18d8fbe8-a967-4f1c-ae50-99ca8e491d2d
+        self.rpc_error_status = {
+            "0000052F" : "STATUS_ACCOUNT_RESTRICTION",
+            "00000533" : "STATUS_ACCOUNT_DISABLED",
+            "00000775" : "STATUS_ACCOUNT_LOCKED_OUT",
+            "00000701" : "STATUS_ACCOUNT_EXPIRED",
+            "00000532" : "STATUS_PASSWORD_EXPIRED",
+            "00000530" : "STATUS_INVALID_LOGON_HOURS",
+            "00000531" : "STATUS_INVALID_WORKSTATION",
+            "00000569" : "STATUS_LOGON_TYPE_NOT_GRANTED",
+            "00000773" : "STATUS_PASSWORD_MUST_CHANGE",
+            "00000005" : "STATUS_ACCESS_DENIED",
+            "0000052E" : "STATUS_LOGON_FAILURE",
+            "0000052B" : "STATUS_WRONG_PASSWORD",
+            "00000721" : "RPC_S_SEC_PKG_ERROR"
+        }
 
         connection.__init__(self, args, db, host)
     
@@ -47,9 +66,12 @@ class wmi(connection):
                                         'hostname': self.hostname})
     
     def create_conn_obj(self):
+        if self.remoteName == '':
+            self.remoteName = self.host
         try:
-            rpctansport = transport.DCERPCTransportFactory(r'ncacn_ip_tcp:{0}[{1}]'.format(self.host, str(self.args.port)))
-            rpctansport.set_credentials(username="", password="", domain="", lmhash="", nthash="")
+            rpctansport = transport.DCERPCTransportFactory(r'ncacn_ip_tcp:{0}[{1}]'.format(self.remoteName, str(self.args.port)))
+            rpctansport.set_credentials(username="", password="", domain="", lmhash="", nthash="", aesKey="")
+            rpctansport.setRemoteHost(self.host)
             rpctansport.set_connect_timeout(int(self.args.rpc_timeout))
             dce = rpctansport.get_dce_rpc()
             dce.set_auth_type(RPC_C_AUTHN_WINNT)
@@ -64,6 +86,7 @@ class wmi(connection):
     
     def enum_host_info(self):
         # All code pick from DumpNTLNInfo.py
+        # https://github.com/fortra/impacket/blob/master/examples/DumpNTLMInfo.py
         ntlmChallenge = None
         
         bind = MSRPCBind()
@@ -113,6 +136,11 @@ class wmi(connection):
                         self.domain = av_pairs[ntlm.NTLMSSP_AV_DNS_DOMAINNAME][1].decode('utf-16le')
                     except:
                         self.domain = self.args.domain
+                if av_pairs[ntlm.NTLMSSP_AV_DNS_HOSTNAME][1] is not None:
+                    try:
+                        self.fqdn = av_pairs[ntlm.NTLMSSP_AV_DNS_HOSTNAME][1].decode('utf-16le')
+                    except:
+                        pass
                 if 'Version' in ntlmChallenge.fields:
                     version = ntlmChallenge['Version']
                     if len(version) >= 4:
@@ -123,6 +151,7 @@ class wmi(connection):
                 self.domain = self.args.hostname
             if self.args.domain:
                 self.domain = self.args.domain
+                self.fqdn = f"{self.hostname}.{self.domain}"
         
         self.logger.extra["hostname"] = self.hostname
 
@@ -138,7 +167,7 @@ class wmi(connection):
 
     def check_if_admin(self):
         try:
-            dcom = DCOMConnection(self.conn.getRemoteHost(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, kdcHost=self.kdcHost)
+            dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
@@ -159,18 +188,37 @@ class wmi(connection):
         return
 
     def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
+        logging.getLogger("impacket").disabled = True
         lmhash = ''
         nthash = ''
         self.password = password
         self.username = username
         self.domain = domain
+        self.remoteName = self.fqdn
+        self.create_conn_obj()
+        
         if password == "":
             if ntlm_hash.find(':') != -1:
                 lmhash, nthash = ntlm_hash.split(':')
             else:
                 nthash = ntlm_hash
+            self.nthash = nthash
+            self.lmhash = lmhash
+        
+        if not all("" == s for s in [nthash, password, aesKey]):
+            kerb_pass = next(s for s in [nthash, password, aesKey] if s)
+        else:
+            kerb_pass = ""
+        
+        if useCache:
+            if kerb_pass == "":
+                ccache = CCache.loadFile(os.getenv("KRB5CCNAME"))
+                username = ccache.credentials[0].header['client'].prettyPrint().decode().split("@")[0]
+                self.username = username
+
+        used_ccache = " from ccache" if useCache else f":{process_secret(kerb_pass)}"
         try:
-            self.conn.set_credentials(username=username, password=password, domain=domain, lmhash=lmhash, nthash=nthash)
+            self.conn.set_credentials(username=username, password=password, domain=domain, lmhash=lmhash, nthash=nthash, aesKey=self.aesKey)
             self.conn.set_kerberos(True, kdcHost)
             dce = self.conn.get_dce_rpc()
             dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
@@ -179,7 +227,17 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
-            self.logger.fail(f"Got error while RPC login: {str(e)}")
+            error_msg = str(e).lower()
+            if "unpack requires a buffer of 4 bytes" in error_msg:
+                self.logger.fail("Kerberos authentication failure")
+            elif "kerberos sessionerror" in str(e).lower():
+                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, list(e.getErrorString())[0])
+                self.logger.fail(out, color="magenta")
+                return False
+            else:
+                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, str(e))
+                self.logger.fail(out, color="red")
+                return False
         else:
             try:
                 # Get data from rpc connection if got vaild creds
@@ -192,16 +250,19 @@ class wmi(connection):
                 request['entry_handle'] = entry_handle
                 request['max_ents'] = 1
                 resp = dce.request(request)
-            except  Exception as e:
+            except Exception as e:
                 dce.disconnect()
-                self.logger.fail((f"{self.domain}\\{self.username}:{process_secret(self.password)} ({str(e)})"), color=("red" if "access_denied" in str(e).lower() else "magenta"))
+                error_msg = str(e).lower()
+                for code in self.rpc_error_status.keys():
+                    if code in error_msg:
+                        error_msg = self.rpc_error_status[code]
+                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, error_msg.upper())
+                self.logger.fail(out, color=("red" if "access_denied" in error_msg else "magenta"))
                 return False
             else:
+                self.doKerberos = True
                 self.check_if_admin()
-                dce.disconnect()
-                out = f"{domain}\\{self.username}:{process_secret(self.password)} {self.mark_pwned()}"
-                if self.username == "" and self.password == "":
-                    out += "(Default allow anonymous login)"
+                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, self.mark_pwned())
                 self.logger.success(out)
                 return True
 
@@ -218,7 +279,8 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
-            self.logger.fail(f"Got error while RPC login: {str(e)}")
+            out = "{}\\{}{} {}".format(self.domain, username, password, str(e))
+            self.logger.fail(out, color="red")
         else:
             try:
                 # Get data from rpc connection if got vaild creds
@@ -233,7 +295,11 @@ class wmi(connection):
                 resp = dce.request(request)
             except  Exception as e:
                 dce.disconnect()
-                self.logger.fail((f"{self.domain}\\{self.username}:{process_secret(self.password)} ({str(e)})"), color=("red" if "access_denied" in str(e).lower() else "magenta"))
+                error_msg = str(e).lower()
+                for code in self.rpc_error_status.keys():
+                    if code in error_msg:
+                        error_msg = self.rpc_error_status[code]
+                self.logger.fail((f"{self.domain}\\{self.username}:{process_secret(self.password)} ({error_msg.upper()})"), color=("red" if "access_denied" in error_msg else "magenta"))
                 return False
             else:
                 self.check_if_admin()
@@ -249,9 +315,14 @@ class wmi(connection):
         lmhash = ''
         nthash = ''
         if ntlm_hash.find(':') != -1:
-            lmhash, nthash = ntlm_hash.split(':')
+            self.lmhash, self.nthash = ntlm_hash.split(':')
         else:
+            lmhash = ''
             nthash = ntlm_hash
+        
+        self.nthash = nthash
+        self.lmhash = lmhash
+        
         try:
             self.conn.set_credentials(username=self.username, password=self.password, domain=self.domain, lmhash=lmhash, nthash=nthash)
             dce = self.conn.get_dce_rpc()
@@ -261,7 +332,8 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
-            self.logger.fail(f"Got error while RPC login: {str(e)}")
+            out = "{}\\{}{} {}".format(self.domain, username, nthash, str(e))
+            self.logger.fail(out, color="red")
         else:
             try:
                 # Get data from rpc connection if got vaild creds
@@ -276,12 +348,16 @@ class wmi(connection):
                 resp = dce.request(request)
             except  Exception as e:
                 dce.disconnect()
-                self.logger.fail((f"{self.domain}\\{self.username}:{process_secret(nthash)} ({str(e)})"), color=("red" if "access_denied" in str(e).lower() else "magenta"))
+                error_msg = str(e).lower()
+                for code in self.rpc_error_status.keys():
+                    if code in error_msg:
+                        error_msg = self.rpc_error_status[code]
+                self.logger.fail((f"{self.domain}\\{self.username}:{process_secret(self.nthash)} ({error_msg.upper()})"), color=("red" if "access_denied" in error_msg else "magenta"))
                 return False
             else:
                 self.check_if_admin()
                 dce.disconnect()
-                out = f"{domain}\\{self.username}:{process_secret(nthash)} {self.mark_pwned()}"
+                out = f"{domain}\\{self.username}:{process_secret(self.nthash)} {self.mark_pwned()}"
                 if self.username == "" and self.password == "":
                     out += "(Default allow anonymous login)"
                 self.logger.success(out)
@@ -296,7 +372,7 @@ class wmi(connection):
             return False
         self.logger.success('Executing WQL: {}'.format(WQL))
         try:
-            dcom = DCOMConnection(self.host, self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True)
+            dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices= iWbemLevel1Login.NTLMLogin(self.args.namespace , NULL, NULL)
@@ -333,7 +409,7 @@ class wmi(connection):
             self.logger.fail("Missing command in wmiexec!")
             return False
         try:
-            dcom = DCOMConnection(self.host, self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True)
+            dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
