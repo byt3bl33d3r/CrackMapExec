@@ -1,11 +1,12 @@
 import os, struct, logging
 
+from io import StringIO
 from six import indexbytes
 from datetime import datetime
 from cme.config import process_secret
 from cme.connection import *
 from cme.logger import CMEAdapter
-from cme.protocols.wmi.wmiexec_regout import WMIEXEC_REGOUT
+from cme.protocols.wmi import wmiexec, wmiexec_event
 
 from impacket import ntlm
 from impacket.uuid import uuidtup_to_bin
@@ -114,9 +115,12 @@ class wmi(connection):
         packet['sec_trailer'] = sec_trailer
         packet['auth_data'] = auth
 
-        self.conn.connect()
-        self.conn.send(packet.get_packet())
-        buffer = self.conn.recv()
+        try:
+            self.conn.connect()
+            self.conn.send(packet.get_packet())
+            buffer = self.conn.recv()
+        except:
+            buffer = 0
 
         if buffer != 0:
             response = MSRPCHeader(buffer)
@@ -147,11 +151,12 @@ class wmi(connection):
                         self.server_os = "Windows NT %d.%d Build %d" % (indexbytes(version,0), indexbytes(version,1), struct.unpack('<H',version[2:4])[0])
         else:
             self.hostname = self.host
-            if not self.doamin:
-                self.domain = self.args.hostname
-            if self.args.domain:
-                self.domain = self.args.domain
-                self.fqdn = f"{self.hostname}.{self.domain}"
+
+        if self.args.local_auth:
+            self.domain = self.hostname
+        if self.args.domain:
+            self.domain = self.args.domain
+            self.fqdn = f"{self.hostname}.{self.domain}"
         
         self.logger.extra["hostname"] = self.hostname
 
@@ -262,6 +267,7 @@ class wmi(connection):
             else:
                 self.doKerberos = True
                 self.check_if_admin()
+                dce.disconnect()
                 out = "{}\\{}{} {}".format(self.domain, username, used_ccache, self.mark_pwned())
                 self.logger.success(out)
                 return True
@@ -366,59 +372,88 @@ class wmi(connection):
     # It's very complex to use wmi from rpctansport "convert" to dcom, so let we use dcom directly. 
     @requires_admin
     def wmi_query(self):
-        WQL = self.args.wmi_query
-        if not WQL:
-            self.logger.fail("Missing WQL syntax in wmi query!")
-            return False
-        self.logger.success('Executing WQL: {}'.format(WQL))
+        results_WQL = "\r"
+        WQL = self.args.wmi_query.strip('\n')
         try:
             dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices= iWbemLevel1Login.NTLMLogin(self.args.namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
-            iEnumWbemClassObject = iWbemServices.ExecQuery(WQL.strip('\n'))
+            iEnumWbemClassObject = iWbemServices.ExecQuery(WQL)
         except Exception as e:
             self.logger.fail('Execute WQL error: {}'.format(e))
             iWbemServices.RemRelease()
             dcom.disconnect()
         else:
-            records = []
+            self.logger.info(f"Executing WQL syntax: {WQL}")
             while True:
                 try:
                     wmi_results = iEnumWbemClassObject.Next(0xffffffff, 1)[0]
                     record = wmi_results.getProperties()
-                    records.append(record)
                     for k,v in record.items():
-                        self.logger.highlight('{} => {}'.format(k,v['value']))
-                    self.logger.highlight('')
+                        results_WQL += '{} => {}\r\n'.format(k,v['value'])
                 except Exception as e:
                     if str(e).find('S_FALSE') < 0:
                         raise e
                     else:
                         break
-            iEnumWbemClassObject.RemRelease()
-            iWbemServices.RemRelease()
-            dcom.disconnect()
-            return records
+            try:
+                iEnumWbemClassObject.RemRelease()
+                iWbemServices.RemRelease()
+                dcom.disconnect()
+            except:
+                pass
+
+            self.logger.success('Executed WQL: {}'.format(WQL))
+            buf = StringIO(results_WQL.rstrip('\r\n')).readlines()
+            for line in buf:
+                self.logger.highlight(line.strip())   
 
     @requires_admin
-    def execute(self):
+    def execute(self, get_output=False):
+        output = ""
         command = self.args.execute
-        if not command:
-            self.logger.fail("Missing command in wmiexec!")
+
+        if not self.args.no_output:
+            get_output = True
+
+        if "systeminfo" in command and self.args.interval_time < 10:
+            self.logger.fail("Execute 'systeminfo' must set the interval time higher than 10 seconds")
             return False
-        try:
-            dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
-            iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
-            iWbemLevel1Login = IWbemLevel1Login(iInterface)
-            iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
-            iWbemLevel1Login.RemRelease()
-            win32Process, _ = iWbemServices.GetObject('Win32_Process')
-            executor = WMIEXEC_REGOUT(win32Process, iWbemServices, self.host, self.logger, self.args.interval_time)
-            executor.execute_remote(command)
-            dcom.disconnect()
-        except Exception as e:
-            self.logger.fail('Execute command error: {}'.format(e))
-            iWbemServices.RemRelease()
-            dcom.disconnect()
+        
+        if self.server_os is not None and "NT 5" in self.server_os:
+            self.logger.fail("Not support current server os (version < NT 6)")
+            return False
+
+        if self.args.exec_method == "wmiexec":
+            try:
+                exec_method = wmiexec.WMIEXEC(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
+                output = exec_method.execute(command, get_output)
+            except Exception as e:
+                try:
+                    exec_method._WMIEXEC__dcom.disconnect()
+                except:
+                    pass
+                self.logger.fail('Execute command error: {}'.format(str(e)))
+            self.conn.disconnect()
+        elif self.args.exec_method == "wmiexec-event":
+            try:
+                exec_method = wmiexec_event.WMIEXEC_EVENT(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
+                output = exec_method.execute(command, get_output)
+            except Exception as e:
+                try:
+                    exec_method._WMIEXEC_EVENT__dcom.disconnect()
+                except:
+                    pass
+                self.logger.fail('Execute command error: {}'.format(str(e)))
+            self.conn.disconnect()
+        
+        if self.args.execute:
+            if output == "" and get_output:
+                self.logger.fail("Execute command failed, probabaly got detection by AV.")
+            else:
+                self.logger.success(f'Executed command: "{command}" via {self.args.exec_method}')
+                buf = StringIO(output).readlines()
+                for line in buf:
+                    self.logger.highlight(line.strip())
