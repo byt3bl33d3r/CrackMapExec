@@ -170,7 +170,7 @@ class CMEModule:
             context.log.fail("Connection fail, exiting now")
             exit()
 
-        if DoesLdapsCompleteHandshake(connection.domain) == True:
+        if DoesLdapsCompleteHandshake(connection.host) == True:
             target = MSLDAPTarget(connection.host, 636, UniProto.CLIENT_SSL_TCP, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
             ldapsChannelBindingAlwaysCheck = asyncio.run(run_ldaps_noEPA(target, credential))
             target = MSLDAPTarget(connection.host, hostname=connection.hostname, domain=connection.domain, dc_ip=connection.domain)
