@@ -11,32 +11,32 @@ class CMEModule:
         https://github.com/Cyb3rC3lt/CrackMapExec-Modules
     '''
     
-    name = 'comp-desc'
-    description = 'Retrieves computers containing the specified description'
+    name = 'find-computer'
+    description = 'Finds computers in the domain via the provided text'
     supported_protocols = ['ldap']
     opsec_safe = True
     multiple_hosts = False
 
     def options(self, context, module_options):
         '''
-        comp-desc: Specify comp-desc to call the module
-        DESC: Specify the DESC option to enter your description text to search for
-        Usage: cme ldap $DC-IP -u Username -p Password -M comp-desc -o DESC="server"
-               cme ldap $DC-IP -u Username -p Password -M comp-desc -o DESC="XP"
+        find-computer: Specify find-computer to call the module
+        TEXT: Specify the TEXT option to enter your text to search for
+        Usage: cme ldap $DC-IP -u Username -p Password -M find-computer -o TEXT="server"
+               cme ldap $DC-IP -u Username -p Password -M find-computer -o TEXT="SQL"
         '''
 
-        self.DESC = ''
+        self.TEXT = ''
 
-        if 'DESC' in module_options:
-            self.DESC = module_options['DESC']
+        if 'TEXT' in module_options:
+            self.TEXT = module_options['TEXT']
         else:
-            context.log.error('DESC option is required!')
+            context.log.error('TEXT option is required!')
             exit(1)
 
     def on_login(self, context, connection):
 
         # Building the search filter
-        searchFilter = "(&(objectCategory=computer)(operatingSystem=*"+self.DESC+"*))"
+        searchFilter = "(&(objectCategory=computer)(&(|(operatingSystem=*"+self.TEXT+"*)(name=*"+self.TEXT+"*))))"
 
         try:
             context.log.debug('Search Filter=%s' % searchFilter)
@@ -82,4 +82,4 @@ class CMEModule:
                     context.log.debug('Missing IP')
                     context.log.highlight(u'{} ({}) ({})'.format(answer[0],answer[1],"No IP Found"))
         else:
-            context.log.success('Unable to find any computers with the description "' + self.DESC + '"')
+            context.log.success('Unable to find any computers with the text "' + self.TEXT + '"')
