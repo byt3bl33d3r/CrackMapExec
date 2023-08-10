@@ -12,7 +12,7 @@ class CMEModule:
     '''
     
     name = 'comp-desc'
-    description = 'Retrieves computers containing the specified description'
+    description = 'Retrieves computers containing the specified text in their attributes, name or operating system'
     supported_protocols = ['ldap']
     opsec_safe = True
     multiple_hosts = False
@@ -36,7 +36,7 @@ class CMEModule:
     def on_login(self, context, connection):
 
         # Building the search filter
-        searchFilter = "(&(objectCategory=computer)(operatingSystem=*"+self.DESC+"*))"
+        searchFilter = "(&(objectCategory=computer)(&(|(operatingSystem=*"+self.DESC+"*)(name=*"+self.DESC+"*))))"
 
         try:
             context.log.debug('Search Filter=%s' % searchFilter)
