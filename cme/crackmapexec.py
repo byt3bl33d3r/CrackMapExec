@@ -130,7 +130,7 @@ def main():
 
     if hasattr(args, "target") and args.target:
         for target in args.target:
-            if exists(target):
+            if exists(target) and os.path.isfile(target):
                 target_file_type = identify_target_file(target)
                 if target_file_type == "nmap":
                     targets.extend(parse_nmap_xml(target, args.protocol))
