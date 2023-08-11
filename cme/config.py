@@ -16,7 +16,7 @@ config_log = cme_config.getboolean("CME", "log_mode", fallback=False)
 ignore_opsec = cme_config.getboolean("CME", "ignore_opsec", fallback=False)
 pwned_label = cme_config.get("CME", "pwn3d_label")
 audit_mode = cme_config.get("CME", "audit_mode")
-reveal_chars_of_pwd = int(cme_config.get("CME", "reveal_chars_of_pwd"))
+reveal_chars_of_pwd = int(cme_config.get("CME", "reveal_chars_of_pwd", fallback=0))
 
 # this should probably be put somewhere else, but if it's in the config helpers, there is a circular import
 def process_secret(text):
