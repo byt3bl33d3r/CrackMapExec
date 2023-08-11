@@ -399,5 +399,47 @@ conf = {
                 {"name": "sophoslivequery_*", "processes": [""]},
             ],
         },
+        {
+            "name": "G DATA Security Client",
+            "services": [
+                {
+                    "name": "AVKWCtl",
+                    "description": "Anti-virus Kit Window Control",
+                },
+                {
+                    "name": "AVKProxy", 
+                    "description": "G Data AntiVirus Proxy Service"
+                },
+                {
+                    "name": "GDScan",
+                    "description": "GDSG Data AntiVirus Scan Service",
+                },
+            ],
+            "pipes": [
+                {
+                    "name": "exploitProtectionIPC",
+                    "processes": ["AVKWCtlx64.exe"],
+                }
+            ],
+        },
+        {
+            "name": "Trend Micro Endpoint",
+            "services": [
+                {
+                    "name": "TODO",
+                    "description": "Trend Micro Endpoint Basecamp",
+                }
+            ],
+            "pipes": [
+                {
+                    "name": "AMSP_LogServer",
+                    "processes": [""],
+                },
+                {
+                    "name": "Log_ServerNamePipe",
+                    "processes": [""],
+                }
+            ],
+        },
     ]
 }
