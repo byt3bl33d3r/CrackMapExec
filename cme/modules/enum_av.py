@@ -338,6 +338,37 @@ conf = {
             ],
         },
         {
+            "name": "Kaspersky Security for Windows Server",
+            "services": [
+                {
+                    "name": "kavfsslp",
+                    "description": "Kaspersky Security Exploit Prevention Service",
+                },
+                
+                {
+                    "name": "KAVFS",
+                    "description": "Kaspersky Security Service",
+                },
+
+                {
+                    "name": "KAVFSGT",
+                    "description": "Kaspersky Security Management Service",
+                },
+                
+                {
+                    "name": "klnagent",
+                    "description": "Kaspersky Security Center",
+                },
+            ],
+            "pipes": [
+                {
+                    "name": "Exploit_Blocker",
+                    "processes": ["kavfswh.exe"],
+                },
+                
+            ],
+        },  
+        {
             "name": "Symantec Endpoint Protection",
             "services": [
                 {
@@ -399,5 +430,28 @@ conf = {
                 {"name": "sophoslivequery_*", "processes": [""]},
             ],
         },
+        {
+            "name": "G DATA Security Client",
+            "services": [
+                {
+                    "name": "AVKWCtl",
+                    "description": "Anti-virus Kit Window Control",
+                },
+                {
+                    "name": "AVKProxy", 
+                    "description": "G Data AntiVirus Proxy Service"
+                },
+                {
+                    "name": "GDScan",
+                    "description": "GDSG Data AntiVirus Scan Service",
+                },
+            ],
+            "pipes": [
+                {
+                    "name": "exploitProtectionIPC",
+                    "processes": ["AVKWCtlx64.exe"],
+                }
+            ],
+        }
     ]
 }
