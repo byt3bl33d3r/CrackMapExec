@@ -325,6 +325,7 @@ conf = {
                     "name": "CybereasonBlocki",
                     "description": "Cybereason Execution Prevention",
                 },
+               
             ],
             "pipes": [
                 {
@@ -337,6 +338,39 @@ conf = {
                 },
             ],
         },
+
+        {
+            "name": "Kaspersky Security for Windows Server",
+            "services": [
+                {
+                    "name": "kavfsslp",
+                    "description": "Kaspersky Security Exploit Prevention Service",
+                },
+                
+                {
+                    "name": "KAVFS",
+                    "description": "Kaspersky Security Service",
+                },
+
+                {
+                    "name": "KAVFSGT",
+                    "description": "Kaspersky Security Management Service",
+                },
+                
+                {
+                    "name": "klnagent",
+                    "description": "Kaspersky Security Center",
+                },
+            ],
+            "pipes": [
+                {
+                    "name": "Exploit_Blocker",
+                    "processes": ["kavfswh.exe"],
+                },
+                
+            ],
+        },
+        
         {
             "name": "Symantec Endpoint Protection",
             "services": [
