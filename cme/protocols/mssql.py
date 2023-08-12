@@ -43,11 +43,11 @@ class mssql(connection):
         if self.create_conn_obj():
             self.enum_host_info()
             self.print_host_info()
-            self.login()
-            if hasattr(self.args, "module") and self.args.module:
-                self.call_modules()
-            else:
-                self.call_cmd_args()
+            if self.login():
+                if hasattr(self.args, "module") and self.args.module:
+                    self.call_modules()
+                else:
+                    self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(
