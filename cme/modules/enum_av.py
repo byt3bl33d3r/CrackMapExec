@@ -338,7 +338,6 @@ conf = {
                 },
             ],
         },
-
         {
             "name": "Kaspersky Security for Windows Server",
             "services": [
@@ -369,8 +368,7 @@ conf = {
                 },
                 
             ],
-        },
-        
+        },  
         {
             "name": "Symantec Endpoint Protection",
             "services": [
@@ -455,25 +453,6 @@ conf = {
                     "processes": ["AVKWCtlx64.exe"],
                 }
             ],
-        },
-        {
-            "name": "Trend Micro Endpoint",
-            "services": [
-                {
-                    "name": "TODO",
-                    "description": "Trend Micro Endpoint Basecamp",
-                }
-            ],
-            "pipes": [
-                {
-                    "name": "AMSP_LogServer",
-                    "processes": [""],
-                },
-                {
-                    "name": "Log_ServerNamePipe",
-                    "processes": [""],
-                }
-            ],
-        },
+        }
     ]
 }
