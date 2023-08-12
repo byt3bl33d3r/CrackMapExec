@@ -325,7 +325,6 @@ conf = {
                     "name": "CybereasonBlocki",
                     "description": "Cybereason Execution Prevention",
                 },
-               
             ],
             "pipes": [
                 {
