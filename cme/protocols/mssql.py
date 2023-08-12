@@ -43,11 +43,11 @@ class mssql(connection):
         if self.create_conn_obj():
             self.enum_host_info()
             self.print_host_info()
-            self.login()
-            if hasattr(self.args, "module") and self.args.module:
-                self.call_modules()
-            else:
-                self.call_cmd_args()
+            if self.login():
+                if hasattr(self.args, "module") and self.args.module:
+                    self.call_modules()
+                else:
+                    self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(
@@ -301,12 +301,29 @@ class mssql(connection):
             return False
 
     def mssql_query(self):
-        result = self.conn.sql_query(self.args.mssql_query)
-        self.logger.debug(f"SQL Query Result: {result}")
-        for line in StringIO(self.conn._MSSQL__rowsPrinter.getMessage()).readlines():
-            if line.strip() != "":
-                self.logger.highlight(line.strip())
-        return self.conn._MSSQL__rowsPrinter.getMessage()
+        if self.conn.lastError:
+            # Invalid connection
+            return None
+        query = self.args.mssql_query
+        self.logger.info(f"Query to run:\n{query}")
+        try:
+            raw_output = self.conn.sql_query(query)
+            self.logger.info("Executed MSSQL query")
+            self.logger.debug(f"Raw output: {raw_output}")
+            for data in raw_output:
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        if key:
+                            self.logger.highlight(f"{key}:{value}")
+                        else:
+                            self.logger.highlight(f"{value}")
+                else:
+                    self.logger.fail("Unexpected output")
+        except Exception as e:
+            self.logger.exception(e)
+            return None
+
+        return raw_output
 
     @requires_admin
     def execute(self, payload=None, print_output=False):
