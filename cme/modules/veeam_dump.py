@@ -148,6 +148,9 @@ class CMEModule:
         if "CLIXML" in output:
             output = self.stripXmlOutput(context, output)
 
+        if "Access denied" in output:
+            context.log.fail("Access denied! This is probably due to an AntiVirus software blocking the execution of the PowerShell script.")
+
         # Stripping whitespaces and newlines
         output_stripped = [" ".join(line.split()) for line in output.split("\r\n") if line.strip()]
 
