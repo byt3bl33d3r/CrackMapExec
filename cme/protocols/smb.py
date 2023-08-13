@@ -458,10 +458,8 @@ class smb(connection):
                 self.password = password
                 self.username = username
             self.domain = domain
-            try:
-                self.conn.login(self.username, self.password, domain)
-            except BrokenPipeError:
-                self.logger.fail(f"Broken Pipe Error while attempting to login")
+
+            self.conn.login(self.username, self.password, domain)
 
             self.check_if_admin()
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
@@ -508,6 +506,9 @@ class smb(connection):
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.fail(f"Connection Error: {e}")
             return False
+        except BrokenPipeError as e:
+            self.logger.fail(f"Broken Pipe Error while attempting to login")
+            return False
 
     def hash_login(self, domain, username, ntlm_hash):
         # Re-connect since we logged off
@@ -532,10 +533,8 @@ class smb(connection):
                 nthash = self.hash
 
             self.domain = domain
-            try:
-                self.conn.login(self.username, "", domain, lmhash, nthash)
-            except BrokenPipeError:
-                self.logger.fail(f"Broken Pipe Error while attempting to login")
+
+            self.conn.login(self.username, "", domain, lmhash, nthash)
 
             self.check_if_admin()
             user_id = self.db.add_credential("hash", domain, self.username, nthash)
@@ -572,6 +571,9 @@ class smb(connection):
                 return False
         except (ConnectionResetError, NetBIOSTimeout, NetBIOSError) as e:
             self.logger.fail(f"Connection Error: {e}")
+            return False
+        except BrokenPipeError as e:
+            self.logger.fail(f"Broken Pipe Error while attempting to login")
             return False
 
     def create_smbv1_conn(self, kdc=""):

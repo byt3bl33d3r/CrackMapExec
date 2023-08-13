@@ -246,6 +246,7 @@ class mssql(connection):
             return True
         except BrokenPipeError as e:
             self.logger.fail(f"Broken Pipe Error while attempting to login")
+            return False
         except Exception as e:
             self.logger.fail(f"{domain}\\{username}:{process_secret(password)}")
             self.logger.exception(e)
@@ -296,6 +297,7 @@ class mssql(connection):
             return True
         except BrokenPipeError as e:
             self.logger.fail(f"Broken Pipe Error while attempting to login")
+            return False
         except Exception as e:
             self.logger.fail(f"{domain}\\{username}:{process_secret(ntlm_hash)} {e}")
             return False
