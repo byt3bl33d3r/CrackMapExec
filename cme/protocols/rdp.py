@@ -106,7 +106,7 @@ class rdp(connection):
         return True
 
     def create_conn_obj(self):
-        self.target = RDPTarget(ip=self.host, domain="FAKE", timeout=self.args.rdp_timeout)
+        self.target = RDPTarget(ip=self.host, domain="FAKE", port=self.args.port, timeout=self.args.rdp_timeout)
         self.auth = NTLMCredential(secret="pass", username="user", domain="FAKE", stype=asyauthSecret.PASS)
 
         self.check_nla()
@@ -127,13 +127,16 @@ class rdp(connection):
                 if "TCPSocket" in str(e):
                     return False
                 if "Reason:" not in str(e):
-                    info_domain = self.conn.get_extra_info()
-                    self.domain = info_domain["dnsdomainname"]
-                    self.hostname = info_domain["computername"]
-                    self.server_os = info_domain["os_guess"] + " Build " + str(info_domain["os_build"])
-                    self.logger.extra["hostname"] = self.hostname
-
-                    self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
+                    try:
+                        info_domain = self.conn.get_extra_info()
+                    except:
+                        pass
+                    else:
+                        self.domain = info_domain["dnsdomainname"]
+                        self.hostname = info_domain["computername"]
+                        self.server_os = info_domain["os_guess"] + " Build " + str(info_domain["os_build"])
+                        self.logger.extra["hostname"] = self.hostname
+                        self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
                     break
 
         if self.args.domain:
@@ -145,6 +148,7 @@ class rdp(connection):
         self.target = RDPTarget(
             ip=self.host,
             hostname=self.hostname,
+            port=self.args.port,
             domain=self.domain,
             dc_ip=self.domain,
             timeout=self.args.rdp_timeout,
