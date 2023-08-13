@@ -221,8 +221,21 @@ conf = {
                 },
                 {"name": "VSSERV", "description": "Bitdefender Virus Shield"},
                 {"name": "bdredline", "description": "Bitdefender RedLine Service"},
+                {"name": "EPRedline", "description": "Bitdefender Endpoint Redline Service"},
+                {"name": "EPUpdateService", "description": "Bitdefender Endpoint Update Service"},
+                {"name": "EPSecurityService", "description": "Bitdefender Endpoint Security Service"},
+                {"name": "EPProtectedService", "description": "Bitdefender Endpoint Protected Service"},
+                {"name": "EPIntegrationService", "description": "Bitdefender Endpoint Integration Service"},
             ],
             "pipes": [
+                {
+                    "name": "\\bdConnector\\ServiceControl\\EPSecurityService.exe",
+                    "processes": ["EPConsole.exe"],
+                },
+                {
+                    "name": "etw_sensor_pipe_ppl",
+                    "processes": ["EPProtectedService.exe"],
+                },
                 {
                     "name": "local\\msgbus\\antitracker.low\\*",
                     "processes": ["bdagent.exe"],
