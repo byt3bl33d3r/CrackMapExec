@@ -5,6 +5,7 @@ import hashlib
 import os
 import requests
 
+from io import StringIO
 from datetime import datetime
 from pypsrp.client import Client
 
@@ -42,9 +43,8 @@ class winrm(connection):
 
     def enum_host_info(self):
         # smb no open, specify the domain
-        if self.args.domain:
+        if self.args.no_smb:
             self.domain = self.args.domain
-            self.logger.extra["hostname"] = self.hostname
         else:
             # try:
             smb_conn = SMBConnection(self.host, self.host, None, timeout=5)
@@ -357,17 +357,22 @@ class winrm(connection):
 
     def execute(self, payload=None, get_output=False):
         try:
-            r = self.conn.execute_cmd(self.args.execute)
+            r = self.conn.execute_cmd(self.args.execute, encoding=self.args.codec)
         except:
             self.logger.info("Cannot execute command, probably because user is not local admin, but" " powershell command should be ok!")
             r = self.conn.execute_ps(self.args.execute)
         self.logger.success("Executed command")
-        self.logger.highlight(r[0])
+        buf = StringIO(r[0]).readlines()
+        for line in buf:
+            self.logger.highlight(line.strip())
+
 
     def ps_execute(self, payload=None, get_output=False):
         r = self.conn.execute_ps(self.args.ps_execute)
         self.logger.success("Executed command")
-        self.logger.highlight(r[0])
+        buf = StringIO(r[0]).readlines()
+        for line in buf:
+            self.logger.highlight(line.strip())
 
     def sam(self):
         self.conn.execute_cmd("reg save HKLM\SAM C:\\windows\\temp\\SAM && reg save HKLM\SYSTEM" " C:\\windows\\temp\\SYSTEM")
