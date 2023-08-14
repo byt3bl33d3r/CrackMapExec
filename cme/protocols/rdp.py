@@ -5,10 +5,14 @@ import asyncio
 import os
 from datetime import datetime
 from os import getenv
+from termcolor import colored
+
 from impacket.krb5.ccache import CCache
+
 from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.logger import CMEAdapter
+
 from aardwolf.connection import RDPConnection
 from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
 from aardwolf.commons.iosettings import RDPIOSettings
@@ -99,10 +103,11 @@ class rdp(connection):
         )
 
     def print_host_info(self):
+        nla = colored(f"nla:{self.nla}", 'blue') if self.nla else colored(f"nla:{self.nla}", 'yellow')
         if self.domain is None:
-            self.logger.display("Probably old, doesn't not support HYBRID or HYBRID_EX" f" (nla:{self.nla})")
+            self.logger.display("Probably old, doesn't not support HYBRID or HYBRID_EX" f" ({nla})")
         else:
-            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})" f" (nla:{self.nla})")
+            self.logger.display(f"{self.server_os} (name:{self.hostname}) (domain:{self.domain})" f" ({nla})")
         return True
 
     def create_conn_obj(self):

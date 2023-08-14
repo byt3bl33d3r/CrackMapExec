@@ -9,6 +9,7 @@ from binascii import hexlify
 from datetime import datetime
 from re import sub, I
 from zipfile import ZipFile
+from termcolor import colored
 
 from Cryptodome.Hash import MD4
 from OpenSSL.SSL import SysCallError
@@ -304,7 +305,9 @@ class ldap(connection):
         else:
             self.logger.extra["protocol"] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra["port"] = "445" if not self.no_ntlm else "389"
-            self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) (signing:{self.signing}) (SMBv1:{self.smbv1})")
+            signing = colored(f"signing:{self.signing}", 'green') if self.signing else colored(f"signing:{self.signing}", 'red')
+            smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow') if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue')
+            self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) ({signing}) ({smbv1})")
             self.logger.extra["protocol"] = "LDAP"
             # self.logger.display(self.endpoint)
         return True
