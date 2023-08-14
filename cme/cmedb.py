@@ -132,7 +132,7 @@ class DatabaseNavigator(cmd.Cmd):
         # Users
         if command == "creds":
             if len(line) < 3:
-                print("[-] invalid arguments, export creds <simple|detailed> <filename>")
+                print("[-] invalid arguments, export creds <simple|detailed|hashcat> <filename>")
                 return
 
             filename = line[2]
@@ -165,6 +165,15 @@ class DatabaseNavigator(cmd.Cmd):
                         entry.append(self.db.get_hosts(cred[5])[0][2])
                     formatted_creds.append(entry)
                 write_csv(filename, csv_header, formatted_creds)
+            elif line[1].lower() == "hashcat":
+                usernames = []
+                passwords = []
+                for cred in creds:
+                    if cred[4] == "hash":
+                        usernames.append(cred[2])
+                        passwords.append(cred[3])
+                output_list = [':'.join(combination) for combination in zip(usernames, passwords)]
+                write_list(filename, output_list)
             else:
                 print(f"[-] No such export option: {line[1]}")
                 return
