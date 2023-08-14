@@ -305,8 +305,8 @@ class ldap(connection):
         else:
             self.logger.extra["protocol"] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra["port"] = "445" if not self.no_ntlm else "389"
-            signing = colored(f"signing:{self.signing}", 'green') if self.signing else colored(f"signing:{self.signing}", 'red')
-            smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow') if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue')
+            signing = colored(f"signing:{self.signing}", 'green', attrs=['bold']) if self.signing else colored(f"signing:{self.signing}", 'red', attrs=['bold'])
+            smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow', attrs=['bold']) if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue', attrs=['bold'])
             self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) ({signing}) ({smbv1})")
             self.logger.extra["protocol"] = "LDAP"
             # self.logger.display(self.endpoint)

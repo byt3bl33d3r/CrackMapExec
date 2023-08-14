@@ -361,8 +361,8 @@ class smb(connection):
         return True
 
     def print_host_info(self):
-        signing = colored(f"signing:{self.signing}", 'green') if self.signing else colored(f"signing:{self.signing}", 'red')
-        smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow') if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue')
+        signing = colored(f"signing:{self.signing}", 'green', attrs=['bold']) if self.signing else colored(f"signing:{self.signing}", 'red', attrs=['bold'])
+        smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow', attrs=['bold']) if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue', attrs=['bold'])
         self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) ({signing}) ({smbv1})")
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)
