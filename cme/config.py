@@ -17,6 +17,11 @@ ignore_opsec = cme_config.getboolean("CME", "ignore_opsec", fallback=False)
 pwned_label = cme_config.get("CME", "pwn3d_label", fallback="Pwn3d!")
 audit_mode = cme_config.get("CME", "audit_mode", fallback=False)
 reveal_chars_of_pwd = int(cme_config.get("CME", "reveal_chars_of_pwd", fallback=0))
+host_info_colors = cme_config.get("CME", "host_info_colors", fallback=["green", "red", "yellow", "cyan"])
+
+if len(host_info_colors) != 4:
+    host_info_colors = ["green", "red", "yellow", "cyan"]
+
 
 # this should probably be put somewhere else, but if it's in the config helpers, there is a circular import
 def process_secret(text):
