@@ -80,10 +80,15 @@ class WMIEXEC:
             self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout".')
         else:
             self.logger.info(f'WMIEXEC: Dcom initialization succeed on connection with stringbinding: "{self.__stringBinding}"')
-            iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
-            iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
-            iWbemLevel1Login.RemRelease()
-            self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
+            try:
+                iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
+                iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
+                iWbemLevel1Login.RemRelease()
+            except:
+                self.__dcom.disconnect()
+                self.__win32Process = None
+            else:
+                self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
 
     def firewall_check(self, iInterface ,timeout):
         stringBindings = iInterface.get_cinstance().get_string_bindings()

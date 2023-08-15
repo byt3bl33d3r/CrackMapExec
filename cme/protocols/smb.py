@@ -779,6 +779,8 @@ class smb(connection):
                 buf = StringIO(output).readlines()
                 for line in buf:
                     self.logger.highlight(line.strip())
+        else:
+            self.logger.fail("Execute command failed")
 
         return output
 
