@@ -17,12 +17,17 @@ if "CME" not in cme_config.sections():
     first_run_setup()
     cme_config.read(os.path.join(CME_PATH, "cme.conf"))
 
-for option in cme_default_config.options("CME"):
-    if option not in cme_config.options("CME"):
-        cme_logger.info("Adding missing option '{}' to cme.conf".format(option))
-        cme_config.set("CME", option, cme_default_config.get("CME", option))
+# Check if there are any missing options in the config file
+for section in cme_default_config.sections():
+    for option in cme_default_config.options(section):
+        if not cme_config.has_option(section, option):
+            cme_logger.display(f"Adding missing option '{option}' in config section '{section}' to cme.conf")
+            cme_config.set(section, option, cme_default_config.get(section, option))
 
-# These options have to exist in the default config file!!
+            with open(path_join(CME_PATH, "cme.conf"), "w") as config_file:
+                cme_config.write(config_file)
+
+#!!! THESE OPTIONS HAVE TO EXIST IN THE DEFAULT CONFIG FILE !!!
 cme_workspace = cme_config.get("CME", "workspace", fallback="default")
 pwned_label = cme_config.get("CME", "pwn3d_label", fallback="Pwn3d!")
 audit_mode = cme_config.get("CME", "audit_mode", fallback=False)
