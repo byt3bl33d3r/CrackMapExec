@@ -79,6 +79,7 @@ def proto_args(parser, std_parser, module_parser):
         cgroup = smb_parser.add_argument_group("Command Execution", "Options for executing commands")
         cgroup.add_argument("--exec-method", choices={"wmiexec", "mmcexec", "smbexec", "atexec"}, default=None,
                             help="method to execute the command. Ignored if in MSSQL mode (default: wmiexec)")
+        cgroup.add_argument("--wmiexec-timeout", help="WMIEXEC connection timeout, default 2 secondes", type=int, default=2)
         cgroup.add_argument("--codec", default="utf-8",
                             help="Set encoding used (codec) from the target's output (default "
                                  "\"utf-8\"). If errors are detected, run chcp.com at the target, "

@@ -687,7 +687,8 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
-                        logger=self.logger
+                        logger=self.logger,
+                        timeout=self.args.wmiexec_timeout
                     )
                     self.logger.info("Executed command via wmiexec")
                     break
@@ -762,22 +763,22 @@ class smb(connection):
             self.server.track_host(self.host)
 
         output = exec_method.execute(payload, get_output)
+        if output:
+            try:
+                if not isinstance(output, str):
+                    output = output.decode(self.args.codec)
+            except UnicodeDecodeError:
+                self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
+                output = output.decode("cp437")
 
-        try:
-            if not isinstance(output, str):
-                output = output.decode(self.args.codec)
-        except UnicodeDecodeError:
-            self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
-            output = output.decode("cp437")
+            output = output.strip()
+            self.logger.debug(f"Output: {output}")
 
-        output = output.strip()
-        self.logger.debug(f"Output: {output}")
-
-        if self.args.execute or self.args.ps_execute:
-            self.logger.success(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
-            buf = StringIO(output).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
+            if self.args.execute or self.args.ps_execute:
+                self.logger.success(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
+                buf = StringIO(output).readlines()
+                for line in buf:
+                    self.logger.highlight(line.strip())
 
         return output
 
