@@ -75,7 +75,7 @@ class WMIEXEC:
         try:
             self.firewall_check(iInterface, self.__timeout)
         except:
-            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout".')
+            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout" option. If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
             self.__dcom.disconnect()
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
