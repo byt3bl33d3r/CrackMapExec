@@ -71,24 +71,16 @@ class WMIEXEC:
             doKerberos=self.__doKerberos,
             kdcHost=self.__kdcHost,
         )
+        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
         try:
-            iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
             self.firewall_check(iInterface, self.__timeout)
         except:
-            self.__dcom.disconnect()
-            self.__win32Process = None
             self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout".')
-        else:
-            self.logger.info(f'WMIEXEC: Dcom initialization succeed on connection with stringbinding: "{self.__stringBinding}"')
-            try:
-                iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
-                iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
-                iWbemLevel1Login.RemRelease()
-            except:
-                self.__dcom.disconnect()
-                self.__win32Process = None
-            else:
-                self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
+            self.__dcom.disconnect()
+        iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
+        iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
+        iWbemLevel1Login.RemRelease()
+        self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
 
     def firewall_check(self, iInterface ,timeout):
         stringBindings = iInterface.get_cinstance().get_string_bindings()
@@ -112,10 +104,9 @@ class WMIEXEC:
         rpctransport.set_connect_timeout(timeout)
         rpctransport.connect()
         rpctransport.disconnect()
+        self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout".')
 
     def execute(self, command, output=False):
-        if self.__win32Process is None:
-            return False
         self.__retOutput = output
         if self.__retOutput:
             self.__smbconnection.setTimeout(100000)

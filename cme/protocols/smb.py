@@ -665,7 +665,7 @@ class smb(connection):
         if self.args.exec_method:
             methods = [self.args.exec_method]
         if not methods:
-            methods = ["wmiexec", "smbexec", "mmcexec", "atexec"]
+            methods = ["wmiexec", "atexec", "smbexec", "mmcexec"]
 
         if not payload and self.args.execute:
             payload = self.args.execute
@@ -761,9 +761,9 @@ class smb(connection):
 
         if hasattr(self, "server"):
             self.server.track_host(self.host)
-
-        output = exec_method.execute(payload, get_output)
-        if output:
+        
+        if "exec_method" in locals():
+            output = exec_method.execute(payload, get_output)
             try:
                 if not isinstance(output, str):
                     output = output.decode(self.args.codec)
@@ -779,11 +779,12 @@ class smb(connection):
                 buf = StringIO(output).readlines()
                 for line in buf:
                     self.logger.highlight(line.strip())
+            return output
+        
         else:
-            self.logger.fail("Execute command failed")
-
-        return output
-
+            self.logger.fail(f"Execute command failed {self.args.exec_method if self.args.exec_method else ''}")
+            return False
+ 
     @requires_admin
     def ps_execute(
         self,
