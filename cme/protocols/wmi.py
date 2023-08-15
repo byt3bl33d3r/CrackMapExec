@@ -30,6 +30,7 @@ class wmi(connection):
         self.remoteName = ''
         self.server_os = None
         self.doKerberos = False
+        self.stringBinding = None
         # From: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/18d8fbe8-a967-4f1c-ae50-99ca8e491d2d
         self.rpc_error_status = {
             "0000052F" : "STATUS_ACCOUNT_RESTRICTION",
@@ -73,7 +74,7 @@ class wmi(connection):
             rpctansport = transport.DCERPCTransportFactory(r'ncacn_ip_tcp:{0}[{1}]'.format(self.remoteName, str(self.args.port)))
             rpctansport.set_credentials(username="", password="", domain="", lmhash="", nthash="", aesKey="")
             rpctansport.setRemoteHost(self.host)
-            rpctansport.set_connect_timeout(int(self.args.rpc_timeout))
+            rpctansport.set_connect_timeout(self.args.rpc_timeout)
             dce = rpctansport.get_dce_rpc()
             dce.set_auth_type(RPC_C_AUTHN_WINNT)
             dce.connect()
@@ -174,23 +175,61 @@ class wmi(connection):
         try:
             dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
-            iWbemLevel1Login = IWbemLevel1Login(iInterface)
-            iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
+            self.firewall_check(iInterface, self.args.rpc_timeout)
         except Exception as e:
             try:
                 dcom.disconnect()
             except:
                 pass
 
-            if "access_denied" in str(e).lower():
-                self.admin_privs = False
-            else:
+            if str(e).lower().find("connect") > 0:
+                self.logger.fail(f'Check admin error: dcom initialization failed with stringbinding: "{self.stringBinding}", please try "--rpc-timeout" option. (probably is admin)')
+            elif str(e).find("access_denied") > 0:
                 pass
+            else:
+                self.logger.fail(str(e))
         else:
-            dcom.disconnect()
-            self.logger.extra['protocol'] = "WMI"
-            self.admin_privs = True
+            try:
+                iWbemLevel1Login = IWbemLevel1Login(iInterface)
+                iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
+            except Exception as e:
+                try:
+                    dcom.disconnect()
+                except:
+                    pass
+
+                if str(e).find("access_denied") > 0:
+                    pass
+                else:
+                    self.logger.fail(str(e))
+            else:
+                dcom.disconnect()
+                self.logger.extra['protocol'] = "WMI"
+                self.admin_privs = True
         return
+
+    def firewall_check(self, iInterface ,timeout):
+        stringBindings = iInterface.get_cinstance().get_string_bindings()
+        for strBinding in stringBindings:
+            if strBinding['wTowerId'] == 7:
+                if strBinding['aNetworkAddr'].find('[') >= 0:
+                    binding, _, bindingPort = strBinding['aNetworkAddr'].partition('[')
+                    bindingPort = '[' + bindingPort
+                else:
+                    binding = strBinding['aNetworkAddr']
+                    bindingPort = ''
+
+                if binding.upper().find(iInterface.get_target().upper()) >= 0:
+                    stringBinding = 'ncacn_ip_tcp:' + strBinding['aNetworkAddr'][:-1]
+                    break
+                elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
+                    stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
+
+        self.stringBinding = stringBinding
+        rpctransport = transport.DCERPCTransportFactory(stringBinding)
+        rpctransport.set_connect_timeout(timeout)
+        rpctransport.connect()
+        rpctransport.disconnect()
 
     def kerberos_login(self, domain, username, password="", ntlm_hash="", aesKey="", kdcHost="", useCache=False):
         logging.getLogger("impacket").disabled = True
