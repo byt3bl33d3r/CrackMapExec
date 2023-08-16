@@ -5,7 +5,7 @@ import configparser
 from cme.paths import CME_PATH, DATA_PATH
 from cme.first_run import first_run_setup
 from cme.logger import cme_logger
-import ast
+from ast import literal_eval
 
 cme_default_config = configparser.ConfigParser()
 cme_default_config.read(path_join(DATA_PATH, "cme.conf"))
@@ -34,7 +34,7 @@ audit_mode = cme_config.get("CME", "audit_mode", fallback=False)
 reveal_chars_of_pwd = int(cme_config.get("CME", "reveal_chars_of_pwd", fallback=0))
 config_log = cme_config.getboolean("CME", "log_mode", fallback=False)
 ignore_opsec = cme_config.getboolean("CME", "ignore_opsec", fallback=False)
-host_info_colors = ast.literal_eval(cme_config.get("CME", "host_info_colors", fallback=["green", "red", "yellow", "cyan"]))
+host_info_colors = literal_eval(cme_config.get("CME", "host_info_colors", fallback=["green", "red", "yellow", "cyan"]))
 
 
 if len(host_info_colors) != 4:
