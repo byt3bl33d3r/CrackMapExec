@@ -24,7 +24,8 @@ class TSCH_EXEC:
         kdcHost=None,
         hashes=None,
         logger=cme_logger,
-        tires=None
+        tires=None,
+        share=None
     ):
         self.__target = target
         self.__username = username
@@ -73,12 +74,6 @@ class TSCH_EXEC:
 
     def output_callback(self, data):
         self.__outputBuffer = data
-
-    def execute_handler(self, data):
-        if self.__retOutput:
-            self.doStuff(data)
-        else:
-            self.doStuff(data)
 
     def gen_xml(self, command, tmpFileName, fileless=False):
         xml = """<?xml version="1.0" encoding="UTF-16"?>
@@ -140,7 +135,7 @@ class TSCH_EXEC:
 """
         return xml
 
-    def doStuff(self, command, fileless=False):
+    def execute_handler(self, command, fileless=False):
         dce = self.__rpctransport.get_dce_rpc()
         if self.__doKerberos:
             dce.set_auth_type(RPC_C_AUTHN_GSS_NEGOTIATE)
@@ -206,11 +201,14 @@ class TSCH_EXEC:
                         if tries >= self.__tires:
                             self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
                             break
+                        if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                            self.logger.fail(f'ATEXEC: Get ouput failed, target has block ADMIN$ access (maybe command executed!)')
+                            break
                         if str(e).find("SHARING") > 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                             sleep(3)
                             tries += 1
                         else:
-                            raise
+                            self.logger.debug(str(e))
 
                 if self.__outputBuffer:
                     cme_logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")

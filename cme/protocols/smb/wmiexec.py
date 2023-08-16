@@ -27,7 +27,8 @@ class WMIEXEC:
         hashes=None,
         share=None,
         logger=cme_logger,
-        timeout=None
+        timeout=None,
+        tires=None
     ):
         self.__target = target
         self.__username = username
@@ -48,6 +49,7 @@ class WMIEXEC:
         self.__doKerberos = doKerberos
         self.__retOutput = True
         self.__stringBinding = ""
+        self.__tires = tires
         self.logger = logger
 
         if hashes is not None:
@@ -133,14 +135,11 @@ class WMIEXEC:
         self.__outputBuffer += data
 
     def execute_handler(self, data):
-        if self.__retOutput:
-            try:
-                self.logger.debug("Executing remote")
-                self.execute_remote(data)
-            except:
-                self.cd("\\")
-                self.execute_remote(data)
-        else:
+        try:
+            self.logger.debug("Executing remote")
+            self.execute_remote(data)
+        except:
+            self.cd("\\")
             self.execute_remote(data)
 
     def execute_remote(self, data):
@@ -177,18 +176,27 @@ class WMIEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-
+        
+        tires = 1
         while True:
             try:
+                self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
-                    # Output not finished, let's wait
+                if tires >= self.__tires:
+                    self.logger.fail(f'WMIEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                    break
+                if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                    self.logger.fail(f'SMB connection: target has block {self.__share} access.')
+                    break
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     sleep(2)
+                    tires += 1
                     pass
                 else:
-                    # print str(e)
-                    pass
+                    self.logger.debug(str(e))
 
-        self.__smbconnection.deleteFile(self.__share, self.__output)
+        if self.__outputBuffer:
+            self.logger.debug(f"Deleting file {self.__share}\\{self.__output}")
+            self.__smbconnection.deleteFile(self.__share, self.__output)

@@ -6,7 +6,6 @@ from os.path import join as path_join
 from time import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from cme.helpers.misc import gen_random_string
-from cme.logger import cme_logger
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
 
@@ -26,7 +25,7 @@ class SMBEXEC:
         hashes=None,
         share=None,
         port=445,
-        logger=cme_logger,
+        logger=None,
         tires=None
     ):
         self.__host = host
@@ -155,22 +154,25 @@ class SMBEXEC:
         tires = 1
         while True:
             try:
-                cme_logger.info(f"Attempting to read {self.__share}\\{self.__output}")
+                self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
                 if tires >= self.__tires:
                     self.logger.fail(f'SMBEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
                     break
+                if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                    self.logger.fail(f'SMBEXEC: Get ouput failed, target has block {self.__share} access (maybe command executed!)')
+                    break
                 if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     # Output not finished, let's wait
                     sleep(2)
                     tires += 1
                 else:
-                    raise
+                    self.logger.debug(str(e))
         
         if self.__outputBuffer:
-            cme_logger.debug(f"Deleting file {self.__share}\\{self.__output}")
+            self.logger.debug(f"Deleting file {self.__share}\\{self.__output}")
             self.__smbconnection.deleteFile(self.__share, self.__output)
 
     def execute_fileless(self, data):
