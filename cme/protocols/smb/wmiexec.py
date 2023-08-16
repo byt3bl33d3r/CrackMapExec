@@ -106,8 +106,7 @@ class WMIEXEC:
         rpctransport.set_connect_timeout(timeout)
         rpctransport.connect()
         rpctransport.disconnect()
-        self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please try "--wmiexec-timeout".')
-
+        
     def execute(self, command, output=False):
         self.__retOutput = output
         if self.__retOutput:
