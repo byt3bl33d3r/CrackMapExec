@@ -32,7 +32,7 @@ from impacket.ldap import ldapasn1 as ldapasn1_impacket
 from impacket.smb import SMB_DIALECT
 from impacket.smbconnection import SMBConnection, SessionError
 
-from cme.config import process_secret
+from cme.config import process_secret, host_info_colors
 from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.logger import CMEAdapter, cme_logger
@@ -305,8 +305,8 @@ class ldap(connection):
         else:
             self.logger.extra["protocol"] = "SMB" if not self.no_ntlm else "LDAP"
             self.logger.extra["port"] = "445" if not self.no_ntlm else "389"
-            signing = colored(f"signing:{self.signing}", 'green') if self.signing else colored(f"signing:{self.signing}", 'red')
-            smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow') if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue')
+            signing = colored(f"signing:{self.signing}", host_info_colors[0], attrs=['bold']) if self.signing else colored(f"signing:{self.signing}", host_info_colors[1], attrs=['bold'])
+            smbv1 = colored(f"SMBv1:{self.smbv1}", host_info_colors[2], attrs=['bold']) if self.smbv1 else colored(f"SMBv1:{self.smbv1}", host_info_colors[3], attrs=['bold'])
             self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) ({signing}) ({smbv1})")
             self.logger.extra["protocol"] = "LDAP"
             # self.logger.display(self.endpoint)

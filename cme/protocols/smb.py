@@ -27,7 +27,7 @@ from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
 
-from cme.config import process_secret
+from cme.config import process_secret, host_info_colors
 from cme.connection import *
 from cme.logger import CMEAdapter
 from cme.protocols.smb.firefox import FirefoxTriage
@@ -361,8 +361,8 @@ class smb(connection):
         return True
 
     def print_host_info(self):
-        signing = colored(f"signing:{self.signing}", 'green') if self.signing else colored(f"signing:{self.signing}", 'red')
-        smbv1 = colored(f"SMBv1:{self.smbv1}", 'yellow') if self.smbv1 else colored(f"SMBv1:{self.smbv1}", 'blue')
+        signing = colored(f"signing:{self.signing}", host_info_colors[0], attrs=['bold']) if self.signing else colored(f"signing:{self.signing}", host_info_colors[1], attrs=['bold'])
+        smbv1 = colored(f"SMBv1:{self.smbv1}", host_info_colors[2], attrs=['bold']) if self.smbv1 else colored(f"SMBv1:{self.smbv1}", host_info_colors[3], attrs=['bold'])
         self.logger.display(f"{self.server_os}{f' x{self.os_arch}' if self.os_arch else ''} (name:{self.hostname}) (domain:{self.domain}) ({signing}) ({smbv1})")
         if self.args.laps:
             return self.laps_search(self.args.username, self.args.password, self.args.hash, self.domain)

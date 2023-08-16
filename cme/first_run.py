@@ -5,8 +5,6 @@ from os import mkdir
 from os.path import exists
 from os.path import join as path_join
 import shutil
-import configparser
-from configparser import NoSectionError, NoOptionError
 from cme.paths import CME_PATH, CONFIG_PATH, TMP_PATH, DATA_PATH
 from cme.cmedb import initialize_db
 from cme.logger import cme_logger
@@ -40,20 +38,6 @@ def first_run_setup(logger=cme_logger):
         logger.display("Copying default configuration file")
         default_path = path_join(DATA_PATH, "cme.conf")
         shutil.copy(default_path, CME_PATH)
-    else:
-        # This is just a quick check to make sure the config file isn't the old 3.x format
-        try:
-            config = configparser.ConfigParser()
-            config.read(CONFIG_PATH)
-            config.get("CME", "workspace")
-            config.get("CME", "pwn3d_label")
-            config.get("CME", "audit_mode")
-            config.get("BloodHound", "bh_enabled")
-            config.get("CME", "log_mode")
-        except (NoSectionError, NoOptionError):
-            logger.display("Old configuration file detected, replacing with new version")
-            default_path = path_join(DATA_PATH, "cme.conf")
-            shutil.copy(default_path, CME_PATH)
 
     # if not exists(CERT_PATH):
     #     logger.display('Generating SSL certificate')
