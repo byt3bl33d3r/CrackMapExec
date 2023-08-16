@@ -127,16 +127,24 @@ class SMBEXEC:
         self.logger.debug("Command to execute: " + command)
 
         self.logger.debug(f"Remote service {self.__serviceName} created.")
-        resp = scmr.hRCreateServiceW(
-            self.__scmr,
-            self.__scHandle,
-            self.__serviceName,
-            self.__serviceName,
-            lpBinaryPathName=command,
-            dwStartType=scmr.SERVICE_DEMAND_START,
-        )
-        service = resp["lpServiceHandle"]
-
+        
+        try:
+            resp = scmr.hRCreateServiceW(
+                self.__scmr,
+                self.__scHandle,
+                self.__serviceName,
+                self.__serviceName,
+                lpBinaryPathName=command,
+                dwStartType=scmr.SERVICE_DEMAND_START,
+            )
+            service = resp["lpServiceHandle"]
+        except Exception as e:
+            if "rpc_s_access_denied" in str(e):
+                self.logger.fail("SMBEXEC: Create services got blocked.")
+                return self.__outputBuffer
+            else:
+                pass
+            
         try:
             self.logger.debug(f"Remote service {self.__serviceName} started.")
             scmr.hRStartServiceW(self.__scmr, service)
