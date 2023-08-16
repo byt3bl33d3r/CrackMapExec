@@ -708,7 +708,8 @@ class smb(connection):
                         self.domain,
                         self.conn,
                         self.args.share,
-                        self.hash
+                        self.hash,
+                        self.logger
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
