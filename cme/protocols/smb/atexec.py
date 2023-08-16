@@ -204,7 +204,7 @@ class TSCH_EXEC:
                         break
                     except Exception as e:
                         if tries >= self.__tires:
-                            self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please try "--atexec-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                            self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
                             break
                         if str(e).find("SHARING") > 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                             sleep(3)

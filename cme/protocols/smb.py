@@ -729,7 +729,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.logger,
-                        self.args.atexec_tires
+                        self.args.get_output_tires
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -753,7 +753,8 @@ class smb(connection):
                         self.hash,
                         self.args.share,
                         self.args.port,
-                        self.logger
+                        self.logger,
+                        self.args.get_output_tires
                     )
                     self.logger.info("Executed command via smbexec")
                     break
@@ -784,7 +785,7 @@ class smb(connection):
                     self.logger.highlight(line.strip())
             return output
         else:
-            self.logger.fail(f"Execute command failed {currnet_method}")
+            self.logger.fail(f"Execute command failed with {currnet_method}")
             return False
  
     @requires_admin
