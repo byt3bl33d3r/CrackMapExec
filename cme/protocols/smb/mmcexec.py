@@ -227,7 +227,7 @@ class MMCEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-        tires = 0
+        tires = 1
         while True:
             try:
                 self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")

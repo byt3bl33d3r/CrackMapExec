@@ -152,7 +152,7 @@ class SMBEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-        tires = 0
+        tires = 1
         while True:
             try:
                 cme_logger.info(f"Attempting to read {self.__share}\\{self.__output}")
