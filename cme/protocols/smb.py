@@ -671,8 +671,10 @@ class smb(connection):
             payload = self.args.execute
             if not self.args.no_output:
                 get_output = True
-
+        
+        currnet_method = ""
         for method in methods:
+            currnet_method = method
             if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
@@ -726,7 +728,8 @@ class smb(connection):
                         self.aesKey,
                         self.kdcHost,
                         self.hash,
-                        self.logger
+                        self.logger,
+                        self.args.atexec_tires
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -774,15 +777,14 @@ class smb(connection):
             output = output.strip()
             self.logger.debug(f"Output: {output}")
 
-            if self.args.execute or self.args.ps_execute:
-                self.logger.success(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
+            if (self.args.execute or self.args.ps_execute) and output:
+                self.logger.success(f"Executed command via {currnet_method}")
                 buf = StringIO(output).readlines()
                 for line in buf:
                     self.logger.highlight(line.strip())
             return output
-        
         else:
-            self.logger.fail(f"Execute command failed {self.args.exec_method if self.args.exec_method else ''}")
+            self.logger.fail(f"Execute command failed {currnet_method}")
             return False
  
     @requires_admin

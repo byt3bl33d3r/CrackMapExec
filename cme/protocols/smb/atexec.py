@@ -23,7 +23,8 @@ class TSCH_EXEC:
         aesKey=None,
         kdcHost=None,
         hashes=None,
-        logger=cme_logger
+        logger=cme_logger,
+        tires=None
     ):
         self.__target = target
         self.__username = username
@@ -37,6 +38,7 @@ class TSCH_EXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
+        self.__tires = tires
         self.logger = logger
 
         if hashes is not None:
@@ -74,10 +76,7 @@ class TSCH_EXEC:
 
     def execute_handler(self, data):
         if self.__retOutput:
-            try:
-                self.doStuff(data, fileless=False)
-            except:
-                self.doStuff(data)
+            self.doStuff(data)
         else:
             self.doStuff(data)
 
@@ -197,19 +196,24 @@ class TSCH_EXEC:
             else:
                 peer = ":".join(map(str, self.__rpctransport.get_socket().getpeername()))
                 smbConnection = self.__rpctransport.get_smb_connection()
+                tries = 1
                 while True:
                     try:
                         logging.info(f"Attempting to read ADMIN$\\Temp\\{tmpFileName}")
                         smbConnection.getFile("ADMIN$", f"Temp\\{tmpFileName}", self.output_callback)
                         break
                     except Exception as e:
-                        if str(e).find("SHARING") > 0:
+                        if tries >= self.__tires:
+                            self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please try "--atexec-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                            break
+                        if str(e).find("SHARING") > 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                             sleep(3)
-                        elif str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
-                            sleep(3)
+                            tries += 1
                         else:
                             raise
-                cme_logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")
-                smbConnection.deleteFile("ADMIN$", f"Temp\\{tmpFileName}")
+
+                if self.__outputBuffer:
+                    cme_logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")
+                    smbConnection.deleteFile("ADMIN$", f"Temp\\{tmpFileName}")
 
         dce.disconnect()
