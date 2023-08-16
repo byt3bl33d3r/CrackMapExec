@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
-import logging
 from impacket.dcerpc.v5 import tsch, transport
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE, RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 from cme.helpers.misc import gen_random_string
-from cme.logger import cme_logger
 from time import sleep
 
 
@@ -23,7 +21,7 @@ class TSCH_EXEC:
         aesKey=None,
         kdcHost=None,
         hashes=None,
-        logger=cme_logger,
+        logger=None,
         tires=None,
         share=None
     ):
@@ -51,7 +49,7 @@ class TSCH_EXEC:
 
         if self.__password is None:
             self.__password = ""
-        cme_logger.debug("test")
+
         stringbinding = r"ncacn_np:%s[\pipe\atsvc]" % self.__target
         self.__rpctransport = transport.DCERPCTransportFactory(stringbinding)
 
@@ -125,7 +123,7 @@ class TSCH_EXEC:
         elif self.__retOutput is False:
             argument_xml = f"      <Arguments>/C {command}</Arguments>"
 
-        cme_logger.debug("Generated argument XML: " + argument_xml)
+        self.logger.debug("Generated argument XML: " + argument_xml)
         xml += argument_xml
 
         xml += """
@@ -150,9 +148,9 @@ class TSCH_EXEC:
 
         xml = self.gen_xml(command, tmpFileName, fileless)
 
-        logging.info(f"Task XML: {xml}")
+        self.logger.info(f"Task XML: {xml}")
         taskCreated = False
-        logging.info(f"Creating task \\{tmpName}")
+        self.logger.info(f"Creating task \\{tmpName}")
         try:
             tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
         except Exception as e:
@@ -160,19 +158,19 @@ class TSCH_EXEC:
             return
         taskCreated = True
 
-        logging.info(f"Running task \\{tmpName}")
+        self.logger.info(f"Running task \\{tmpName}")
         tsch.hSchRpcRun(dce, f"\\{tmpName}")
 
         done = False
         while not done:
-            cme_logger.debug(f"Calling SchRpcGetLastRunInfo for \\{tmpName}")
+            self.logger.debug(f"Calling SchRpcGetLastRunInfo for \\{tmpName}")
             resp = tsch.hSchRpcGetLastRunInfo(dce, f"\\{tmpName}")
             if resp["pLastRuntime"]["wYear"] != 0:
                 done = True
             else:
                 sleep(2)
 
-        logging.info(f"Deleting task \\{tmpName}")
+        self.logger.info(f"Deleting task \\{tmpName}")
         tsch.hSchRpcDelete(dce, f"\\{tmpName}")
         taskCreated = False
 
@@ -194,7 +192,7 @@ class TSCH_EXEC:
                 tries = 1
                 while True:
                     try:
-                        logging.info(f"Attempting to read ADMIN$\\Temp\\{tmpFileName}")
+                        self.logger.info(f"Attempting to read ADMIN$\\Temp\\{tmpFileName}")
                         smbConnection.getFile("ADMIN$", f"Temp\\{tmpFileName}", self.output_callback)
                         break
                     except Exception as e:
@@ -211,7 +209,7 @@ class TSCH_EXEC:
                             self.logger.debug(str(e))
 
                 if self.__outputBuffer:
-                    cme_logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")
+                    self.logger.debug(f"Deleting file ADMIN$\\Temp\\{tmpFileName}")
                     smbConnection.deleteFile("ADMIN$", f"Temp\\{tmpFileName}")
 
         dce.disconnect()

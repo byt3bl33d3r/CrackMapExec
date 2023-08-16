@@ -5,7 +5,6 @@ import ntpath
 import os
 from time import sleep
 from cme.helpers.misc import gen_random_string
-from cme.logger import cme_logger
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
@@ -26,7 +25,7 @@ class WMIEXEC:
         kdcHost=None,
         hashes=None,
         share=None,
-        logger=cme_logger,
+        logger=None,
         timeout=None,
         tires=None
     ):

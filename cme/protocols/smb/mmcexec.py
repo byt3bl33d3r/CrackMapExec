@@ -27,7 +27,6 @@
 #     getInterface() method
 #
 
-import logging
 from os.path import join as path_join
 from time import sleep
 from cme.helpers.misc import gen_random_string
@@ -124,7 +123,7 @@ class MMCEXEC:
 
         except Exception as e:
             self.exit()
-            logging.error(str(e))
+            self.logger.fail(str(e))
             self.__dcom.disconnect()
 
     def getInterface(self, interface, resp):
@@ -140,7 +139,7 @@ class MMCEXEC:
         elif objRefType == FLAGS_OBJREF_EXTENDED:
             objRef = OBJREF_EXTENDED(b"".join(resp))
         else:
-            logging.error("Unknown OBJREF Type! 0x%x" % objRefType)
+            self.logger.fail("Unknown OBJREF Type! 0x%x" % objRefType)
 
         return IRemUnknown2(
             INTERFACE(
