@@ -27,7 +27,6 @@
 #     getInterface() method
 #
 
-import logging
 from os.path import join as path_join
 from time import sleep
 from cme.helpers.misc import gen_random_string
@@ -60,7 +59,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class MMCEXEC:
-    def __init__(self, host, share_name, username, password, domain, smbconnection, share, hashes=None):
+    def __init__(self, host, share_name, username, password, domain, smbconnection, share, hashes=None, logger=None, tries=None):
         self.__host = host
         self.__username = username
         self.__password = password
@@ -78,8 +77,14 @@ class MMCEXEC:
         self.__retOutput = True
         self.__share = share
         self.__dcom = None
+        self.__tries = tries
+        self.logger = logger
+
         if hashes is not None:
-            self.__lmhash, self.__nthash = hashes.split(":")
+            if hashes.find(":") != -1:
+                self.__lmhash, self.__nthash = hashes.split(":")
+            else:
+                self.__nthash = hashes
 
         self.__dcom = DCOMConnection(
             self.__host,
@@ -118,7 +123,7 @@ class MMCEXEC:
 
         except Exception as e:
             self.exit()
-            logging.error(str(e))
+            self.logger.fail(str(e))
             self.__dcom.disconnect()
 
     def getInterface(self, interface, resp):
@@ -134,7 +139,7 @@ class MMCEXEC:
         elif objRefType == FLAGS_OBJREF_EXTENDED:
             objRef = OBJREF_EXTENDED(b"".join(resp))
         else:
-            logging.error("Unknown OBJREF Type! 0x%x" % objRefType)
+            self.logger.fail("Unknown OBJREF Type! 0x%x" % objRefType)
 
         return IRemUnknown2(
             INTERFACE(
@@ -226,17 +231,26 @@ class MMCEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-
+        tries = 1
         while True:
             try:
+                self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
+                if tries >= self.__tries:
+                    self.logger.fail(f'MMCEXEC: Get output file error, maybe got detected by AV software, please increase the number of tries with the option "--get-output-tries". If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                    break
+                if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                    self.logger.fail(f'MMCEXEC: Get ouput failed, target has blocked {self.__share} access (maybe command executed!)')
+                    break
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     # Output not finished, let's wait
                     sleep(2)
-                    pass
+                    tries += 1
                 else:
-                    pass
-
-        self.__smbconnection.deleteFile(self.__share, self.__output)
+                    self.logger.debug(str(e))
+        
+        if self.__outputBuffer:
+            self.logger.debug(f"Deleting file {self.__share}\\{self.__output}")
+            self.__smbconnection.deleteFile(self.__share, self.__output)

@@ -665,14 +665,16 @@ class smb(connection):
         if self.args.exec_method:
             methods = [self.args.exec_method]
         if not methods:
-            methods = ["wmiexec", "smbexec", "mmcexec", "atexec"]
+            methods = ["wmiexec", "atexec", "smbexec", "mmcexec"]
 
         if not payload and self.args.execute:
             payload = self.args.execute
             if not self.args.no_output:
                 get_output = True
-
+        
+        current_method = ""
         for method in methods:
+            current_method = method
             if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
@@ -687,7 +689,9 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
-                        logger=self.logger
+                        logger=self.logger,
+                        timeout=self.args.wmiexec_timeout,
+                        tries=self.args.get_output_tries
                     )
                     self.logger.info("Executed command via wmiexec")
                     break
@@ -705,7 +709,9 @@ class smb(connection):
                         self.domain,
                         self.conn,
                         self.args.share,
-                        self.hash
+                        self.hash,
+                        self.logger,
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
@@ -725,7 +731,8 @@ class smb(connection):
                         self.aesKey,
                         self.kdcHost,
                         self.hash,
-                        self.logger
+                        self.logger,
+                        self.args.get_output_tries
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -749,7 +756,8 @@ class smb(connection):
                         self.hash,
                         self.args.share,
                         self.args.port,
-                        self.logger
+                        self.logger,
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via smbexec")
                     break
@@ -760,27 +768,29 @@ class smb(connection):
 
         if hasattr(self, "server"):
             self.server.track_host(self.host)
+        
+        if "exec_method" in locals():
+            output = exec_method.execute(payload, get_output)
+            try:
+                if not isinstance(output, str):
+                    output = output.decode(self.args.codec)
+            except UnicodeDecodeError:
+                self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
+                output = output.decode("cp437")
 
-        output = exec_method.execute(payload, get_output)
+            output = output.strip()
+            self.logger.debug(f"Output: {output}")
 
-        try:
-            if not isinstance(output, str):
-                output = output.decode(self.args.codec)
-        except UnicodeDecodeError:
-            self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
-            output = output.decode("cp437")
-
-        output = output.strip()
-        self.logger.debug(f"Output: {output}")
-
-        if self.args.execute or self.args.ps_execute:
-            self.logger.success(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
-            buf = StringIO(output).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-        return output
-
+            if (self.args.execute or self.args.ps_execute) and output:
+                self.logger.success(f"Executed command via {current_method}")
+                buf = StringIO(output).readlines()
+                for line in buf:
+                    self.logger.highlight(line.strip())
+            return output
+        else:
+            self.logger.fail(f"Execute command failed with {current_method}")
+            return False
+ 
     @requires_admin
     def ps_execute(
         self,
