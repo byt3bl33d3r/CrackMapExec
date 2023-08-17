@@ -691,7 +691,7 @@ class smb(connection):
                         self.args.share,
                         logger=self.logger,
                         timeout=self.args.wmiexec_timeout,
-                        tires=self.args.get_output_tires
+                        tries=self.args.get_output_tries
                     )
                     self.logger.info("Executed command via wmiexec")
                     break
@@ -711,7 +711,7 @@ class smb(connection):
                         self.args.share,
                         self.hash,
                         self.logger,
-                        self.args.get_output_tires
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
@@ -732,7 +732,7 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.logger,
-                        self.args.get_output_tires
+                        self.args.get_output_tries
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -757,7 +757,7 @@ class smb(connection):
                         self.args.share,
                         self.args.port,
                         self.logger,
-                        self.args.get_output_tires
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via smbexec")
                     break

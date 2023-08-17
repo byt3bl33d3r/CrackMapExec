@@ -26,7 +26,7 @@ class SMBEXEC:
         share=None,
         port=445,
         logger=None,
-        tires=None
+        tries=None
     ):
         self.__host = host
         self.__share_name = "C$"
@@ -51,7 +51,7 @@ class SMBEXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
-        self.__tires = tires
+        self.__tries = tries
         self.logger = logger
 
         if hashes is not None:
@@ -159,15 +159,15 @@ class SMBEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-        tires = 1
+        tries = 1
         while True:
             try:
                 self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                if tires >= self.__tires:
-                    self.logger.fail(f'SMBEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                if tries >= self.__tries:
+                    self.logger.fail(f'SMBEXEC: Get output file error, maybe go detection by AV software, please increase the number of tries with the option "--get-output-tries". If it\'s still failing maybe something is blocking the schedule job, try another exec method')
                     break
                 if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
                     self.logger.fail(f'SMBEXEC: Get ouput failed, target has block {self.__share} access (maybe command executed!)')
@@ -175,7 +175,7 @@ class SMBEXEC:
                 if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     # Output not finished, let's wait
                     sleep(2)
-                    tires += 1
+                    tries += 1
                 else:
                     self.logger.debug(str(e))
         

@@ -22,7 +22,7 @@ class TSCH_EXEC:
         kdcHost=None,
         hashes=None,
         logger=None,
-        tires=None,
+        tries=None,
         share=None
     ):
         self.__target = target
@@ -37,7 +37,7 @@ class TSCH_EXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
-        self.__tires = tires
+        self.__tries = tries
         self.logger = logger
 
         if hashes is not None:
@@ -196,8 +196,8 @@ class TSCH_EXEC:
                         smbConnection.getFile("ADMIN$", f"Temp\\{tmpFileName}", self.output_callback)
                         break
                     except Exception as e:
-                        if tries >= self.__tires:
-                            self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please try "--get-output-tires" option. If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                        if tries >= self.__tries:
+                            self.logger.fail(f'ATEXEC: Get output file error, maybe go detection by AV software, please increase the number of tries with the option "--get-output-tries". If it\'s still failing maybe something is blocking the schedule job, try another exec method')
                             break
                         if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
                             self.logger.fail(f'ATEXEC: Get ouput failed, target has block ADMIN$ access (maybe command executed!)')
