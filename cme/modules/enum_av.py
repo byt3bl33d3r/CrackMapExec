@@ -382,6 +382,61 @@ conf = {
             ],
         },  
         {
+            "name": "Trend Micro Endpoint Security",
+            "services": [
+                {
+                    "name": "Trend Micro Endpoint Basecamp",
+                    "description": "Trend Micro Endpoint Basecamp",
+                },
+                
+                {
+                    "name": "TMBMServer",
+                    "description": "Trend Micro Unauthorized Change Prevention Service",
+                },
+
+                {
+                    "name": "Trend Micro Web Service Communicator",
+                    "description": "Trend Micro Web Service Communicator",
+                },
+                
+                {
+                    "name": "TMiACAgentSvc",
+                    "description": "Trend Micro Application Control Service (Agent)",
+                },
+                {                
+                    "name": "CETASvc",
+                    "description": "Trend Micro Cloud Endpoint Telemetry Service",
+                },
+                                
+                    "name": "iVPAgent",
+                    "description": "Trend Micro Vulnerability Protection Service (Agent)",
+                },
+                                
+            ],
+            "pipes": [
+                {
+                    "name": "IPC_XBC_XBC_AGENT_PIPE_*",
+                    "processes": ["EndpointBasecamp.exe"],
+                },
+                {
+                    "name": "iacagent_*",
+                    "processes": ["TMiACAgentSvc.exe"],
+                },
+                {
+                    "name": "OIPC_LWCS_PIPE_*",
+                    "processes": ["TmListen.exe"],
+                },
+                {
+                    "name": "Log_ServerNamePipe",
+                    "processes": ["LogServer.exe"],
+                },
+                {
+                    "name": "OIPC_NTRTSCAN_PIPE_*",
+                    "processes": ["Ntrtscan.exe"],
+                },
+            ],
+        },  
+        {
             "name": "Symantec Endpoint Protection",
             "services": [
                 {
