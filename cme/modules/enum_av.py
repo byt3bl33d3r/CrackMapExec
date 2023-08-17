@@ -407,11 +407,11 @@ conf = {
                     "name": "CETASvc",
                     "description": "Trend Micro Cloud Endpoint Telemetry Service",
                 },
+                {
                                 
                     "name": "iVPAgent",
                     "description": "Trend Micro Vulnerability Protection Service (Agent)",
-                },
-                                
+                }                 
             ],
             "pipes": [
                 {
