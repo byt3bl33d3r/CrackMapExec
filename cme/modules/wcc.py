@@ -78,9 +78,11 @@ class ConfigCheck:
             return
 
         status = colored('OK', 'green', attrs=['bold']) if self.ok else colored('KO', 'red', attrs=['bold'])
-        reasons = ": " + ', '.join(self.reasons) if self.module.verbose else ''
-        msg = f'{status} {self.name}{reasons}'
+        reasons = ": " + ', '.join(self.reasons)
+        msg = f'{status} {self.name}'
+        info_msg = f'{status} {self.name}{reasons}'
         context.log.highlight(msg)
+        context.log.info(info_msg)
 
 class CMEModule:
     '''
@@ -99,13 +101,11 @@ class CMEModule:
         OUTPUT_FORMAT   Format for report (Default: 'json')
         OUTPUT          Path for report
         QUIET           Do not print results to stdout (Default: False)
-        VERBOSE         Produce verbose output (Default: False)
         '''
         self.output = module_options.get('OUTPUT')
         self.output_format = module_options.get('OUTPUT_FORMAT', DEFAULT_OUTPUT_FORMAT)
         if self.output_format not in VALID_OUTPUT_FORMATS:
             self.output_format = DEFAULT_OUTPUT_FORMAT
-        self.verbose = module_options.get('VERBOSE', 'false').lower() in ('true', '1')
         self.quiet = module_options.get('QUIET', 'false').lower() in ('true', '1')
 
         self.results = {}
