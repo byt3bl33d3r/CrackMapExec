@@ -39,7 +39,7 @@ class CMEModule:
             connection.conn.listPath('C$', '\\Windows\\System32\\inetsrv\\appcmd.exe')
             self.execute_appcmd(context, connection)
         except:
-            context.log.error("appcmd.exe not found, this module is not applicable.")
+            context.log.fail("appcmd.exe not found, this module is not applicable.")
             return
 
     def execute_appcmd(self, context, connection):
@@ -80,4 +80,4 @@ class CMEModule:
                 apppool_name = ""
 
         if not credentials_set:
-            context.log.error("No credentials found :( ")
+            context.log.fail("No credentials found :( ")
