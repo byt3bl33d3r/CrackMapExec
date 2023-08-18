@@ -74,7 +74,7 @@ class CMEModule:
         for wifi_cred in wifi_creds:
             if wifi_cred.auth.upper() == "OPEN":
                 context.log.highlight("[OPEN] %s" % (wifi_cred.ssid))
-            if wifi_cred.auth.upper() in ["WPAPSK", "WPA2PSK"]:
+            elif wifi_cred.auth.upper() in ["WPAPSK", "WPA2PSK", "WPA3SAE"]:
                 try:
                     context.log.highlight(
                         "[%s] %s - Passphrase: %s"
@@ -84,6 +84,30 @@ class CMEModule:
                             wifi_cred.password.decode("latin-1"),
                         )
                     )
+                except:
+                    context.log.highlight("[%s] %s - Passphrase: %s" % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password))
+            elif wifi_cred.auth.upper() in ['WPA', 'WPA2']:
+                try:
+                    if self.eap_username is not None and self.eap_password is not None:
+                        context.log.highlight(
+                            "[%s] %s - %s - Identifier: %s:%s"
+                            % (
+                                wifi_cred.auth.upper(),
+                                wifi_cred.ssid,
+                                wifi_cred.eap_type,
+                                wifi_cred.eap_username,
+                                wifi_cred.eap_password,
+                            )
+                        )
+                    else:
+                        context.log.highlight(
+                            "[%s] %s - %s "
+                            % (
+                                wifi_cred.auth.upper(),
+                                wifi_cred.ssid,
+                                wifi_cred.eap_type,
+                            )
+                        )
                 except:
                     context.log.highlight("[%s] %s - Passphrase: %s" % (wifi_cred.auth.upper(), wifi_cred.ssid, wifi_cred.password))
             else:

