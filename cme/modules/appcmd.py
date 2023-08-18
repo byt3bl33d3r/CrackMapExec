@@ -8,7 +8,7 @@ class CMEModule:
     Module by Brandon Fisher @shad0wcntr0ller
     """
 
-    name = 'appcmd'
+    name = 'iis'
     description = "Checks for credentials in IIS Application Pool configuration files using appcmd.exe"
     supported_protocols = ['smb']
     opsec_safe = True
