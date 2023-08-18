@@ -20,9 +20,6 @@ class CMEModule:
     def options(self, context, module_options):
         pass
 
-    def on_login(self, context, connection):
-        self.check_appcmd(context, connection)
-
     def on_admin_login(self, context, connection):
         self.check_appcmd(context, connection)
 
@@ -50,38 +47,37 @@ class CMEModule:
         context.log.info(f'Checking For Hidden Credentials With Appcmd.exe')
         output = connection.execute(command, True)
 
-        
+        # Split the output into lines
         lines = output.splitlines()
         username = ""
         password = ""
+        apppool_name = ""
 
-        
+        # Create a set to store credentials
         credentials_set = set()
 
         for line in lines:
+            # Extract APPPOOL.NAME
+            if 'APPPOOL.NAME:' in line:
+                apppool_name = line.split('APPPOOL.NAME:')[1].strip().strip('"')
             if "userName:" in line:
                 username = line.split("userName:")[1].strip().strip('"')
             if "password:" in line:
                 password = line.split("password:")[1].strip().strip('"')
 
             if username and password:
-                
-                current_credentials = (username, password)
+                # Store credentials as tuple in the set
+                current_credentials = (apppool_name, username, password)
 
                 if current_credentials not in credentials_set:
-                    
                     credentials_set.add(current_credentials)
-
-                    context.log.success(f"Credentials Found")
-                    
+                    context.log.success(f"Credentials Found for APPPOOL: {apppool_name}")
                     context.log.highlight(f"Username: {username}, Password: {password}")
 
-               
+                # Reset username, password, and apppool_name for next iteration
                 username = ""
                 password = ""
+                apppool_name = ""
 
         if not credentials_set:
             context.log.error("No credentials found :( ")
-
-        #context.log.success("Command executed successfully")
-
