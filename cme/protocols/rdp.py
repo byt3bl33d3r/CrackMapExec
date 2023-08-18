@@ -248,7 +248,7 @@ class rdp(connection):
                         # Show what was used between cleartext, nthash, aesKey and ccache
                         " from ccache"
                         if useCache
-                        else ":%s" % (kerb_pass if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8)
+                        else ":%s" % (process_secret(kerb_pass))
                     ),
                     self.mark_pwned(),
                 )
@@ -264,11 +264,11 @@ class rdp(connection):
                     if word in str(e):
                         reason = self.rdp_error_status[word]
                 self.logger.fail(
-                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}"),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (process_secret(kerb_pass))} {f'({reason})' if reason else str(e)}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN") else "red"),
                 )
             elif "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{(process_secret(password))} {self.mark_pwned()}")
             elif "No such file" in str(e):
                 self.logger.fail(e)
             else:
@@ -279,7 +279,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (process_secret(kerb_pass))} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
