@@ -131,7 +131,10 @@ class ModuleLoader:
         for path in modules_paths:
             for module in listdir(path):
                 if module[-3:] == ".py" and module != "example_module.py":
-                    module_path = path_join(path, module)
-                    module_data = self.get_module_info(module_path)
-                    modules.update(module_data)
+                    try:
+                        module_path = path_join(path, module)
+                        module_data = self.get_module_info(module_path)
+                        modules.update(module_data)
+                    except:
+                        pass
         return modules
