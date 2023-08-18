@@ -179,7 +179,7 @@ class rdp(connection):
                 pass
 
     async def connect_rdp(self):
-        _, err = await self.conn.connect()
+        _, err = await asyncio.wait_for(self.conn.connect(), timeout=self.args.rdp_timeout)
         if err is not None:
             raise err
 
@@ -371,7 +371,7 @@ class rdp(connection):
         self.iosettings.supported_protocols = None
         self.auth = NTLMCredential(secret="", username="", domain="", stype=asyauthSecret.PASS)
         self.conn = RDPConnection(iosettings=self.iosettings, target=self.target, credentials=self.auth)
-        await self.connect_rdp_old(self.url)
+        await self.connect_rdp()
         await asyncio.sleep(int(self.args.screentime))
 
         if self.conn is not None and self.conn.desktop_buffer_has_data is True:
