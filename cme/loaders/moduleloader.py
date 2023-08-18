@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+import cme
 import importlib
+import traceback
+import sys
+
 from os import listdir
 from os.path import dirname
 from os.path import join as path_join
-import sys
 
-import cme
 from cme.context import Context
 from cme.logger import CMEAdapter
 from cme.paths import CME_PATH
@@ -64,6 +67,7 @@ class ModuleLoader:
                 return module
         except Exception as e:
             self.logger.fail(f"Failed loading module at {module_path}: {e}")
+            self.logger.debug(traceback.format_exc())
         return None
 
     def init_module(self, module_path):
@@ -116,6 +120,7 @@ class ModuleLoader:
                 return module
         except Exception as e:
             self.logger.fail(f"Failed loading module at {module_path}: {e}")
+            self.logger.debug(traceback.format_exc())
         return None
 
     def list_modules(self):
