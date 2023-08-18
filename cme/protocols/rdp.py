@@ -144,7 +144,7 @@ class rdp(connection):
                         self.logger.extra["hostname"] = self.hostname
                         self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
                     break
-        
+
         if self.args.domain:
             self.domain = self.args.domain
 
