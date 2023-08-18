@@ -13,8 +13,7 @@ from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.logger import CMEAdapter
 from cme.config import host_info_colors
-from cme.config import reveal_chars_of_pwd
-from cme.config import audit_mode
+from cme.config import process_secret
 
 from aardwolf.connection import RDPConnection
 from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
@@ -297,13 +296,13 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(f"{domain}\\{username}:{password if not self.config.get('CME', 'audit_mode') else password[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {self.mark_pwned()}")
+            self.logger.success(f"{domain}\\{username}:{process_secret(password)} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{password if not self.config.get('CME', 'audit_mode') else password[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{process_secret(password)} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -312,7 +311,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (f"{domain}\\{username}:{password if not self.config.get('CME', 'audit_mode') else password[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}:{process_secret(password)} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
@@ -329,13 +328,13 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(f"{self.domain}\\{username}:{ntlm_hash if not self.config.get('CME', 'audit_mode') else ntlm_hash[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {self.mark_pwned()}")
+            self.logger.success(f"{self.domain}\\{username}:{process_secret(ntlm_hash)} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{ntlm_hash if not self.config.get('CME', 'audit_mode') else ntlm_hash[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{process_secret(ntlm_hash)} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -345,7 +344,7 @@ class rdp(connection):
                     reason = "User valid but cannot connect"
 
                 self.logger.fail(
-                    (f"{domain}\\{username}:{ntlm_hash if not self.config.get('CME', 'audit_mode') else ntlm_hash[:reveal_chars_of_pwd]+self.config.get('CME', 'audit_mode') * 8} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}:{process_secret(ntlm_hash)} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
