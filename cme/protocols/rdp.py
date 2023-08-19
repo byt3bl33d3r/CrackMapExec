@@ -13,6 +13,7 @@ from cme.connection import *
 from cme.helpers.bloodhound import add_user_bh
 from cme.logger import CMEAdapter
 from cme.config import host_info_colors
+from cme.config import process_secret
 
 from aardwolf.connection import RDPConnection
 from aardwolf.commons.queuedata.constants import VIDEO_FORMAT
@@ -23,7 +24,6 @@ from asyauth.common.credentials.ntlm import NTLMCredential
 from asyauth.common.credentials.kerberos import KerberosCredential
 from asyauth.common.constants import asyauthSecret
 from asysocks.unicomm.common.target import UniTarget, UniProto
-
 
 class rdp(connection):
     def __init__(self, args, db, host):
@@ -248,7 +248,7 @@ class rdp(connection):
                         # Show what was used between cleartext, nthash, aesKey and ccache
                         " from ccache"
                         if useCache
-                        else ":%s" % (kerb_pass if not self.config.get("CME", "audit_mode") else self.config.get("CME", "audit_mode") * 8)
+                        else ":%s" % (process_secret(kerb_pass))
                     ),
                     self.mark_pwned(),
                 )
@@ -264,11 +264,11 @@ class rdp(connection):
                     if word in str(e):
                         reason = self.rdp_error_status[word]
                 self.logger.fail(
-                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else str(e)}"),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (process_secret(kerb_pass))} {f'({reason})' if reason else str(e)}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "KDC_ERR_C_PRINCIPAL_UNKNOWN") else "red"),
                 )
             elif "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{(process_secret(password))} {self.mark_pwned()}")
             elif "No such file" in str(e):
                 self.logger.fail(e)
             else:
@@ -279,7 +279,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (kerb_pass if not self.config.get('CME', 'audit_mode') else self.config.get('CME', 'audit_mode') * 8)} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}{' from ccache' if useCache else ':%s' % (process_secret(kerb_pass))} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
@@ -296,13 +296,13 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
+            self.logger.success(f"{domain}\\{username}:{process_secret(password)} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{password} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{process_secret(password)} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -311,7 +311,7 @@ class rdp(connection):
                 if "cannot unpack non-iterable NoneType object" == str(e):
                     reason = "User valid but cannot connect"
                 self.logger.fail(
-                    (f"{domain}\\{username}:{password} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}:{process_secret(password)} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
@@ -328,13 +328,13 @@ class rdp(connection):
             asyncio.run(self.connect_rdp())
 
             self.admin_privs = True
-            self.logger.success(f"{self.domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")
+            self.logger.success(f"{self.domain}\\{username}:{process_secret(ntlm_hash)} {self.mark_pwned()}")
             if not self.args.local_auth:
                 add_user_bh(username, domain, self.logger, self.config)
             return True
         except Exception as e:
             if "Authentication failed!" in str(e):
-                self.logger.success(f"{domain}\\{username}:{ntlm_hash} {self.mark_pwned()}")
+                self.logger.success(f"{domain}\\{username}:{process_secret(ntlm_hash)} {self.mark_pwned()}")
             else:
                 reason = None
                 for word in self.rdp_error_status.keys():
@@ -344,7 +344,7 @@ class rdp(connection):
                     reason = "User valid but cannot connect"
 
                 self.logger.fail(
-                    (f"{domain}\\{username}:{ntlm_hash} {f'({reason})' if reason else ''}"),
+                    (f"{domain}\\{username}:{process_secret(ntlm_hash)} {f'({reason})' if reason else ''}"),
                     color=("magenta" if ((reason or "CredSSP" in str(e)) and reason != "STATUS_LOGON_FAILURE") else "red"),
                 )
             return False
