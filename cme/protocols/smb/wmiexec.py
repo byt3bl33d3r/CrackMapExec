@@ -5,7 +5,7 @@ import ntpath
 import os
 from time import sleep
 from cme.helpers.misc import gen_random_string
-from cme.logger import cme_logger
+from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom import wmi
 from impacket.dcerpc.v5.dtypes import NULL
@@ -25,7 +25,9 @@ class WMIEXEC:
         kdcHost=None,
         hashes=None,
         share=None,
-        logger=cme_logger
+        logger=None,
+        timeout=None,
+        tries=None
     ):
         self.__target = target
         self.__username = username
@@ -34,6 +36,7 @@ class WMIEXEC:
         self.__lmhash = ""
         self.__nthash = ""
         self.__share = share
+        self.__timeout = timeout
         self.__smbconnection = smbconnection
         self.__output = None
         self.__outputBuffer = b""
@@ -44,6 +47,8 @@ class WMIEXEC:
         self.__kdcHost = kdcHost
         self.__doKerberos = doKerberos
         self.__retOutput = True
+        self.__stringBinding = ""
+        self.__tries = tries
         self.logger = logger
 
         if hashes is not None:
@@ -68,12 +73,39 @@ class WMIEXEC:
             kdcHost=self.__kdcHost,
         )
         iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
+        try:
+            self.firewall_check(iInterface, self.__timeout)
+        except:
+            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--wmiexec-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+            self.__dcom.disconnect()
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()
-
         self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
 
+    def firewall_check(self, iInterface ,timeout):
+        stringBindings = iInterface.get_cinstance().get_string_bindings()
+        for strBinding in stringBindings:
+            if strBinding['wTowerId'] == 7:
+                if strBinding['aNetworkAddr'].find('[') >= 0:
+                    binding, _, bindingPort = strBinding['aNetworkAddr'].partition('[')
+                    bindingPort = '[' + bindingPort
+                else:
+                    binding = strBinding['aNetworkAddr']
+                    bindingPort = ''
+
+                if binding.upper().find(iInterface.get_target().upper()) >= 0:
+                    stringBinding = 'ncacn_ip_tcp:' + strBinding['aNetworkAddr'][:-1]
+                    break
+                elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
+                    stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
+        
+        self.__stringBinding = stringBinding
+        rpctransport = transport.DCERPCTransportFactory(stringBinding)
+        rpctransport.set_connect_timeout(timeout)
+        rpctransport.connect()
+        rpctransport.disconnect()
+        
     def execute(self, command, output=False):
         self.__retOutput = output
         if self.__retOutput:
@@ -101,14 +133,11 @@ class WMIEXEC:
         self.__outputBuffer += data
 
     def execute_handler(self, data):
-        if self.__retOutput:
-            try:
-                self.logger.debug("Executing remote")
-                self.execute_remote(data)
-            except:
-                self.cd("\\")
-                self.execute_remote(data)
-        else:
+        try:
+            self.logger.debug("Executing remote")
+            self.execute_remote(data)
+        except:
+            self.cd("\\")
             self.execute_remote(data)
 
     def execute_remote(self, data):
@@ -145,18 +174,27 @@ class WMIEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
-
+        
+        tries = 1
         while True:
             try:
+                self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
-                    # Output not finished, let's wait
+                if tries >= self.__tries:
+                    self.logger.fail(f'WMIEXEC: Get output file error, maybe got detected by AV software, please increase the number of tries with the option "--get-output-tries". If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                    break
+                if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                    self.logger.fail(f'SMB connection: target has blocked {self.__share} access (maybe command executed!)')
+                    break
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     sleep(2)
+                    tries += 1
                     pass
                 else:
-                    # print str(e)
-                    pass
+                    self.logger.debug(str(e))
 
-        self.__smbconnection.deleteFile(self.__share, self.__output)
+        if self.__outputBuffer:
+            self.logger.debug(f"Deleting file {self.__share}\\{self.__output}")
+            self.__smbconnection.deleteFile(self.__share, self.__output)

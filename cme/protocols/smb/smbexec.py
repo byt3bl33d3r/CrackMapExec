@@ -6,7 +6,6 @@ from os.path import join as path_join
 from time import sleep
 from impacket.dcerpc.v5 import transport, scmr
 from cme.helpers.misc import gen_random_string
-from cme.logger import cme_logger
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 
 
@@ -26,7 +25,8 @@ class SMBEXEC:
         hashes=None,
         share=None,
         port=445,
-        logger=cme_logger
+        logger=None,
+        tries=None
     ):
         self.__host = host
         self.__share_name = "C$"
@@ -51,6 +51,7 @@ class SMBEXEC:
         self.__aesKey = aesKey
         self.__doKerberos = doKerberos
         self.__kdcHost = kdcHost
+        self.__tries = tries
         self.logger = logger
 
         if hashes is not None:
@@ -126,16 +127,24 @@ class SMBEXEC:
         self.logger.debug("Command to execute: " + command)
 
         self.logger.debug(f"Remote service {self.__serviceName} created.")
-        resp = scmr.hRCreateServiceW(
-            self.__scmr,
-            self.__scHandle,
-            self.__serviceName,
-            self.__serviceName,
-            lpBinaryPathName=command,
-            dwStartType=scmr.SERVICE_DEMAND_START,
-        )
-        service = resp["lpServiceHandle"]
-
+        
+        try:
+            resp = scmr.hRCreateServiceW(
+                self.__scmr,
+                self.__scHandle,
+                self.__serviceName,
+                self.__serviceName,
+                lpBinaryPathName=command,
+                dwStartType=scmr.SERVICE_DEMAND_START,
+            )
+            service = resp["lpServiceHandle"]
+        except Exception as e:
+            if "rpc_s_access_denied" in str(e):
+                self.logger.fail("SMBEXEC: Create services got blocked.")
+                return self.__outputBuffer
+            else:
+                pass
+            
         try:
             self.logger.debug(f"Remote service {self.__serviceName} started.")
             scmr.hRStartServiceW(self.__scmr, service)
@@ -150,21 +159,29 @@ class SMBEXEC:
         if self.__retOutput is False:
             self.__outputBuffer = ""
             return
+        tries = 1
         while True:
             try:
+                self.logger.info(f"Attempting to read {self.__share}\\{self.__output}")
                 self.__smbconnection.getFile(self.__share, self.__output, self.output_callback)
                 break
             except Exception as e:
-                print(e)
-                if str(e).find("STATUS_SHARING_VIOLATION") >= 0:
+                if tries >= self.__tries:
+                    self.logger.fail(f'SMBEXEC: Get output file error, maybe got detected by AV software, please increase the number of tries with the option "--get-output-tries". If it\'s still failing maybe something is blocking the schedule job, try another exec method')
+                    break
+                if str(e).find("STATUS_BAD_NETWORK_NAME") >0 :
+                    self.logger.fail(f'SMBEXEC: Get ouput failed, target has blocked {self.__share} access (maybe command executed!)')
+                    break
+                if str(e).find("STATUS_SHARING_VIOLATION") >= 0 or str(e).find("STATUS_OBJECT_NAME_NOT_FOUND") >= 0:
                     # Output not finished, let's wait
                     sleep(2)
-                    pass
+                    tries += 1
                 else:
-                    self.logger.debug(e)
-                    pass
-
-        self.__smbconnection.deleteFile(self.__share, self.__output)
+                    self.logger.debug(str(e))
+        
+        if self.__outputBuffer:
+            self.logger.debug(f"Deleting file {self.__share}\\{self.__output}")
+            self.__smbconnection.deleteFile(self.__share, self.__output)
 
     def execute_fileless(self, data):
         self.__output = gen_random_string(6)

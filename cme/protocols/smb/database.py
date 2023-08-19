@@ -30,6 +30,8 @@ class database:
         self.AdminRelationsTable = None
         self.GroupRelationsTable = None
         self.LoggedinRelationsTable = None
+        self.ConfChecksTable = None
+        self.ConfChecksResultsTable = None
         self.DpapiBackupkey = None
         self.DpapiSecrets = None
 
@@ -61,6 +63,27 @@ class database:
             "petitpotam" boolean
             )"""
         )
+        db_conn.execute(
+            """CREATE TABLE "conf_checks" (
+            "id" integer PRIMARY KEY,
+            "name" text,
+            "description" text
+            )"""
+        )
+
+        db_conn.execute(
+            """CREATE TABLE "conf_checks_results" (
+            "id" integer PRIMARY KEY,
+            "host_id" integer,
+            "check_id" integer,
+            "secure" boolean,
+            "reasons" text,
+            FOREIGN KEY(host_id) REFERENCES hosts(id),
+            FOREIGN KEY(check_id) REFERENCES conf_checks(id)
+            )
+            """
+        )
+
         # type = hash, plaintext
         db_conn.execute(
             """CREATE TABLE "users" (
@@ -165,6 +188,8 @@ class database:
                 self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
                 self.DpapiSecrets = Table("dpapi_secrets", self.metadata, autoload_with=self.db_engine)
                 self.DpapiBackupkey = Table("dpapi_backupkey", self.metadata, autoload_with=self.db_engine)
+                self.ConfChecksTable = Table("conf_checks", self.metadata, autoload_with=self.db_engine)
+                self.ConfChecksResultsTable = Table("conf_checks_results", self.metadata, autoload_with=self.db_engine)
             except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     f"""
@@ -870,3 +895,71 @@ class database:
         elif host_id:
             q = q.filter(self.LoggedinRelationsTable.c.hostid == host_id)
         self.conn.execute(q)
+
+    def get_checks(self):
+        q = select(self.ConfChecksTable)
+        return self.conn.execute(q).all()
+        
+    def get_check_results(self):
+        q = select(self.ConfChecksResultsTable)
+        return self.conn.execute(q).all()
+        
+    def insert_data(self, table, select_results=[], **new_row):
+        """
+        Insert a new row in the given table.
+        Basically it's just a more generic version of add_host
+        """
+        results = []
+        updated_ids = []
+
+        # Create new row
+        if not select_results:
+            results = [new_row]
+        # Update existing row data
+        else:
+            for row in select_results:
+                row_data = row._asdict()
+                for column,value in new_row.items():
+                    row_data[column] = value
+
+                # Only add data to be updated if it has changed
+                if row_data not in results:
+                    results.append(row_data)
+                    updated_ids.append(row_data['id'])
+
+        cme_logger.debug(f'Update data: {results}')
+        # TODO: find a way to abstract this away to a single Upsert call
+        q = Insert(table) # .returning(table.c.id)
+        update_column = {col.name: col for col in q.excluded if col.name not in 'id'}
+        q = q.on_conflict_do_update(index_elements=table.primary_key, set_=update_column)
+        self.conn.execute(q, results) # .scalar()
+        # we only return updated IDs for now - when RETURNING clause is allowed we can return inserted
+        return updated_ids
+
+    def add_check(self, name, description):
+        """
+        Check if this check item has already been added to the database, if not, add it in.
+        """
+        q = select(self.ConfChecksTable).filter(self.ConfChecksTable.c.name == name)
+        select_results = self.conn.execute(q).all()
+        context = locals()
+        new_row = dict(((column, context[column]) for column in ('name', 'description')))
+        updated_ids = self.insert_data(self.ConfChecksTable, select_results, **new_row)
+
+        if updated_ids:
+            cme_logger.debug(f"add_check() - Checks IDs Updated: {updated_ids}")
+            return updated_ids
+
+    def add_check_result(self, host_id, check_id, secure, reasons):
+        """
+        Check if this check result has already been added to the database, if not, add it in.
+        """
+        q = select(self.ConfChecksResultsTable).filter(self.ConfChecksResultsTable.c.host_id == host_id, self.ConfChecksResultsTable.c.check_id == check_id)
+        select_results = self.conn.execute(q).all()
+        context = locals()
+        new_row = dict(((column, context[column]) for column in ('host_id', 'check_id', 'secure', 'reasons')))
+        updated_ids = self.insert_data(self.ConfChecksResultsTable, select_results, **new_row)
+
+        if updated_ids:
+            cme_logger.debug(f"add_check_result() - Check Results IDs Updated: {updated_ids}")
+            return updated_ids

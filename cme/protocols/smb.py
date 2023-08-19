@@ -665,14 +665,16 @@ class smb(connection):
         if self.args.exec_method:
             methods = [self.args.exec_method]
         if not methods:
-            methods = ["wmiexec", "smbexec", "mmcexec", "atexec"]
+            methods = ["wmiexec", "atexec", "smbexec", "mmcexec"]
 
         if not payload and self.args.execute:
             payload = self.args.execute
             if not self.args.no_output:
                 get_output = True
-
+        
+        current_method = ""
         for method in methods:
+            current_method = method
             if method == "wmiexec":
                 try:
                     exec_method = WMIEXEC(
@@ -687,7 +689,9 @@ class smb(connection):
                         self.kdcHost,
                         self.hash,
                         self.args.share,
-                        logger=self.logger
+                        logger=self.logger,
+                        timeout=self.args.wmiexec_timeout,
+                        tries=self.args.get_output_tries
                     )
                     self.logger.info("Executed command via wmiexec")
                     break
@@ -705,7 +709,9 @@ class smb(connection):
                         self.domain,
                         self.conn,
                         self.args.share,
-                        self.hash
+                        self.hash,
+                        self.logger,
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via mmcexec")
                     break
@@ -725,7 +731,8 @@ class smb(connection):
                         self.aesKey,
                         self.kdcHost,
                         self.hash,
-                        self.logger
+                        self.logger,
+                        self.args.get_output_tries
                     )  # self.args.share)
                     self.logger.info("Executed command via atexec")
                     break
@@ -749,7 +756,8 @@ class smb(connection):
                         self.hash,
                         self.args.share,
                         self.args.port,
-                        self.logger
+                        self.logger,
+                        self.args.get_output_tries
                     )
                     self.logger.info("Executed command via smbexec")
                     break
@@ -760,27 +768,29 @@ class smb(connection):
 
         if hasattr(self, "server"):
             self.server.track_host(self.host)
+        
+        if "exec_method" in locals():
+            output = exec_method.execute(payload, get_output)
+            try:
+                if not isinstance(output, str):
+                    output = output.decode(self.args.codec)
+            except UnicodeDecodeError:
+                self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
+                output = output.decode("cp437")
 
-        output = exec_method.execute(payload, get_output)
+            output = output.strip()
+            self.logger.debug(f"Output: {output}")
 
-        try:
-            if not isinstance(output, str):
-                output = output.decode(self.args.codec)
-        except UnicodeDecodeError:
-            self.logger.debug("Decoding error detected, consider running chcp.com at the target, map the result with https://docs.python.org/3/library/codecs.html#standard-encodings")
-            output = output.decode("cp437")
-
-        output = output.strip()
-        self.logger.debug(f"Output: {output}")
-
-        if self.args.execute or self.args.ps_execute:
-            self.logger.success(f"Executed command {self.args.exec_method if self.args.exec_method else ''}")
-            buf = StringIO(output).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())
-
-        return output
-
+            if (self.args.execute or self.args.ps_execute) and output:
+                self.logger.success(f"Executed command via {current_method}")
+                buf = StringIO(output).readlines()
+                for line in buf:
+                    self.logger.highlight(line.strip())
+            return output
+        else:
+            self.logger.fail(f"Execute command failed with {current_method}")
+            return False
+ 
     @requires_admin
     def ps_execute(
         self,
@@ -1456,6 +1466,7 @@ class smb(connection):
 
     @requires_admin
     def dpapi(self):
+        dump_system = False if "nosystem" in self.args.dpapi else True
         logging.getLogger("dploot").disabled = True
 
         if self.args.pvk is not None:
@@ -1463,7 +1474,7 @@ class smb(connection):
                 self.pvkbytes = open(self.args.pvk, "rb").read()
                 self.logger.success(f"Loading domain backupkey from {self.args.pvk}")
             except Exception as e:
-                logging.error(str(e))
+                self.logger.fail(str(e))
 
         masterkeys = []
         if self.args.mkfile is not None:
@@ -1551,7 +1562,8 @@ class smb(connection):
             )
             self.logger.debug(f"Masterkeys Triage: {masterkeys_triage}")
             masterkeys += masterkeys_triage.triage_masterkeys()
-            masterkeys += masterkeys_triage.triage_system_masterkeys()
+            if dump_system:
+                masterkeys += masterkeys_triage.triage_system_masterkeys()
         except Exception as e:
             self.logger.debug(f"Could not get masterkeys: {e}")
 
@@ -1561,14 +1573,17 @@ class smb(connection):
 
         self.logger.success(f"Got {highlight(len(masterkeys))} decrypted masterkeys. Looting secrets...")
 
+        credentials = []
+        system_credentials = []
         try:
             # Collect User and Machine Credentials Manager secrets
             credentials_triage = CredentialsTriage(target=target, conn=conn, masterkeys=masterkeys)
             self.logger.debug(f"Credentials Triage Object: {credentials_triage}")
             credentials = credentials_triage.triage_credentials()
             self.logger.debug(f"Triaged Credentials: {credentials}")
-            system_credentials = credentials_triage.triage_system_credentials()
-            self.logger.debug(f"Triaged System Credentials: {system_credentials}")
+            if dump_system:
+                system_credentials = credentials_triage.triage_system_credentials()
+                self.logger.debug(f"Triaged System Credentials: {system_credentials}")
         except Exception as e:
             self.logger.debug(f"Error while looting credentials: {e}")
 
@@ -1593,9 +1608,11 @@ class smb(connection):
                 credential.target,
             )
 
+        browser_credentials = []
+        cookies = []
         try:
             # Collect Chrome Based Browser stored secrets
-            dump_cookies = True if self.args.dpapi == "cookies" else False
+            dump_cookies = True if "cookies" in self.args.dpapi else False
             browser_triage = BrowserTriage(target=target, conn=conn, masterkeys=masterkeys)
             browser_credentials, cookies = browser_triage.triage_browsers(gather_cookies=dump_cookies)
         except Exception as e:
@@ -1615,9 +1632,11 @@ class smb(connection):
         if dump_cookies:
             self.logger.display("Start Dumping Cookies")
             for cookie in cookies:
-                self.logger.highlight(f"[{credential.winuser}][{cookie.browser.upper()}] {cookie.host}{cookie.path} - {cookie.cookie_name}:{cookie.cookie_value}")
+                if cookie.cookie_value != '':
+                    self.logger.highlight(f"[{credential.winuser}][{cookie.browser.upper()}] {cookie.host}{cookie.path} - {cookie.cookie_name}:{cookie.cookie_value}")
             self.logger.display("End Dumping Cookies")
 
+        vaults = []
         try:
             # Collect User Internet Explorer stored secrets
             vaults_triage = VaultsTriage(target=target, conn=conn, masterkeys=masterkeys)
@@ -1637,6 +1656,7 @@ class smb(connection):
                     vault.resource,
                 )
 
+        firefox_credentials = []
         try:
             # Collect Firefox stored secrets
             firefox_triage = FirefoxTriage(target=target, logger=self.logger, conn=conn)
