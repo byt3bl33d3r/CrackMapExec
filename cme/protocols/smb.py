@@ -690,7 +690,7 @@ class smb(connection):
                         self.hash,
                         self.args.share,
                         logger=self.logger,
-                        timeout=self.args.wmiexec_timeout,
+                        timeout=self.args.dcom_timeout,
                         tries=self.args.get_output_tries
                     )
                     self.logger.info("Executed command via wmiexec")
@@ -711,7 +711,8 @@ class smb(connection):
                         self.args.share,
                         self.hash,
                         self.logger,
-                        self.args.get_output_tries
+                        self.args.get_output_tries,
+                        self.args.dcom_timeout
                     )
                     self.logger.info("Executed command via mmcexec")
                     break

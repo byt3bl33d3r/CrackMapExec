@@ -141,18 +141,21 @@ class SMBEXEC:
         except Exception as e:
             if "rpc_s_access_denied" in str(e):
                 self.logger.fail("SMBEXEC: Create services got blocked.")
-                return self.__outputBuffer
             else:
-                pass
+                self.logger.fail(str(e))
             
+            return self.__outputBuffer
+
         try:
             self.logger.debug(f"Remote service {self.__serviceName} started.")
             scmr.hRStartServiceW(self.__scmr, service)
-        except:
+
+            self.logger.debug(f"Remote service {self.__serviceName} deleted.")
+            scmr.hRDeleteService(self.__scmr, service)
+            scmr.hRCloseServiceHandle(self.__scmr, service)
+        except Exception as e:
             pass
-        self.logger.debug(f"Remote service {self.__serviceName} deleted.")
-        scmr.hRDeleteService(self.__scmr, service)
-        scmr.hRCloseServiceHandle(self.__scmr, service)
+
         self.get_output_remote()
 
     def get_output_remote(self):

@@ -29,6 +29,7 @@
 
 from os.path import join as path_join
 from time import sleep
+from cme.connection import dcom_FirewallChecker
 from cme.helpers.misc import gen_random_string
 
 from impacket.dcerpc.v5.dcom.oaut import (
@@ -59,7 +60,7 @@ from impacket.dcerpc.v5.dtypes import NULL
 
 
 class MMCEXEC:
-    def __init__(self, host, share_name, username, password, domain, smbconnection, share, hashes=None, logger=None, tries=None):
+    def __init__(self, host, share_name, username, password, domain, smbconnection, share, hashes=None, logger=None, tries=None, timeout=None):
         self.__host = host
         self.__username = username
         self.__password = password
@@ -78,6 +79,7 @@ class MMCEXEC:
         self.__share = share
         self.__dcom = None
         self.__tries = tries
+        self.__timeout = timeout
         self.logger = logger
 
         if hashes is not None:
@@ -98,6 +100,11 @@ class MMCEXEC:
         )
         try:
             iInterface = self.__dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
+            flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
+            if flag is False:
+                self.logger.fail(f'MMCEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+                # Make it force break function
+                self.__dcom.disconnect()
             iMMC = IDispatch(iInterface)
 
             resp = iMMC.GetIDsOfNames(("Document",))
