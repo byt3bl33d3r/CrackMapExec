@@ -98,7 +98,7 @@ class CMEModule:
                         else:
                             context.log.fail(str(e))
                         pass
-                        wmi_rdp._rdp_WMI__dcom.disconnect()
+                    wmi_rdp._rdp_WMI__dcom.disconnect()
                 else:
                     try:
                         wmi_rdp.rdp_Wrapper(self.action, self.oldSystem)
