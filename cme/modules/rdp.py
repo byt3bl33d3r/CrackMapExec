@@ -86,8 +86,8 @@ class CMEModule:
             except Exception as e:
                 context.log.fail(f"Unexpected wmi error: {str(e)}")
                 wmi_rdp._rdp_WMI__dcom.disconnect()
-            
-            if wmi_rdp:
+
+            if hasattr(wmi_rdp, '_rdp_WMI__iWbemLevel1Login'):
                 if "ram" in self.action:
                     # Nt version under 6 not support RAM.
                     try:
@@ -98,7 +98,7 @@ class CMEModule:
                         else:
                             context.log.fail(str(e))
                         pass
-                    wmi_rdp._rdp_WMI__dcom.disconnect()
+                        wmi_rdp._rdp_WMI__dcom.disconnect()
                 else:
                     try:
                         wmi_rdp.rdp_Wrapper(self.action, self.oldSystem)
@@ -237,7 +237,7 @@ class rdp_WMI:
                 self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the module option "DCOM-TIMEOUT=10". If it\'s still failing maybe something is blocking the RPC connection, try "METHOD=smb"')
                 # Make it force break function
                 self.__dcom.disconnect()
-                return False
+                return
         self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         
     def rdp_Wrapper(self, action, old=False):
