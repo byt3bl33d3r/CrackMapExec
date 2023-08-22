@@ -114,6 +114,7 @@ class rdp_SMB:
     def __init__(self, context, connection):
         self.context = context
         self.__smbconnection = connection.conn
+        self.__execute = connection.execute
         self.logger = context.log
 
     def rdp_Wrapper(self, action):
@@ -145,6 +146,8 @@ class rdp_SMB:
                 self.logger.success("Enable RDP via SMB(ncacn_np) successfully")
             elif int(data) == 1:
                 self.logger.success("Disable RDP via SMB(ncacn_np) successfully")
+            
+            self.firewall_CMD(action)
 
             if action == "enable":
                 self.query_RDPPort(remoteOps, regHandle)
@@ -179,9 +182,9 @@ class rdp_SMB:
             rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "DisableRestrictedAdmin")
 
             if int(data) == 0:
-                self.logger.success("Enable RDP Restricted Admin Mode via SMB(ncacn_np) successfully")
+                self.logger.success("Enable RDP Restricted Admin Mode via SMB(ncacn_np) succeed")
             elif int(data) == 1:
-                self.logger.success("Disable RDP Restricted Admin Mode via SMB(ncacn_np) successfully")
+                self.logger.success("Disable RDP Restricted Admin Mode via SMB(ncacn_np) succeed")
 
         try:
             remoteOps.finish()
@@ -200,6 +203,16 @@ class rdp_SMB:
             rtype, data = rrp.hBaseRegQueryValue(remoteOps._RemoteOperations__rrp, keyHandle, "PortNumber")
             
             self.logger.success(f"RDP Port: {str(data)}")
+
+    # https://github.com/rapid7/metasploit-framework/blob/master/modules/post/windows/manage/enable_rdp.rb
+    def firewall_CMD(self, action):
+        cmd = f"netsh firewall set service type = remotedesktop mode = {action}"
+        self.logger.info("Configure firewall via execute command.")
+        output = self.__execute(cmd, True)
+        if output:
+            self.logger.success(f"{action.capitalize()} RDP firewall rules via cmd succeed")
+        else:
+            self.logger.fail(f"{action.capitalize()} RDP firewall rules via cmd failed, maybe got detected by AV software.")
 
 class rdp_WMI:
     def __init__(self, context, connection, timeout):
@@ -252,7 +265,6 @@ class rdp_WMI:
             if action == 'enable':
                 self.logger.info("Enabled RDP services and setting up firewall.")
                 iWbemClassObject.SetAllowTSConnections(1,1)
-                self.query_RDPPort()
             elif action == 'disable':
                 self.logger.info("Disabled RDP services and setting up firewall.")
                 iWbemClassObject.SetAllowTSConnections(0,0)
@@ -264,12 +276,15 @@ class rdp_WMI:
             if action == 'enable':
                 self.logger.info("Enabling RDP services (old system not support setting up firewall)")
                 iWbemClassObject.SetAllowTSConnections(1)
-                self.query_RDPPort()
             elif action == 'disable':
                 self.logger.info("Disabling RDP services (old system not support setting up firewall)")
                 iWbemClassObject.SetAllowTSConnections(0)
-        # Need to create new iWbemServices interface in order to flush results
+        
         self.query_RDPResult(old)
+
+        if action == 'enable':
+            self.query_RDPPort()
+        # Need to create new iWbemServices interface in order to flush results
         
     def query_RDPResult(self, old=False):
         if old == False:
