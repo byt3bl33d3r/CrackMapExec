@@ -56,7 +56,10 @@ from dploot.lib.target import Target
 from dploot.lib.smb import DPLootSMBConnection
 
 from pywerview.cli.helpers import *
-from pywerview.requester import RPCRequester
+
+from impacket.dcerpc.v5.dtypes import NULL
+from impacket.dcerpc.v5.dcomrt import DCOMConnection
+from impacket.dcerpc.v5.dcom.wmi import CLSID_WbemLevel1Login, IID_IWbemLevel1Login, WBEM_FLAG_FORWARD_ONLY, IWbemLevel1Login
 
 from time import time
 from datetime import datetime
@@ -1208,45 +1211,55 @@ class smb(connection):
     def pass_pol(self):
         return PassPolDump(self).dump()
 
+    @requires_admin
     def wmi(self, wmi_query=None, namespace=None):
         records = []
+        if not wmi_query:
+            wmi_query = self.args.wmi.strip('\n')
+
         if not namespace:
             namespace = self.args.wmi_namespace
 
         try:
-            rpc = RPCRequester(
-                self.host,
-                self.domain,
-                self.username,
-                self.password,
-                self.lmhash,
-                self.nthash,
-            )
-            rpc._create_wmi_connection(namespace=namespace)
-
-            if wmi_query:
-                query = rpc._wmi_connection.ExecQuery(wmi_query, lFlags=WBEM_FLAG_FORWARD_ONLY)
-            else:
-                query = rpc._wmi_connection.ExecQuery(self.args.wmi, lFlags=WBEM_FLAG_FORWARD_ONLY)
+            dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.kerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
+            iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
+            flag, stringBinding =  dcom_FirewallChecker(iInterface, self.args.dcom_timeout)
+            if not flag:
+                self.logger.fail(f'WMI Query: Dcom initialization failed on connection with stringbinding: "{stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection')
+                # Make it force break function
+                dcom.disconnect()
+                return False
+            iWbemLevel1Login = IWbemLevel1Login(iInterface)
+            iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
+            iWbemLevel1Login.RemRelease()
+            iEnumWbemClassObject = iWbemServices.ExecQuery(wmi_query)
         except Exception as e:
-            self.logger.fail(f"Error creating WMI connection: {e}")
-            return records
-
-        while True:
+            self.logger.fail('Execute WQL error: {}'.format(e))
+            iWbemServices.RemRelease()
+            dcom.disconnect()
+            return False
+        else:
+            self.logger.info(f"Executing WQL syntax: {wmi_query}")
+            while True:
+                try:
+                    wmi_results = iEnumWbemClassObject.Next(0xffffffff, 1)[0]
+                    record = wmi_results.getProperties()
+                    records.append(record)
+                    for k,v in record.items():
+                        self.logger.highlight(f"{k} => {v['value']}")
+                except Exception as e:
+                    if str(e).find('S_FALSE') < 0:
+                        raise e
+                    else:
+                        break
             try:
-                wmi_results = query.Next(0xFFFFFFFF, 1)[0]
-                record = wmi_results.getProperties()
-                records.append(record)
-                for k, v in record.items():
-                    self.logger.highlight(f"{k} => {v['value']}")
-                self.logger.highlight("")
-            except Exception as e:
-                if str(e).find("S_FALSE") < 0:
-                    raise e
-                else:
-                    break
+                iEnumWbemClassObject.RemRelease()
+                iWbemServices.RemRelease()
+                dcom.disconnect()
+            except:
+                pass
 
-        return records
+            return records
 
     def spider(
         self,
