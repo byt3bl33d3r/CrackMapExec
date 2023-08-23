@@ -12,7 +12,7 @@ def proto_args(parser, std_parser, module_parser):
     dgroup.add_argument("--local-auth", action='store_true', help='Authenticate locally to each target')
 
     egroup = wmi_parser.add_argument_group("Mapping/Enumeration", "Options for Mapping/Enumerating")
-    egroup.add_argument("-q", metavar='QUERY', dest='wmi_query',type=str, help='Issues the specified WMI query')
+    egroup.add_argument("-q", metavar='QUERY', dest='wmi',type=str, help='Issues the specified WMI query')
     egroup.add_argument("--namespace", metavar='NAMESPACE', type=str, default='root\\cimv2', help='WMI Namespace (default: root\\cimv2)')
 
     cgroup = wmi_parser.add_argument_group("Command Execution", "Options for executing commands")

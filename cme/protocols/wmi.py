@@ -1,5 +1,6 @@
 import os, struct, logging
 
+from types import NoneType
 from io import StringIO
 from six import indexbytes
 from datetime import datetime
@@ -410,28 +411,36 @@ class wmi(connection):
 
     # It's very complex to use wmi from rpctansport "convert" to dcom, so let we use dcom directly. 
     @requires_admin
-    def wmi_query(self):
+    def wmi(self, WQL=None, namespace=None):
         results_WQL = "\r"
-        WQL = self.args.wmi_query.strip('\n')
+        records = []
+        if not WQL:
+            WQL = self.args.wmi.strip('\n')
+
+        if not namespace:
+            namespace = self.args.namespace
+
         try:
             dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
-            iWbemServices= iWbemLevel1Login.NTLMLogin(self.args.namespace , NULL, NULL)
+            iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
             iEnumWbemClassObject = iWbemServices.ExecQuery(WQL)
         except Exception as e:
             self.logger.fail('Execute WQL error: {}'.format(e))
             iWbemServices.RemRelease()
             dcom.disconnect()
+            return False
         else:
             self.logger.info(f"Executing WQL syntax: {WQL}")
             while True:
                 try:
                     wmi_results = iEnumWbemClassObject.Next(0xffffffff, 1)[0]
                     record = wmi_results.getProperties()
+                    records.append(record)
                     for k,v in record.items():
-                        results_WQL += '{} => {}\r\n'.format(k,v['value'])
+                        self.logger.highlight(f"{k} => {v['value']}")
                 except Exception as e:
                     if str(e).find('S_FALSE') < 0:
                         raise e
@@ -444,15 +453,13 @@ class wmi(connection):
             except:
                 pass
 
-            self.logger.success('Executed WQL: {}'.format(WQL))
-            buf = StringIO(results_WQL.rstrip('\r\n')).readlines()
-            for line in buf:
-                self.logger.highlight(line.strip())   
+            return records
 
     @requires_admin
-    def execute(self, get_output=False):
+    def execute(self, command=None, get_output=False):
         output = ""
-        command = self.args.execute
+        if not command:
+            command = self.args.execute
 
         if not self.args.no_output:
             get_output = True
@@ -488,11 +495,12 @@ class wmi(connection):
                 self.logger.fail('Execute command error: {}'.format(str(e)))
             self.conn.disconnect()
         
-        if self.args.execute:
-            if output == "" and get_output:
-                self.logger.fail("Execute command failed, probabaly got detection by AV.")
-            else:
-                self.logger.success(f'Executed command: "{command}" via {self.args.exec_method}')
-                buf = StringIO(output).readlines()
-                for line in buf:
-                    self.logger.highlight(line.strip())
+        if output == "" and get_output:
+            self.logger.fail("Execute command failed, probabaly got detection by AV.")
+            return False
+        else:
+            self.logger.success(f'Executed command: "{command}" via {self.args.exec_method}')
+            buf = StringIO(output).readlines()
+            for line in buf:
+                self.logger.highlight(line.strip())
+            return output
