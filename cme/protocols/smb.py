@@ -21,11 +21,13 @@ from impacket.dcerpc.v5.rpcrt import DCERPCException
 from impacket.dcerpc.v5.transport import DCERPCTransportFactory, SMBTransport
 from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_GSS_NEGOTIATE
 from impacket.dcerpc.v5.epm import MSRPC_UUID_PORTMAP
-from impacket.dcerpc.v5.dcom.wmi import WBEM_FLAG_FORWARD_ONLY
 from impacket.dcerpc.v5.samr import SID_NAME_USE
 from impacket.dcerpc.v5.dtypes import MAXIMUM_ALLOWED
 from impacket.krb5.kerberosv5 import SessionKeyDecryptionError
 from impacket.krb5.types import KerberosException
+from impacket.dcerpc.v5.dtypes import NULL
+from impacket.dcerpc.v5.dcomrt import DCOMConnection
+from impacket.dcerpc.v5.dcom.wmi import CLSID_WbemLevel1Login, IID_IWbemLevel1Login, WBEM_FLAG_FORWARD_ONLY, IWbemLevel1Login
 
 from cme.config import process_secret, host_info_colors
 from cme.connection import *
@@ -56,10 +58,6 @@ from dploot.lib.target import Target
 from dploot.lib.smb import DPLootSMBConnection
 
 from pywerview.cli.helpers import *
-
-from impacket.dcerpc.v5.dtypes import NULL
-from impacket.dcerpc.v5.dcomrt import DCOMConnection
-from impacket.dcerpc.v5.dcom.wmi import CLSID_WbemLevel1Login, IID_IWbemLevel1Login, WBEM_FLAG_FORWARD_ONLY, IWbemLevel1Login
 
 from time import time
 from datetime import datetime
