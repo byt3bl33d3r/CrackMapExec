@@ -54,6 +54,7 @@ pyasn1-modules = "^0.3.0"
 rich = "^13.3.5"
 python-libnmap = "^0.7.3"
 resource = "^0.2.1"
+oscrypto = { git = "https://github.com/NeffIsBack/oscrypto" }
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "*"
