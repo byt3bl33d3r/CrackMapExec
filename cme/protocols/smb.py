@@ -1219,7 +1219,18 @@ class smb(connection):
             namespace = self.args.wmi_namespace
 
         try:
-            dcom = DCOMConnection(self.host, self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.kerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
+            dcom = DCOMConnection(
+                self.host if not self.kerberos else self.hostname + "." + self.domain,
+                self.username,
+                self.password,
+                self.domain,
+                self.lmhash,
+                self.nthash,
+                oxidResolver=True,
+                doKerberos=self.kerberos,
+                kdcHost=self.kdcHost,
+                aesKey=self.aesKey
+            )
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             flag, stringBinding =  dcom_FirewallChecker(iInterface, self.args.dcom_timeout)
             if not flag:
