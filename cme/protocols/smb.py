@@ -1235,7 +1235,6 @@ class smb(connection):
             iEnumWbemClassObject = iWbemServices.ExecQuery(wmi_query)
         except Exception as e:
             self.logger.fail('Execute WQL error: {}'.format(e))
-            iWbemServices.RemRelease()
             dcom.disconnect()
             return False
         else:
@@ -1254,7 +1253,6 @@ class smb(connection):
                         break
             try:
                 iEnumWbemClassObject.RemRelease()
-                iWbemServices.RemRelease()
                 dcom.disconnect()
             except:
                 pass
