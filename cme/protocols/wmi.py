@@ -1,6 +1,5 @@
 import os, struct, logging
 
-from types import NoneType
 from io import StringIO
 from six import indexbytes
 from datetime import datetime
