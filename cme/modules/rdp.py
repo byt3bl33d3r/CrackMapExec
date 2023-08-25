@@ -28,8 +28,10 @@ class CMEModule:
 
     def options(self, context, module_options):
         """
-        ACTION       Enable/Disable RDP (choices: enable, disable, enable-ram, disable-ram)
-        METHOD       wmi(ncacn_ip_tcp)/smb(ncacn_np) (choices: wmi, smb, default is wmi)
+        ACTION          Enable/Disable RDP (choices: enable, disable, enable-ram, disable-ram)
+        METHOD          wmi(ncacn_ip_tcp)/smb(ncacn_np) (choices: wmi, smb, default is wmi)
+        OLD             For old version system (under NT6, like: server 2003)
+        DCOM-TIMEOUT    Set the Dcom connection timeout for WMI method
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o ACTION={enable, disable, enable-ram, disable-ram} {OLD=true} {DCOM-TIMEOUT=5}
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o METHOD=smb ACTION={enable, disable, enable-ram, disable-ram}
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o METHOD=wmi ACTION={enable, disable, enable-ram, disable-ram} {OLD=true} {DCOM-TIMEOUT=5}
@@ -70,7 +72,7 @@ class CMEModule:
     def on_admin_login(self, context, connection):
         # Preparation for wmi protocol
         if self.method == "smb":
-            context.log.info("Doing action with SMB(ncacn_np)")
+            context.log.info("Executing over SMB(ncacn_np)")
             try:
                 smb_rdp = rdp_SMB(context, connection)
                 if "ram" in self.action:
@@ -80,7 +82,7 @@ class CMEModule:
             except Exception as e:
                 context.log.fail(f"Enable RDP via smb error: {str(e)}")
         elif self.method == "wmi":
-            context.log.info("Doing action with WMI(ncacn_ip_tcp)")
+            context.log.info("Executing over WMI(ncacn_ip_tcp)")
             try:
                 wmi_rdp = rdp_WMI(context, connection, self.dcom_timeout)
             except Exception as e:
