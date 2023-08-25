@@ -503,7 +503,7 @@ class HostChecker:
 
     def check_last_successful_update(self):
         records = self.connection.wmi(wmi_query='Select TimeGenerated FROM Win32_ReliabilityRecords Where EventIdentifier=19', namespace='root\\cimv2')
-        if len(records) == 0:
+        if isinstance(records, bool) or len(records) == 0:
             return False, ['No update found']
         most_recent_update_date = records[0]['TimeGenerated']['value']
         most_recent_update_date = most_recent_update_date.split('.')[0]
