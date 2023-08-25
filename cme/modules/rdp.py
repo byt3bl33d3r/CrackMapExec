@@ -31,7 +31,7 @@ class CMEModule:
         ACTION          Enable/Disable RDP (choices: enable, disable, enable-ram, disable-ram)
         METHOD          wmi(ncacn_ip_tcp)/smb(ncacn_np) (choices: wmi, smb, default is wmi)
         OLD             For old version system (under NT6, like: server 2003)
-        DCOM-TIMEOUT    Set the Dcom connection timeout for WMI method
+        DCOM-TIMEOUT    Set the Dcom connection timeout for WMI method (Default is 10 seconds)
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o ACTION={enable, disable, enable-ram, disable-ram} {OLD=true} {DCOM-TIMEOUT=5}
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o METHOD=smb ACTION={enable, disable, enable-ram, disable-ram}
         cme smb 192.168.1.1 -u {user} -p {password} -M rdp -o METHOD=wmi ACTION={enable, disable, enable-ram, disable-ram} {OLD=true} {DCOM-TIMEOUT=5}
