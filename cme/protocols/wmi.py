@@ -172,6 +172,9 @@ class wmi(connection):
         return True
 
     def check_if_admin(self):
+        if self.conn.getRemoteName() == self.domain:
+            self.logger.fail("Check admin error: get stringbinding failed: please use '-k' or '--local-auth' when your target is domain controller's hostname.")
+            return
         try:
             dcom = DCOMConnection(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, oxidResolver=True, doKerberos=self.doKerberos ,kdcHost=self.kdcHost, aesKey=self.aesKey)
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
