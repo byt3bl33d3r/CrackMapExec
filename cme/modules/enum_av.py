@@ -518,8 +518,36 @@ conf = {
                 {
                     "name": "exploitProtectionIPC",
                     "processes": ["AVKWCtlx64.exe"],
-                }
+                },
+            ],
+        },
+        {
+            "name": "Panda Adaptive Defense 360",
+            "services": [
+                {
+                    "name": "PandaAetherAgent",
+                    "description": "Panda Endpoint Agent",
+                },
+                {
+                    "name": "PSUAService", 
+                    "description": "Panda Product Service"
+                },
+                {
+                    "name": "NanoServiceMain",
+                    "description": "Panda Cloud Antivirus Service",
+                },
+            ],
+            "pipes": [
+                {
+                    "name": "NNS_API_IPC_SRV_ENDPOINT",
+                    "processes": ["PSANHost.exe"],
+                },
+                {
+                    "name": "PSANMSrvcPpal",
+                    "processes": ["PSUAService.exe"],
+                },
             ],
         }
+        
     ]
 }

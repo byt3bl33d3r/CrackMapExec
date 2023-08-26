@@ -15,6 +15,8 @@ from cme.helpers.logger import highlight
 from cme.logger import cme_logger, CMEAdapter
 from cme.context import Context
 
+from impacket.dcerpc.v5 import transport
+
 sem = BoundedSemaphore(1)
 global_failed_logins = 0
 user_failed_logins = {}
@@ -31,7 +33,6 @@ def gethost_addrinfo(hostname):
         return sa[0]
     return canonname
 
-
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
         if self.admin_privs is False:
@@ -40,6 +41,31 @@ def requires_admin(func):
 
     return wraps(func)(_decorator)
 
+def dcom_FirewallChecker(iInterface, timeout):
+    stringBindings = iInterface.get_cinstance().get_string_bindings()
+    for strBinding in stringBindings:
+        if strBinding['wTowerId'] == 7:
+            if strBinding['aNetworkAddr'].find('[') >= 0:
+                binding, _, bindingPort = strBinding['aNetworkAddr'].partition('[')
+                bindingPort = '[' + bindingPort
+            else:
+                binding = strBinding['aNetworkAddr']
+                bindingPort = ''
+
+            if binding.upper().find(iInterface.get_target().upper()) >= 0:
+                stringBinding = 'ncacn_ip_tcp:' + strBinding['aNetworkAddr'][:-1]
+                break
+            elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
+                stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
+    try:
+        rpctransport = transport.DCERPCTransportFactory(stringBinding)
+        rpctransport.set_connect_timeout(timeout)
+        rpctransport.connect()
+        rpctransport.disconnect()
+    except:
+        return False, stringBinding
+    else:
+        return True, stringBinding
 
 class connection(object):
     def __init__(self, args, db, host):

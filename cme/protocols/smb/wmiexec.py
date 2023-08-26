@@ -4,6 +4,7 @@
 import ntpath
 import os
 from time import sleep
+from cme.connection import dcom_FirewallChecker
 from cme.helpers.misc import gen_random_string
 from impacket.dcerpc.v5 import transport
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
@@ -73,39 +74,16 @@ class WMIEXEC:
             kdcHost=self.__kdcHost,
         )
         iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
-        try:
-            self.firewall_check(iInterface, self.__timeout)
-        except:
-            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--wmiexec-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+        flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
+        if flag is False:
+            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+            # Make it force break function
             self.__dcom.disconnect()
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()
         self.__win32Process, _ = iWbemServices.GetObject("Win32_Process")
 
-    def firewall_check(self, iInterface ,timeout):
-        stringBindings = iInterface.get_cinstance().get_string_bindings()
-        for strBinding in stringBindings:
-            if strBinding['wTowerId'] == 7:
-                if strBinding['aNetworkAddr'].find('[') >= 0:
-                    binding, _, bindingPort = strBinding['aNetworkAddr'].partition('[')
-                    bindingPort = '[' + bindingPort
-                else:
-                    binding = strBinding['aNetworkAddr']
-                    bindingPort = ''
-
-                if binding.upper().find(iInterface.get_target().upper()) >= 0:
-                    stringBinding = 'ncacn_ip_tcp:' + strBinding['aNetworkAddr'][:-1]
-                    break
-                elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
-                    stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
-        
-        self.__stringBinding = stringBinding
-        rpctransport = transport.DCERPCTransportFactory(stringBinding)
-        rpctransport.set_connect_timeout(timeout)
-        rpctransport.connect()
-        rpctransport.disconnect()
-        
     def execute(self, command, output=False):
         self.__retOutput = output
         if self.__retOutput:

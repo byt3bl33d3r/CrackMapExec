@@ -141,8 +141,7 @@ class TSCH_EXEC:
         dce.set_credentials(*self.__rpctransport.get_credentials())
         dce.connect()
         # dce.set_auth_level(ntlm.NTLM_AUTH_PKT_PRIVACY)
-        dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
-        dce.bind(tsch.MSRPC_UUID_TSCHS)
+        
         tmpName = gen_random_string(8)
         tmpFileName = tmpName + ".tmp"
 
@@ -152,11 +151,18 @@ class TSCH_EXEC:
         taskCreated = False
         self.logger.info(f"Creating task \\{tmpName}")
         try:
+            # windows server 2003 has no MSRPC_UUID_TSCHS, if it bind, it will return abstract_syntax_not_supported
+            dce.set_auth_level(RPC_C_AUTHN_LEVEL_PKT_PRIVACY)
+            dce.bind(tsch.MSRPC_UUID_TSCHS)
             tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
         except Exception as e:
-            self.logger.fail(str(e))
+            if hex(e.error_code) == "0x80070005":
+                self.logger.fail("ATEXEC: Create schedule task got blocked.")
+            else:
+                self.logger.fail(str(e))
             return
-        taskCreated = True
+        else:
+            taskCreated = True
 
         self.logger.info(f"Running task \\{tmpName}")
         tsch.hSchRpcRun(dce, f"\\{tmpName}")
