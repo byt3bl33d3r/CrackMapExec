@@ -13,7 +13,7 @@ class CMEModule:
 
     name = "enum_dns"
     description = "Uses WMI to dump DNS from an AD DNS Server"
-    supported_protocols = ["smb"]
+    supported_protocols = ["wmi"]
     opsec_safe = True
     multiple_hosts = True
 
@@ -72,4 +72,4 @@ class CMEModule:
 
         log_name = "DNS-Enum-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(data, log_name)
-        context.log.display(f"Saved raw output to {log_name}")
+        context.log.display(f"Saved raw output to ~/.cme/logs/{log_name}")

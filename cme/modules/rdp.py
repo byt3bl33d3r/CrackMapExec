@@ -16,7 +16,6 @@ from impacket.dcerpc.v5.rpcrt import RPC_C_AUTHN_LEVEL_PKT_PRIVACY
 class CMEModule:
     name = "rdp"
     description = "Enables/Disables RDP"
-    #supported_protocols = ["smb"]
     supported_protocols = ["smb" ,"wmi"]
     opsec_safe = True
     multiple_hosts = True
