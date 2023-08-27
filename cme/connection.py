@@ -29,9 +29,9 @@ def gethost_addrinfo(hostname):
     except socket.gaierror:
         for res in getaddrinfo( hostname, None, AF_INET, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-    if canonname == "":
-        return sa[0]
-    return canonname
+    if not sa[0]:
+        return canonname
+    return sa[0]
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
@@ -89,6 +89,7 @@ class connection(object):
             self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
+            self.logger.info(f"Socket info: host={self.host}, hostname={self.hostname}, kerberos={ 'True' if self.args.kerberos else 'False' }")
         except Exception as e:
             self.logger.info(f"Error resolving hostname {self.hostname}: {e}")
             return
