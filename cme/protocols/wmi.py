@@ -254,13 +254,15 @@ class wmi(connection):
             dce.disconnect()
             error_msg = str(e).lower()
             if "unpack requires a buffer of 4 bytes" in error_msg:
-                self.logger.fail("Kerberos authentication failure")
+                error_msg = "Kerberos authentication failure"
+                out = f"{self.domain}\\{self.username}{used_ccache} {error_msg}"
+                self.logger.fail(out)
             elif "kerberos sessionerror" in str(e).lower():
-                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, list(e.getErrorString())[0])
+                out = f"{self.domain}\\{self.username}{used_ccache} {list(e.getErrorString())[0]}"
                 self.logger.fail(out, color="magenta")
                 return False
             else:
-                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, str(e))
+                out = f"{self.domain}\\{self.username}{used_ccache} {str(e)}"
                 self.logger.fail(out, color="red")
                 return False
         else:
@@ -281,14 +283,14 @@ class wmi(connection):
                 for code in self.rpc_error_status.keys():
                     if code in error_msg:
                         error_msg = self.rpc_error_status[code]
-                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, error_msg.upper())
+                out = f"{self.domain}\\{self.username}{used_ccache} {error_msg.upper()}"
                 self.logger.fail(out, color=("red" if "access_denied" in error_msg else "magenta"))
                 return False
             else:
                 self.doKerberos = True
                 self.check_if_admin()
                 dce.disconnect()
-                out = "{}\\{}{} {}".format(self.domain, username, used_ccache, self.mark_pwned())
+                out = f"{self.domain}\\{self.username}{used_ccache} {self.mark_pwned()}"
                 self.logger.success(out)
                 return True
 
@@ -305,7 +307,7 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
-            out = "{}\\{}{} {}".format(self.domain, username, password, str(e))
+            out = f"{self.domain}\\{self.username}:{process_secret(self.password)} {str(e)}"
             self.logger.fail(out, color="red")
         else:
             try:
@@ -358,7 +360,7 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
-            out = "{}\\{}{} {}".format(self.domain, username, nthash, str(e))
+            out = f"{domain}\\{self.username}:{process_secret(self.nthash)} {str(e)}"
             self.logger.fail(out, color="red")
         else:
             try:
