@@ -186,12 +186,12 @@ class wmi(connection):
                 self.logger.fail(str(e))
         else:
             if not flag or not self.stringBinding:
-                error_msg = f'dcom initialization failed with stringbinding: "{self.stringBinding}", please try "--rpc-timeout" option. (probably is admin)'
+                error_msg = f'Check admin error: dcom initialization failed with stringbinding: "{self.stringBinding}", please try "--rpc-timeout" option. (probably is admin)'
                 
                 if not self.stringBinding:
                     error_msg = "Check admin error: dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
                 
-                self.logger.fail(f'Check admin error: {error_msg}')
+                self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
                 try:
                     dcom.disconnect()
                 except:
