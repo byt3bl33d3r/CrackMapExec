@@ -156,7 +156,7 @@ class TSCH_EXEC:
             dce.bind(tsch.MSRPC_UUID_TSCHS)
             tsch.hSchRpcRegisterTask(dce, f"\\{tmpName}", xml, tsch.TASK_CREATE, NULL, tsch.TASK_LOGON_NONE)
         except Exception as e:
-            if hex(e.error_code) == "0x80070005":
+            if e.error_code and hex(e.error_code) == "0x80070005":
                 self.logger.fail("ATEXEC: Create schedule task got blocked.")
             else:
                 self.logger.fail(str(e))
