@@ -58,6 +58,8 @@ def dcom_FirewallChecker(iInterface, timeout):
                 break
             elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
                 stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
+    if "stringBinding" not in locals():
+        return False, None
     try:
         rpctransport = transport.DCERPCTransportFactory(stringBinding)
         rpctransport.set_connect_timeout(timeout)
