@@ -108,7 +108,6 @@ class MMCEXEC:
                     error_msg = "MMCEXEC: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
                 
                 self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
-                # Make it force break function
                 try:
                     self.__dcom.disconnect()
                 except:
@@ -139,7 +138,10 @@ class MMCEXEC:
         except Exception as e:
             self.exit()
             self.logger.fail(str(e))
-            self.__dcom.disconnect()
+            try:
+                self.__dcom.disconnect()
+            except:
+                pass
 
     def getInterface(self, interface, resp):
         # Now let's parse the answer and build an Interface instance

@@ -262,7 +262,10 @@ class rdp_WMI:
             self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         except Exception as e:
             self.logger.fail(f'Unexpected wmi error: {str(e)}, please try to use "-o" with "METHOD=smb"')
-            self.__dcom.disconnect()
+            try:
+                self.__dcom.disconnect()
+            except:
+                pass
         
     def rdp_Wrapper(self, action, old=False):
         if old == False:
