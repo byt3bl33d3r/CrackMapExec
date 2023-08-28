@@ -100,48 +100,44 @@ class MMCEXEC:
         )
         try:
             iInterface = self.__dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
-            flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
-            if not flag or not self.__stringBinding:
-                error_msg = f'MMCEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
-                
-                if not self.__stringBinding:
-                    error_msg = "MMCEXEC: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
-                
-                self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
-                try:
-                    self.__dcom.disconnect()
-                except:
-                    pass
-            iMMC = IDispatch(iInterface)
-
-            resp = iMMC.GetIDsOfNames(("Document",))
-
-            dispParams = DISPPARAMS(None, False)
-            dispParams["rgvarg"] = NULL
-            dispParams["rgdispidNamedArgs"] = NULL
-            dispParams["cArgs"] = 0
-            dispParams["cNamedArgs"] = 0
-            resp = iMMC.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
-
-            iDocument = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
-            resp = iDocument.GetIDsOfNames(("ActiveView",))
-            resp = iDocument.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
-
-            iActiveView = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
-            pExecuteShellCommand = iActiveView.GetIDsOfNames(("ExecuteShellCommand",))[0]
-
-            pQuit = iMMC.GetIDsOfNames(("Quit",))[0]
-
-            self.__quit = (iMMC, pQuit)
-            self.__executeShellCommand = (iActiveView, pExecuteShellCommand)
-
-        except Exception as e:
-            self.exit()
-            self.logger.fail(str(e))
+        except:
+            # Make it force break function
+            self.__dcom.disconnect()
+        flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
+        if not flag or not self.__stringBinding:
+            error_msg = f'MMCEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+            
+            if not self.__stringBinding:
+                error_msg = "MMCEXEC: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+            
+            self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
             try:
+                # Make it force break function
                 self.__dcom.disconnect()
             except:
                 pass
+        iMMC = IDispatch(iInterface)
+
+        resp = iMMC.GetIDsOfNames(("Document",))
+
+        dispParams = DISPPARAMS(None, False)
+        dispParams["rgvarg"] = NULL
+        dispParams["rgdispidNamedArgs"] = NULL
+        dispParams["cArgs"] = 0
+        dispParams["cNamedArgs"] = 0
+        resp = iMMC.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
+
+        iDocument = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
+        resp = iDocument.GetIDsOfNames(("ActiveView",))
+        resp = iDocument.Invoke(resp[0], 0x409, DISPATCH_PROPERTYGET, dispParams, 0, [], [])
+
+        iActiveView = IDispatch(self.getInterface(iMMC, resp["pVarResult"]["_varUnion"]["pdispVal"]["abData"]))
+        pExecuteShellCommand = iActiveView.GetIDsOfNames(("ExecuteShellCommand",))[0]
+
+        pQuit = iMMC.GetIDsOfNames(("Quit",))[0]
+
+        self.__quit = (iMMC, pQuit)
+        self.__executeShellCommand = (iActiveView, pExecuteShellCommand)
 
     def getInterface(self, interface, resp):
         # Now let's parse the answer and build an Interface instance
@@ -178,13 +174,16 @@ class MMCEXEC:
         return self.__outputBuffer
 
     def exit(self):
-        dispParams = DISPPARAMS(None, False)
-        dispParams["rgvarg"] = NULL
-        dispParams["rgdispidNamedArgs"] = NULL
-        dispParams["cArgs"] = 0
-        dispParams["cNamedArgs"] = 0
+        try:
+            dispParams = DISPPARAMS(None, False)
+            dispParams["rgvarg"] = NULL
+            dispParams["rgdispidNamedArgs"] = NULL
+            dispParams["cArgs"] = 0
+            dispParams["cNamedArgs"] = 0
 
-        self.__quit[0].Invoke(self.__quit[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
+            self.__quit[0].Invoke(self.__quit[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
+        except:
+            pass
         return True
 
     def execute_remote(self, data):
