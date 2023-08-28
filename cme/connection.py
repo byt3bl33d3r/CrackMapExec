@@ -9,6 +9,7 @@ from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
 from time import sleep
+from ipaddress import ip_address
 
 from cme.config import pwned_label
 from cme.helpers.logger import highlight
@@ -26,12 +27,12 @@ def gethost_addrinfo(hostname):
     try:
         for res in getaddrinfo( hostname, None, AF_INET6, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
+        host = canonname if ip_address(sa[0]).is_link_local else sa[0]
     except socket.gaierror:
         for res in getaddrinfo( hostname, None, AF_INET, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-    if not sa[0]:
-        return canonname
-    return sa[0]
+        host = canonname if not sa[0] else sa[0]
+    return host
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
