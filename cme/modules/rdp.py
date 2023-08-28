@@ -249,7 +249,7 @@ class rdp_WMI:
         if self.__currentprotocol == "smb":
             flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
             if not flag or not self.__stringBinding:
-                error_msg = f'Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+                error_msg = f'Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the module option "DCOM-TIMEOUT=10". If it\'s still failing maybe something is blocking the RPC connection, try "METHOD=smb"'
                 
                 if not self.__stringBinding:
                     error_msg = "Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
