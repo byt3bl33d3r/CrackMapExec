@@ -75,10 +75,17 @@ class WMIEXEC:
         )
         iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
         flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
-        if flag is False:
-            self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+        if not flag or not self.__stringBinding:
+            error_msg = f'Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+            
+            if not self.__stringBinding:
+                error_msg = "Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+            
+            self.logger.fail(f'WMIEXEC: {error_msg}')
             # Make it force break function
             self.__dcom.disconnect()
+        if not self.__stringBinding:
+            self.logger.fail()
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()

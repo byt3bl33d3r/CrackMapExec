@@ -248,11 +248,15 @@ class rdp_WMI:
         iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
         if self.__currentprotocol == "smb":
             flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
-            if not flag:
-                self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the module option "DCOM-TIMEOUT=10". If it\'s still failing maybe something is blocking the RPC connection, try "METHOD=smb"')
+            if not flag or not self.__stringBinding:
+                error_msg = f'Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+                
+                if not self.__stringBinding:
+                    error_msg = "Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+                
+                self.logger.fail(f'WMIEXEC: {error_msg}')
                 # Make it force break function
                 self.__dcom.disconnect()
-                return
         self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         
     def rdp_Wrapper(self, action, old=False):

@@ -31,7 +31,7 @@ def gethost_addrinfo(hostname):
     except socket.gaierror:
         for res in getaddrinfo( hostname, None, AF_INET, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-        host = canonname if not sa[0] else sa[0]
+        host = sa[0] if sa[0] else canonname
     return host
 
 def requires_admin(func):
@@ -59,7 +59,7 @@ def dcom_FirewallChecker(iInterface, timeout):
             elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
                 stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
     if "stringBinding" not in locals():
-        return False, None
+        return True, None
     try:
         rpctransport = transport.DCERPCTransportFactory(stringBinding)
         rpctransport.set_connect_timeout(timeout)

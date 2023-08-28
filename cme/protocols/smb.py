@@ -1233,11 +1233,15 @@ class smb(connection):
             )
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             flag, stringBinding =  dcom_FirewallChecker(iInterface, self.args.dcom_timeout)
-            if not flag:
-                self.logger.fail(f'WMI Query: Dcom initialization failed on connection with stringbinding: "{stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection')
+            if not flag or not stringBinding:
+                error_msg = f'Dcom initialization failed on connection with stringbinding: "{stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+                
+                if not self.__stringBinding:
+                    error_msg = "Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+                
+                self.logger.fail(f'WMI Query: {error_msg}')
                 # Make it force break function
                 dcom.disconnect()
-                return False
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
