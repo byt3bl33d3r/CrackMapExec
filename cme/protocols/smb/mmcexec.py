@@ -101,10 +101,18 @@ class MMCEXEC:
         try:
             iInterface = self.__dcom.CoCreateInstanceEx(string_to_bin("49B2791A-B1AE-4C90-9B8E-E860BA07F889"), IID_IDispatch)
             flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
-            if flag is False:
-                self.logger.fail(f'MMCEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method')
+            if not flag or not self.__stringBinding:
+                error_msg = f'MMCEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+                
+                if not self.__stringBinding:
+                    error_msg = "MMCEXEC: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+                
+                self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
                 # Make it force break function
-                self.__dcom.disconnect()
+                try:
+                    self.__dcom.disconnect()
+                except:
+                    pass
             iMMC = IDispatch(iInterface)
 
             resp = iMMC.GetIDsOfNames(("Document",))

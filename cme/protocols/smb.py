@@ -1234,22 +1234,23 @@ class smb(connection):
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login,IID_IWbemLevel1Login)
             flag, stringBinding =  dcom_FirewallChecker(iInterface, self.args.dcom_timeout)
             if not flag or not stringBinding:
-                error_msg = f'Dcom initialization failed on connection with stringbinding: "{stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
+                error_msg = f'WMI Query: Dcom initialization failed on connection with stringbinding: "{stringBinding}", please increase the timeout with the option "--dcom-timeout". If it\'s still failing maybe something is blocking the RPC connection, try another exec method'
                 
-                if not self.__stringBinding:
-                    error_msg = "Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+                if not stringBinding:
+                    error_msg = "WMI Query: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
                 
-                self.logger.fail(f'WMI Query: {error_msg}')
+                self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
                 # Make it force break function
-                dcom.disconnect()
+                try:
+                    dcom.disconnect()
+                except:
+                    pass
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
             iEnumWbemClassObject = iWbemServices.ExecQuery(wmi_query)
         except Exception as e:
             self.logger.fail('Execute WQL error: {}'.format(e))
-            dcom.disconnect()
-            return False
         else:
             self.logger.info(f"Executing WQL syntax: {wmi_query}")
             while True:
@@ -1264,13 +1265,12 @@ class smb(connection):
                         raise e
                     else:
                         break
-            try:
-                iEnumWbemClassObject.RemRelease()
-                dcom.disconnect()
-            except:
-                pass
+        try:
+            dcom.disconnect()
+        except:
+            pass
 
-            return records
+        return records if records else False
 
     def spider(
         self,
