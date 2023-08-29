@@ -824,7 +824,7 @@ class ldap(connection):
     def dc_list(self):
         
         # Building the search filter
-        search_filter = "(objectClass=computer)"
+        search_filter = "(&(objectCategory=computer)(primaryGroupId=516))"
         attributes = ["dNSHostName"]
         resp = self.search(search_filter, attributes, 0)
         if resp:
@@ -835,19 +835,19 @@ class ldap(connection):
                     continue
                 name = ""
                 try:
-                	if "OU=Domain Controllers" in str(item):               	    
-                	    for attribute in item["attributes"]:     
-                	        if str(attribute["type"]) == "dNSHostName":
-                	            name = str(attribute["vals"][0])
+                	               	    
+                	for attribute in item["attributes"]:     
+                	    if str(attribute["type"]) == "dNSHostName":
+                	        name = str(attribute["vals"][0])
                 	try:
                 	    ip_address = socket.gethostbyname(name.split(".")[0])
                 	    if ip_address != True and name != "":
                 	        self.logger.highlight(f"{name} =", ip_address) 	    
                 	except socket.gaierror:
-                	    self.logger.highlight(f"{name} = Connection timeout")
+                	    self.logger.fail(f"{name} = Connection timeout")
                 except Exception as e:
-                    self.logger.debug("Exception:", exc_info=True)
-                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    self.logger.fail("Exception:", exc_info=True)
+                    self.logger.fail(f"Skipping item, cannot process due to error {e}")
                     pass
             return
         
