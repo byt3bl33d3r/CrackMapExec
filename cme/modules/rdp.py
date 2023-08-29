@@ -83,12 +83,10 @@ class CMEModule:
                 context.log.fail(f"Enable RDP via smb error: {str(e)}")
         elif self.method == "wmi":
             context.log.info("Executing over WMI(ncacn_ip_tcp)")
-            try:
-                wmi_rdp = rdp_WMI(context, connection, self.dcom_timeout)
-            except:
-                pass
 
-            if "wmi_rdp" in locals() and hasattr(wmi_rdp, '_rdp_WMI__iWbemLevel1Login'):
+            wmi_rdp = rdp_WMI(context, connection, self.dcom_timeout)
+
+            if hasattr(wmi_rdp, '_rdp_WMI__iWbemLevel1Login'):
                 if "ram" in self.action:
                     # Nt version under 6 not support RAM.
                     try:
@@ -259,7 +257,8 @@ class rdp_WMI:
             self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         except Exception as e:
             self.logger.fail(f'Unexpected wmi error: {str(e)}, please try to use "-o" with "METHOD=smb"')
-            self.__dcom.disconnect()
+            if self.__iWbemLevel1Login in locals():
+                self.__dcom.disconnect()
 
     def rdp_Wrapper(self, action, old=False):
         if old == False:

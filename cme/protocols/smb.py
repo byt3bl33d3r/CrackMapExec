@@ -1248,7 +1248,8 @@ class smb(connection):
             iEnumWbemClassObject = iWbemServices.ExecQuery(wmi_query)
         except Exception as e:
             self.logger.fail('Execute WQL error: {}'.format(e))
-            dcom.disconnect()
+            if "iWbemLevel1Login" in locals():
+                dcom.disconnect()
         else:
             self.logger.info(f"Executing WQL syntax: {wmi_query}")
             while True:
