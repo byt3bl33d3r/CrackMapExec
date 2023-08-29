@@ -82,7 +82,7 @@ class CMEModule:
             for trust in trusts:
                 context.log.highlight(f'{trust[1]} -> {trust[2]} -> {trust[3]}')
         else:
-            context.log.info('No trust relationships found')
+            context.log.display('No trust relationships found')
 
         return True
 
