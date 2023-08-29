@@ -9,6 +9,7 @@ from os.path import isfile
 from threading import BoundedSemaphore
 from functools import wraps
 from time import sleep
+from ipaddress import ip_address
 
 from cme.config import pwned_label
 from cme.helpers.logger import highlight
@@ -26,12 +27,12 @@ def gethost_addrinfo(hostname):
     try:
         for res in getaddrinfo( hostname, None, AF_INET6, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
+        host = canonname if ip_address(sa[0]).is_link_local else sa[0]
     except socket.gaierror:
         for res in getaddrinfo( hostname, None, AF_INET, SOCK_DGRAM, IPPROTO_IP, AI_CANONNAME):
             af, socktype, proto, canonname, sa = res
-    if canonname == "":
-        return sa[0]
-    return canonname
+        host = sa[0] if sa[0] else canonname
+    return host
 
 def requires_admin(func):
     def _decorator(self, *args, **kwargs):
@@ -57,6 +58,8 @@ def dcom_FirewallChecker(iInterface, timeout):
                 break
             elif iInterface.is_fqdn() and binding.upper().find(iInterface.get_target().upper().partition('.')[0]) >= 0:
                 stringBinding = 'ncacn_ip_tcp:%s%s' % (iInterface.get_target(), bindingPort)
+    if "stringBinding" not in locals():
+        return True, None
     try:
         rpctransport = transport.DCERPCTransportFactory(stringBinding)
         rpctransport.set_connect_timeout(timeout)
@@ -89,6 +92,7 @@ class connection(object):
             self.host = gethost_addrinfo(self.hostname)
             if self.args.kerberos:
                 self.host = self.hostname
+            self.logger.info(f"Socket info: host={self.host}, hostname={self.hostname}, kerberos={ 'True' if self.args.kerberos else 'False' }")
         except Exception as e:
             self.logger.info(f"Error resolving hostname {self.hostname}: {e}")
             return

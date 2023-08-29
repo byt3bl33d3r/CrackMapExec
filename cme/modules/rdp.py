@@ -83,11 +83,8 @@ class CMEModule:
                 context.log.fail(f"Enable RDP via smb error: {str(e)}")
         elif self.method == "wmi":
             context.log.info("Executing over WMI(ncacn_ip_tcp)")
-            try:
-                wmi_rdp = rdp_WMI(context, connection, self.dcom_timeout)
-            except Exception as e:
-                context.log.fail(f"Unexpected wmi error: {str(e)}")
-                wmi_rdp._rdp_WMI__dcom.disconnect()
+
+            wmi_rdp = rdp_WMI(context, connection, self.dcom_timeout)
 
             if hasattr(wmi_rdp, '_rdp_WMI__iWbemLevel1Login'):
                 if "ram" in self.action:
@@ -100,7 +97,6 @@ class CMEModule:
                         else:
                             context.log.fail(str(e))
                         pass
-                    wmi_rdp._rdp_WMI__dcom.disconnect()
                 else:
                     try:
                         wmi_rdp.rdp_Wrapper(self.action, self.oldSystem)
@@ -110,7 +106,7 @@ class CMEModule:
                         else:
                             context.log.fail(str(e))
                         pass
-                    wmi_rdp._rdp_WMI__dcom.disconnect()
+                wmi_rdp._rdp_WMI__dcom.disconnect()
 
 class rdp_SMB:
     def __init__(self, context, connection):
@@ -232,29 +228,38 @@ class rdp_WMI:
         self.__aesKey=connection.aesKey
         self.__timeout = timeout
 
-        self.__dcom = DCOMConnection(
-            self.__target,
-            self.__username,
-            self.__password,
-            self.__domain,
-            self.__lmhash,
-            self.__nthash,
-            self.__aesKey,
-            oxidResolver=True,
-            doKerberos=self.__doKerberos,
-            kdcHost=self.__kdcHost,
-        )
+        try:
+            self.__dcom = DCOMConnection(
+                self.__target,
+                self.__username,
+                self.__password,
+                self.__domain,
+                self.__lmhash,
+                self.__nthash,
+                self.__aesKey,
+                oxidResolver=True,
+                doKerberos=self.__doKerberos,
+                kdcHost=self.__kdcHost,
+            )
 
-        iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
-        if self.__currentprotocol == "smb":
-            flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
-            if not flag:
-                self.logger.fail(f'WMIEXEC: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the module option "DCOM-TIMEOUT=10". If it\'s still failing maybe something is blocking the RPC connection, try "METHOD=smb"')
-                # Make it force break function
+            iInterface = self.__dcom.CoCreateInstanceEx(wmi.CLSID_WbemLevel1Login, wmi.IID_IWbemLevel1Login)
+            if self.__currentprotocol == "smb":
+                flag, self.__stringBinding =  dcom_FirewallChecker(iInterface, self.__timeout)
+                if not flag or not self.__stringBinding:
+                    error_msg = f'RDP-WMI: Dcom initialization failed on connection with stringbinding: "{self.__stringBinding}", please increase the timeout with the module option "DCOM-TIMEOUT=10". If it\'s still failing maybe something is blocking the RPC connection, please try to use "-o" with "METHOD=smb"'
+                    
+                    if not self.__stringBinding:
+                        error_msg = "RDP-WMI: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
+                    
+                    self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
+                    # Make it force break function
+                    self.__dcom.disconnect()
+            self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
+        except Exception as e:
+            self.logger.fail(f'Unexpected wmi error: {str(e)}, please try to use "-o" with "METHOD=smb"')
+            if self.__iWbemLevel1Login in locals():
                 self.__dcom.disconnect()
-                return
-        self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
-        
+
     def rdp_Wrapper(self, action, old=False):
         if old == False:
             # According to this document: https://learn.microsoft.com/en-us/windows/win32/termserv/win32-tslogonsetting
