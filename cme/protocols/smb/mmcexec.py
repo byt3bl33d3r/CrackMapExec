@@ -111,11 +111,8 @@ class MMCEXEC:
                 error_msg = "MMCEXEC: Dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
             
             self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
-            try:
-                # Make it force break function
-                self.__dcom.disconnect()
-            except:
-                pass
+            # Make it force break function
+            self.__dcom.disconnect()
         iMMC = IDispatch(iInterface)
 
         resp = iMMC.GetIDsOfNames(("Document",))
@@ -182,8 +179,8 @@ class MMCEXEC:
             dispParams["cNamedArgs"] = 0
 
             self.__quit[0].Invoke(self.__quit[1], 0x409, DISPATCH_METHOD, dispParams, 0, [], [])
-        except:
-            pass
+        except Exception as e:
+            self.logger.fail(f"Unexpect dcom error when doing exit() function in mmcexec: {str(e)}")
         return True
 
     def execute_remote(self, data):

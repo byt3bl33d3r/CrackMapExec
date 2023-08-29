@@ -83,10 +83,7 @@ class WMIEXEC:
             
             self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
             # Make it force break function
-            try:
-                self.__dcom.disconnect()
-            except:
-                pass
+            self.__dcom.disconnect()
         iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         iWbemServices = iWbemLevel1Login.NTLMLogin("//./root/cimv2", NULL, NULL)
         iWbemLevel1Login.RemRelease()

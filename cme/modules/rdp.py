@@ -108,10 +108,7 @@ class CMEModule:
                         else:
                             context.log.fail(str(e))
                         pass
-            try:
                 wmi_rdp._rdp_WMI__dcom.disconnect()
-            except:
-                pass
 
 class rdp_SMB:
     def __init__(self, context, connection):
@@ -262,11 +259,8 @@ class rdp_WMI:
             self.__iWbemLevel1Login = wmi.IWbemLevel1Login(iInterface)
         except Exception as e:
             self.logger.fail(f'Unexpected wmi error: {str(e)}, please try to use "-o" with "METHOD=smb"')
-            try:
-                self.__dcom.disconnect()
-            except:
-                pass
-        
+            self.__dcom.disconnect()
+
     def rdp_Wrapper(self, action, old=False):
         if old == False:
             # According to this document: https://learn.microsoft.com/en-us/windows/win32/termserv/win32-tslogonsetting

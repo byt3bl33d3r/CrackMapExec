@@ -1241,10 +1241,7 @@ class smb(connection):
                 
                 self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
                 # Make it force break function
-                try:
-                    dcom.disconnect()
-                except:
-                    pass
+                dcom.disconnect()
             iWbemLevel1Login = IWbemLevel1Login(iInterface)
             iWbemServices= iWbemLevel1Login.NTLMLogin(namespace , NULL, NULL)
             iWbemLevel1Login.RemRelease()
@@ -1265,11 +1262,7 @@ class smb(connection):
                         raise e
                     else:
                         break
-        try:
             dcom.disconnect()
-        except:
-            pass
-
         return records if records else False
 
     def spider(
