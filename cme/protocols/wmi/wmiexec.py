@@ -104,7 +104,7 @@ class WMIEXEC:
             retVal = descriptor.GetStringValue(2147483650, self.__registry_Path, keyName)
             self.__outputBuffer = base64.b64decode(retVal.sValue).decode(self.__codec, errors='replace').rstrip('\r\n')
         except Exception as e:
-            self.logger.fail(f'WMIEXEC-EVENT: Get output file error, maybe command not executed successfully or got detected by AV software, please increase the interval time of command execution with "--interval-time" option. If it\'s still failing maybe something is blocking the schedule job in vbscript, try another exec method')
+            self.logger.fail(f'WMIEXEC: Get output file error, maybe command not executed successfully or got detected by AV software, please increase the interval time of command execution with "--interval-time" option. If it\'s still failing maybe something is blocking the schedule job in vbscript, try another exec method')
         
         try:
             self.logger.debug(f"Removing temporary registry path: HKLM\\{self.__registry_Path}")
