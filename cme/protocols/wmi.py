@@ -177,7 +177,6 @@ class wmi(connection):
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
             flag, self.stringBinding = dcom_FirewallChecker(iInterface, self.args.rpc_timeout)
         except Exception as e:
-            self.logger.debug(str(e))
             if "dcom" in locals():
                 dcom.disconnect()
 
