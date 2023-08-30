@@ -420,11 +420,8 @@ class wmi(connection):
                         raise e
                     else:
                         break
-            try:
-                iEnumWbemClassObject.RemRelease()
-                dcom.disconnect()
-            except:
-                pass
+
+            dcom.disconnect()
 
             return records
 

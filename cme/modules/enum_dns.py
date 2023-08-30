@@ -70,6 +70,6 @@ class CMEModule:
                         context.log.highlight("\t" + d)
                         data += "\t" + d + "\n"
 
-        log_name = "DNS-Enum-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        log_name = "DNS-Enum-{}-{}.log".format(connection.host, datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(data, log_name)
         context.log.display(f"Saved raw output to ~/.cme/logs/{log_name}")

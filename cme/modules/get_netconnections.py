@@ -35,6 +35,6 @@ class CMEModule:
 
             data.append(cards)
 
-        log_name = "network-connections-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        log_name = "network-connections-{}-{}.log".format(connection.host, datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(json.dumps(data), log_name)
         context.log.display(f"Saved raw output to ~/.cme/logs/{log_name}")
