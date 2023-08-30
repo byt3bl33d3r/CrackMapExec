@@ -177,7 +177,9 @@ class wmi(connection):
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
             flag, self.stringBinding = dcom_FirewallChecker(iInterface, self.args.rpc_timeout)
         except Exception as e:
-            dcom.disconnect()
+            self.logger.debug(str(e))
+            if "dcom" in locals():
+                dcom.disconnect()
 
             if not str(e).find("access_denied") > 0:
                 self.logger.fail(str(e))
