@@ -59,7 +59,7 @@ class CMEModule:
                 if result:
                     return True
             else:
-                self.context.log.fail("Attack failed. Target is probably patched.")
+                self.context.log.highlight("Attack failed. Target is probably patched.")
         except DCERPCException as e:
             self.context.log.fail(f"Error while connecting to host: DCERPCException, " f"which means this is probably not a DC!")
 
