@@ -442,7 +442,7 @@ class wmi(connection):
             return False
         
         if self.server_os is not None and "NT 5" in self.server_os:
-            self.logger.fail("Not support current server os (version < NT 6)")
+            self.logger.fail("Execute command: Not support current server os (version < NT 6)")
             return False
 
         if self.args.exec_method == "wmiexec":
