@@ -71,10 +71,7 @@ class WMIEXEC:
             command = self.__shell + command
             self.execute_remote(command)
 
-        try:
-            self.__dcom.disconnect()
-        except:
-            pass
+        self.__dcom.disconnect()
 
         return self.__outputBuffer
 
@@ -107,10 +104,10 @@ class WMIEXEC:
             retVal = descriptor.GetStringValue(2147483650, self.__registry_Path, keyName)
             self.__outputBuffer = base64.b64decode(retVal.sValue).decode(self.__codec, errors='replace').rstrip('\r\n')
         except Exception as e:
-            self.logger.error(f"Target: {self.__host} getting command result error: {str(e)}")
+            self.logger.fail(f'WMIEXEC-EVENT: Get output file error, maybe command not executed successfully or got detected by AV software, please increase the interval time of command execution with "--interval-time" option. If it\'s still failing maybe something is blocking the schedule job in vbscript, try another exec method')
         
         try:
             self.logger.debug(f"Removing temporary registry path: HKLM\\{self.__registry_Path}")
             retVal = descriptor.DeleteKey(2147483650, self.__registry_Path)
         except Exception as e:
-            self.logger.error(f"Target: {self.__host} removing temporary registry path error: {str(e)}")
+            self.logger.debug(f"Target: {self.__host} removing temporary registry path error: {str(e)}")

@@ -66,10 +66,7 @@ class WMIEXEC_EVENT:
         self.__retOutput = output
         self.execute_handler(command)
 
-        try:
-            self.__dcom.disconnect()
-        except:
-            pass
+        self.__dcom.disconnect()
 
         return self.__outputBuffer
 
@@ -343,8 +340,8 @@ End Function
             command_ResultObject, _ = self.__iWbemServices.GetObject(f'ActiveScriptEventConsumer.Name="{self.__instanceID_StoreResult}"')
             record = dict(command_ResultObject.getProperties())
             self.__outputBuffer = base64.b64decode(record['ScriptText']['value']).decode(self.__codec, errors='replace')
-        except:
-            pass
+        except Exception as e:
+            self.logger.fail(f'WMIEXEC-EVENT: Get output file error, maybe command not executed successfully or got detected by AV software, please increase the interval time of command execution with "--interval-time" option. If it\'s still failing maybe something is blocking the schedule job in vbscript, try another exec method')
 
     def remove_Instance(self):
         if self.__retOutput:

@@ -446,28 +446,14 @@ class wmi(connection):
             return False
 
         if self.args.exec_method == "wmiexec":
-            try:
-                exec_method = wmiexec.WMIEXEC(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
-                output = exec_method.execute(command, get_output)
-            except Exception as e:
-                try:
-                    exec_method._WMIEXEC__dcom.disconnect()
-                except:
-                    pass
-                self.logger.fail('Execute command error: {}'.format(str(e)))
-            self.conn.disconnect()
+            exec_method = wmiexec.WMIEXEC(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
+            output = exec_method.execute(command, get_output)
+            
         elif self.args.exec_method == "wmiexec-event":
-            try:
-                exec_method = wmiexec_event.WMIEXEC_EVENT(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
-                output = exec_method.execute(command, get_output)
-            except Exception as e:
-                try:
-                    exec_method._WMIEXEC_EVENT__dcom.disconnect()
-                except:
-                    pass
-                self.logger.fail('Execute command error: {}'.format(str(e)))
-            self.conn.disconnect()
-        
+            exec_method = wmiexec_event.WMIEXEC_EVENT(self.conn.getRemoteName(), self.username, self.password, self.domain, self.lmhash, self.nthash, self.doKerberos, self.kdcHost, self.aesKey, self.logger, self.args.interval_time, self.args.codec)
+            output = exec_method.execute(command, get_output)
+
+        self.conn.disconnect()
         if output == "" and get_output:
             self.logger.fail("Execute command failed, probabaly got detection by AV.")
             return False
