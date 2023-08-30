@@ -155,10 +155,7 @@ class wmi(connection):
 
         if self.args.local_auth:
             self.domain = self.hostname
-        if self.args.domain:
-            self.domain = self.args.domain
-            self.fqdn = f"{self.hostname}.{self.domain}"
-        
+        if self.args.domain:__dcom
         self.logger.extra["hostname"] = self.hostname
 
         self.output_filename = os.path.expanduser(f"~/.cme/logs/{self.hostname}_{self.host}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}".replace(":", "-"))
@@ -177,34 +174,25 @@ class wmi(connection):
             iInterface = dcom.CoCreateInstanceEx(CLSID_WbemLevel1Login, IID_IWbemLevel1Login)
             flag, self.stringBinding = dcom_FirewallChecker(iInterface, self.args.rpc_timeout)
         except Exception as e:
-            try:
-                dcom.disconnect()
-            except:
-                pass
+            dcom.disconnect()
 
             if not str(e).find("access_denied") > 0:
                 self.logger.fail(str(e))
         else:
             if not flag or not self.stringBinding:
+                dcom.disconnect()
                 error_msg = f'Check admin error: dcom initialization failed with stringbinding: "{self.stringBinding}", please try "--rpc-timeout" option. (probably is admin)'
                 
                 if not self.stringBinding:
                     error_msg = "Check admin error: dcom initialization failed: can't get target stringbinding, maybe cause by IPv6 or any other issues, please check your target again"
                 
                 self.logger.fail(error_msg) if not flag else self.logger.debug(error_msg)
-                try:
-                    dcom.disconnect()
-                except:
-                    pass
             else:
                 try:
                     iWbemLevel1Login = IWbemLevel1Login(iInterface)
                     iWbemServices = iWbemLevel1Login.NTLMLogin('//./root/cimv2', NULL, NULL)
                 except Exception as e:
-                    try:
-                        dcom.disconnect()
-                    except:
-                        pass
+                    dcom.disconnect()
 
                     if not str(e).find("access_denied") > 0:
                         self.logger.fail(str(e))
