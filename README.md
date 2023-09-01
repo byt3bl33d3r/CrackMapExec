@@ -1,5 +1,11 @@
 ![Supported Python versions](https://img.shields.io/badge/python-3.7+-blue.svg) [![Twitter](https://img.shields.io/twitter/follow/byt3bl33d3r?label=byt3bl33d3r&style=social)](https://twitter.com/intent/follow?screen_name=byt3bl33d3r) [![Twitter](https://img.shields.io/twitter/follow/mpgn_x64?label=mpgn_x64&style=social)](https://twitter.com/intent/follow?screen_name=mpgn_x64)
 
+# CrackMapExec
+
+<p align="center">
+  <img src="https://cloud.githubusercontent.com/assets/5151193/17577511/d312ceb4-5f3b-11e6-8de5-8822246289fd.jpg" alt="cme"/>
+</p>
+
 This project was initially created in 2016 by **@byt3bl33d3r**, in 2019 I started to invest myself in the project. Five years laters this awesome project is still maintained and up to date ! Lot of new additions have been made to create a tool still relevant to the new Active Directory attacks paths and countermeasures setup by Microsoft ! ⚔️
 
 You are on the latest up-to-date repository of the project CrackMapExec ! 🎉
@@ -8,11 +14,6 @@ You are on the latest up-to-date repository of the project CrackMapExec ! 🎉
 - 🔀 If you want to contribute, open a [Pull Request](https://github.com/mpgn/CrackMapExec/pulls)
 - 💬 If you want to discuss, open a [Discussion](https://github.com/mpgn/CrackMapExec/discussions)
 
-# CrackMapExec
-
-<p align="center">
-  <img src="https://cloud.githubusercontent.com/assets/5151193/17577511/d312ceb4-5f3b-11e6-8de5-8822246289fd.jpg" alt="cme"/>
-</p>
 
 # Acknowledgments
 **(These are the people who did the hard stuff)**
