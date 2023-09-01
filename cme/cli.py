@@ -26,11 +26,8 @@ def gen_cli_args():
                                                 A swiss army knife for pentesting networks
                                     Forged by @byt3bl33d3r and @mpgn_x64 using the powah of dank memes
 
-                                           {colored("Exclusive release for Porchetta Industries users", "magenta")}
-                                                       {colored("https://porchetta.industries/", "magenta")}
-
-                                                   {highlight('Version', 'red')} : {highlight(VERSION)}
-                                                   {highlight('Codename', 'red')}: {highlight(CODENAME)}
+                                                       {highlight('Version', 'red')} : {highlight(VERSION)}
+                                                       {highlight('Codename', 'red')}: {highlight(CODENAME)}
 """,
         formatter_class=RawTextHelpFormatter,
     )
