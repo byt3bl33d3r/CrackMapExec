@@ -13,7 +13,7 @@ class CMEModule:
 
     name = "enum_dns"
     description = "Uses WMI to dump DNS from an AD DNS Server"
-    supported_protocols = ["wmi"]
+    supported_protocols = ["smb", "wmi"]
     opsec_safe = True
     multiple_hosts = True
 

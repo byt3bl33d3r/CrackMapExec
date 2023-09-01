@@ -15,7 +15,7 @@ class CMEModule:
 
     name = "get_netconnections"
     description = "Uses WMI to query network connections."
-    supported_protocols = ["wmi"]
+    supported_protocols = ["smb", "wmi"]
     opsec_safe = True
     multiple_hosts = True
 

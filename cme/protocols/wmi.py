@@ -49,17 +49,6 @@ class wmi(connection):
         }
 
         connection.__init__(self, args, db, host)
-    
-    def proto_flow(self):
-        self.proto_logger()
-        if self.create_conn_obj():
-            self.enum_host_info()
-            self.print_host_info()
-            if self.login():
-                if hasattr(self.args, 'module') and self.args.module:
-                    self.call_modules()
-                else:
-                    self.call_cmd_args()
 
     def proto_logger(self):
         self.logger = CMEAdapter(extra={'protocol': 'WMI',
@@ -81,6 +70,7 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
             dce.disconnect()
         except Exception as e:
+            self.logger.debug(str(e))
             return False
         else:
             self.conn = rpctansport
@@ -247,6 +237,7 @@ class wmi(connection):
         except Exception as e:
             dce.disconnect()
             error_msg = str(e).lower()
+            self.logger.debug(error_msg)
             if "unpack requires a buffer of 4 bytes" in error_msg:
                 error_msg = "Kerberos authentication failure"
                 out = f"{self.domain}\\{self.username}{used_ccache} {error_msg}"
@@ -274,6 +265,7 @@ class wmi(connection):
             except Exception as e:
                 dce.disconnect()
                 error_msg = str(e).lower()
+                self.logger.debug(error_msg)
                 for code in self.rpc_error_status.keys():
                     if code in error_msg:
                         error_msg = self.rpc_error_status[code]
@@ -301,6 +293,7 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
+            self.logger.debug(str(e))
             out = f"{self.domain}\\{self.username}:{process_secret(self.password)} {str(e)}"
             self.logger.fail(out, color="red")
         else:
@@ -318,6 +311,7 @@ class wmi(connection):
             except  Exception as e:
                 dce.disconnect()
                 error_msg = str(e).lower()
+                self.logger.debug(error_msg)
                 for code in self.rpc_error_status.keys():
                     if code in error_msg:
                         error_msg = self.rpc_error_status[code]
@@ -354,6 +348,7 @@ class wmi(connection):
             dce.bind(MSRPC_UUID_PORTMAP)
         except Exception as e:
             dce.disconnect()
+            self.logger.debug(str(e))
             out = f"{domain}\\{self.username}:{process_secret(self.nthash)} {str(e)}"
             self.logger.fail(out, color="red")
         else:
@@ -371,6 +366,7 @@ class wmi(connection):
             except  Exception as e:
                 dce.disconnect()
                 error_msg = str(e).lower()
+                self.logger.debug(error_msg)
                 for code in self.rpc_error_status.keys():
                     if code in error_msg:
                         error_msg = self.rpc_error_status[code]
@@ -404,8 +400,9 @@ class wmi(connection):
             iWbemLevel1Login.RemRelease()
             iEnumWbemClassObject = iWbemServices.ExecQuery(WQL)
         except Exception as e:
-            self.logger.fail('Execute WQL error: {}'.format(e))
             dcom.disconnect()
+            self.logger.debug(str(e))
+            self.logger.fail('Execute WQL error: {}'.format(str(e)))
             return False
         else:
             self.logger.info(f"Executing WQL syntax: {WQL}")
@@ -418,7 +415,7 @@ class wmi(connection):
                         self.logger.highlight(f"{k} => {v['value']}")
                 except Exception as e:
                     if str(e).find('S_FALSE') < 0:
-                        raise e
+                        self.logger.debug(str(e))
                     else:
                         break
 
