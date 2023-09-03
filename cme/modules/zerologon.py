@@ -15,7 +15,7 @@ MAX_ATTEMPTS = 2000  # False negative chance: 0.04%
 class CMEModule:
     name = "zerologon"
     description = "Module to check if the DC is vulnerable to Zerologon aka CVE-2020-1472"
-    supported_protocols = ["smb"]
+    supported_protocols = ["smb", "wmi"]
     opsec_safe = True
     multiple_hosts = False
 
@@ -59,19 +59,14 @@ class CMEModule:
                 if result:
                     return True
             else:
-                self.context.log.debug("\nAttack failed. Target is probably patched.")
+                self.context.log.highlight("Attack failed. Target is probably patched.")
         except DCERPCException as e:
             self.context.log.fail(f"Error while connecting to host: DCERPCException, " f"which means this is probably not a DC!")
 
-
 def fail(msg):
-    cme_logger.debug(msg, file=sys.stderr)
-    cme_logger.debug(
-        "This might have been caused by invalid arguments or network issues.",
-        file=sys.stderr,
-    )
+    cme_logger.debug(msg)
+    cme_logger.fail("This might have been caused by invalid arguments or network issues.")
     sys.exit(2)
-
 
 def try_zero_authenticate(rpc_con, dc_handle, dc_ip, target_computer):
     # Connect to the DC's Netlogon service.

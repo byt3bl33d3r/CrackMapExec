@@ -25,7 +25,7 @@ class CMEModule:
 
     name = "spooler"
     description = "Detect if print spooler is enabled or not"
-    supported_protocols = ["smb"]
+    supported_protocols = ["smb", "wmi"]
     opsec_safe = True
     multiple_hosts = True
 

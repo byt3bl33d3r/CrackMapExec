@@ -15,7 +15,7 @@ class CMEModule:
 
     name = "get_netconnections"
     description = "Uses WMI to query network connections."
-    supported_protocols = ["smb"]
+    supported_protocols = ["smb", "wmi"]
     opsec_safe = True
     multiple_hosts = True
 
@@ -35,6 +35,6 @@ class CMEModule:
 
             data.append(cards)
 
-        log_name = "network-connections-{}-{}.log".format(connection.args.target[0], datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        log_name = "network-connections-{}-{}.log".format(connection.host, datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         write_log(json.dumps(data), log_name)
-        context.log.display("Saved raw output to {}".format(log_name))
+        context.log.display(f"Saved raw output to ~/.cme/logs/{log_name}")
