@@ -38,7 +38,7 @@ Unintentional contributors:
 See the project's [wiki](https://www.crackmapexec.wiki/) for documentation and usage examples
 
 # Installation
-Please see the installation on the [GitBook](https://www.crackmapexec.wiki/getting-started/installation)
+Please see the installation instructions on the [official wiki](https://www.crackmapexec.wiki/getting-started/installation)
 
 # Code Contributors
 
