@@ -13,7 +13,7 @@ import importlib.metadata
 
 def gen_cli_args():
     VERSION = importlib.metadata.version("crackmapexec")
-    CODENAME = "Bane"
+    CODENAME = "John Wick"
 
     parser = argparse.ArgumentParser(description=f"""
       ______ .______           ___        ______  __  ___ .___  ___.      ___      .______    _______ ___   ___  _______   ______
