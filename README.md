@@ -6,14 +6,19 @@
   <img src="https://cloud.githubusercontent.com/assets/5151193/17577511/d312ceb4-5f3b-11e6-8de5-8822246289fd.jpg" alt="cme"/>
 </p>
 
-This project was initially created in 2016 by **@byt3bl33d3r**, in 2019 I started to invest myself in the project. Five years laters this awesome project is still maintained and up to date ! Lot of new additions have been made to create a tool still relevant to the new Active Directory attacks paths and countermeasures setup by Microsoft ! ⚔️
+This project was initially created in 2015 by **@byt3bl33d3r**, in 2019 I started to invest myself in the project. Five years laters this awesome project is still maintained and up to date ! Lot of new additions have been made to create a tool still relevant to the new Active Directory attacks paths and countermeasures setup by Microsoft ! ⚔️
 
-You are on the latest up-to-date repository of the project CrackMapExec ! 🎉
+You are on the **latest up-to-date** repository of the project CrackMapExec ! 🎉
 
 - 🚧 If you want to report a problem, open un [Issue](https://github.com/mpgn/CrackMapExec/issues) 
 - 🔀 If you want to contribute, open a [Pull Request](https://github.com/mpgn/CrackMapExec/pulls)
 - 💬 If you want to discuss, open a [Discussion](https://github.com/mpgn/CrackMapExec/discussions)
 
+## Official Discord Channel
+
+If you don't have a Github account, you can ask your question on Discord
+
+[![Porchetta Industries](https://discordapp.com/api/guilds/736724457258745996/widget.png?style=banner3)](https://discord.gg/ycGXUxy)
 
 # Acknowledgments
 **(These are the people who did the hard stuff)**
