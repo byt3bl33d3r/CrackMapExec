@@ -1434,11 +1434,6 @@ class ldap(connection):
         # Initialize the distinguishedName variable
         distinguishedName = None
         
-        # --query-user should be used
-        if self.args.get_user_groups == None:
-            self.logger.fail("No username provided. Usage: --get-user-groups --query-user <exampleUsername>")
-            return
-
         # Building the search filter
         search_filter = f"(&(sAMAccountName={self.args.get_user_groups})(objectclass=user))"
         # Only grab the distinguishedName
@@ -1490,11 +1485,6 @@ class ldap(connection):
         # Initialize the distinguishedName variable
         distinguishedName = None
         
-        # --query-group should be used
-        if self.args.get_group_users == None:
-            self.logger.fail("No group provided. Usage: --get-group-users --query-group <exampleGroupName>")
-            return
-
         # Building the search filter
         search_filter = f"(&(cn={self.args.get_group_users})(objectclass=group))"
         # Only grab the distinguishedName
