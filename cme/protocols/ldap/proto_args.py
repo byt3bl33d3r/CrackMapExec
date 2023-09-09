@@ -23,6 +23,10 @@ def proto_args(parser, std_parser, module_parser):
     vgroup.add_argument("--groups", action="store_true", help="Enumerate domain groups")
     vgroup.add_argument("--dc-list", action="store_true", help="Enumerate Domain Controllers")
     vgroup.add_argument("--get-sid", action="store_true", help="Get domain sid")
+    vgroup.add_argument("--get-user-groups", action="store_true", help="Enumerate domain groups of a domain user")
+    vgroup.add_argument("--query-user", help="Username to query")
+    vgroup.add_argument("--get-group-users", action="store_true", help="Enumerate domain users of a domain group")
+    vgroup.add_argument("--query-group", help="Group to query")
 
     ggroup = ldap_parser.add_argument_group("Retrevie gmsa on the remote DC", "Options to play with gmsa")
     ggroup.add_argument("--gmsa", action="store_true", help="Enumerate GMSA passwords")
