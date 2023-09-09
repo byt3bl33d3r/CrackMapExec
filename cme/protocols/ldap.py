@@ -1429,3 +1429,116 @@ class ldap(connection):
                 if each_file.startswith(timestamp) and each_file.endswith("json"):
                     z.write(each_file)
                     os.remove(each_file)
+
+    def get_user_groups(self):
+        # Initialize the distinguishedName variable
+        distinguishedName = None
+        
+        # --query-user should be used
+        if self.args.query_user == None:
+            self.logger.fail("No username provided. Usage: --get-user-groups --query-user <exampleUsername>")
+            return
+
+        # Building the search filter
+        search_filter = f"(&(sAMAccountName={self.args.query_user})(objectclass=user))"
+        # Only grab the distinguishedName
+        attributes = [
+            "distinguishedName"
+        ]
+
+        resp = self.search(search_filter, attributes, sizeLimit=0)
+        if resp:
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                try:
+                    for attribute in item["attributes"]:
+                        if str(attribute["type"]) == "distinguishedName":
+                            distinguishedName = str(attribute["vals"][0])
+                except Exception as e:
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    pass
+        
+        # If the distinguishedName is still None, fail
+        if distinguishedName == None:
+            self.logger.fail("User does not exist.")
+            return
+
+        # Search for groups assigned to distinguishedName
+        search_filter = f"(&(objectClass=group)(member={distinguishedName}))"
+        attributes = [
+            "cn"
+        ]
+        resp = self.search(search_filter, attributes, sizeLimit=0)
+        if resp:
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                commonName = ""
+                try:
+                    for attribute in item["attributes"]:
+                        if str(attribute["type"]) == "cn":
+                            commonName = str(attribute["vals"][0])
+                            self.logger.highlight(f"{commonName:<30}")
+                except Exception as e:
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    pass
+
+    def get_group_users(self):
+        # Initialize the distinguishedName variable
+        distinguishedName = None
+        
+        # --query-group should be used
+        if self.args.query_group == None:
+            self.logger.fail("No group provided. Usage: --get-group-users --query-group <exampleGroupName>")
+            return
+
+        # Building the search filter
+        search_filter = f"(&(cn={self.args.query_group})(objectclass=group))"
+        # Only grab the distinguishedName
+        attributes = [
+            "distinguishedName"
+        ]
+
+        resp = self.search(search_filter, attributes, sizeLimit=0)
+        if resp:
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                try:
+                    for attribute in item["attributes"]:
+                        if str(attribute["type"]) == "distinguishedName":
+                            distinguishedName = str(attribute["vals"][0])
+                except Exception as e:
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    pass
+
+        # If the distinguishedName is still None, fail
+        if distinguishedName == None:
+            self.logger.fail("Group does not exist.")
+            return
+       
+        # Search for groups assigned to distinguishedName
+        search_filter = f"(&(objectClass=user)(memberOf={distinguishedName}))"
+        # Only search for the sAMAccountName
+        attributes = [
+            "sAMAccountName"
+        ]
+        resp = self.search(search_filter, attributes, sizeLimit=0)
+        if resp:
+            answers = []
+            for item in resp:
+                if isinstance(item, ldapasn1_impacket.SearchResultEntry) is not True:
+                    continue
+                sAMAccountName = ""
+                try:
+                    for attribute in item["attributes"]:
+                        if str(attribute["type"]) == "sAMAccountName":
+                            sAMAccountName = str(attribute["vals"][0])
+                            self.logger.highlight(f"{sAMAccountName:<30}")
+                except Exception as e:
+                    self.logger.debug(f"Skipping item, cannot process due to error {e}")
+                    pass
